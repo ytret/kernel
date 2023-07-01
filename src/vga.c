@@ -33,6 +33,15 @@ vga_print_str (char const * p_str)
     }
 }
 
+void
+vga_print_str_len (char const * p_str, size_t len)
+{
+    for (size_t idx = 0; idx < len; idx++)
+    {
+        put_char(p_str[idx]);
+    }
+}
+
 static void
 put_char (char ch)
 {
