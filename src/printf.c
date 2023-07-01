@@ -179,9 +179,9 @@ itoa (unsigned int num, bool b_signed, char * p_buf, unsigned int base)
     for (size_t idx = 0; idx < (buf_pos / 2); idx++)
     {
         char tmp;
-        tmp = p_buf[(buf_pos - 1) - idx];
+        tmp                        = p_buf[(buf_pos - 1) - idx];
         p_buf[(buf_pos - 1) - idx] = p_buf[idx];
-        p_buf[idx] = tmp;
+        p_buf[idx]                 = tmp;
     }
 
     p_buf[buf_pos++] = 0;
