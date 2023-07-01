@@ -145,6 +145,7 @@ def build():
     sources = [
         "src/entry.s",
         "src/main.c",
+        "src/memmove.c",
         "src/panic.c",
         "src/printf.c",
         "src/string.c",
