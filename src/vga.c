@@ -15,6 +15,7 @@ static uint8_t g_col;
 
 static void put_char(char ch);
 static void put_char_at(uint8_t row, uint8_t col, char ch);
+static void scroll(void);
 
 void
 vga_clear (void)
@@ -52,8 +53,8 @@ put_char (char ch)
             g_row++;
             if (g_row >= MAX_ROWS)
             {
-                g_row = 0;
-                vga_clear();
+                g_row = (MAX_ROWS - 1);
+                scroll();
             }
         break;
 
@@ -83,4 +84,19 @@ put_char_at (uint8_t row, uint8_t col, char ch)
 
     size_t idx = ((row * MAX_COLS) + col);
     gp_vga_memory[idx] = ((0x0F << 8) | ch);
+}
+
+static void
+scroll (void)
+{
+    // Bury the first row.
+    //
+    __builtin_memmove(gp_vga_memory,
+                      &gp_vga_memory[1 * MAX_COLS],
+                      (2 * (MAX_ROWS - 1) * MAX_COLS));
+
+    // Clean the last row.
+    //
+    __builtin_memset(&gp_vga_memory[(MAX_ROWS - 1) * MAX_COLS], 0,
+                     2 * MAX_COLS);
 }
