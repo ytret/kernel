@@ -1,9 +1,16 @@
 #include <printf.h>
 #include <vga.h>
 
+#include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
+
+// Maximum length of a signed int (assuming 32-bit int).
+//
+#define MAX_INT_LEN     11
+
+static void itoa(int num, char * p_buf);
 
 void
 printf (char const * restrict p_format, ...)
@@ -38,6 +45,13 @@ printf (char const * restrict p_format, ...)
             {
                 char const * p_arg_str = va_arg(args, char const *);
                 vga_print_str(p_arg_str);
+            }
+            else if ('d' == (*p_format))
+            {
+                int arg_num = va_arg(args, int);
+                char p_itoa_str[MAX_INT_LEN + 1];
+                itoa(arg_num, p_itoa_str);
+                vga_print_str(p_itoa_str);
             }
             else
             {
@@ -82,4 +96,47 @@ printf (char const * restrict p_format, ...)
     }
 
     va_end(args);
+}
+
+static void
+itoa (int signed_num, char * p_buf)
+{
+    unsigned int num = (unsigned int) signed_num;
+
+    size_t buf_pos  = 0;
+    bool b_negative = false;
+
+    if (0 == num)
+    {
+        p_buf[buf_pos++] = '0';
+    }
+    else if (signed_num < 0)
+    {
+        b_negative = true;
+        num *= (-1);
+    }
+
+    while (num > 0)
+    {
+        int rem = (num % 10);
+        p_buf[buf_pos++] = (48 + rem);
+        num /= 10;
+    }
+
+    if (b_negative)
+    {
+        p_buf[buf_pos++] = '-';
+    }
+
+    // Reverse the string.
+    //
+    for (size_t idx = 0; idx < (buf_pos / 2); idx++)
+    {
+        char tmp;
+        tmp = p_buf[(buf_pos - 1) - idx];
+        p_buf[(buf_pos - 1) - idx] = p_buf[idx];
+        p_buf[idx] = tmp;
+    }
+
+    p_buf[buf_pos++] = 0;
 }
