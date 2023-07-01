@@ -20,7 +20,13 @@ static void scroll(void);
 void
 vga_clear (void)
 {
-    __builtin_memset(gp_vga_memory, 0, (2 * MAX_ROWS * MAX_COLS));
+    for (size_t row = 0; row < MAX_ROWS; row++)
+    {
+        for (size_t col = 0; col < MAX_COLS; col++)
+        {
+            put_char_at(row, col, ' ');
+        }
+    }
 }
 
 void
