@@ -6,14 +6,13 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-// Maximum length of a signed int (assuming 32-bit int).
-//
-#define MAX_INT_LEN     11
+// Maximum lengths of unsigned and signed ints in base 10 and/or base 16.
+#define MAX_INT_LEN_10          11
+#define MAX_UINT_LEN_10         10
+#define MAX_UINT_LEN_16         8
 
-// Maximum length of an unsigned int.
-#define MAX_UINT_LEN    10
-
-static void itoa(unsigned int num, bool b_signed, char * p_buf);
+static void itoa(unsigned int num, bool b_signed, char * p_buf,
+                 unsigned int base);
 
 void
 printf (char const * restrict p_format, ...)
@@ -52,15 +51,22 @@ printf (char const * restrict p_format, ...)
             else if ('d' == (*p_format))
             {
                 int arg_num = va_arg(args, int);
-                char p_itoa_str[MAX_INT_LEN + 1];
-                itoa(arg_num, true, p_itoa_str);
+                char p_itoa_str[MAX_INT_LEN_10 + 1];
+                itoa(arg_num, true, p_itoa_str, 10);
                 vga_print_str(p_itoa_str);
             }
             else if ('u' == (*p_format))
             {
                 unsigned int arg_num = va_arg(args, unsigned int);
-                char p_itoa_str[MAX_UINT_LEN + 1];
-                itoa(arg_num, false, p_itoa_str);
+                char p_itoa_str[MAX_UINT_LEN_10 + 1];
+                itoa(arg_num, false, p_itoa_str, 10);
+                vga_print_str(p_itoa_str);
+            }
+            else if ('x' == (*p_format))
+            {
+                unsigned int arg_num = va_arg(args, unsigned int);
+                char p_itoa_str[MAX_UINT_LEN_16 + 1];
+                itoa(arg_num, false, p_itoa_str, 16);
                 vga_print_str(p_itoa_str);
             }
             else
@@ -109,7 +115,7 @@ printf (char const * restrict p_format, ...)
 }
 
 static void
-itoa (unsigned int num, bool b_signed, char * p_buf)
+itoa (unsigned int num, bool b_signed, char * p_buf, unsigned int base)
 {
     size_t buf_pos  = 0;
     bool b_negative = false;
@@ -126,9 +132,19 @@ itoa (unsigned int num, bool b_signed, char * p_buf)
 
     while (num > 0)
     {
-        int rem = (num % 10);
-        p_buf[buf_pos++] = (48 + rem);
-        num /= 10;
+        int rem = (num % base);
+        char ch;
+        if (rem < 10)
+        {
+            ch = (48 + rem);
+        }
+        else
+        {
+            ch = ('a' + (rem - 10));
+        }
+
+        p_buf[buf_pos++] = ch;
+        num /= base;
     }
 
     if (b_negative)
