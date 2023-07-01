@@ -145,6 +145,9 @@ def build():
     sources = [
         "src/entry.s",
         "src/main.c",
+        "src/panic.c",
+        "src/printf.c",
+        "src/vga.c",
     ]
     src_paths = [Path(src) for src in sources]
     objects = compile(src_paths)
