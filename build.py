@@ -68,7 +68,7 @@ def compile_asm(paths, as_flags):
         if path.suffix != ".s":
             raise ValueError(f"path '{path}' is not a .s file")
 
-    cmd_as = "i686-elf-as {} -o build/{.}.o"
+    cmd_as = "i686-elf-as {} -o build/{}.o"
     for flag in as_flags:
         cmd_as += f" {flag}"
 
@@ -76,7 +76,7 @@ def compile_asm(paths, as_flags):
 
     objects = []
     for path in paths:
-        objects.append("build" / path.parent / (path.stem + ".o"))
+        objects.append(f"build/{path}.o")
     return objects
 
 
@@ -88,7 +88,7 @@ def compile_c(paths, gcc_flags):
     cmd_gcc = (
         "i686-elf-gcc -ffreestanding -Wall -Wextra -Werror -std=c99"
         " -fdiagnostics-color=always"
-        " -c {} -o build/{.}.o -Isrc"
+        " -c {} -o build/{}.o -Isrc"
     )
     for flag in gcc_flags:
         cmd_gcc += f" {flag}"
@@ -97,7 +97,7 @@ def compile_c(paths, gcc_flags):
 
     objects = []
     for path in paths:
-        objects.append("build" / path.parent / (path.stem + ".o"))
+        objects.append(f"build/{path}.o")
     return objects
 
 
