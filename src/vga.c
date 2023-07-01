@@ -25,9 +25,9 @@ vga_clear (void)
 void
 vga_print_str (char const * p_str)
 {
-    while (*p_str != 0)
+    while ((*p_str) != 0)
     {
-        char ch = *p_str;
+        char ch = (*p_str);
         put_char(ch);
         p_str++;
     }
