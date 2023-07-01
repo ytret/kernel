@@ -10,7 +10,10 @@
 //
 #define MAX_INT_LEN     11
 
-static void itoa(int num, char * p_buf);
+// Maximum length of an unsigned int.
+#define MAX_UINT_LEN    10
+
+static void itoa(unsigned int num, bool b_signed, char * p_buf);
 
 void
 printf (char const * restrict p_format, ...)
@@ -50,7 +53,14 @@ printf (char const * restrict p_format, ...)
             {
                 int arg_num = va_arg(args, int);
                 char p_itoa_str[MAX_INT_LEN + 1];
-                itoa(arg_num, p_itoa_str);
+                itoa(arg_num, true, p_itoa_str);
+                vga_print_str(p_itoa_str);
+            }
+            else if ('u' == (*p_format))
+            {
+                unsigned int arg_num = va_arg(args, unsigned int);
+                char p_itoa_str[MAX_UINT_LEN + 1];
+                itoa(arg_num, false, p_itoa_str);
                 vga_print_str(p_itoa_str);
             }
             else
@@ -99,10 +109,8 @@ printf (char const * restrict p_format, ...)
 }
 
 static void
-itoa (int signed_num, char * p_buf)
+itoa (unsigned int num, bool b_signed, char * p_buf)
 {
-    unsigned int num = (unsigned int) signed_num;
-
     size_t buf_pos  = 0;
     bool b_negative = false;
 
@@ -110,7 +118,7 @@ itoa (int signed_num, char * p_buf)
     {
         p_buf[buf_pos++] = '0';
     }
-    else if (signed_num < 0)
+    else if (b_signed && (((int) num) < 0))
     {
         b_negative = true;
         num *= (-1);
