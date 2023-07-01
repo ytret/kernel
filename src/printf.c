@@ -76,6 +76,21 @@ printf (char const * restrict p_format, ...)
 
                 vga_print_str(p_itoa_str);
             }
+            else if (('p' == (*p_format)) || ('P' == (*p_format)))
+            {
+                vga_print_str("0x");
+
+                void const * p_ptr = va_arg(args, void const *);
+                char p_itoa_str[MAX_UINT_LEN_16 + 1];
+                itoa((unsigned int) p_ptr, false, p_itoa_str, 16);
+
+                if ('P' == (*p_format))
+                {
+                    string_to_upper(p_itoa_str);
+                }
+
+                vga_print_str(p_itoa_str);
+            }
             else
             {
                 // Unknown special character, just print it with the '%' sign.
