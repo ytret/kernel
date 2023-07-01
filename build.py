@@ -147,6 +147,7 @@ def build():
         "src/main.c",
         "src/panic.c",
         "src/printf.c",
+        "src/string.c",
         "src/vga.c",
     ]
     src_paths = [Path(src) for src in sources]
