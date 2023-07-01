@@ -87,6 +87,7 @@ def compile_c(paths, gcc_flags):
 
     cmd_gcc = (
         "i686-elf-gcc -ffreestanding -Wall -Wextra -Werror -std=c99"
+        " -fdiagnostics-color=always"
         " -c {} -o build/{.}.o -Isrc"
     )
     for flag in gcc_flags:
