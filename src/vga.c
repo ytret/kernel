@@ -19,8 +19,6 @@ static void put_char_at(uint8_t row, uint8_t col, char ch);
 void
 vga_clear (void)
 {
-    g_row = 0;
-    g_col = 0;
     __builtin_memset(gp_vga_memory, 0, (2 * MAX_ROWS * MAX_COLS));
 }
 
@@ -38,17 +36,31 @@ vga_print_str (char const * p_str)
 static void
 put_char (char ch)
 {
-    put_char_at(g_row, g_col, ch);
-
-    g_col++;
-    if (g_col >= MAX_COLS)
+    switch (ch)
     {
-        g_col = 0;
-        g_row++;
-        if (g_row >= MAX_ROWS)
-        {
-            g_row = 0;
-        }
+        case '\n':
+            g_col = 0;
+            g_row++;
+            if (g_row >= MAX_ROWS)
+            {
+                g_row = 0;
+                vga_clear();
+            }
+        break;
+
+        default:
+            put_char_at(g_row, g_col, ch);
+
+            g_col++;
+            if (g_col >= MAX_COLS)
+            {
+                g_col = 0;
+                g_row++;
+                if (g_row >= MAX_ROWS)
+                {
+                    g_row = 0;
+                }
+            }
     }
 }
 
