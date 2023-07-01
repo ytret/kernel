@@ -1,4 +1,5 @@
 #include <printf.h>
+#include <string.h>
 #include <vga.h>
 
 #include <limits.h>
@@ -62,11 +63,17 @@ printf (char const * restrict p_format, ...)
                 itoa(arg_num, false, p_itoa_str, 10);
                 vga_print_str(p_itoa_str);
             }
-            else if ('x' == (*p_format))
+            else if (('x' == (*p_format)) || ('X' == (*p_format)))
             {
                 unsigned int arg_num = va_arg(args, unsigned int);
                 char p_itoa_str[MAX_UINT_LEN_16 + 1];
                 itoa(arg_num, false, p_itoa_str, 16);
+
+                if ('X' == (*p_format))
+                {
+                    string_to_upper(p_itoa_str);
+                }
+
                 vga_print_str(p_itoa_str);
             }
             else
