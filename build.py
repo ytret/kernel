@@ -154,6 +154,7 @@ def build():
         "src/panic.c",
         "src/pic.c",
         "src/pit.c",
+        "src/pmm.c",
         "src/printf.c",
         "src/string.c",
         "src/vga.c",
