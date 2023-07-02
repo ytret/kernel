@@ -98,7 +98,7 @@ put_char_at (uint8_t row, uint8_t col, char ch)
 {
     if ((row >= MAX_ROWS) || (col >= MAX_COLS))
     {
-        panic();
+        panic_silent();
     }
 
     size_t idx = ((row * MAX_COLS) + col);
