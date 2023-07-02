@@ -1,7 +1,9 @@
 #include <gdt.h>
 
-#define ENTRY_SIZE_BYTES        8
+#define NUM_ENTRIES             32
+
 #define DESC_SIZE_BYTES         6
+#define ENTRY_SIZE_BYTES        8
 
 #define ENTRY_PRESENT           (1 << 7)
 
@@ -19,8 +21,8 @@
 #define FLAG_LIMIT_IN_PAGES     (1 << 3)
 #define FLAG_PROTECTED          (1 << 2)
 
-static uint8_t gp_desc[6];
-static uint8_t gpp_gdt[32][ENTRY_SIZE_BYTES];
+static uint8_t gp_desc[DESC_SIZE_BYTES];
+static uint8_t gpp_gdt[NUM_ENTRIES][ENTRY_SIZE_BYTES];
 
 static void fill_desc(uint8_t * p_desc, void const * p_gdt, uint16_t gdt_size);
 static void fill_entry(uint8_t * p_entry, uint32_t base, uint32_t limit,
