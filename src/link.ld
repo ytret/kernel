@@ -3,6 +3,7 @@ ENTRY(entry)
 SECTIONS
 {
         . = 1M;
+        ld_vmm_kernel_start = .;
 
         .text ALIGN(4K) :
         {
@@ -30,4 +31,6 @@ SECTIONS
                 . = 0x400000;   /* 4 MiB to cover 4 GiB */
                 ld_pmm_stack_top = .;
         }
+
+        ld_vmm_kernel_end = ALIGN(4K);
 }
