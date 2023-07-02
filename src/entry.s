@@ -20,7 +20,10 @@ stack_top:
                 .global entry
                 .type   entry, @function
 entry:          mov     $stack_top, %esp
+                push    %ebx
+                push    %eax
                 call    main
+                add     $8, %esp
 
                 cli
 1:              hlt
