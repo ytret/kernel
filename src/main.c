@@ -1,4 +1,5 @@
 #include <gdt.h>
+#include <idt.h>
 #include <printf.h>
 #include <vga.h>
 
@@ -9,6 +10,7 @@ main (void)
     printf("Hello, world!\n");
 
     gdt_init();
+    idt_init();
 
     for (;;)
     {}
