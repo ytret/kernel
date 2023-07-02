@@ -1,3 +1,4 @@
 #pragma once
 
-void panic(void);
+void panic(char const * p_msg);
+void panic_silent(void);
