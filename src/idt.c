@@ -90,8 +90,36 @@ idt_dummy_exception_handler (uint32_t exc_num,
                              uint32_t err_code,
                              int_frame_t * p_stack_frame)
 {
-    printf("exc_num = %d\n", exc_num);
-    printf("err_code = %d\n", err_code);
+    char const * p_name;
+    switch (exc_num)
+    {
+	case 0: p_name = "divide error"; break;
+	case 1: p_name = "debug exception"; break;
+	case 2: p_name = "nonmaskable interrupt"; break;
+	case 3: p_name = "overflow"; break;
+	case 4: p_name = "BOUND range exceeded"; break;
+	case 5: p_name = "overflow"; break;
+	case 6: p_name = "invalid opcode"; break;
+	case 7: p_name = "no math coprocessor"; break;
+	case 8: p_name = "double fault"; break;
+	case 9: p_name = "coprocessor segment overrun"; break;
+	case 10: p_name = "invalid TSS"; break;
+	case 11: p_name = "segment not present"; break;
+	case 12: p_name = "stack segment fault"; break;
+	case 13: p_name = "general protection fault"; break;
+	case 14: p_name = "page fault"; break;
+	case 15: p_name = "reserved"; break;
+	case 16: p_name = "FPU floating-point error"; break;
+	case 17: p_name = "alignment check"; break;
+	case 18: p_name = "machine check"; break;
+	case 19: p_name = "SIMD floating-point exception"; break;
+	case 20: p_name = "virtualization exception"; break;
+	case 21: p_name = "control protection exception"; break;
+	default: p_name = "reserved";
+    }
+
+    printf("Exception: %d (%s)\n", exc_num, p_name);
+    printf("Error code: %d\n", err_code);
     print_stack_frame(p_stack_frame);
     panic("no handler defined");
 }
