@@ -158,6 +158,8 @@ def build():
         "src/printf.c",
         "src/string.c",
         "src/vga.c",
+        "src/vmm.c",
+        "src/vmm.s",
     ]
     src_paths = [Path(src) for src in sources]
     objects = compile(src_paths)
