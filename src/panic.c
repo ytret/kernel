@@ -8,6 +8,8 @@ static volatile bool b_in_panic;
 void
 panic (char const * p_msg)
 {
+    __asm__ volatile ("cli");
+
     if (b_in_panic)
     {
 	panic_silent();
@@ -23,6 +25,8 @@ panic (char const * p_msg)
 void
 panic_silent (void)
 {
+    __asm__ volatile ("cli");
+
     for (;;)
     {}
 }
