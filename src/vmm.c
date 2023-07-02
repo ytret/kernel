@@ -58,4 +58,5 @@ vmm_init (void)
     vmm_load_dir(gp_kvas_dir);
 
     printf("VMM: memory range %P..%P is identity mapped\n", 0, kernel_end);
+    printf("VMM: kernel start: %P, kernel end: %P\n", kernel_start, kernel_end);
 }
