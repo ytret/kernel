@@ -19,5 +19,5 @@ port_inb (uint16_t port)
                       : "=a" (byte)
                       : "Nd" (port)
                       : "memory");
-    return byte;
+    return (byte);
 }
