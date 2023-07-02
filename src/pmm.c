@@ -125,7 +125,7 @@ print_usage (void)
 {
     uint32_t used_perc = (100 * ((uint32_t) (gp_stack_top_max - gp_stack_top))
                           / ((uint32_t) (gp_stack_top_max - gp_stack_bottom)));
-    printf("PMM: stack is used for %u%%", used_perc);
+    printf("PMM: stack is %u%% used", used_perc);
 
     uint32_t num_bytes =
         (4096 * ((uint32_t) (gp_stack_top_max - gp_stack_top)));
