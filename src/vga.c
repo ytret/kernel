@@ -87,7 +87,8 @@ put_char (char ch)
                 g_row++;
                 if (g_row >= MAX_ROWS)
                 {
-                    g_row = 0;
+                    g_row = (MAX_ROWS - 1);
+		    scroll();
                 }
             }
     }
