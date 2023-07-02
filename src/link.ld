@@ -24,5 +24,10 @@ SECTIONS
         {
                 *(COMMON)
                 *(.bss)
+
+                . = ALIGN(4K);
+                ld_pmm_stack_bottom = .;
+                . = 0x400000;   /* 4 MiB to cover 4 GiB */
+                ld_pmm_stack_top = .;
         }
 }
