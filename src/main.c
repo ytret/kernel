@@ -6,6 +6,7 @@
 #include <pmm.h>
 #include <printf.h>
 #include <vga.h>
+#include <vmm.h>
 
 #include <stdint.h>
 
@@ -40,4 +41,5 @@ main (uint32_t magic_num, mbi_t const * p_mbi)
     printf("Interrupts enabled\n");
 
     pmm_init(p_mbi);
+    vmm_init();
 }
