@@ -153,6 +153,7 @@ def build():
         "src/memmove.c",
         "src/panic.c",
         "src/pic.c",
+        "src/pit.c",
         "src/printf.c",
         "src/string.c",
         "src/vga.c",

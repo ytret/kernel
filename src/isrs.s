@@ -139,3 +139,20 @@ isr_dummy:      cli
                 pop     %ebp
                 iret
                 .size   isr_dummy, . - isr_dummy
+
+
+                ## ISR for IRQ0 (PIT).
+                .global isr_irq0
+                .type   isr_irq0, @function
+isr_irq0:       cli
+                push    %ebp
+                mov     %esp, %ebp
+
+                pusha
+                cld
+                call    pit_irq0_handler
+                popa
+
+                pop     %ebp
+                iret
+                .size   isr_irq0, . - isr_irq0
