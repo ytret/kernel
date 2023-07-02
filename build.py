@@ -86,7 +86,7 @@ def compile_c(paths, gcc_flags):
             raise ValueError(f"path '{path}' is not a .c file")
 
     cmd_gcc = (
-        "i686-elf-gcc -ffreestanding -Wall -Wextra -Werror -std=c99"
+        "i686-elf-gcc -g -ffreestanding -Wall -Wextra -Werror -std=c99"
         " -fdiagnostics-color=always"
         " -c {} -o build/{}.o -Isrc"
     )
