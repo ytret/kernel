@@ -1,12 +1,12 @@
-                .set FLAG_ALIGN,        1 << 0
-                .set FLAG_MEMINFO,      1 << 1
+                .set    FLAG_ALIGN,     1 << 0
+                .set    FLAG_MEMINFO,   1 << 1
 
-                .set MAGIC,             0x1BADB002
-                .set FLAGS,             FLAG_ALIGN | FLAG_MEMINFO
-                .set CHECKSUM,          -(MAGIC + FLAGS)
+                .set    MAGIC,          0x1BADB002
+                .set    FLAGS,          FLAG_ALIGN | FLAG_MEMINFO
+                .set    CHECKSUM,       -(MAGIC + FLAGS)
 
                 .section .multiboot_header
-                .align 4
+                .align  4
                 .long   MAGIC
                 .long   FLAGS
                 .long   CHECKSUM
@@ -18,11 +18,11 @@ stack_top:
 
                 .section .text
                 .global entry
-                .type entry, @function
-entry:          mov $stack_top, %esp
-                call main
+                .type   entry, @function
+entry:          mov     $stack_top, %esp
+                call    main
 
                 cli
 1:              hlt
-                jmp 1b
-                .size entry, . - entry
+                jmp     1b
+                .size   entry, . - entry
