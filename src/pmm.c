@@ -10,6 +10,7 @@
 //
 extern uint32_t ld_pmm_stack_bottom;
 extern uint32_t ld_pmm_stack_top;
+extern uint32_t ld_vmm_kernel_end;
 
 static uint32_t * gp_stack_bottom;
 static uint32_t * gp_stack_top_max;
@@ -100,7 +101,8 @@ parse_mmap (uint32_t addr, uint32_t map_len)
         {
             printf("PMM: region lies outside of 4 GiB memory, ignoring it\n");
         }
-        else if (MMAP_ENTRY_AVAILABLE == type)
+        else if ((MMAP_ENTRY_AVAILABLE == type)
+                 && ((base_addr + length) >= ((uint32_t) &ld_vmm_kernel_end)))
         {
             add_region(((uint32_t) base_addr), ((uint32_t) length));
         }
@@ -112,6 +114,11 @@ parse_mmap (uint32_t addr, uint32_t map_len)
 static void
 add_region (uint32_t start, uint32_t num_bytes)
 {
+    while (start < ((uint32_t) &ld_vmm_kernel_end))
+    {
+        start += 4096;
+    }
+
     for (uint32_t page = start; page < (start + num_bytes); page += 4096)
     {
         pmm_push_page(page);
