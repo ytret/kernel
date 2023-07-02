@@ -91,20 +91,27 @@ parse_mmap (uint32_t addr, uint32_t map_len)
         uint64_t length    = *((uint64_t const *) (p_entry + 3));
         uint32_t type      = *(p_entry + 5);
 
+        uint64_t end = (base_addr + length);
+
         printf("PMM: size = %d, addr = 0x%X, end = 0x%X, type = %d\n",
-               size, ((uint32_t) base_addr), ((uint32_t) (base_addr + length)),
-               type);
+               size, ((uint32_t) base_addr), ((uint32_t) end), type);
 
         if ((base_addr > ((uint64_t) UINT_MAX))
             || (length > ((uint64_t) UINT_MAX))
-            || ((base_addr + length) > ((uint64_t) UINT_MAX)))
+            || (end    > ((uint64_t) UINT_MAX)))
         {
             printf("PMM: region lies outside of 4 GiB memory, ignoring it\n");
         }
-        else if ((MMAP_ENTRY_AVAILABLE == type)
-                 && ((base_addr + length) >= ((uint32_t) &ld_vmm_kernel_end)))
+        else if (MMAP_ENTRY_AVAILABLE == type)
         {
-            add_region(((uint32_t) base_addr), ((uint32_t) length));
+            if (end < ((uint32_t) &ld_vmm_kernel_end))
+            {
+                printf("PMM: region is below the kernel, ignoring it\n");
+            }
+            else
+            {
+                add_region(((uint32_t) base_addr), ((uint32_t) length));
+            }
         }
 
         byte += (4 + size);
