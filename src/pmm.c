@@ -1,6 +1,7 @@
 #include <panic.h>
 #include <pmm.h>
 #include <printf.h>
+#include <stack.h>
 
 #include <limits.h>
 
@@ -12,9 +13,7 @@ extern uint32_t ld_pmm_stack_bottom;
 extern uint32_t ld_pmm_stack_top;
 extern uint32_t ld_vmm_kernel_end;
 
-static uint32_t * gp_stack_bottom;
-static uint32_t * gp_stack_top_max;
-static volatile uint32_t * gp_stack_top;
+static stack_t g_page_stack;
 
 static void parse_mmap(uint32_t addr, uint32_t len);
 static void add_region(uint32_t start, uint32_t num_bytes);
@@ -33,9 +32,10 @@ pmm_init (mbi_t const * p_mbi)
     printf("PMM: mmap_length = %d\n", p_mbi->mmap_length);
     printf("PMM: mmap_addr = 0x%X\n", p_mbi->mmap_addr);
 
-    gp_stack_bottom = &ld_pmm_stack_bottom;
-    gp_stack_top_max = &ld_pmm_stack_top;
-    gp_stack_top = gp_stack_top_max;
+    size_t stack_size =
+        ((size_t) (((uintptr_t) &ld_pmm_stack_top)
+                   - ((uintptr_t) &ld_pmm_stack_bottom)));
+    stack_new(&g_page_stack, &ld_pmm_stack_bottom, stack_size);
 
     parse_mmap(p_mbi->mmap_addr, p_mbi->mmap_length);
 
@@ -53,21 +53,20 @@ pmm_push_page (uint32_t addr)
         panic("unexpected behavior");
     }
 
-    if (gp_stack_top <= gp_stack_bottom)
+    if (stack_is_full(&g_page_stack))
     {
         // Cannot push the page - the stack is full.
         //
         return;
     }
 
-    gp_stack_top--;
-    *gp_stack_top = addr;
+    stack_push(&g_page_stack, addr);
 }
 
 uint32_t
 pmm_pop_page (void)
 {
-    if (gp_stack_top >= gp_stack_top_max)
+    if (stack_is_empty(&g_page_stack))
     {
         // Cannot pop the page - the stack is empty.
         //
@@ -75,7 +74,7 @@ pmm_pop_page (void)
         panic("no free memory");
     }
 
-    return (*gp_stack_top++);
+    return (stack_pop(&g_page_stack));
 }
 
 static void
@@ -137,12 +136,13 @@ add_region (uint32_t start, uint32_t num_bytes)
 static void
 print_usage (void)
 {
-    uint32_t used_perc = (100 * ((uint32_t) (gp_stack_top_max - gp_stack_top))
-                          / ((uint32_t) (gp_stack_top_max - gp_stack_bottom)));
+    uint32_t used_perc =
+        (100 * ((uint32_t) (g_page_stack.p_top_max - g_page_stack.p_top))
+         / ((uint32_t) (g_page_stack.p_top_max - g_page_stack.p_bottom)));
     printf("PMM: stack is %u%% used", used_perc);
 
     uint32_t num_bytes =
-        (4096 * ((uint32_t) (gp_stack_top_max - gp_stack_top)));
+        (4096 * ((uint32_t) (g_page_stack.p_top_max - g_page_stack.p_top)));
     if (num_bytes <= (10 * 1024 * 1024))
     {
         printf(", holding %u KiB\n", (num_bytes / 1024));
