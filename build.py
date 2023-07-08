@@ -158,6 +158,8 @@ def build():
         "src/printf.c",
         "src/stack.c",
         "src/string.c",
+        "src/taskmgr.c",
+        "src/taskmgr.s",
         "src/vga.c",
         "src/vmm.c",
         "src/vmm.s",
