@@ -21,8 +21,14 @@
 #define FLAG_LIMIT_IN_PAGES     (1 << 3)
 #define FLAG_PROTECTED          (1 << 2)
 
+// TSS descriptor flags.
+//
+#define TSS_FLAGS               ((1 << 3) | (1 << 0))
+
 static uint8_t gp_desc[DESC_SIZE_BYTES];
 static uint8_t gpp_gdt[NUM_ENTRIES][ENTRY_SIZE_BYTES];
+
+static tss_t g_tss;
 
 static void fill_desc(uint8_t * p_desc, void const * p_gdt, uint16_t gdt_size);
 static void fill_entry(uint8_t * p_entry, uint32_t base, uint32_t limit,
@@ -31,6 +37,8 @@ static void fill_entry(uint8_t * p_entry, uint32_t base, uint32_t limit,
 void
 gdt_init (void)
 {
+    // Ring 0 code and data.
+    //
     fill_entry(gpp_gdt[1], 0, 0x000FFFFF,
                (ENTRY_PRESENT
                 | ACCESS_DPL_KERNEL
@@ -45,8 +53,39 @@ gdt_init (void)
                 | ACCESS_DATA_WRITABLE),
                (FLAG_LIMIT_IN_PAGES | FLAG_PROTECTED));
 
+    // Ring 3 code and data.
+    //
+    fill_entry(gpp_gdt[3], 0, 0x000FFFFF,
+               (ENTRY_PRESENT
+                | ACCESS_DPL_USER
+                | ACCESS_S_FLAG
+                | ACCESS_EXECUTABLE
+                | ACCESS_CODE_READABLE),
+               (FLAG_LIMIT_IN_PAGES | FLAG_PROTECTED));
+    fill_entry(gpp_gdt[4], 0, 0x000FFFFF,
+               (ENTRY_PRESENT
+                | ACCESS_DPL_USER
+                | ACCESS_S_FLAG
+                | ACCESS_DATA_WRITABLE),
+               (FLAG_LIMIT_IN_PAGES | FLAG_PROTECTED));
+
+    // Task state segment.
+    //
+    fill_entry(gpp_gdt[5], ((uint32_t) &g_tss), sizeof(g_tss),
+               (ENTRY_PRESENT | TSS_FLAGS), FLAG_PROTECTED);
+
+    // Fill in the TSS.
+    //
+    g_tss.ss0 = 0x10;
+
     fill_desc(gp_desc, gpp_gdt, (sizeof(gpp_gdt) - 1));
     gdt_load(gp_desc);
+}
+
+tss_t *
+gdt_get_tss (void)
+{
+    return (&g_tss);
 }
 
 static void
