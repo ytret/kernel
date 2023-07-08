@@ -3,6 +3,7 @@
 #include <pit.h>
 #include <port.h>
 #include <printf.h>
+#include <taskmgr.h>
 
 #define PORT_CMD                0x43
 #define PORT_CH0_DATA           0x40
@@ -53,4 +54,6 @@ pit_irq0_handler (void)
 
     printf(".");
     pic_send_eoi(0);
+
+    taskmgr_schedule();
 }
