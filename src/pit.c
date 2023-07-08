@@ -13,7 +13,7 @@
 
 #define BASE_FREQ_KHZ            1193
 
-static volatile bool b_initialized;
+static volatile bool gb_initialized;
 
 void
 pit_init (uint8_t period_ms)
@@ -39,13 +39,13 @@ pit_init (uint8_t period_ms)
     port_outb(PORT_CH0_DATA, ((uint8_t) reload_u32));
     port_outb(PORT_CH0_DATA, ((uint8_t) (reload_u32 >> 8)));
 
-    b_initialized = true;
+    gb_initialized = true;
 }
 
 void
 pit_irq0_handler (void)
 {
-    if (!b_initialized)
+    if (!gb_initialized)
     {
         printf("PIT: IRQ0 handler was called before initialization\n");
         panic("unexpected behavior");
