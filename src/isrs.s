@@ -47,7 +47,7 @@ isr_\num:       cli
                 push    %esi
 
                 mov     %ebp, %edx
-                add     $4, %edx
+                add     $8, %edx
                 push    %edx            # int stack frame  -> 3rd arg
                 push    4(%ebp)         # error code       -> 2nd arg
                 push    $\num           # interrupt number -> 1st arg
