@@ -156,6 +156,7 @@ def build():
         "src/pit.c",
         "src/pmm.c",
         "src/printf.c",
+        "src/stack.c",
         "src/string.c",
         "src/vga.c",
         "src/vmm.c",
