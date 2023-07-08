@@ -5,6 +5,7 @@
 #include <pit.h>
 #include <pmm.h>
 #include <printf.h>
+#include <taskmgr.h>
 #include <vga.h>
 #include <vmm.h>
 
@@ -42,4 +43,9 @@ main (uint32_t magic_num, mbi_t const * p_mbi)
 
     pmm_init(p_mbi);
     vmm_init();
+
+    printf("Initializing task manager\n");
+    taskmgr_init();
+
+    printf("End of main\n");
 }
