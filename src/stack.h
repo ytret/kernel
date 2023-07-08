@@ -6,8 +6,12 @@
 
 typedef struct
 {
-    uint32_t * p_bottom;
+    // p_top must be the first field - this is required by taskmgr_switch_tasks
+    // assembly function (see taskmgr.s).
+    //
     uint32_t * p_top;
+
+    uint32_t * p_bottom;
     uint32_t * p_top_max;
 } stack_t;
 
