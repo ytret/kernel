@@ -1,4 +1,6 @@
+#include <alloc.h>
 #include <panic.h>
+#include <pmm.h>
 #include <printf.h>
 #include <vmm.h>
 
@@ -62,4 +64,44 @@ vmm_init (void)
 
     printf("VMM: memory range %P..%P is identity mapped\n", 0, map_end);
     printf("VMM: kernel start: %P, kernel end: %P\n", kernel_start, kernel_end);
+}
+
+uint32_t *
+vmm_clone_kvas (void)
+{
+    uint32_t * p_dir = alloc_aligned(4096, 4096);
+    __builtin_memset(p_dir, 0, 4096);
+
+    for (uint32_t dir_idx = 0; dir_idx < 1024; dir_idx++)
+    {
+        if (gp_kvas_dir[dir_idx] & TABLE_PRESENT)
+        {
+            // KVAS table pointer.
+            //
+            uint32_t * p_ktbl = ((uint32_t *) (gp_kvas_dir[dir_idx] & ~0xFFF));
+
+            // Allocate space for the new table.
+            //
+            uint32_t * p_tbl = alloc_aligned(4096, 4096);
+            __builtin_memset(p_tbl, 0, 4096);
+
+            // Fill the dir entry (flags are copied).
+            //
+            p_dir[dir_idx] =
+                (((uint32_t) p_tbl) | (gp_kvas_dir[dir_idx] & 0xFFF));
+
+            for (uint32_t tbl_idx = 0; tbl_idx < 1024; tbl_idx++)
+            {
+                // Map the same pages, with the same flags.
+                //
+                if (p_ktbl[tbl_idx] & PAGE_PRESENT)
+                {
+                    uint32_t page = pmm_pop_page();
+                    p_tbl[tbl_idx] = (page | (p_ktbl[tbl_idx] & 0xFFF));
+                }
+            }
+        }
+    }
+
+    return (p_dir);
 }
