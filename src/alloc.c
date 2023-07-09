@@ -4,8 +4,11 @@
 
 #include <stdbool.h>
 
+#define DEFAULT_ALIGN           4
+
 #define TAG_SIZE                (sizeof(tag_t))
-#define CHUNK_SIZE_MIN          TAG_SIZE
+
+#define CHUNK_SIZE_MIN          64
 #define CHUNK_SIZE_ALIGN        4
 
 typedef struct tag
@@ -57,9 +60,21 @@ alloc_init (void * p_start, size_t num_bytes)
 void *
 alloc (size_t num_bytes)
 {
+    return (alloc_aligned(num_bytes, DEFAULT_ALIGN));
+}
+
+void *
+alloc_aligned (size_t num_bytes, size_t align)
+{
     if (0 == num_bytes)
     {
         printf("alloc: num_bytes is zero\n");
+        panic("invalid argument");
+    }
+
+    if (0 == align)
+    {
+        printf("alloc: align is zero\n");
         panic("invalid argument");
     }
 
@@ -69,23 +84,27 @@ alloc (size_t num_bytes)
         panic("unexpected behavior");
     }
 
-    // Make the size 4-byte aligned.
+    // Make the size aligned.
     //
     num_bytes = (num_bytes + (CHUNK_SIZE_ALIGN - 1)) & ~(CHUNK_SIZE_ALIGN - 1);
 
-    // Check for the minimum allocation size.
-    //
-    if (num_bytes < CHUNK_SIZE_MIN)
-    {
-        num_bytes = CHUNK_SIZE_MIN;
-    }
-
     // Traverse the tag list and find the suitable tag.
     //
-    tag_t * p_found = NULL;
+    tag_t  * p_found = NULL;
+    uint32_t chunk_aligned;
+    uint32_t padding;
     for (tag_t * p_tag = gp_start; p_tag != NULL; p_tag = p_tag->p_next)
     {
-        if ((!p_tag->b_used) && (p_tag->size >= num_bytes))
+        if (p_tag->b_used)
+        {
+            continue;
+        }
+
+        uint32_t chunk = (((uint32_t) p_tag) + TAG_SIZE);
+        chunk_aligned  = ((chunk + (align - 1)) & ~(align - 1));
+        padding        = (chunk_aligned - chunk);
+
+        if ((chunk_aligned + num_bytes) <= (chunk + p_tag->size))
         {
             p_found = p_tag;
             break;
@@ -98,26 +117,24 @@ alloc (size_t num_bytes)
         panic("allocation failed");
     }
 
-    printf("alloc: num_bytes = %u\n", num_bytes);
-
     // Divide the chunk if appropriate.
     //
-    if ((p_found->size - num_bytes) > (TAG_SIZE + CHUNK_SIZE_MIN))
+    if ((p_found->size - num_bytes - padding) > (TAG_SIZE + CHUNK_SIZE_MIN))
     {
         tag_t * p_new_tag =
-            ((tag_t *) (((uint32_t) p_found) + TAG_SIZE + num_bytes));
+            ((tag_t *) (((uint32_t) p_found) + TAG_SIZE + padding + num_bytes));
 
         p_new_tag->b_used = false;
-        p_new_tag->size   = (p_found->size - (TAG_SIZE + num_bytes));
+        p_new_tag->size   = (p_found->size - (TAG_SIZE + padding + num_bytes));
         p_new_tag->p_next = p_found->p_next;
 
-        p_found->size   = num_bytes;
+        p_found->size   = (padding + num_bytes);
         p_found->p_next = p_new_tag;
     }
 
     p_found->b_used = true;
 
-    return ((void *) (((uint32_t) p_found) + TAG_SIZE));
+    return ((void *) (((uint32_t) p_found) + TAG_SIZE + padding));
 }
 
 void
