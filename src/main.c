@@ -1,3 +1,4 @@
+#include <alloc.h>
 #include <gdt.h>
 #include <idt.h>
 #include <panic.h>
@@ -43,6 +44,7 @@ main (uint32_t magic_num, mbi_t const * p_mbi)
 
     pmm_init(p_mbi);
     vmm_init();
+    alloc_init(((void *) VMM_HEAP_START), VMM_HEAP_SIZE);
 
     printf("Initializing task manager\n");
     taskmgr_init();
