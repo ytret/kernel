@@ -144,6 +144,7 @@ def build():
         print(f"*** 1. Compile {out_file} ***")
     sources = [
         "src/entry.s",
+        "src/alloc.c",
         "src/gdt.c",
         "src/gdt.s",
         "src/idt.c",
