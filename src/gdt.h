@@ -46,7 +46,9 @@ __attribute__ ((packed))
     uint32_t ssp;
 } tss_t;
 
-void gdt_init(void);
-void gdt_load(uint8_t const * p_desc);
-
+void    gdt_init(void);
 tss_t * gdt_get_tss(void);
+
+// Defined in gdt.s.
+//
+void gdt_load(uint8_t const * p_desc);

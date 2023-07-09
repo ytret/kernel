@@ -1,3 +1,7 @@
+/*
+ * Declarations of interrupt service routines defined in isrs.s.
+ */
+
 #pragma once
 
 extern void isr_0(void);
