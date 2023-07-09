@@ -10,7 +10,7 @@
 typedef struct
 __attribute__ ((packed))
 {
-    uint32_t page_dir_phys;
+    uint32_t  page_dir_phys;
     stack_t * p_kernel_stack;
 } tcb_t;
 
