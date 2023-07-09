@@ -8,6 +8,13 @@
 #define KERNEL_STACK_SIZE       512
 
 typedef struct
+__attribute__ ((packed))
+{
+    uint32_t page_dir_phys;
+    stack_t * p_kernel_stack;
+} tcb_t;
+
+typedef struct
 {
     uint32_t id;
     stack_t  kernel_stack;
@@ -27,6 +34,11 @@ static task_t new_task_with_stack(uint32_t task_id, uint32_t entry_point);
 static void dummy_task_entry(void);
 
 static volatile bool gb_do_schedule;
+
+// Defined in taskmgr.s.
+//
+extern void taskmgr_switch_tasks(tcb_t * p_from, tcb_t const * p_to,
+                                 tss_t * p_tss);
 
 void
 taskmgr_init (void)
