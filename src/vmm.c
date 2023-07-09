@@ -23,18 +23,21 @@ static uint32_t gpp_kvas_tables[2][1024] __attribute__ ((aligned(4096)));
 void
 vmm_init (void)
 {
-    // Identity map the kernel.
+    // Identity map the first 8 MiBs.
+    //
+    uint32_t map_end = 0x800000;
+
+    // The kernel needs to be page-aligned for simplicity.
     //
     uint32_t kernel_start = ((uint32_t) &ld_vmm_kernel_start);
     uint32_t kernel_end   = ((uint32_t) &ld_vmm_kernel_end);
-
     if ((kernel_start & 0xFFF) || (kernel_end & 0xFFF))
     {
         printf("VMM: kernel boundaries are not page-aligned\n");
         panic("cannot init VMM");
     }
 
-    for (uint32_t page = 0; page < kernel_end; page += 4096)
+    for (uint32_t page = 0; page < map_end; page += 4096)
     {
         size_t dir_idx = ADDR_TO_DIR_ENTRY_IDX(page);
         size_t tbl_idx = ADDR_TO_TBL_ENTRY_IDX(page);
@@ -57,6 +60,6 @@ vmm_init (void)
     //
     vmm_load_dir(gp_kvas_dir);
 
-    printf("VMM: memory range %P..%P is identity mapped\n", 0, kernel_end);
+    printf("VMM: memory range %P..%P is identity mapped\n", 0, map_end);
     printf("VMM: kernel start: %P, kernel end: %P\n", kernel_start, kernel_end);
 }
