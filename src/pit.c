@@ -44,7 +44,7 @@ pit_init (uint8_t period_ms)
 }
 
 void
-pit_irq0_handler (void)
+pit_irq_handler (void)
 {
     if (!gb_initialized)
     {
