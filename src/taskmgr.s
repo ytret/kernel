@@ -47,10 +47,13 @@ taskmgr_switch_tasks:
                 ## mov     %esp, 4(%eax)
 
                 ## Change the virtual address space.
-                ## TODO
+                mov     %cr3, %eax
+                cmp     %ebx, %eax
+                je      1f
+                mov     %ebx, %cr3
 
                 ## Pop kernel stack of the next task.
-                pop     %edi
+1:              pop     %edi
                 pop     %esi
                 pop     %ebx
                 pop     %edx
