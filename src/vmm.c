@@ -10,9 +10,11 @@
 #define ADDR_TO_DIR_ENTRY_IDX(addr)     (((addr) >> 22) & 0x3FF)
 #define ADDR_TO_TBL_ENTRY_IDX(addr)     (((addr) >> 12) & 0x3FF)
 
+#define TABLE_USER      (1 << 2)
 #define TABLE_RW        (1 << 1)
 #define TABLE_PRESENT   (1 << 0)
 
+#define PAGE_USER       (1 << 2)
 #define PAGE_RW         (1 << 1)
 #define PAGE_PRESENT    (1 << 0)
 
@@ -100,6 +102,7 @@ vmm_clone_kvas (void)
             //
             p_dir[dir_idx] =
                 (((uint32_t) p_tbl) | (gp_kvas_dir[dir_idx] & 0xFFF));
+            p_dir[dir_idx] |= TABLE_USER; // temporary
 
             for (uint32_t tbl_idx = 0; tbl_idx < 1024; tbl_idx++)
             {
@@ -108,6 +111,7 @@ vmm_clone_kvas (void)
                 if (p_ktbl[tbl_idx] & PAGE_PRESENT)
                 {
                     p_tbl[tbl_idx] = p_ktbl[tbl_idx];
+                    p_tbl[tbl_idx] |= PAGE_USER; // temporary
                 }
             }
         }
