@@ -107,8 +107,7 @@ vmm_clone_kvas (void)
                 //
                 if (p_ktbl[tbl_idx] & PAGE_PRESENT)
                 {
-                    uint32_t page = pmm_pop_page();
-                    p_tbl[tbl_idx] = (page | (p_ktbl[tbl_idx] & 0xFFF));
+                    p_tbl[tbl_idx] = p_ktbl[tbl_idx];
                 }
             }
         }
