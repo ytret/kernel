@@ -48,3 +48,12 @@ __attribute__ ((packed))
     uint8_t  framebuffer_type;
     uint8_t  color_info[6];
 } mbi_t;
+
+typedef struct
+__attribute__ ((packed))
+{
+    uint32_t mod_start;
+    uint32_t mod_end;
+    uint32_t string;
+    uint32_t reserved;
+} mbi_mod_t;
