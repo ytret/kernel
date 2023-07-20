@@ -38,5 +38,6 @@ extern void isr_30(void);
 extern void isr_31(void);
 
 extern void isr_irq0(void);
+extern void isr_irq1(void);
 
 extern void isr_dummy(void);

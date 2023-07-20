@@ -108,6 +108,38 @@ isr_\num:       cli
                 ISR_EXCEPTION_DUMMY_NO_EC   30
                 ISR_EXCEPTION_DUMMY_NO_EC   31
 
+                ## ISR for IRQ0 (PIT).
+                .global isr_irq0
+                .type   isr_irq0, @function
+isr_irq0:       cli
+                push    %ebp
+                mov     %esp, %ebp
+
+                pusha
+                cld
+                call    pit_irq_handler
+                popa
+
+                pop     %ebp
+                iret
+                .size   isr_irq0, . - isr_irq0
+
+                ## ISR for IRQ1 (keyboard).
+                .global isr_irq1
+                .type   isr_irq1, @function
+isr_irq1:       cli
+                push    %ebp
+                mov     %esp, %ebp
+
+                pusha
+                cld
+                call    kbd_irq_handler
+                popa
+
+                pop     %ebp
+                iret
+                .size   isr_irq1, . - isr_irq1
+
                 ## ISR for all the other interrupts.  Same as
                 ## ISR_EXCEPTION_NO_EC, but does not push the interrupt number
                 ## and error code.
@@ -139,20 +171,3 @@ isr_dummy:      cli
                 pop     %ebp
                 iret
                 .size   isr_dummy, . - isr_dummy
-
-
-                ## ISR for IRQ0 (PIT).
-                .global isr_irq0
-                .type   isr_irq0, @function
-isr_irq0:       cli
-                push    %ebp
-                mov     %esp, %ebp
-
-                pusha
-                cld
-                call    pit_irq0_handler
-                popa
-
-                pop     %ebp
-                iret
-                .size   isr_irq0, . - isr_irq0
