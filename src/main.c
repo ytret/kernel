@@ -2,6 +2,7 @@
 #include <gdt.h>
 #include <idt.h>
 #include <kbd.h>
+#include <kshell.h>
 #include <panic.h>
 #include <pic.h>
 #include <pit.h>
@@ -68,12 +69,12 @@ main (uint32_t magic_num, mbi_t const * p_mbi)
         }
     }
 
+    pic_set_mask(KBD_IRQ, false);
+
     printf("Initializing task manager\n");
     taskmgr_init();
 
-    pic_set_mask(KBD_IRQ, false);
-    for (;;)
-    {}
+    kshell_init();
 
     printf("End of main\n");
 }
