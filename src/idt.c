@@ -77,8 +77,9 @@ idt_init (void)
     fill_entry(&gp_idt[31], isr_31);
 
     fill_entry(&gp_idt[32], isr_irq0);
+    fill_entry(&gp_idt[33], isr_irq1);
 
-    for (size_t idx = 33; idx < NUM_ENTRIES; idx++)
+    for (size_t idx = 34; idx < NUM_ENTRIES; idx++)
     {
 	fill_entry(&gp_idt[idx], isr_dummy);
     }
