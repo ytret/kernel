@@ -62,3 +62,59 @@ taskmgr_switch_tasks:
                 pop     %ebp
                 ret
                 .size   taskmgr_switch_tasks, . - taskmgr_switch_tasks
+
+                ##
+                ## Does a far return with usermode segments to the specified
+                ## function.
+                ##
+                ## Arguments:
+                ##   1. uint32_t    user_code_seg
+                ##   2. uint32_t    user_data_seg
+                ##   3. uint32_t    tls_seg
+                ##   4. uint32_t    entry_point
+                ##   5. gp_regs_t * p_user_regs
+                ##
+                ## NOTE: does not return.
+                ##
+                .global taskmgr_go_usermode
+                .type   taskmgr_go_usermode, @function
+taskmgr_go_usermode:
+                push    %ebp
+                mov     %esp, %ebp
+
+                mov     8(%ebp), %eax           # eax = user_code_seg
+                mov     12(%ebp), %ebx          # ebx = user_data_seg
+                mov     16(%ebp), %ecx          # ecx = tls_seg
+                mov     20(%ebp), %edx          # edx = entry_point
+                mov     24(%ebp), %esi          # esi = p_user_regs
+
+                ## Set RPL to 3, that is to usermode.
+                or      $3, %eax
+                or      $3, %ebx
+                or      $3, %ecx
+
+                ## Set the data segments (%ss is set by iret).
+                mov     %bx, %ds
+                mov     %bx, %es
+                mov     %bx, %fs
+                mov     %bx, %gs
+                ## mov     %cx, %gs
+
+                ## Set up the iret stack frame.
+                push    %ebx                    # ss = user_data_seg
+                push    3*4(%esi)               # esp
+                pushf                           # eflags
+                push    %eax                    # cs = user_code_seg
+                push    %edx                    # eip = entry_point
+
+                ## Load the general purpose registers.
+                mov     0*4(%esi), %edi
+                mov     2*4(%esi), %ebp
+                mov     4*4(%esi), %ebx
+                mov     5*4(%esi), %edx
+                mov     6*4(%esi), %ecx
+                mov     7*4(%esi), %eax
+                mov     1*4(%esi), %esi
+
+                iret
+                .size   taskmgr_go_usermode, . - taskmgr_go_usermode
