@@ -52,7 +52,6 @@ pit_irq0_handler (void)
         panic("unexpected behavior");
     }
 
-    printf(".");
     pic_send_eoi(0);
 
     taskmgr_schedule();
