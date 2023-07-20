@@ -103,15 +103,6 @@ taskmgr_init (void)
                       :            /* no outputs */
                       : "a" (0x28) /* TSS segment */
                       :            /* no clobber */);
-
-    gb_do_schedule = true;
-
-    for (;;)
-    {
-        // printf("?");
-        // for (int i = 0; i < 10000000; i++)
-        // {}
-    }
 }
 
 void
