@@ -150,6 +150,7 @@ def build():
         "src/idt.c",
         "src/idt.s",
         "src/isrs.s",
+        "src/kbd.c",
         "src/main.c",
         "src/memmove.c",
         "src/panic.c",
