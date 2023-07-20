@@ -22,6 +22,11 @@ extern uint32_t ld_vmm_kernel_end;
 static uint32_t gp_kvas_dir[1024] __attribute__ ((aligned(4096)));
 static uint32_t gpp_kvas_tables[2][1024] __attribute__ ((aligned(4096)));
 
+static void map_page(uint32_t * p_dir, uint32_t virt, uint32_t phys,
+                     uint32_t flags);
+static void unmap_page(uint32_t * p_dir, uint32_t virt);
+static void invlpg(uint32_t addr);
+
 void
 vmm_init (void)
 {
@@ -66,6 +71,12 @@ vmm_init (void)
     printf("VMM: kernel start: %P, kernel end: %P\n", kernel_start, kernel_end);
 }
 
+uint32_t const *
+vmm_kvas_dir (void)
+{
+    return (gp_kvas_dir);
+}
+
 uint32_t *
 vmm_clone_kvas (void)
 {
@@ -104,4 +115,123 @@ vmm_clone_kvas (void)
     }
 
     return (p_dir);
+}
+
+void
+vmm_map_user_page (uint32_t * p_dir, uint32_t virt, uint32_t phys)
+{
+    map_page(p_dir, virt, phys, (PAGE_USER | PAGE_RW | PAGE_PRESENT));
+}
+
+void
+vmm_map_kernel_page (uint32_t virt, uint32_t phys)
+{
+    map_page(gp_kvas_dir, virt, phys, (PAGE_RW | PAGE_PRESENT));
+    invlpg(virt);
+}
+
+void
+vmm_unmap_kernel_page (uint32_t virt)
+{
+    unmap_page(gp_kvas_dir, virt);
+    invlpg(virt);
+}
+
+static void
+map_page (uint32_t * p_dir, uint32_t virt, uint32_t phys, uint32_t flags)
+{
+    if (virt & 0xFFF)
+    {
+        printf("vmm: map_page: virt is not page-aligned\n");
+        panic("invalid argument");
+    }
+
+    if (phys & 0xFFF)
+    {
+        printf("vmm: map_page: phys is not page-aligned\n");
+        panic("invalid argument");
+    }
+
+    uint32_t dir_idx = ADDR_TO_DIR_ENTRY_IDX(virt);
+    uint32_t tbl_idx = ADDR_TO_TBL_ENTRY_IDX(virt);
+
+    uint32_t * p_tbl;
+    if (p_dir[dir_idx] & TABLE_PRESENT)
+    {
+        printf("vmm: map_page: page table %u is present\n", dir_idx);
+
+        if ((p_dir[dir_idx] & 0xFFF) != flags)
+        {
+            printf("vmm: map_page: page table for %P is present, but it"
+                   " does not have the requested flags");
+            panic("unexpected behavior");
+        }
+
+        p_tbl = ((uint32_t *) (p_dir[dir_idx] & ~0xFFF));
+    }
+    else
+    {
+        // Allocate a new page table.
+        //
+        p_tbl = alloc_aligned(4096, 4096);
+        __builtin_memset(p_tbl, 0, 4096);
+
+        printf("vmm: map_page: allocated a page table %u at %P\n",
+               dir_idx, p_tbl);
+
+        // Fill the dir entry.
+        //
+        p_dir[dir_idx] = (((uint32_t) p_tbl) | flags);
+    }
+
+    if (p_tbl[tbl_idx] != 0)
+    {
+        // The table entry is not empty.
+        //
+        printf("vmm: map_page: table entry %u for %P is not empty\n",
+               tbl_idx, ((void *) virt));
+        panic("unexpected behavior");
+    }
+
+    p_tbl[tbl_idx] = (phys | flags);
+}
+
+static void
+unmap_page (uint32_t * p_dir, uint32_t virt)
+{
+    if (virt & 0xFFF)
+    {
+        printf("vmm: unmap_page: virt is not page-aligned\n");
+        panic("invalid argument");
+    }
+
+    uint32_t dir_idx = ADDR_TO_DIR_ENTRY_IDX(virt);
+    uint32_t tbl_idx = ADDR_TO_TBL_ENTRY_IDX(virt);
+
+    if (!(p_dir[dir_idx] & TABLE_PRESENT))
+    {
+        printf("vmm: unmap_page: table %u for %P is not present\n",
+               dir_idx, ((void *) virt));
+        panic("unexpected behavior");
+    }
+
+    uint32_t * p_tbl = ((uint32_t *) (p_dir[dir_idx] & ~0xFFF));
+
+    if (!(p_tbl[tbl_idx] & PAGE_PRESENT))
+    {
+        printf("vmm: unmap_page: page %u for %P is not present\n",
+               tbl_idx, ((void *) virt));
+        panic("unexpected behavior");
+    }
+
+    p_tbl[tbl_idx] = 0;
+}
+
+static void
+invlpg (uint32_t addr)
+{
+    __asm__ volatile ("invlpg (%0)"
+                      : /* no outputs */
+                      : "r" (addr)
+                      : "memory");
 }
