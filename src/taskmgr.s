@@ -44,7 +44,7 @@ taskmgr_switch_tasks:
                 mov     (%esp), %esp            # esp = kernel stack top
 
                 ## Update TSS.ESP0.
-                ## mov     %esp, 4(%eax)
+                mov     %esp, 4(%eax)
 
                 ## Change the virtual address space.
                 mov     %cr3, %eax
