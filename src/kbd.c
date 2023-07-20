@@ -293,8 +293,6 @@ try_parse_codes (void)
 static void
 new_event (uint8_t key, bool b_released)
 {
-    printf("kbd: new event: key %u, b_released = %u\n", key, b_released);
-
     if (gp_event_callback)
     {
         gp_event_callback(key, b_released);
