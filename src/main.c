@@ -2,7 +2,7 @@
 #include <gdt.h>
 #include <idt.h>
 #include <kbd.h>
-#include <kshell.h>
+#include <kshell/kshell.h>
 #include <panic.h>
 #include <pic.h>
 #include <pit.h>

@@ -1,8 +1,8 @@
 #include <kbd.h>
-#include <kshell.h>
+#include <kshell/kshell.h>
+#include <kshell/cmd.h>
 #include <panic.h>
 #include <printf.h>
-#include <string.h>
 #include <term.h>
 
 #define CMD_BUF_SIZE    8
@@ -50,14 +50,7 @@ kshell_init (void)
             continue;
         }
 
-        if (string_equals(p_cmd, "clear"))
-        {
-            term_clear();
-        }
-        else
-        {
-            printf("kshell: unknown command: '%s'\n", p_cmd);
-        }
+        kshell_cmd_parse(p_cmd);
     }
 }
 
