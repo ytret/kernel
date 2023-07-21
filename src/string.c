@@ -12,3 +12,19 @@ string_to_upper (char * p_str)
         p_str++;
     }
 }
+
+bool
+string_equals (char const * p_a, char const * p_b)
+{
+    while (((*p_a) != 0) && ((*p_b) != 0))
+    {
+        if ((*p_a) != (*p_b))
+        {
+            return (false);
+        }
+
+        p_a++;
+        p_b++;
+    }
+    return (true);
+}
