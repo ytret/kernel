@@ -1,6 +1,7 @@
 #include <kbd.h>
 #include <kshell.h>
 #include <printf.h>
+#include <term.h>
 
 static void kbd_callback(uint8_t key, bool b_released);
 static void echo_key(uint8_t key);
@@ -25,7 +26,33 @@ kbd_callback (uint8_t key, bool b_released)
         return;
     }
 
-    echo_key(key);
+    if (KEY_BACKSPACE == key)
+    {
+        size_t row = term_row();
+        size_t col = term_col();
+
+        if ((row == 0) && (col == 0))
+        {
+            return;
+        }
+
+        if (col > 0)
+        {
+            col--;
+        }
+        else if (row > 0)
+        {
+            row--;
+            col = (term_width() - 1);
+        }
+
+        term_put_char_at(row, col, ' ');
+        term_put_cursor_at(row, col);
+    }
+    else
+    {
+        echo_key(key);
+    }
 }
 
 static void
