@@ -1,13 +1,23 @@
 #include <kbd.h>
 #include <kshell.h>
+#include <panic.h>
 #include <printf.h>
 #include <term.h>
 
+#define CMD_BUF_SIZE    8
+
 static volatile bool gb_shifted;
+
+static char   gp_cmd_buf[CMD_BUF_SIZE];
+static size_t g_cmd_buf_pos;
 
 static void kbd_callback(uint8_t key, bool b_released);
 static void echo_key(uint8_t key);
 static char char_from_key(uint8_t key);
+
+static void         buf_append(char ch);
+static void         buf_remove(void);
+static char const * buf_get_cmd(void);
 
 void
 kshell_init (void)
@@ -55,10 +65,29 @@ kbd_callback (uint8_t key, bool b_released)
 
         term_put_char_at(row, col, ' ');
         term_put_cursor_at(row, col);
+
+        // Remove one char from the buffer.
+        //
+        buf_remove();
+    }
+    else if (KEY_ENTER == key)
+    {
+        echo_key(key);
+
+        printf("gp_cmd_buf: '%s'\n", buf_get_cmd());
+        g_cmd_buf_pos = 0;
     }
     else
     {
+        // Print the key and add it to the buffer, if it's a char.
+        //
         echo_key(key);
+
+        char ch = char_from_key(key);
+        if (ch)
+        {
+            buf_append(ch);
+        }
     }
 }
 
@@ -67,7 +96,7 @@ echo_key (uint8_t key)
 {
     char p_echoed[2] = { 0 };
     p_echoed[0] = char_from_key(key);
-    if (p_echoed[0] != 0)
+    if (p_echoed[0])
     {
         printf("%s", p_echoed);
     }
@@ -131,4 +160,38 @@ char_from_key (uint8_t key)
         default:
             return (0);
     }
+}
+
+static void
+buf_append (char ch)
+{
+    if (g_cmd_buf_pos >= (CMD_BUF_SIZE - 1))
+    {
+        return;
+    }
+
+    gp_cmd_buf[g_cmd_buf_pos] = ch;
+    g_cmd_buf_pos++;
+}
+
+static void
+buf_remove (void)
+{
+    if (g_cmd_buf_pos > 0)
+    {
+        g_cmd_buf_pos--;
+    }
+}
+
+static char const *
+buf_get_cmd (void)
+{
+    if (g_cmd_buf_pos >= CMD_BUF_SIZE)
+    {
+        printf("kshell: command buffer overflow\n");
+        panic("buffer overflow");
+    }
+
+    gp_cmd_buf[g_cmd_buf_pos] = 0;
+    return (gp_cmd_buf);
 }
