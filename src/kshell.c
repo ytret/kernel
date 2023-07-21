@@ -2,6 +2,7 @@
 #include <kshell.h>
 #include <panic.h>
 #include <printf.h>
+#include <string.h>
 #include <term.h>
 
 #define CMD_BUF_SIZE    8
@@ -44,13 +45,18 @@ kshell_init (void)
     {
         printf("> ");
         char const * p_cmd = read_cmd();
-        if (p_cmd)
+        if (!p_cmd)
         {
-            printf("p_cmd: '%s'\n", p_cmd);
+            continue;
+        }
+
+        if (string_equals(p_cmd, "clear"))
+        {
+            term_clear();
         }
         else
         {
-            printf("p_cmd is NULL\n");
+            printf("kshell: unknown command: '%s'\n", p_cmd);
         }
     }
 }
