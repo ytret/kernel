@@ -28,3 +28,15 @@ string_equals (char const * p_a, char const * p_b)
     }
     return (true);
 }
+
+size_t
+string_len (char const * p_str)
+{
+    size_t len = 0;
+    while (*p_str)
+    {
+        len++;
+        p_str++;
+    }
+    return (len);
+}

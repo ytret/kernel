@@ -1,6 +1,8 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 
-void string_to_upper(char * p_str);
-bool string_equals(char const * p_a, char const * p_b);
+void   string_to_upper(char * p_str);
+bool   string_equals(char const * p_a, char const * p_b);
+size_t string_len(char const * p_str);
