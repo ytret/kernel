@@ -154,6 +154,7 @@ def build():
         "src/kshell/cmd.c",
         "src/kshell/kshell.c",
         "src/main.c",
+        "src/memcpy.c",
         "src/memmove.c",
         "src/panic.c",
         "src/pic.c",
