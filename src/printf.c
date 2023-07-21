@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 // Maximum lengths of unsigned and signed ints in base 10 and/or base 16.
 #define MAX_INT_LEN_10          11
@@ -14,6 +15,8 @@
 
 static void itoa(unsigned int num, bool b_signed, char * p_buf,
                  unsigned int base);
+static void fill_field(char const * p_field, size_t field_width,
+                       bool b_zero_pad);
 
 void
 printf (char const * restrict p_format, ...)
@@ -26,9 +29,21 @@ printf (char const * restrict p_format, ...)
     char const * p_pure_str = p_format;
     size_t pure_str_len = 0;
 
-    // Next character is a special one (is preceded by '%'.)
+    // Next character is a special one (it is preceded by a '%').
     //
     bool b_next_spec = false;
+
+    // Length of this specifier.
+    //
+    size_t spec_len = 0;
+
+    // Field width (0 if unspecified).
+    //
+    uint8_t field_width = 0;
+
+    // Zero padding.
+    //
+    bool b_zero_pad = false;
 
     while ((*p_format) != 0)
     {
@@ -36,9 +51,11 @@ printf (char const * restrict p_format, ...)
         {
             // A special character.
             //
-            b_next_spec  = false;
-            p_pure_str   = (p_format + 1);
-            pure_str_len = 0;
+            spec_len++;
+
+            // True if the next character is not special.
+            //
+            bool b_spec_done = true;
 
             if ('%' == (*p_format))
             {
@@ -54,6 +71,7 @@ printf (char const * restrict p_format, ...)
                 int arg_num = va_arg(args, int);
                 char p_itoa_str[MAX_INT_LEN_10 + 1];
                 itoa(arg_num, true, p_itoa_str, 10);
+                fill_field(p_itoa_str, field_width, b_zero_pad);
                 term_print_str(p_itoa_str);
             }
             else if ('u' == (*p_format))
@@ -61,6 +79,7 @@ printf (char const * restrict p_format, ...)
                 unsigned int arg_num = va_arg(args, unsigned int);
                 char p_itoa_str[MAX_UINT_LEN_10 + 1];
                 itoa(arg_num, false, p_itoa_str, 10);
+                fill_field(p_itoa_str, field_width, b_zero_pad);
                 term_print_str(p_itoa_str);
             }
             else if (('x' == (*p_format)) || ('X' == (*p_format)))
@@ -74,6 +93,7 @@ printf (char const * restrict p_format, ...)
                     string_to_upper(p_itoa_str);
                 }
 
+                fill_field(p_itoa_str, field_width, b_zero_pad);
                 term_print_str(p_itoa_str);
             }
             else if (('p' == (*p_format)) || ('P' == (*p_format)))
@@ -89,14 +109,36 @@ printf (char const * restrict p_format, ...)
                     string_to_upper(p_itoa_str);
                 }
 
+                fill_field(p_itoa_str, 8, true);
                 term_print_str(p_itoa_str);
+            }
+            else if ('0' == (*p_format))
+            {
+                b_zero_pad  = true;
+                b_spec_done = false;
+            }
+            else if (('1' <= (*p_format)) && ((*p_format) <= '9'))
+            {
+                field_width = ((*p_format) - '0');
+                b_spec_done = false;
             }
             else
             {
                 // Unknown special character, just print it with the '%' sign.
                 //
-                char const * p_spec_str = (p_format - 1);
-                term_print_str_len(p_spec_str, 2);
+                char const * p_spec_str = (p_format - (spec_len - 1));
+                term_print_str_len(p_spec_str, spec_len);
+            }
+
+            if (b_spec_done)
+            {
+                p_pure_str   = (p_format + 1);
+                pure_str_len = 0;
+
+                b_next_spec = false;
+                spec_len    = 0;
+                field_width = 0;
+                b_zero_pad  = false;
             }
         }
         else if ((*p_format) == '%')
@@ -104,6 +146,7 @@ printf (char const * restrict p_format, ...)
             // A percent sign possibly followed by a special character.
             //
             b_next_spec = true;
+            spec_len++;
 
             // Print the preceding non-special characters, if there were any.
             //
@@ -185,4 +228,23 @@ itoa (unsigned int num, bool b_signed, char * p_buf, unsigned int base)
     }
 
     p_buf[buf_pos++] = 0;
+}
+
+static void
+fill_field (char const * p_field, size_t field_width, bool b_zero_pad)
+{
+    if (string_len(p_field) < field_width)
+    {
+        char * p_filler = " ";
+        if (b_zero_pad)
+        {
+            p_filler = "0";
+        }
+        for (size_t idx = 0;
+             idx < (field_width - string_len(p_field));
+             idx++)
+        {
+            term_print_str(p_filler);
+        }
+    }
 }
