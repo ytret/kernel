@@ -48,26 +48,7 @@ main (uint32_t magic_num, mbi_t const * p_mbi)
     vmm_init();
     alloc_init(((void *) VMM_HEAP_START), VMM_HEAP_SIZE);
 
-    if (p_mbi->flags & (1 << 3))
-    {
-        printf("mods_count = %u\n", p_mbi->mods_count);
-        printf("mods_addr = %P\n", p_mbi->mods_addr);
-
-        for (size_t idx = 0; idx < p_mbi->mods_count; idx++)
-        {
-            mbi_mod_t const * p_mod = ((mbi_mod_t const *) p_mbi->mods_addr);
-
-            printf("Module %d: start = %P, end = %P", idx, p_mod->mod_start,
-                   p_mod->mod_end);
-            if (p_mod->string)
-            {
-                printf(", string = '%s'", p_mod->string);
-            }
-            printf("\n");
-
-            p_mod += 1;
-        }
-    }
+    mbi_copy(p_mbi);
 
     pic_set_mask(KBD_IRQ, false);
 
