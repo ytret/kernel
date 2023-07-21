@@ -1,6 +1,6 @@
 #include <printf.h>
 #include <string.h>
-#include <vga.h>
+#include <term.h>
 
 #include <limits.h>
 #include <stdarg.h>
@@ -42,26 +42,26 @@ printf (char const * restrict p_format, ...)
 
             if ('%' == (*p_format))
             {
-                vga_print_str("%");
+                term_print_str("%");
             }
             else if ('s' == (*p_format))
             {
                 char const * p_arg_str = va_arg(args, char const *);
-                vga_print_str(p_arg_str);
+                term_print_str(p_arg_str);
             }
             else if ('d' == (*p_format))
             {
                 int arg_num = va_arg(args, int);
                 char p_itoa_str[MAX_INT_LEN_10 + 1];
                 itoa(arg_num, true, p_itoa_str, 10);
-                vga_print_str(p_itoa_str);
+                term_print_str(p_itoa_str);
             }
             else if ('u' == (*p_format))
             {
                 unsigned int arg_num = va_arg(args, unsigned int);
                 char p_itoa_str[MAX_UINT_LEN_10 + 1];
                 itoa(arg_num, false, p_itoa_str, 10);
-                vga_print_str(p_itoa_str);
+                term_print_str(p_itoa_str);
             }
             else if (('x' == (*p_format)) || ('X' == (*p_format)))
             {
@@ -74,11 +74,11 @@ printf (char const * restrict p_format, ...)
                     string_to_upper(p_itoa_str);
                 }
 
-                vga_print_str(p_itoa_str);
+                term_print_str(p_itoa_str);
             }
             else if (('p' == (*p_format)) || ('P' == (*p_format)))
             {
-                vga_print_str("0x");
+                term_print_str("0x");
 
                 void const * p_ptr = va_arg(args, void const *);
                 char p_itoa_str[MAX_UINT_LEN_16 + 1];
@@ -89,14 +89,14 @@ printf (char const * restrict p_format, ...)
                     string_to_upper(p_itoa_str);
                 }
 
-                vga_print_str(p_itoa_str);
+                term_print_str(p_itoa_str);
             }
             else
             {
                 // Unknown special character, just print it with the '%' sign.
                 //
                 char const * p_spec_str = (p_format - 1);
-                vga_print_str_len(p_spec_str, 2);
+                term_print_str_len(p_spec_str, 2);
             }
         }
         else if ((*p_format) == '%')
@@ -109,7 +109,7 @@ printf (char const * restrict p_format, ...)
             //
             if (pure_str_len > 0)
             {
-                vga_print_str_len(p_pure_str, pure_str_len);
+                term_print_str_len(p_pure_str, pure_str_len);
             }
         }
         else
@@ -124,13 +124,13 @@ printf (char const * restrict p_format, ...)
     //
     if (b_next_spec)
     {
-        vga_print_str("%");
+        term_print_str("%");
     }
     else if (pure_str_len > 0)
     {
         // Otherwise, print the last sequence of non-special characters.
         //
-        vga_print_str_len(p_pure_str, pure_str_len);
+        term_print_str_len(p_pure_str, pure_str_len);
     }
 
     va_end(args);

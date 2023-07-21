@@ -163,6 +163,7 @@ def build():
         "src/string.c",
         "src/taskmgr.c",
         "src/taskmgr.s",
+        "src/term.c",
         "src/vga.c",
         "src/vmm.c",
         "src/vmm.s",

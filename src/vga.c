@@ -18,84 +18,8 @@
 
 static uint16_t * const gp_vga_memory = (uint16_t *) VGA_MEMORY_ADDR;
 
-static uint8_t g_row;
-static uint8_t g_col;
-
-static void put_char(char ch);
-static void put_char_at(uint8_t row, uint8_t col, char ch);
-static void put_cursor_at(uint8_t row, uint8_t col);
-static void scroll(void);
-
 void
-vga_clear (void)
-{
-    for (size_t row = 0; row < MAX_ROWS; row++)
-    {
-        for (size_t col = 0; col < MAX_COLS; col++)
-        {
-            put_char_at(row, col, ' ');
-        }
-    }
-}
-
-void
-vga_print_str (char const * p_str)
-{
-    while ((*p_str) != 0)
-    {
-        char ch = (*p_str);
-        put_char(ch);
-        p_str++;
-    }
-
-    put_cursor_at(g_row, g_col);
-}
-
-void
-vga_print_str_len (char const * p_str, size_t len)
-{
-    for (size_t idx = 0; idx < len; idx++)
-    {
-        put_char(p_str[idx]);
-    }
-
-    put_cursor_at(g_row, g_col);
-}
-
-static void
-put_char (char ch)
-{
-    switch (ch)
-    {
-        case '\n':
-            g_col = 0;
-            g_row++;
-            if (g_row >= MAX_ROWS)
-            {
-                g_row = (MAX_ROWS - 1);
-                scroll();
-            }
-        break;
-
-        default:
-            put_char_at(g_row, g_col, ch);
-
-            g_col++;
-            if (g_col >= MAX_COLS)
-            {
-                g_col = 0;
-                g_row++;
-                if (g_row >= MAX_ROWS)
-                {
-                    g_row = (MAX_ROWS - 1);
-		    scroll();
-                }
-            }
-    }
-}
-
-static void
-put_char_at (uint8_t row, uint8_t col, char ch)
+vga_put_char_at (uint8_t row, uint8_t col, char ch)
 {
     if ((row >= MAX_ROWS) || (col >= MAX_COLS))
     {
@@ -106,9 +30,14 @@ put_char_at (uint8_t row, uint8_t col, char ch)
     gp_vga_memory[idx] = ((0x0F << 8) | ch);
 }
 
-static void
-put_cursor_at (uint8_t row, uint8_t col)
+void
+vga_put_cursor_at (uint8_t row, uint8_t col)
 {
+    if ((row >= MAX_ROWS) || (col >= MAX_COLS))
+    {
+        panic_silent();
+    }
+
     size_t char_idx = (row * MAX_COLS + col);
     port_outb(PORT_CRTC_ADDR, REG_CRTC_CURSOR_LOC_HI);
     port_outb(PORT_CRTC_DATA, ((uint8_t) (char_idx >> 8)));
@@ -116,8 +45,8 @@ put_cursor_at (uint8_t row, uint8_t col)
     port_outb(PORT_CRTC_DATA, ((uint8_t) char_idx));
 }
 
-static void
-scroll (void)
+void
+vga_scroll (void)
 {
     // Bury the first row.
     //

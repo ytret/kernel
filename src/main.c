@@ -9,7 +9,7 @@
 #include <pmm.h>
 #include <printf.h>
 #include <taskmgr.h>
-#include <vga.h>
+#include <term.h>
 #include <vmm.h>
 
 #include <stdint.h>
@@ -19,7 +19,7 @@
 void
 main (uint32_t magic_num, mbi_t const * p_mbi)
 {
-    vga_clear();
+    term_clear();
     printf("Hello, world!\n");
 
     if (MULTIBOOT_MAGIC_NUM == magic_num)
