@@ -19,6 +19,8 @@ term_clear (void)
             vga_put_char_at(row, col, ' ');
         }
     }
+
+    term_put_cursor_at(0, 0);
 }
 
 void
