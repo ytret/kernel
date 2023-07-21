@@ -6,18 +6,34 @@
 
 #define CMD_BUF_SIZE    8
 
-static volatile bool gb_shifted;
+// Shell state.
+//
+static bool gb_reading_cmd;
 
+// Command buffer.
+//
 static char   gp_cmd_buf[CMD_BUF_SIZE];
 static size_t g_cmd_buf_pos;
 
-static void kbd_callback(uint8_t key, bool b_released);
-static void echo_key(uint8_t key);
-static char char_from_key(uint8_t key);
+// Keyboard state.
+//
+static volatile bool gb_shifted;
 
+// Input reading functions.
+//
+static char const * read_cmd(void);
+
+// Command buffer functions.
+//
 static void         buf_append(char ch);
 static void         buf_remove(void);
 static char const * buf_get_cmd(void);
+
+// Keyboard-related functions.
+//
+static void kbd_callback(uint8_t key, bool b_released);
+static void echo_key(uint8_t key);
+static char char_from_key(uint8_t key);
 
 void
 kshell_init (void)
@@ -25,7 +41,74 @@ kshell_init (void)
     kbd_set_callback(kbd_callback);
 
     for (;;)
+    {
+        printf("> ");
+        char const * p_cmd = read_cmd();
+        if (p_cmd)
+        {
+            printf("p_cmd: '%s'\n", p_cmd);
+        }
+        else
+        {
+            printf("p_cmd is NULL\n");
+        }
+    }
+}
+
+/*
+ * Synchronously reads a command from the user and returns it.
+ *
+ * NOTE: each call invalidates the pointer returned by the previous call.
+ */
+static char const *
+read_cmd (void)
+{
+    gb_reading_cmd = true;
+
+    // kbd_callback() resets gb_reading_cmd once KEY_ENTER is pressed.
+    //
+    while (gb_reading_cmd)
     {}
+
+    return (buf_get_cmd());
+}
+
+static void
+buf_append (char ch)
+{
+    if (g_cmd_buf_pos >= (CMD_BUF_SIZE - 1))
+    {
+        return;
+    }
+
+    gp_cmd_buf[g_cmd_buf_pos] = ch;
+    g_cmd_buf_pos++;
+}
+
+static void
+buf_remove (void)
+{
+    if (g_cmd_buf_pos > 0)
+    {
+        g_cmd_buf_pos--;
+    }
+}
+
+/*
+ * Returns a NUL-terminated command buffer string and resets the buffer.
+ */
+static char const *
+buf_get_cmd (void)
+{
+    if (g_cmd_buf_pos >= CMD_BUF_SIZE)
+    {
+        printf("kshell: command buffer overflow\n");
+        panic("buffer overflow");
+    }
+
+    gp_cmd_buf[g_cmd_buf_pos] = 0;
+    g_cmd_buf_pos = 0;
+    return (gp_cmd_buf);
 }
 
 static void
@@ -34,6 +117,11 @@ kbd_callback (uint8_t key, bool b_released)
     if ((KEY_LSHIFT == key) || (KEY_RSHIFT == key))
     {
         gb_shifted = (!b_released);
+    }
+
+    if (!gb_reading_cmd)
+    {
+        return;
     }
 
     // Henceforth parse only 'key pressed' events.
@@ -73,9 +161,7 @@ kbd_callback (uint8_t key, bool b_released)
     else if (KEY_ENTER == key)
     {
         echo_key(key);
-
-        printf("gp_cmd_buf: '%s'\n", buf_get_cmd());
-        g_cmd_buf_pos = 0;
+        gb_reading_cmd = false;
     }
     else
     {
@@ -160,38 +246,4 @@ char_from_key (uint8_t key)
         default:
             return (0);
     }
-}
-
-static void
-buf_append (char ch)
-{
-    if (g_cmd_buf_pos >= (CMD_BUF_SIZE - 1))
-    {
-        return;
-    }
-
-    gp_cmd_buf[g_cmd_buf_pos] = ch;
-    g_cmd_buf_pos++;
-}
-
-static void
-buf_remove (void)
-{
-    if (g_cmd_buf_pos > 0)
-    {
-        g_cmd_buf_pos--;
-    }
-}
-
-static char const *
-buf_get_cmd (void)
-{
-    if (g_cmd_buf_pos >= CMD_BUF_SIZE)
-    {
-        printf("kshell: command buffer overflow\n");
-        panic("buffer overflow");
-    }
-
-    gp_cmd_buf[g_cmd_buf_pos] = 0;
-    return (gp_cmd_buf);
 }
