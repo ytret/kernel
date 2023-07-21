@@ -26,7 +26,7 @@ string_equals (char const * p_a, char const * p_b)
         p_a++;
         p_b++;
     }
-    return (true);
+    return ((*p_a) == (*p_b));
 }
 
 size_t
