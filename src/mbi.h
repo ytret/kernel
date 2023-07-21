@@ -57,3 +57,6 @@ __attribute__ ((packed))
     uint32_t string;
     uint32_t reserved;
 } mbi_mod_t;
+
+void          mbi_copy(mbi_t const * p_src);
+mbi_t const * mbi_get_ptr(void);
