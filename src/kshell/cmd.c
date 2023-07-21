@@ -6,6 +6,7 @@
 
 static void cmd_clear(void);
 static void cmd_mbimap(void);
+static void cmd_mbimod(void);
 
 void
 kshell_cmd_parse (char const * p_cmd)
@@ -17,6 +18,10 @@ kshell_cmd_parse (char const * p_cmd)
     else if (string_equals(p_cmd, "mbimap"))
     {
         cmd_mbimap();
+    }
+    else if (string_equals(p_cmd, "mbimod"))
+    {
+        cmd_mbimod();
     }
     else
     {
@@ -67,5 +72,39 @@ cmd_mbimap (void)
         printf(", type = %d\n", type);
 
         byte += (4 + size);
+    }
+}
+
+static void
+cmd_mbimod (void)
+{
+    mbi_t const * p_mbi = mbi_get_ptr();
+
+    if (!(p_mbi->flags & (1 << 3)))
+    {
+        printf("No modules in MBI\n");
+        return;
+    }
+
+    printf("Module count = %u\n", p_mbi->mods_count);
+
+    for (size_t idx = 0; idx < p_mbi->mods_count; idx++)
+    {
+        mbi_mod_t const * p_mod = ((mbi_mod_t const *) p_mbi->mods_addr);
+
+        printf("Module %d: ", idx);
+        if (p_mod->string)
+        {
+            printf("'%s', ", p_mod->string);
+        }
+        else
+        {
+            printf("string = NULL, ");
+        }
+        printf("start = %P, end = %P, size = %u", p_mod->mod_start,
+               p_mod->mod_end, (p_mod->mod_end - p_mod->mod_start));
+        printf("\n");
+
+        p_mod += 1;
     }
 }
