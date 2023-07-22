@@ -7,6 +7,13 @@
 
 #define MMAP_ENTRY_AVAILABLE    1
 
+// First free page.
+//
+// Any page below this address will not be pushed onto the stack.  It is either
+// kernel end, if there are no modules, or the last module end.
+//
+static uint32_t g_first_free_page;
+
 // See the linker script.
 //
 extern uint32_t ld_pmm_stack_bottom;
@@ -32,11 +39,31 @@ pmm_init (mbi_t const * p_mbi)
     printf("PMM: mmap_length = %d\n", p_mbi->mmap_length);
     printf("PMM: mmap_addr = 0x%X\n", p_mbi->mmap_addr);
 
+    // Determine the first free page.
+    //
+    g_first_free_page = ((uint32_t) &ld_vmm_kernel_end);
+    if (p_mbi->flags & MBI_FLAG_MODS)
+    {
+        // Get the last module info struct.
+        //
+        mbi_mod_t const * p_mod = ((mbi_mod_t const *) p_mbi->mods_addr);
+        p_mod += p_mbi->mods_count;
+
+        // Last module end is first free page.
+        //
+        g_first_free_page = ((p_mod->mod_end + 0xFFF) & ~0xFFF);
+    }
+    printf("PMM: first free page: %P\n", g_first_free_page);
+
+    // Prepare the free page stack.
+    //
     size_t stack_size =
         ((size_t) (((uintptr_t) &ld_pmm_stack_top)
                    - ((uintptr_t) &ld_pmm_stack_bottom)));
     stack_new(&g_page_stack, &ld_pmm_stack_bottom, stack_size);
 
+    // Parse the memory map, pushing available pages onto the stack.
+    //
     parse_mmap(p_mbi->mmap_addr, p_mbi->mmap_length);
 
     // Print how much of the stack is used.
@@ -83,7 +110,7 @@ parse_mmap (uint32_t addr, uint32_t map_len)
     uint32_t byte = 0;
     while (byte < map_len)
     {
-        uint32_t const * p_entry = ((uint32_t const * ) (addr + byte));
+        uint32_t const * p_entry = ((uint32_t const *) (addr + byte));
 
         uint32_t size      = *(p_entry + 0);
         uint64_t base_addr = *((uint64_t const *) (p_entry + 1));
@@ -103,12 +130,17 @@ parse_mmap (uint32_t addr, uint32_t map_len)
         }
         else if (MMAP_ENTRY_AVAILABLE == type)
         {
-            if (end < ((uint32_t) &ld_vmm_kernel_end))
+            if (end < g_first_free_page)
             {
-                printf("PMM: region is below the kernel, ignoring it\n");
+                printf("PMM: region is below the first free page, ignoring"
+                       " it\n");
             }
             else
             {
+                while (base_addr < g_first_free_page)
+                {
+                    base_addr += 4096;
+                }
                 add_region(((uint32_t) base_addr), ((uint32_t) length));
             }
         }
@@ -120,11 +152,6 @@ parse_mmap (uint32_t addr, uint32_t map_len)
 static void
 add_region (uint32_t start, uint32_t num_bytes)
 {
-    while (start < ((uint32_t) &ld_vmm_kernel_end))
-    {
-        start += 4096;
-    }
-
     for (uint32_t page = start; page < (start + num_bytes); page += 4096)
     {
         pmm_push_page(page);
