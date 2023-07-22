@@ -107,7 +107,7 @@ static char const * sect_name(elf_hdr_t const * p_hdr,
 static void const * offset(elf_hdr_t const * p_hdr, uint32_t offset);
 
 bool
-elf_load (uint32_t * p_dir, void const * p_addr)
+elf_load (uint32_t * p_dir, void const * p_addr, uint32_t * p_entry)
 {
     elf_hdr_t const * p_hdr = ((elf_hdr_t const *) p_addr);
     check_hdr_valid(p_hdr);
@@ -162,6 +162,7 @@ elf_load (uint32_t * p_dir, void const * p_addr)
         }
 
         // Check that the virtual address is page-aligned.
+        //
         if (p_phdr->vaddr & 0xFFF)
         {
             printf("elf: load failed: program header %u vaddr 0x%08X is not"
@@ -182,7 +183,7 @@ elf_load (uint32_t * p_dir, void const * p_addr)
         // Allocate memory.
         //
         uint32_t start_virt = p_phdr->vaddr;
-        uint32_t end_virt   = ((start_virt + p_phdr->mem_size + 0xFFF) & ~0xFFF);
+        uint32_t end_virt = ((start_virt + p_phdr->mem_size + 0xFFF) & ~0xFFF);
         for (uint32_t virt = start_virt; virt < end_virt; virt += 4096)
         {
             uint32_t phys = pmm_pop_page();
@@ -209,6 +210,8 @@ elf_load (uint32_t * p_dir, void const * p_addr)
             vmm_unmap_kernel_page(virt);
         }
     }
+
+    *p_entry = p_hdr->entry;
 
     return (true);
 }
