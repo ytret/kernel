@@ -6,11 +6,13 @@ from pathlib import Path
 
 
 def print_help():
-    print(f"""\
+    print(
+        f"""\
 Usage: {sys.argv[0]} [-h | --help] [-v | --verbose]
 
   -h, --help     show this help and exit
-  -v, --verbose  print called commands""")
+  -v, --verbose  print called commands"""
+    )
 
 
 def parse_args():
@@ -196,7 +198,5 @@ if __name__ == "__main__":
     # Usermode programs.
     user_elf = "./build/user.elf"
     user_ld_script = "./user/link.ld"
-    user_sources = [
-        "user/entry.s"
-    ]
+    user_sources = ["user/entry.s"]
     build(user_elf, user_ld_script, user_sources)
