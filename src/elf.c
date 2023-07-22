@@ -197,7 +197,7 @@ elf_load (uint32_t * p_dir, void const * p_addr, uint32_t * p_entry)
         // Copy.
         //
         __builtin_memcpy(((void *) start_virt),
-                         ((void *) p_phdr->offset),
+                         offset(p_hdr, p_phdr->offset),
                          p_phdr->file_size);
         __builtin_memset(((void *) (start_virt + p_phdr->file_size)),
                          0,
