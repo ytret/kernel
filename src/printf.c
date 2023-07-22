@@ -39,7 +39,7 @@ printf (char const * restrict p_format, ...)
 
     // Field width (0 if unspecified).
     //
-    uint8_t field_width = 0;
+    uint32_t field_width = 0;
 
     // Zero padding.
     //
@@ -112,14 +112,15 @@ printf (char const * restrict p_format, ...)
                 fill_field(p_itoa_str, 8, true);
                 term_print_str(p_itoa_str);
             }
-            else if ('0' == (*p_format))
+            else if ((0 == field_width) && ('0' == (*p_format)))
             {
                 b_zero_pad  = true;
                 b_spec_done = false;
             }
-            else if (('1' <= (*p_format)) && ((*p_format) <= '9'))
+            else if (('0' <= (*p_format)) && ((*p_format) <= '9'))
             {
-                field_width = ((*p_format) - '0');
+                field_width *= 10;
+                field_width += ((*p_format) - '0');
                 b_spec_done = false;
             }
             else
