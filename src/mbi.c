@@ -10,6 +10,17 @@ mbi_copy (mbi_t const * p_src)
     //
     __builtin_memcpy(&g_mbi, p_src, sizeof(mbi_t));
 
+    if (p_src->flags & MBI_FLAG_MODS)
+    {
+        // Copy the modules info.
+        //
+        uint8_t * p_mods = alloc(p_src->mods_count * sizeof(mbi_mod_t));
+        __builtin_memcpy(p_mods,
+                         ((void const *) p_src->mods_addr),
+                         (p_src->mods_count * sizeof(mbi_mod_t)));
+        g_mbi.mods_addr = ((uint32_t) p_mods);
+    }
+
     if (p_src->flags & MBI_FLAG_MMAP)
     {
         // Copy the memory map.
