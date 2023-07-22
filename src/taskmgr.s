@@ -43,8 +43,10 @@ taskmgr_switch_tasks:
                 mov     4(%edi), %esp
                 mov     (%esp), %esp            # esp = kernel stack top
 
-                ## Update TSS.ESP0.
-                mov     %esp, 4(%eax)
+                ## Update TSS.ESP0 to point to the kernel stack top of the
+                ## next task.
+                mov     8(%ecx), %ecx
+                mov     %ecx, 4(%eax)
 
                 ## Change the virtual address space.
                 mov     %cr3, %eax
