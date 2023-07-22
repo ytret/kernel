@@ -126,23 +126,38 @@ def compile(paths):
     return objects
 
 
-def link(paths, out_file):
+def link(paths, out_file, ld_script):
     if len(paths) == 0:
         print("There are no object files to link together.  Aborting.")
         exit(70)
 
-    cmd_link = f"i686-elf-ld -T src/link.ld -o {out_file}"
+    cmd_link = f"i686-elf-ld -T {ld_script} -o {out_file}"
     for path in paths:
         cmd_link += f" {path}"
     run_cmd(cmd_link)
 
 
-def build():
-    out_file = "./build/kernel.elf"
-
+def build(out_file, ld_script, sources):
     if verbose:
         print(f"*** 1. Compile {out_file} ***")
-    sources = [
+
+    src_paths = [Path(src) for src in sources]
+    objects = compile(src_paths)
+
+    if verbose:
+        print(f"\n*** 2. Link {out_file} ***")
+    link(objects, out_file, ld_script)
+
+    return out_file
+
+
+if __name__ == "__main__":
+    verbose = parse_args()
+
+    # Kernel.
+    kernel_elf = "./build/kernel.elf"
+    kernel_ld_script = "./src/link.ld"
+    kernel_sources = [
         "src/entry.s",
         "src/alloc.c",
         "src/gdt.c",
@@ -171,16 +186,4 @@ def build():
         "src/vmm.c",
         "src/vmm.s",
     ]
-    src_paths = [Path(src) for src in sources]
-    objects = compile(src_paths)
-
-    if verbose:
-        print(f"\n*** 2. Link {out_file} ***")
-    link(objects, out_file)
-
-    return out_file
-
-
-if __name__ == "__main__":
-    verbose = parse_args()
-    build()
+    build(kernel_elf, kernel_ld_script, kernel_sources)
