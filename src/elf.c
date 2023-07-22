@@ -1,5 +1,7 @@
 #include <elf.h>
+#include <pmm.h>
 #include <printf.h>
+#include <vmm.h>
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -103,6 +105,113 @@ static char const * sect_name(elf_hdr_t const * p_hdr,
                               sect_hdr_t const * p_shdr);
 
 static void const * offset(elf_hdr_t const * p_hdr, uint32_t offset);
+
+bool
+elf_load (uint32_t * p_dir, void const * p_addr)
+{
+    elf_hdr_t const * p_hdr = ((elf_hdr_t const *) p_addr);
+    check_hdr_valid(p_hdr);
+
+    // Check if the header is loadable.
+    //
+    if (BITS_32BIT != p_hdr->bits)
+    {
+        printf("elf: cannot load a non-32-bit executable\n");
+        return (false);
+    }
+    if (BYTE_ORDER_LITTLE != p_hdr->byte_order)
+    {
+        printf("elf: cannot load a non-little-endian executable\n");
+        return (false);
+    }
+    if (OS_ABI_SYSV != p_hdr->os_abi)
+    {
+        printf("elf: cannot load a non-SYSV-executable\n");
+        return (false);
+    }
+
+    // Check the program header table entry size.
+    //
+    if (p_hdr->ph_entry_size != sizeof(prog_hdr_t))
+    {
+        printf("elf: cannot load an executable with program header size of %u"
+               " bytes\n", p_hdr->ph_entry_size);
+        return (false);
+    }
+
+    // Load the program segments.
+    //
+    prog_hdr_t const * p_phdrs = offset(p_hdr, p_hdr->ph_offset);
+    for (size_t idx = 0; idx < p_hdr->ph_num_entries; idx++)
+    {
+        prog_hdr_t const * p_phdr = &p_phdrs[idx];
+        if (PHDR_TYPE_LOAD != p_phdr->type)
+        {
+            // Not a loadable segment.
+            //
+            continue;
+        }
+
+        // Check if the segment is to be loaded in the user part of VAS.
+        //
+        if (p_phdr->vaddr < VMM_USER_START)
+        {
+            printf("elf: load failed: program header %u vaddr 0x%08X is not in"
+                   " the user part of VAS\n", idx, p_phdr->vaddr);
+            return (false);
+        }
+
+        // Check that the virtual address is page-aligned.
+        if (p_phdr->vaddr & 0xFFF)
+        {
+            printf("elf: load failed: program header %u vaddr 0x%08X is not"
+                   " page-aligned\n", idx, p_phdr->vaddr);
+            return (false);
+        }
+
+        // Check that the file size is not greater than memory size.
+        //
+        if (p_phdr->file_size > p_phdr->mem_size)
+        {
+            printf("elf: load failed: program header %u file size %u is greater"
+                   " than memory size %u\n", idx, p_phdr->file_size,
+                   p_phdr->mem_size);
+            return (false);
+        }
+
+        // Allocate memory.
+        //
+        uint32_t start_virt = p_phdr->vaddr;
+        uint32_t end_virt   = ((start_virt + p_phdr->mem_size + 0xFFF) & ~0xFFF);
+        for (uint32_t virt = start_virt; virt < end_virt; virt += 4096)
+        {
+            uint32_t phys = pmm_pop_page();
+            vmm_map_user_page(p_dir, virt, phys);
+
+            // Temporarily map the pages in the kernel VAS.
+            //
+            vmm_map_kernel_page(virt, phys);
+        }
+
+        // Copy.
+        //
+        __builtin_memcpy(((void *) start_virt),
+                         ((void *) p_phdr->offset),
+                         p_phdr->file_size);
+        __builtin_memset(((void *) (start_virt + p_phdr->file_size)),
+                         0,
+                         (p_phdr->mem_size - p_phdr->file_size));
+
+        // Unmap the pages in the kernel(!) VAS.
+        //
+        for (uint32_t virt = start_virt; virt < end_virt; virt += 4096)
+        {
+            vmm_unmap_kernel_page(virt);
+        }
+    }
+
+    return (true);
+}
 
 void
 elf_dump (void const * p_addr)
