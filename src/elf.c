@@ -220,6 +220,8 @@ dump_general (elf_hdr_t const * p_hdr)
     }
 
     printf("\n");
+
+    printf("Entry: 0x%08X\n", p_hdr->entry);
 }
 
 static void
