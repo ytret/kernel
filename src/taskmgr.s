@@ -76,9 +76,9 @@ taskmgr_switch_tasks:
                 ##
                 ## NOTE: does not return.
                 ##
-                .global taskmgr_go_usermode
-                .type   taskmgr_go_usermode, @function
-taskmgr_go_usermode:
+                .global taskmgr_go_usermode_impl
+                .type   taskmgr_go_usermode_impl, @function
+taskmgr_go_usermode_impl:
                 push    %ebp
                 mov     %esp, %ebp
 
@@ -117,4 +117,4 @@ taskmgr_go_usermode:
                 mov     1*4(%esi), %esi
 
                 iret
-                .size   taskmgr_go_usermode, . - taskmgr_go_usermode
+                .size   taskmgr_go_usermode_impl, . - taskmgr_go_usermode_impl
