@@ -3,6 +3,7 @@
 #include <kshell/cmd.h>
 #include <panic.h>
 #include <printf.h>
+#include <string.h>
 #include <term.h>
 
 #define CMD_BUF_SIZE    8
@@ -45,7 +46,7 @@ kshell_init (void)
     {
         printf("> ");
         char const * p_cmd = read_cmd();
-        if (!p_cmd)
+        if ((!p_cmd) || (0 == string_len(p_cmd)))
         {
             continue;
         }
