@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+#define MBI_FLAG_MODS           (1 << 3)
 #define MBI_FLAG_MMAP           (1 << 6)
 
 typedef struct
