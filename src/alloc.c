@@ -1,6 +1,7 @@
 #include <alloc.h>
 #include <panic.h>
 #include <printf.h>
+#include <vmm.h>
 
 #include <stdbool.h>
 
@@ -22,6 +23,7 @@ static tag_t * gp_start;
 
 static void fill_tag(tag_t * p_tag, bool b_used, size_t size, tag_t * p_next);
 static void print_tag(tag_t const * p_tag);
+static void check_tags(bool b_after_alloc);
 
 void
 alloc_init (void * p_start, size_t num_bytes)
@@ -84,6 +86,10 @@ alloc_aligned (size_t num_bytes, size_t align)
         panic("unexpected behavior");
     }
 
+    // Check the heap before allocation.
+    //
+    check_tags(false);
+
     // Make the size aligned.
     //
     num_bytes = (num_bytes + (CHUNK_SIZE_ALIGN - 1)) & ~(CHUNK_SIZE_ALIGN - 1);
@@ -133,6 +139,10 @@ alloc_aligned (size_t num_bytes, size_t align)
     }
 
     p_found->b_used = true;
+
+    // Check the heap after allocation.
+    //
+    check_tags(true);
 
     return ((void *) (((uint32_t) p_found) + TAG_SIZE + padding));
 }
@@ -192,4 +202,44 @@ print_tag (tag_t const * p_tag)
     }
 
     printf("size = %u bytes\n", p_tag->size);
+}
+
+static void
+check_tags (bool b_after_alloc)
+{
+    bool b_panic = false;
+
+    for (tag_t const * p_tag = gp_start; p_tag != NULL; p_tag = p_tag->p_next)
+    {
+        if (((uint32_t) p_tag) < VMM_HEAP_START)
+        {
+            printf("alloc: check_tags: tag %P is below heap\n", p_tag);
+            b_panic = true;
+            break;
+        }
+
+        if (((uint32_t) p_tag) >= (VMM_HEAP_START + VMM_HEAP_SIZE))
+        {
+            printf("alloc: check_tags: tag %P is above heap\n", p_tag);
+            b_panic = true;
+            break;
+        }
+
+        if ((((uint32_t) p_tag) + sizeof(*p_tag) + p_tag->size)
+            > (VMM_HEAP_START + VMM_HEAP_SIZE))
+        {
+            printf("alloc: check_tags: chunk of tag %P ends beyond heap at"
+                   " 0x%08X\n",
+                   p_tag, (((uint32_t) p_tag) + sizeof(*p_tag) + p_tag->size));
+            b_panic = true;
+            break;
+        }
+    }
+
+    if (b_panic)
+    {
+        panic(b_after_alloc
+              ? "invalid heap state after alloc"
+              : "invalid heap state before alloc");
+    }
 }
