@@ -15,13 +15,14 @@
  *      5. Add the function definition near the other command handlers.
  */
 
+#include <elf.h>
 #include <kshell/cmd.h>
 #include <mbi.h>
 #include <printf.h>
 #include <string.h>
 #include <term.h>
 
-#define NUM_CMDS        4
+#define NUM_CMDS        5
 
 static char const * const gp_cmd_names[NUM_CMDS] =
 {
@@ -29,12 +30,14 @@ static char const * const gp_cmd_names[NUM_CMDS] =
     "help",
     "mbimap",
     "mbimod",
+    "elfhdr",
 };
 
 static void cmd_clear(void);
 static void cmd_help(void);
 static void cmd_mbimap(void);
 static void cmd_mbimod(void);
+static void cmd_elfhdr(void);
 
 void
 kshell_cmd_parse (char const * p_cmd)
@@ -45,6 +48,7 @@ kshell_cmd_parse (char const * p_cmd)
             cmd_help,
             cmd_mbimap,
             cmd_mbimod,
+            cmd_elfhdr,
         };
 
     for (size_t idx = 0; idx < NUM_CMDS; idx++)
@@ -151,4 +155,40 @@ cmd_mbimod (void)
 
         p_mod += 1;
     }
+}
+
+static void
+cmd_elfhdr (void)
+{
+    mbi_t const * p_mbi = mbi_get_ptr();
+
+    if (!(p_mbi->flags & MBI_FLAG_MODS))
+    {
+        printf("Module 'user' is not found\n");
+        return;
+    }
+
+    void const * p_elf_user = NULL;
+    for (size_t idx = 0; idx < p_mbi->mods_count; idx++)
+    {
+        mbi_mod_t const * p_mods = ((mbi_mod_t const *) p_mbi->mods_addr);
+
+        if (!p_mods[idx].string)
+        {
+            continue;
+        }
+
+        if (string_equals(((char const *) p_mods[idx].string), "user"))
+        {
+            p_elf_user = ((void const *) p_mods[idx].mod_start);
+        }
+    }
+
+    if (!p_elf_user)
+    {
+        printf("Module 'user' is not found\n");
+        return;
+    }
+
+    elf_dump(p_elf_user);
 }
