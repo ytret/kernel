@@ -4,35 +4,63 @@
 #include <string.h>
 #include <term.h>
 
+#define NUM_CMDS        4
+
+static char const * const gp_cmd_names[NUM_CMDS] =
+{
+    "clear",
+    "help",
+    "mbimap",
+    "mbimod",
+};
+
 static void cmd_clear(void);
+static void cmd_help(void);
 static void cmd_mbimap(void);
 static void cmd_mbimod(void);
 
 void
 kshell_cmd_parse (char const * p_cmd)
 {
-    if (string_equals(p_cmd, "clear"))
+    static void (* const gp_cmd_funs[NUM_CMDS])(void) =
+        {
+            cmd_clear,
+            cmd_help,
+            cmd_mbimap,
+            cmd_mbimod,
+        };
+
+    for (size_t idx = 0; idx < NUM_CMDS; idx++)
     {
-        cmd_clear();
+        if (string_equals(p_cmd, gp_cmd_names[idx]))
+        {
+            gp_cmd_funs[idx]();
+            return;
+        }
     }
-    else if (string_equals(p_cmd, "mbimap"))
-    {
-        cmd_mbimap();
-    }
-    else if (string_equals(p_cmd, "mbimod"))
-    {
-        cmd_mbimod();
-    }
-    else
-    {
-        printf("kshell: unknown command: '%s'\n", p_cmd);
-    }
+
+    printf("kshell: unknown command: '%s'\n", p_cmd);
 }
 
 static void
 cmd_clear (void)
 {
     term_clear();
+}
+
+static void
+cmd_help (void)
+{
+    printf("Available commands:\n");
+    for (size_t idx = 0; idx < NUM_CMDS; idx++)
+    {
+        printf("%s", gp_cmd_names[idx]);
+        if (idx != (NUM_CMDS - 1))
+        {
+            printf(", ");
+        }
+    }
+    printf("\n");
 }
 
 static void
