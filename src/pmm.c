@@ -2,6 +2,7 @@
 #include <pmm.h>
 #include <printf.h>
 #include <stack.h>
+#include <vmm.h>
 
 #include <limits.h>
 
@@ -41,18 +42,7 @@ pmm_init (mbi_t const * p_mbi)
 
     // Determine the first free page.
     //
-    g_first_free_page = ((uint32_t) &ld_vmm_kernel_end);
-    if (p_mbi->flags & MBI_FLAG_MODS)
-    {
-        // Get the last module info struct.
-        //
-        mbi_mod_t const * p_mod = ((mbi_mod_t const *) p_mbi->mods_addr);
-        p_mod += (p_mbi->mods_count - 1);
-
-        // Last module end is first free page.
-        //
-        g_first_free_page = ((p_mod->mod_end + 0xFFF) & ~0xFFF);
-    }
+    g_first_free_page = (VMM_HEAP_START + VMM_HEAP_SIZE);
     printf("PMM: first free page: %P\n", g_first_free_page);
 
     // Prepare the free page stack.
