@@ -121,8 +121,10 @@ def compile(paths):
         Path("build" / path.parent).mkdir(parents=True, exist_ok=True)
 
     objects = []
-    objects += compile_asm(asm_files, [])
-    objects += compile_c(c_files, [])
+    if len(asm_files) > 0:
+        objects += compile_asm(asm_files, [])
+    if len(c_files) > 0:
+        objects += compile_c(c_files, [])
     return objects
 
 
@@ -187,3 +189,14 @@ if __name__ == "__main__":
         "src/vmm.s",
     ]
     build(kernel_elf, kernel_ld_script, kernel_sources)
+
+    if verbose:
+        print()
+
+    # Usermode programs.
+    user_elf = "./build/user.elf"
+    user_ld_script = "./user/link.ld"
+    user_sources = [
+        "user/entry.s"
+    ]
+    build(user_elf, user_ld_script, user_sources)
