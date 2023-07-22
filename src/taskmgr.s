@@ -31,7 +31,7 @@ taskmgr_switch_tasks:
 
                 ## Save ESP of this task in its control block.
                 mov     8(%ebp), %esi           # esi = p_from
-                mov     4(%esi), %eax           # eax = p_from_>p_kernel_stack
+                mov     4(%esi), %eax           # eax = p_from->p_kernel_stack
                 mov     %esp, (%eax)            # first field is the stack top
 
                 ## Load the parameters.
