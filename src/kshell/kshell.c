@@ -132,6 +132,14 @@ kbd_callback (uint8_t key, bool b_released)
 
     if (KEY_BACKSPACE == key)
     {
+        // Allow to delete as many characters, as there are in the command
+        // buffer.
+        //
+        if (0 == g_cmd_buf_pos)
+        {
+            return;
+        }
+
         size_t row = term_row();
         size_t col = term_col();
 
