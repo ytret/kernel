@@ -18,6 +18,11 @@
 #define PAGE_RW         (1 << 1)
 #define PAGE_PRESENT    (1 << 0)
 
+// Which page table flags to check when stumbling upon an existing page table
+// during page mapping.
+//
+#define FLAG_CHECK_MASK (TABLE_USER | TABLE_RW | TABLE_PRESENT)
+
 extern uint32_t ld_vmm_kernel_start;
 extern uint32_t ld_vmm_kernel_end;
 
@@ -163,7 +168,7 @@ map_page (uint32_t * p_dir, uint32_t virt, uint32_t phys, uint32_t flags)
     {
         printf("vmm: map_page: page table %u is present\n", dir_idx);
 
-        if ((p_dir[dir_idx] & 0xFFF) != flags)
+        if ((p_dir[dir_idx] & FLAG_CHECK_MASK) != flags)
         {
             printf("vmm: map_page: page table for %P is present, but it"
                    " does not have the requested flags\n", virt);
