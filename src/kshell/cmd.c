@@ -38,6 +38,8 @@ static char const * const gp_cmd_names[NUM_CMDS] =
     "tasks",
 };
 
+static uint32_t g_exec_entry;
+
 static void cmd_clear(void);
 static void cmd_help(void);
 static void cmd_mbimap(void);
@@ -239,15 +241,14 @@ cmd_exec (void)
     uint32_t * p_dir = vmm_clone_kvas();
     printf("kshell: cloned kernel VAS at %P\n", p_dir);
 
-    uint32_t entry;
-    bool ok = elf_load(p_dir, p_elf_user, &entry);
+    bool ok = elf_load(p_dir, p_elf_user, &g_exec_entry);
     if (!ok)
     {
         printf("kshell: failed to load the executable\n");
     }
 
     printf("kshell: successfully loaded\n");
-    printf("kshell: entry = 0x%08x\n", entry);
+    printf("kshell: entry at 0x%08x\n", g_exec_entry);
 
     taskmgr_new_user_task(p_dir, ((uint32_t) cmd_exec_entry));
 
