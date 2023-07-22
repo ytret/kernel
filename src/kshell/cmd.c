@@ -15,14 +15,17 @@
  *      5. Add the function definition near the other command handlers.
  */
 
+#include <alloc.h>
 #include <elf.h>
 #include <kshell/cmd.h>
 #include <mbi.h>
 #include <printf.h>
 #include <string.h>
+#include <taskmgr.h>
 #include <term.h>
+#include <vmm.h>
 
-#define NUM_CMDS        5
+#define NUM_CMDS        7
 
 static char const * const gp_cmd_names[NUM_CMDS] =
 {
@@ -31,6 +34,8 @@ static char const * const gp_cmd_names[NUM_CMDS] =
     "mbimap",
     "mbimod",
     "elfhdr",
+    "exec",
+    "tasks",
 };
 
 static void cmd_clear(void);
@@ -38,6 +43,9 @@ static void cmd_help(void);
 static void cmd_mbimap(void);
 static void cmd_mbimod(void);
 static void cmd_elfhdr(void);
+static void cmd_exec(void);
+static void cmd_exec_entry(void);
+static void cmd_tasks(void);
 
 void
 kshell_cmd_parse (char const * p_cmd)
@@ -49,6 +57,8 @@ kshell_cmd_parse (char const * p_cmd)
             cmd_mbimap,
             cmd_mbimod,
             cmd_elfhdr,
+            cmd_exec,
+            cmd_tasks,
         };
 
     for (size_t idx = 0; idx < NUM_CMDS; idx++)
@@ -191,4 +201,75 @@ cmd_elfhdr (void)
     }
 
     elf_dump(p_elf_user);
+}
+
+static void
+cmd_exec (void)
+{
+    mbi_t const * p_mbi = mbi_get_ptr();
+
+    if (!(p_mbi->flags & MBI_FLAG_MODS))
+    {
+        printf("Module 'user' is not found\n");
+        return;
+    }
+
+    void const * p_elf_user = NULL;
+    for (size_t idx = 0; idx < p_mbi->mods_count; idx++)
+    {
+        mbi_mod_t const * p_mods = ((mbi_mod_t const *) p_mbi->mods_addr);
+
+        if (!p_mods[idx].string)
+        {
+            continue;
+        }
+
+        if (string_equals(((char const *) p_mods[idx].string), "user"))
+        {
+            p_elf_user = ((void const *) p_mods[idx].mod_start);
+        }
+    }
+
+    if (!p_elf_user)
+    {
+        printf("Module 'user' is not found\n");
+        return;
+    }
+
+    uint32_t * p_dir = vmm_clone_kvas();
+    printf("kshell: cloned kernel VAS at %P\n", p_dir);
+
+    uint32_t entry;
+    bool ok = elf_load(p_dir, p_elf_user, &entry);
+    if (!ok)
+    {
+        printf("kshell: failed to load the executable\n");
+    }
+
+    printf("kshell: successfully loaded\n");
+    printf("kshell: entry = 0x%08x\n", entry);
+
+    taskmgr_new_user_task(p_dir, ((uint32_t) cmd_exec_entry));
+
+    alloc_free(p_dir);
+}
+
+static void
+cmd_exec_entry (void)
+{
+    __asm__ volatile ("sti");
+
+    for (;;)
+    {
+        for (uint32_t ticks = 0; ticks < 100000000; ticks++)
+        {}
+
+        printf("%u", taskmgr_running_task_id());
+    }
+}
+
+static void
+cmd_tasks (void)
+{
+    taskmgr_dump_tasks();
 }
