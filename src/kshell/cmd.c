@@ -19,6 +19,7 @@
 #include <elf.h>
 #include <kshell/cmd.h>
 #include <mbi.h>
+#include <panic.h>
 #include <printf.h>
 #include <string.h>
 #include <taskmgr.h>
@@ -258,15 +259,14 @@ cmd_exec (void)
 static void
 cmd_exec_entry (void)
 {
+    // taskmgr_switch_tasks() requires that task entries enable interrupts.
+    //
     __asm__ volatile ("sti");
 
-    for (;;)
-    {
-        for (uint32_t ticks = 0; ticks < 100000000; ticks++)
-        {}
+    taskmgr_go_usermode(g_exec_entry);
 
-        printf("%u", taskmgr_running_task_id());
-    }
+    printf("kshell: call to taskmgr_go_usermode() has returned\n");
+    panic("unexpected behavior");
 }
 
 static void
