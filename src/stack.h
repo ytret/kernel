@@ -5,10 +5,11 @@
 #include <stdint.h>
 
 typedef struct
+__attribute__ ((packed))
 {
-    // p_top must be the first field - this is required by taskmgr_switch_tasks
-    // assembly function (see taskmgr.s).
-    //
+    // This field order is relied upon by taskmgr_switch_tasks() assembly
+    // function (see taskmgr.s).
+
     uint32_t * p_top;
 
     uint32_t * p_bottom;
