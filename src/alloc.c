@@ -138,6 +138,12 @@ alloc_aligned (size_t num_bytes, size_t align)
 }
 
 void
+alloc_free (void * p_addr)
+{
+    (void) p_addr;
+}
+
+void
 alloc_dump_tags (void)
 {
     if (NULL == gp_start)
