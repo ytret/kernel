@@ -133,10 +133,9 @@ cmd_mbimod (void)
 
     printf("Module count = %u\n", p_mbi->mods_count);
 
+    mbi_mod_t const * p_mod = ((mbi_mod_t const *) p_mbi->mods_addr);
     for (size_t idx = 0; idx < p_mbi->mods_count; idx++)
     {
-        mbi_mod_t const * p_mod = ((mbi_mod_t const *) p_mbi->mods_addr);
-
         printf("Module %d: ", idx);
         if (p_mod->string)
         {
