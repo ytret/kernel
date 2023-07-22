@@ -47,8 +47,8 @@ taskmgr_switch_tasks:
 
                 ## Load control block of the next task.
                 mov     0(%edi), %ebx           # ebx = cr3
-                mov     4(%edi), %esp
-                mov     (%esp), %esp            # esp = kernel stack top
+                mov     4(%edi), %ecx           # ecx = stack_t struct ptr
+                mov     (%ecx), %esp            # esp = kernel stack top
 
                 ## Update TSS.ESP0 to point to the kernel stack top of the
                 ## next task.
