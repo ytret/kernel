@@ -177,6 +177,7 @@ if __name__ == "__main__":
         "src/mbi.c",
         "src/memcpy.c",
         "src/memmove.c",
+        "src/memset.c",
         "src/panic.c",
         "src/pic.c",
         "src/pit.c",
