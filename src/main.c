@@ -16,6 +16,8 @@
 
 #define MULTIBOOT_MAGIC_NUM	0x2BADB002
 
+static void init_entry(void) __attribute__ ((noreturn));
+
 void
 main (uint32_t magic_num, mbi_t const * p_mbi)
 {
@@ -52,10 +54,22 @@ main (uint32_t magic_num, mbi_t const * p_mbi)
 
     pic_set_mask(KBD_IRQ, false);
 
-    printf("Initializing task manager\n");
     taskmgr_init();
-
-    kshell_init();
+    taskmgr_start_scheduler(init_entry);
 
     printf("End of main\n");
+}
+
+__attribute__ ((noreturn))
+static void
+init_entry (void)
+{
+    // taskmgr_switch_tasks() requires that task entries enable interrupts.
+    //
+    __asm__ ("sti");
+
+    kshell();
+
+    printf("init_entry: kshell returned\n");
+    panic("unexpected behavior");
 }
