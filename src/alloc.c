@@ -238,6 +238,7 @@ check_tags (bool b_after_alloc)
 
     if (b_panic)
     {
+        alloc_dump_tags();
         panic(b_after_alloc
               ? "invalid heap state after alloc"
               : "invalid heap state before alloc");
