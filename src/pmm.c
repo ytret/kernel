@@ -170,7 +170,11 @@ print_usage (void)
 
     uint32_t num_bytes =
         (4096 * ((uint32_t) (g_page_stack.p_top_max - g_page_stack.p_top)));
-    if (num_bytes <= (10 * 1024 * 1024))
+    if (num_bytes < 10 * 1024)
+    {
+        printf(", holding %u bytes\n", num_bytes);
+    }
+    else if (num_bytes <= (10 * 1024 * 1024))
     {
         printf(", holding %u KiB\n", (num_bytes / 1024));
     }
