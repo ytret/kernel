@@ -15,8 +15,8 @@
 
 static void itoa(unsigned int num, bool b_signed, char * p_buf,
                  unsigned int base);
-static void fill_field(char const * p_field, size_t field_width,
-                       bool b_zero_pad);
+static void print_field(char const * p_field, size_t field_width,
+                        bool b_zero_pad, bool b_left_just);
 
 void
 printf (char const * restrict p_format, ...)
@@ -45,6 +45,10 @@ printf (char const * restrict p_format, ...)
     //
     bool b_zero_pad = false;
 
+    // Left or right justification.
+    //
+    bool b_left_just = false;
+
     while ((*p_format) != 0)
     {
         if (b_next_spec)
@@ -64,24 +68,21 @@ printf (char const * restrict p_format, ...)
             else if ('s' == (*p_format))
             {
                 char const * p_arg_str = va_arg(args, char const *);
-                fill_field(p_arg_str, field_width, false);
-                term_print_str(p_arg_str);
+                print_field(p_arg_str, field_width, false, b_left_just);
             }
             else if ('d' == (*p_format))
             {
                 int arg_num = va_arg(args, int);
                 char p_itoa_str[MAX_INT_LEN_10 + 1];
                 itoa(arg_num, true, p_itoa_str, 10);
-                fill_field(p_itoa_str, field_width, b_zero_pad);
-                term_print_str(p_itoa_str);
+                print_field(p_itoa_str, field_width, b_zero_pad, b_left_just);
             }
             else if ('u' == (*p_format))
             {
                 unsigned int arg_num = va_arg(args, unsigned int);
                 char p_itoa_str[MAX_UINT_LEN_10 + 1];
                 itoa(arg_num, false, p_itoa_str, 10);
-                fill_field(p_itoa_str, field_width, b_zero_pad);
-                term_print_str(p_itoa_str);
+                print_field(p_itoa_str, field_width, b_zero_pad, b_left_just);
             }
             else if (('x' == (*p_format)) || ('X' == (*p_format)))
             {
@@ -94,8 +95,7 @@ printf (char const * restrict p_format, ...)
                     string_to_upper(p_itoa_str);
                 }
 
-                fill_field(p_itoa_str, field_width, b_zero_pad);
-                term_print_str(p_itoa_str);
+                print_field(p_itoa_str, field_width, b_zero_pad, b_left_just);
             }
             else if (('p' == (*p_format)) || ('P' == (*p_format)))
             {
@@ -110,8 +110,7 @@ printf (char const * restrict p_format, ...)
                     string_to_upper(p_itoa_str);
                 }
 
-                fill_field(p_itoa_str, 8, true);
-                term_print_str(p_itoa_str);
+                print_field(p_itoa_str, 8, true, false);
             }
             else if ((0 == field_width) && ('0' == (*p_format)))
             {
@@ -122,6 +121,11 @@ printf (char const * restrict p_format, ...)
             {
                 field_width *= 10;
                 field_width += ((*p_format) - '0');
+                b_spec_done = false;
+            }
+            else if ('-' == (*p_format))
+            {
+                b_left_just = true;
                 b_spec_done = false;
             }
             else
@@ -141,6 +145,7 @@ printf (char const * restrict p_format, ...)
                 spec_len    = 0;
                 field_width = 0;
                 b_zero_pad  = false;
+                b_left_just  = false;
             }
         }
         else if ((*p_format) == '%')
@@ -233,8 +238,14 @@ itoa (unsigned int num, bool b_signed, char * p_buf, unsigned int base)
 }
 
 static void
-fill_field (char const * p_field, size_t field_width, bool b_zero_pad)
+print_field (char const * p_field, size_t field_width, bool b_zero_pad,
+             bool b_left_just)
 {
+    if (b_left_just)
+    {
+        term_print_str(p_field);
+    }
+
     if (string_len(p_field) < field_width)
     {
         char * p_filler = " ";
@@ -248,5 +259,10 @@ fill_field (char const * p_field, size_t field_width, bool b_zero_pad)
         {
             term_print_str(p_filler);
         }
+    }
+
+    if (!b_left_just)
+    {
+        term_print_str(p_field);
     }
 }
