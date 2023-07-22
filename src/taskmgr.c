@@ -8,7 +8,7 @@
 
 #include <stdint.h>
 
-#define KERNEL_STACK_SIZE       512
+#define KERNEL_STACK_SIZE       4096
 
 #define USER_STACK_TOP          0x7FFFF000 // must be page-aligned, not checked
 #define USER_STACK_PAGES        1
