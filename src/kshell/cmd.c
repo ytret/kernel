@@ -22,7 +22,7 @@ static void cmd_mbimod(void);
 void
 kshell_cmd_parse (char const * p_cmd)
 {
-    static void (* const gp_cmd_funs[NUM_CMDS])(void) =
+    static void (* const p_cmd_funs[NUM_CMDS])(void) =
         {
             cmd_clear,
             cmd_help,
@@ -34,7 +34,7 @@ kshell_cmd_parse (char const * p_cmd)
     {
         if (string_equals(p_cmd, gp_cmd_names[idx]))
         {
-            gp_cmd_funs[idx]();
+            p_cmd_funs[idx]();
             return;
         }
     }
