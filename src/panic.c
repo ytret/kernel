@@ -5,6 +5,7 @@
 
 static volatile bool b_in_panic;
 
+__attribute__ ((noreturn))
 void
 panic (char const * p_msg)
 {
@@ -22,6 +23,7 @@ panic (char const * p_msg)
     {}
 }
 
+__attribute__ ((noreturn))
 void
 panic_silent (void)
 {
