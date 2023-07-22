@@ -1,3 +1,3 @@
 #pragma once
 
-void kshell_init(void);
+void kshell(void);

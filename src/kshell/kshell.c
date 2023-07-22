@@ -38,7 +38,7 @@ static void echo_key(uint8_t key);
 static char char_from_key(uint8_t key);
 
 void
-kshell_init (void)
+kshell (void)
 {
     kbd_set_callback(kbd_callback);
 
