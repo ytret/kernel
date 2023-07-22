@@ -163,7 +163,15 @@ alloc_dump_tags (void)
 
     for (tag_t const * p_tag = gp_start; p_tag != NULL; p_tag = p_tag->p_next)
     {
-        print_tag(p_tag);
+        if (((uint32_t) p_tag)
+            < (VMM_HEAP_START + VMM_HEAP_SIZE - sizeof(*p_tag)))
+        {
+            print_tag(p_tag);
+        }
+        else
+        {
+            return;
+        }
     }
 }
 
