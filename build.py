@@ -181,5 +181,6 @@ def build():
     return out_file
 
 
-verbose = parse_args()
-build()
+if __name__ == "__main__":
+    verbose = parse_args()
+    build()
