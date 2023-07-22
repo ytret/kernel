@@ -20,6 +20,13 @@ taskmgr_switch_tasks:
                 push    %ebp
                 mov     %esp, %ebp
 
+                ## If p_from is not provided (NULL), then this is an entry into
+                ## the very first task with the current stack being abandoned.
+                ## Go straight to loading the next task's context, since there
+                ## is no context to save.
+                cmp     $0, 8(%ebp)
+                jz      1f
+
                 ## EBP already saved.  Push all the other registers onto the
                 ## kernel stack of this task.
                 push    %eax
@@ -35,7 +42,7 @@ taskmgr_switch_tasks:
                 mov     %esp, (%eax)            # first field is the stack top
 
                 ## Load the parameters.
-                mov     12(%ebp), %edi          # edi = p_to
+1:              mov     12(%ebp), %edi          # edi = p_to
                 mov     16(%ebp), %eax          # eax = p_tss
 
                 ## Load control block of the next task.
@@ -51,11 +58,11 @@ taskmgr_switch_tasks:
                 ## Change the virtual address space.
                 mov     %cr3, %eax
                 cmp     %ebx, %eax
-                je      1f
+                je      2f
                 mov     %ebx, %cr3
 
                 ## Pop kernel stack of the next task.
-1:              pop     %edi
+2:              pop     %edi
                 pop     %esi
                 pop     %ebx
                 pop     %edx
