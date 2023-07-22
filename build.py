@@ -164,6 +164,7 @@ if __name__ == "__main__":
     kernel_sources = [
         "src/entry.s",
         "src/alloc.c",
+        "src/elf.c",
         "src/gdt.c",
         "src/gdt.s",
         "src/idt.c",
