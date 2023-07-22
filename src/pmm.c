@@ -47,7 +47,7 @@ pmm_init (mbi_t const * p_mbi)
         // Get the last module info struct.
         //
         mbi_mod_t const * p_mod = ((mbi_mod_t const *) p_mbi->mods_addr);
-        p_mod += p_mbi->mods_count;
+        p_mod += (p_mbi->mods_count - 1);
 
         // Last module end is first free page.
         //
