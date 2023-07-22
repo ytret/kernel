@@ -125,7 +125,7 @@ cmd_mbimod (void)
 {
     mbi_t const * p_mbi = mbi_get_ptr();
 
-    if (!(p_mbi->flags & (1 << 3)))
+    if (!(p_mbi->flags & MBI_FLAG_MODS))
     {
         printf("No modules in MBI\n");
         return;
