@@ -140,6 +140,7 @@ parse_mmap (uint32_t addr, uint32_t map_len)
                 while (base_addr < g_first_free_page)
                 {
                     base_addr += 4096;
+                    length    -= 4096;
                 }
                 add_region(((uint32_t) base_addr), ((uint32_t) length));
             }
