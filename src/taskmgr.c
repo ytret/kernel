@@ -41,20 +41,23 @@ __attribute__ ((packed))
     uint32_t edx;
     uint32_t ecx;
     uint32_t eax;
-} gp_regs_t;
+} gen_regs_t;
 
-static bool gb_initialized;
+static bool gb_scheduling;
 
+// First task in the list.
+//
+// NOTE: this must be the initial task.
+//
 static task_t * gp_first_task;
+
 static uint32_t g_new_task_id;
 static uint32_t g_running_task_id;
 
-static task_t new_task_with_no_stack(uint32_t task_id);
-static task_t new_task_with_stack(uint32_t task_id, uint32_t entry_point);
+static task_t * new_task(uint32_t entry_point);
+static void     map_user_stack(uint32_t * p_dir);
 
-static void map_user_stack(uint32_t * p_dir);
-
-static void     list_append(task_t * p_first, task_t task);
+static void     list_append(task_t * p_first, task_t * p_task);
 static size_t   list_len(task_t * p_first);
 static task_t * list_find(task_t * p_first, uint32_t task_id);
 
@@ -62,56 +65,62 @@ static task_t * list_find(task_t * p_first, uint32_t task_id);
 //
 extern void taskmgr_switch_tasks(tcb_t * p_from, tcb_t const * p_to,
                                  tss_t * p_tss);
-extern void taskmgr_go_usermode(uint32_t user_code_seg, uint32_t user_data_seg,
-                                uint32_t tls_seg, uint32_t entry_point,
-                                gp_regs_t * p_user_regs);
+extern void taskmgr_go_usermode_impl(uint32_t user_code_seg,
+                                     uint32_t user_data_seg,
+                                     uint32_t tls_seg, uint32_t entry_point,
+                                     gen_regs_t * p_user_regs);
 
 void
 taskmgr_init (void)
 {
-    task_t * p_init_task = alloc(sizeof(*p_init_task));
-    *p_init_task = new_task_with_no_stack(g_new_task_id++);
-
-    p_init_task->kernel_stack.p_top_max = ((void *) 0x10b000);
-    p_init_task->kernel_stack.p_bottom  = ((void *) 0x107000);
-
-    // Add the init task to the list.
-    //
-    gp_first_task = p_init_task;
-
-    g_running_task_id = p_init_task->id;
-
     // Load the TSS.
     //
     __asm__ volatile ("ltr %%ax"
                       :            /* no outputs */
                       : "a" (0x28) /* TSS segment */
                       :            /* no clobber */);
-
-    gb_initialized = true;
 }
 
+/*
+ * Starts the scheduler and causes the initial task to start executing.
+ *
+ * NOTE: this function does not return, for the initial task entry must not
+ * and does not return.
+ *
+ * NOTE: p_init_entry() must enable interrupts, otherwise no task switches
+ * will happen.
+ */
+__attribute__ ((noreturn))
 void
-taskmgr_new_user_task (uint32_t * p_dir, uint32_t entry)
+taskmgr_start_scheduler (__attribute__ ((noreturn)) void (* p_init_entry)(void))
 {
-    // Set up usermode stack.
+    // Critical section.  It ends when the entry is reached.
     //
-    map_user_stack(p_dir);
+    __asm__ ("cli");
 
-    // Create a task with filled stack that will be popped on the task switch.
+    // If interrupts were disabled and PIT IRQ happened after the following line
+    // and before the entry, some bad things would happen with the stack.
     //
-    task_t task = new_task_with_stack(g_new_task_id++, entry);
-    task.tcb.page_dir_phys = ((uint32_t) p_dir);
+    gb_scheduling = true;
 
-    // Add the task to the task list.
+    // Create the initial task.
     //
-    list_append(gp_first_task, task);
+    gp_first_task = new_task((uint32_t) p_init_entry);
+    g_running_task_id = gp_first_task->id;
+
+    taskmgr_switch_tasks(NULL, &gp_first_task->tcb, gdt_get_tss());
+
+    printf("initial task entry has returned\n");
+    panic("unexpected behavior");
+
+    for (;;)
+    {}
 }
 
 void
 taskmgr_schedule (void)
 {
-    if (!gb_initialized)
+    if (!gb_scheduling)
     {
         return;
     }
@@ -135,11 +144,6 @@ taskmgr_schedule (void)
         p_next_task = gp_first_task;
     }
 
-    // Update tasks' TCBs.
-    //
-    p_running_task->tcb.p_kernel_stack = &p_running_task->kernel_stack;
-    p_next_task->tcb.p_kernel_stack = &p_next_task->kernel_stack;
-
     // Update the running task ID.
     //
     g_running_task_id = p_next_task->id;
@@ -148,6 +152,32 @@ taskmgr_schedule (void)
     //
     taskmgr_switch_tasks(&p_running_task->tcb, &p_next_task->tcb,
                          gdt_get_tss());
+}
+
+void
+taskmgr_new_user_task (uint32_t * p_dir, uint32_t entry)
+{
+    // Set up usermode stack.
+    //
+    map_user_stack(p_dir);
+
+    // Create a task with filled stack that will be popped on the task switch.
+    //
+    task_t * p_task = new_task(entry);
+    p_task->tcb.page_dir_phys = ((uint32_t) p_dir);
+
+    // Add the task to the task list.
+    //
+    list_append(gp_first_task, p_task);
+}
+
+void
+taskmgr_go_usermode (uint32_t entry)
+{
+    gen_regs_t gen_regs = { 0 };
+    gen_regs.esp = USER_STACK_TOP;
+
+    taskmgr_go_usermode_impl(0x18, 0x20, 0x28, entry, &gen_regs);
 }
 
 uint32_t
@@ -169,46 +199,36 @@ taskmgr_dump_tasks (void)
     }
 }
 
-static task_t
-new_task_with_no_stack (uint32_t task_id)
+static task_t *
+new_task (uint32_t entry_point)
 {
-    task_t task = {
-        .id = task_id,
-    };
+    task_t * p_task = alloc(sizeof(*p_task));
+    p_task->id = (g_new_task_id++);
+    printf("new_task: p_task = %P id %u\n", p_task, p_task->id);
 
-    // Create the control block.
-    //
-    task.tcb.page_dir_phys = ((uint32_t) vmm_kvas_dir());
-
-    // tcb.p_kernel_stack is not initialized here, because it would point to a
-    // local variable task.kernel_stack.  Instead, it is initialized right
-    // before task switching.
-
-    return (task);
-}
-
-static task_t
-new_task_with_stack (uint32_t task_id, uint32_t entry_point)
-{
-    task_t task = new_task_with_no_stack(task_id);
-
-    // Set up the stack.
+    // Allocate the kernel stack.
     //
     void * p_stack = alloc(KERNEL_STACK_SIZE);
-    stack_new(&task.kernel_stack, p_stack, KERNEL_STACK_SIZE);
+    stack_new(&p_task->kernel_stack, p_stack, KERNEL_STACK_SIZE);
+    printf("taskmgr: stack at %P\n", p_stack);
 
-    // Set up an initial stack that will be popped during a task switch.
+    // Set up the control block.
     //
-    stack_push(&task.kernel_stack, entry_point); // eip
-    stack_push(&task.kernel_stack, 1); // ebp
-    stack_push(&task.kernel_stack, 2); // eax
-    stack_push(&task.kernel_stack, 3); // ecx
-    stack_push(&task.kernel_stack, 4); // edx
-    stack_push(&task.kernel_stack, 5); // ebx
-    stack_push(&task.kernel_stack, 6); // esi
-    stack_push(&task.kernel_stack, 7); // edi
+    p_task->tcb.page_dir_phys  = ((uint32_t) vmm_kvas_dir());
+    p_task->tcb.p_kernel_stack = &p_task->kernel_stack;
 
-    return (task);
+    // Set up initial stack entries that will be popped during a task switch.
+    //
+    stack_push(&p_task->kernel_stack, entry_point); // eip
+    stack_push(&p_task->kernel_stack, 1); // ebp
+    stack_push(&p_task->kernel_stack, 2); // eax
+    stack_push(&p_task->kernel_stack, 3); // ecx
+    stack_push(&p_task->kernel_stack, 4); // edx
+    stack_push(&p_task->kernel_stack, 5); // ebx
+    stack_push(&p_task->kernel_stack, 6); // esi
+    stack_push(&p_task->kernel_stack, 7); // edi
+
+    return (p_task);
 }
 
 static void
@@ -238,10 +258,8 @@ map_user_stack (uint32_t * p_dir)
 }
 
 static void
-list_append (task_t * p_first, task_t task)
+list_append (task_t * p_first, task_t * p_task)
 {
-    task_t * p_task = alloc(sizeof(task_t));
-    *p_task = task;
     p_task->p_next = NULL;
 
     if (!p_first)
