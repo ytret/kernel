@@ -64,6 +64,7 @@ printf (char const * restrict p_format, ...)
             else if ('s' == (*p_format))
             {
                 char const * p_arg_str = va_arg(args, char const *);
+                fill_field(p_arg_str, field_width, false);
                 term_print_str(p_arg_str);
             }
             else if ('d' == (*p_format))
