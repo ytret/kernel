@@ -12,6 +12,11 @@
                 .long   CHECKSUM
 
                 .section .bss
+
+                ## Initial kernel stack.
+                ##
+                ## It is abandoned when the initial kernel task is entered,
+                ## which has its own stack.
                 .align  16
 stack_bottom:   .skip   16384
 stack_top:
