@@ -192,12 +192,18 @@ taskmgr_running_task_id (void)
 void
 taskmgr_dump_tasks (void)
 {
-    printf(" ID     PAGEDIR\n");
+    printf(" ID     PAGEDIR         ESP     MAX ESP   USED\n");
 
     task_t * p_iter = gp_first_task;
     while (p_iter)
     {
-        printf("%3u  0x%08x\n", p_iter->id, p_iter->tcb.page_dir_phys);
+        uint32_t id      = p_iter->id;
+        uint32_t pagedir = p_iter->tcb.page_dir_phys;
+        uint32_t esp     = ((uint32_t) p_iter->tcb.p_kernel_stack->p_top);
+        uint32_t max_esp = ((uint32_t) p_iter->tcb.p_kernel_stack->p_top_max);
+        int32_t  used    = (max_esp - esp);
+        printf("%3u  0x%08x  0x%08x  0x%08x  %5d\n",
+               id, pagedir, esp, max_esp, used);
         p_iter = p_iter->p_next;
     }
 }
