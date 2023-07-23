@@ -170,8 +170,9 @@ map_page (uint32_t * p_dir, uint32_t virt, uint32_t phys, uint32_t flags)
 
         if ((p_dir[dir_idx] & FLAG_CHECK_MASK) != flags)
         {
-            printf("vmm: map_page: page table for %P is present, but it"
-                   " does not have the requested flags\n", virt);
+            printf("vmm: map_page: page table for %P is present, but its"
+                   " checked flags 0x%03x are different from 0x%03x\n", virt,
+                   (p_dir[dir_idx] & FLAG_CHECK_MASK), flags);
             panic("unexpected behavior");
         }
 
