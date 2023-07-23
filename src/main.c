@@ -21,6 +21,7 @@ static void init_entry(void) __attribute__ ((noreturn));
 void
 main (uint32_t magic_num, mbi_t const * p_mbi)
 {
+    term_init();
     term_clear();
     printf("Hello, world!\n");
 

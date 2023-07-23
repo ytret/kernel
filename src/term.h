@@ -2,6 +2,8 @@
 
 #include <stddef.h>
 
+void term_init(void);
+
 void term_clear(void);
 void term_clear_rows(size_t start_row, size_t num_rows);
 

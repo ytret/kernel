@@ -10,6 +10,12 @@ static uint8_t g_col;
 static void put_char(char ch);
 
 void
+term_init (void)
+{
+    vga_init();
+}
+
+void
 term_clear (void)
 {
     term_clear_rows(0, MAX_ROWS);

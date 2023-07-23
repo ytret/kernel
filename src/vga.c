@@ -13,10 +13,30 @@
 #define PORT_CRTC_ADDR          ((uint16_t) 0x3D4)
 #define PORT_CRTC_DATA          ((uint16_t) 0x3D5)
 
+#define REG_CRTC_MAX_SCAN_LINE  ((uint8_t) 0x09)
+#define REG_CRTC_CURSOR_START   ((uint8_t) 0x0A)
+#define REG_CRTC_CURSOR_END     ((uint8_t) 0x0B)
 #define REG_CRTC_CURSOR_LOC_HI  ((uint8_t) 0x0E)
 #define REG_CRTC_CURSOR_LOC_LO  ((uint8_t) 0x0F)
 
 static uint16_t * const gp_vga_memory = (uint16_t *) VGA_MEMORY_ADDR;
+
+void
+vga_init (void)
+{
+    // Set up the cursor.
+
+    port_outb(PORT_CRTC_ADDR, REG_CRTC_MAX_SCAN_LINE);
+    uint8_t max_scan_line = (port_inb(PORT_CRTC_DATA) & 0x1F);
+
+    uint8_t start = 1;
+    uint8_t end   = (max_scan_line - 1);
+
+    port_outb(PORT_CRTC_ADDR, REG_CRTC_CURSOR_START);
+    port_outb(PORT_CRTC_DATA, ((port_inb(PORT_CRTC_DATA) & 0xC0) | start));
+    port_outb(PORT_CRTC_ADDR, REG_CRTC_CURSOR_END);
+    port_outb(PORT_CRTC_DATA, ((port_inb(PORT_CRTC_DATA) & 0xC0) | end));
+}
 
 void
 vga_put_char_at (uint8_t row, uint8_t col, char ch)
