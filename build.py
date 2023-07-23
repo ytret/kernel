@@ -173,6 +173,7 @@ if __name__ == "__main__":
         "src/kbd.c",
         "src/kshell/cmd.c",
         "src/kshell/kshell.c",
+        "src/kshell/vasview.c",
         "src/main.c",
         "src/mbi.c",
         "src/memcpy.c",

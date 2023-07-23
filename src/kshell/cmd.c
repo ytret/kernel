@@ -18,6 +18,7 @@
 #include <alloc.h>
 #include <elf.h>
 #include <kshell/cmd.h>
+#include <kshell/vasview.h>
 #include <mbi.h>
 #include <panic.h>
 #include <printf.h>
@@ -26,7 +27,7 @@
 #include <term.h>
 #include <vmm.h>
 
-#define NUM_CMDS        7
+#define NUM_CMDS        8
 
 static char const * const gp_cmd_names[NUM_CMDS] =
 {
@@ -37,6 +38,7 @@ static char const * const gp_cmd_names[NUM_CMDS] =
     "elfhdr",
     "exec",
     "tasks",
+    "vasview",
 };
 
 static uint32_t g_exec_entry;
@@ -49,6 +51,7 @@ static void cmd_elfhdr(void);
 static void cmd_exec(void);
 static void cmd_exec_entry(void);
 static void cmd_tasks(void);
+static void cmd_vasview(void);
 
 void
 kshell_cmd_parse (char const * p_cmd)
@@ -62,6 +65,7 @@ kshell_cmd_parse (char const * p_cmd)
             cmd_elfhdr,
             cmd_exec,
             cmd_tasks,
+            cmd_vasview,
         };
 
     for (size_t idx = 0; idx < NUM_CMDS; idx++)
@@ -273,4 +277,10 @@ static void
 cmd_tasks (void)
 {
     taskmgr_dump_tasks();
+}
+
+static void
+cmd_vasview (void)
+{
+    vasview();
 }
