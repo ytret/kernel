@@ -1,5 +1,6 @@
 #include <alloc.h>
 #include <mbi.h>
+#include <string.h>
 
 static mbi_t g_mbi;
 
@@ -37,4 +38,30 @@ mbi_t const *
 mbi_get_ptr (void)
 {
     return (&g_mbi);
+}
+
+void const *
+mbi_find_mod (mbi_t const * p_mbi, char const * p_name)
+{
+    if (!(p_mbi->flags & MBI_FLAG_MODS))
+    {
+        return (NULL);
+    }
+
+    for (size_t idx = 0; idx < p_mbi->mods_count; idx++)
+    {
+        mbi_mod_t const * p_mods = ((mbi_mod_t const *) p_mbi->mods_addr);
+
+        if (!p_mods[idx].string)
+        {
+            continue;
+        }
+
+        if (string_equals(((char const *) p_mods[idx].string), p_name))
+        {
+            return ((void const *) p_mods[idx].mod_start);
+        }
+    }
+
+    return (NULL);
 }
