@@ -49,7 +49,7 @@ kshell (void)
 
         printf("> ");
         char const * p_cmd = read_cmd();
-        if ((!p_cmd) || (0 == string_len(p_cmd)))
+        if (!p_cmd)
         {
             continue;
         }
