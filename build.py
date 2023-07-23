@@ -184,6 +184,7 @@ if __name__ == "__main__":
         "src/pit.c",
         "src/pmm.c",
         "src/printf.c",
+        "src/psf.c",
         "src/stack.c",
         "src/string.c",
         "src/taskmgr.c",
