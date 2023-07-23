@@ -107,7 +107,6 @@ vmm_clone_kvas (void)
             //
             p_dir[dir_idx] =
                 (((uint32_t) p_tbl) | (gp_kvas_dir[dir_idx] & 0xFFF));
-            p_dir[dir_idx] |= TABLE_USER; // temporary
 
             for (uint32_t tbl_idx = 0; tbl_idx < 1024; tbl_idx++)
             {
@@ -116,7 +115,6 @@ vmm_clone_kvas (void)
                 if (p_ktbl[tbl_idx] & PAGE_PRESENT)
                 {
                     p_tbl[tbl_idx] = p_ktbl[tbl_idx];
-                    p_tbl[tbl_idx] |= PAGE_USER; // temporary
                 }
             }
         }
