@@ -2,17 +2,19 @@
 
                 ##
                 ## Passes execution from this task to the specified one.
-                ## Updates the ESP0 field in the provided TSS.
                 ##
                 ## Arguments:
                 ##   1. tcb_t       * p_from
                 ##   2. tcb_t const * p_to
                 ##   3. tss_t       * p_tss
                 ##
+                ## Saves the context in p_from (if not NULL), loads the context
+                ## of p_to.  Updates p_tss->ESP0, kernel stack top.
+                ##
                 ## NOTE: the caller must disable interrupts before and enable
                 ## them after calling this function.  Before - because the stack
-                ## would corrupt, and after - for the task switch to happen
-                ## again.
+                ## would corrupt on an interrupt, and after - for the task
+                ## switch to happen again.
                 ##
                 .global taskmgr_switch_tasks
                 .type   taskmgr_switch_tasks, @function
@@ -23,7 +25,7 @@ taskmgr_switch_tasks:
                 ## If p_from is not provided (NULL), then this is an entry into
                 ## the very first task with the current stack being abandoned.
                 ## Go straight to loading the next task's context, since there
-                ## is no context to save.
+                ## is no need to save the context.
                 cmp     $0, 8(%ebp)
                 jz      1f
 
@@ -41,7 +43,7 @@ taskmgr_switch_tasks:
                 mov     4(%esi), %eax           # eax = p_from->p_kernel_stack
                 mov     %esp, (%eax)            # first field is the stack top
 
-                ## Load the parameters.
+                ## Load the other parameters.
 1:              mov     12(%ebp), %edi          # edi = p_to
                 mov     16(%ebp), %eax          # eax = p_tss
 
