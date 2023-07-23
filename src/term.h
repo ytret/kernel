@@ -3,6 +3,7 @@
 #include <stddef.h>
 
 void term_clear(void);
+void term_clear_rows(size_t start_row, size_t num_rows);
 
 void term_print_str(char const * p_str);
 void term_print_str_len(char const * p_str, size_t len);

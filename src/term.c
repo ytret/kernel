@@ -12,7 +12,13 @@ static void put_char(char ch);
 void
 term_clear (void)
 {
-    for (size_t row = 0; row < MAX_ROWS; row++)
+    term_clear_rows(0, MAX_ROWS);
+}
+
+void
+term_clear_rows (size_t start_row, size_t num_rows)
+{
+    for (size_t row = start_row; row < (start_row + num_rows); row++)
     {
         for (size_t col = 0; col < MAX_COLS; col++)
         {
