@@ -56,6 +56,8 @@ vga_scroll (void)
 
     // Clean the last row.
     //
-    __builtin_memset(&gp_vga_memory[(MAX_ROWS - 1) * MAX_COLS], 0,
-                     2 * MAX_COLS);
+    for (size_t col = 0; col < MAX_COLS; col++)
+    {
+        vga_put_char_at((MAX_ROWS - 1), col, ' ');
+    }
 }
