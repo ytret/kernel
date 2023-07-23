@@ -28,6 +28,7 @@
 #include <vmm.h>
 
 #define NUM_CMDS        8
+#define MAX_ARGS        32
 
 static char const * const gp_cmd_names[NUM_CMDS] =
 {
@@ -43,20 +44,35 @@ static char const * const gp_cmd_names[NUM_CMDS] =
 
 static uint32_t g_exec_entry;
 
-static void cmd_clear(void);
-static void cmd_help(void);
-static void cmd_mbimap(void);
-static void cmd_mbimod(void);
-static void cmd_elfhdr(void);
-static void cmd_exec(void);
+static void cmd_clear(char ** pp_args, size_t num_args);
+static void cmd_help(char ** pp_args, size_t num_args);
+static void cmd_mbimap(char ** pp_args, size_t num_args);
+static void cmd_mbimod(char ** pp_args, size_t num_args);
+static void cmd_elfhdr(char ** pp_args, size_t num_args);
+static void cmd_exec(char ** pp_args, size_t num_args);
 static void cmd_exec_entry(void);
-static void cmd_tasks(void);
-static void cmd_vasview(void);
+static void cmd_tasks(char ** pp_args, size_t num_args);
+static void cmd_vasview(char ** pp_args, size_t num_args);
 
 void
 kshell_cmd_parse (char const * p_cmd)
 {
-    static void (* const p_cmd_funs[NUM_CMDS])(void) =
+    char * pp_args[MAX_ARGS];
+    size_t num_args = string_split(p_cmd, ' ', true, pp_args, MAX_ARGS);
+
+    if (0 == num_args)
+    {
+        return;
+    }
+
+    if (num_args > MAX_ARGS)
+    {
+        printf("kshell: too much arguments (more than %u)\n", MAX_ARGS);
+        return;
+    }
+
+    static void (* const p_cmd_funs[NUM_CMDS])(char ** pp_args,
+                                               size_t num_args) =
         {
             cmd_clear,
             cmd_help,
@@ -70,25 +86,37 @@ kshell_cmd_parse (char const * p_cmd)
 
     for (size_t idx = 0; idx < NUM_CMDS; idx++)
     {
-        if (string_equals(p_cmd, gp_cmd_names[idx]))
+        if (string_equals(pp_args[0], gp_cmd_names[idx]))
         {
-            p_cmd_funs[idx]();
+            p_cmd_funs[idx](pp_args, num_args);
             return;
         }
     }
 
-    printf("kshell: unknown command: '%s'\n", p_cmd);
+    printf("kshell: unknown command: '%s'\n", pp_args[0]);
 }
 
 static void
-cmd_clear (void)
+cmd_clear (char ** pp_args, size_t num_args)
 {
+    if (1 != num_args)
+    {
+        printf("Usage: %s\n", pp_args[0]);
+        return;
+    }
+
     term_clear();
 }
 
 static void
-cmd_help (void)
+cmd_help (char ** pp_args, size_t num_args)
 {
+    if (1 != num_args)
+    {
+        printf("Usage: %s\n", pp_args[0]);
+        return;
+    }
+
     printf("Available commands:\n");
     for (size_t idx = 0; idx < NUM_CMDS; idx++)
     {
@@ -102,8 +130,14 @@ cmd_help (void)
 }
 
 static void
-cmd_mbimap (void)
+cmd_mbimap (char ** pp_args, size_t num_args)
 {
+    if (1 != num_args)
+    {
+        printf("Usage: %s\n", pp_args[0]);
+        return;
+    }
+
     mbi_t const * p_mbi = mbi_get_ptr();
 
     if (!(p_mbi->flags & MBI_FLAG_MMAP))
@@ -142,8 +176,14 @@ cmd_mbimap (void)
 }
 
 static void
-cmd_mbimod (void)
+cmd_mbimod (char ** pp_args, size_t num_args)
 {
+    if (1 != num_args)
+    {
+        printf("Usage: %s\n", pp_args[0]);
+        return;
+    }
+
     mbi_t const * p_mbi = mbi_get_ptr();
 
     if (!(p_mbi->flags & MBI_FLAG_MODS))
@@ -175,8 +215,14 @@ cmd_mbimod (void)
 }
 
 static void
-cmd_elfhdr (void)
+cmd_elfhdr (char ** pp_args, size_t num_args)
 {
+    if (1 != num_args)
+    {
+        printf("Usage: %s\n", pp_args[0]);
+        return;
+    }
+
     mbi_t const * p_mbi = mbi_get_ptr();
 
     if (!(p_mbi->flags & MBI_FLAG_MODS))
@@ -211,8 +257,14 @@ cmd_elfhdr (void)
 }
 
 static void
-cmd_exec (void)
+cmd_exec (char ** pp_args, size_t num_args)
 {
+    if (1 != num_args)
+    {
+        printf("Usage: %s\n", pp_args[0]);
+        return;
+    }
+
     mbi_t const * p_mbi = mbi_get_ptr();
 
     if (!(p_mbi->flags & MBI_FLAG_MODS))
@@ -274,13 +326,25 @@ cmd_exec_entry (void)
 }
 
 static void
-cmd_tasks (void)
+cmd_tasks (char ** pp_args, size_t num_args)
 {
+    if (1 != num_args)
+    {
+        printf("Usage: %s\n", pp_args[0]);
+        return;
+    }
+
     taskmgr_dump_tasks();
 }
 
 static void
-cmd_vasview (void)
+cmd_vasview (char ** pp_args, size_t num_args)
 {
+    if (1 != num_args)
+    {
+        printf("Usage: %s\n", pp_args[0]);
+        return;
+    }
+
     vasview();
 }
