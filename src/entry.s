@@ -1,15 +1,27 @@
-                .set    FLAG_ALIGN,     1 << 0
+                .set    FLAG_MODALIGN,  1 << 0
                 .set    FLAG_MEMINFO,   1 << 1
+                .set    FLAG_VIDEO,     1 << 2
 
-                .set    MAGIC,          0x1BADB002
-                .set    FLAGS,          FLAG_ALIGN | FLAG_MEMINFO
-                .set    CHECKSUM,       -(MAGIC + FLAGS)
+                .set    MAGIC,    0x1BADB002
+                .set    FLAGS,    FLAG_MODALIGN | FLAG_MEMINFO | FLAG_VIDEO
+                .set    CHECKSUM, -(MAGIC + FLAGS)
+
+                ## Preferred video mode.
+                .set    VIDEO_MODE,     0
+                .set    VIDEO_WIDTH,    0
+                .set    VIDEO_HEIGHT,   0
+                .set    VIDEO_DEPTH,    0
 
                 .section .multiboot_header
                 .align  4
                 .long   MAGIC
                 .long   FLAGS
                 .long   CHECKSUM
+                .skip   20
+                .long   VIDEO_MODE
+                .long   VIDEO_WIDTH
+                .long   VIDEO_HEIGHT
+                .long   VIDEO_DEPTH
 
                 .section .bss
 
