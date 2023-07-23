@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 // Maximum lengths of unsigned and signed ints in base 10 and/or base 16.
+//
 #define MAX_INT_LEN_10          11
 #define MAX_UINT_LEN_10         10
 #define MAX_UINT_LEN_16         8
