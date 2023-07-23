@@ -17,6 +17,9 @@
 typedef struct
 __attribute__ ((packed))
 {
+    // This field order is relied upon by taskmgr_switch_tasks() assembly
+    // function (see taskmgr.s).
+
     uint32_t  page_dir_phys;
     stack_t * p_kernel_stack;
 } tcb_t;
