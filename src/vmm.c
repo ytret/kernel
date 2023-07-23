@@ -90,7 +90,7 @@ vmm_clone_kvas (void)
     uint32_t * p_dir = alloc_aligned(4096, 4096);
     __builtin_memset(p_dir, 0, 4096);
 
-    for (uint32_t dir_idx = 0; dir_idx < 1024; dir_idx++)
+    for (uint32_t dir_idx = 0; dir_idx < 256; dir_idx++)
     {
         if (gp_kvas_dir[dir_idx] & TABLE_PRESENT)
         {
