@@ -1,24 +1,51 @@
+#include <framebuf.h>
 #include <term.h>
 #include <vga.h>
 
-#define MAX_ROWS        25
-#define MAX_COLS        80
+static size_t g_max_row;
+static size_t g_max_col;
 
-static uint8_t g_row;
-static uint8_t g_col;
+static size_t g_row;
+static size_t g_col;
+
+static void (* gp_put_char_at)(size_t row, size_t col, char ch);
+static void (* gp_put_cursor_at)(size_t row, size_t col);
+static void (* gp_scroll)(void);
 
 static void put_char(char ch);
 
 void
-term_init (void)
+term_init (mbi_t const * p_mbi)
 {
-    vga_init();
+    if ((p_mbi->flags & MBI_FLAG_FRAMEBUF)
+        && (MBI_FRAMEBUF_EGA != p_mbi->framebuffer_type))
+    {
+        framebuf_init(p_mbi);
+
+        g_max_row = framebuf_height_chars();
+        g_max_col = framebuf_width_chars();
+
+        gp_put_char_at   = framebuf_put_char_at;
+        gp_put_cursor_at = framebuf_put_cursor_at;
+        gp_scroll        = framebuf_scroll;
+    }
+    else
+    {
+        vga_init();
+
+        g_max_row = vga_height_chars();
+        g_max_col = vga_width_chars();
+
+        gp_put_char_at   = vga_put_char_at;
+        gp_put_cursor_at = vga_put_cursor_at;
+        gp_scroll        = vga_scroll;
+    }
 }
 
 void
 term_clear (void)
 {
-    term_clear_rows(0, MAX_ROWS);
+    term_clear_rows(0, g_max_row);
 }
 
 void
@@ -26,9 +53,9 @@ term_clear_rows (size_t start_row, size_t num_rows)
 {
     for (size_t row = start_row; row < (start_row + num_rows); row++)
     {
-        for (size_t col = 0; col < MAX_COLS; col++)
+        for (size_t col = 0; col < g_max_col; col++)
         {
-            vga_put_char_at(row, col, ' ');
+            gp_put_char_at(row, col, ' ');
         }
     }
 
@@ -62,13 +89,13 @@ term_print_str_len (char const * p_str, size_t len)
 void
 term_put_char_at (size_t row, size_t col, char ch)
 {
-    vga_put_char_at(row, col, ch);
+    gp_put_char_at(row, col, ch);
 }
 
 void
 term_put_cursor_at (size_t row, size_t col)
 {
-    vga_put_cursor_at(row, col);
+    gp_put_cursor_at(row, col);
 
     g_row = row;
     g_col = col;
@@ -89,13 +116,13 @@ term_col (void)
 size_t
 term_height (void)
 {
-    return (MAX_ROWS);
+    return (g_max_row);
 }
 
 size_t
 term_width (void)
 {
-    return (MAX_COLS);
+    return (g_max_col);
 }
 
 static void
@@ -106,25 +133,25 @@ put_char (char ch)
         case '\n':
             g_col = 0;
             g_row++;
-            if (g_row >= MAX_ROWS)
+            if (g_row >= g_max_row)
             {
-                g_row = (MAX_ROWS - 1);
-                vga_scroll();
+                g_row = (g_max_row - 1);
+                gp_scroll();
             }
         break;
 
         default:
-            vga_put_char_at(g_row, g_col, ch);
+            gp_put_char_at(g_row, g_col, ch);
 
             g_col++;
-            if (g_col >= MAX_COLS)
+            if (g_col >= g_max_col)
             {
                 g_col = 0;
                 g_row++;
-                if (g_row >= MAX_ROWS)
+                if (g_row >= g_max_row)
                 {
-                    g_row = (MAX_ROWS - 1);
-		    vga_scroll();
+                    g_row = (g_max_row - 1);
+		    gp_scroll();
                 }
             }
     }

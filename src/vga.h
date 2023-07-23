@@ -1,8 +1,12 @@
 #pragma once
 
-#include <stdint.h>
+#include <stddef.h>
 
 void vga_init(void);
-void vga_put_char_at(uint8_t row, uint8_t col, char ch);
-void vga_put_cursor_at(uint8_t row, uint8_t col);
+
+size_t vga_height_chars(void);
+size_t vga_width_chars(void);
+
+void vga_put_char_at(size_t row, size_t col, char ch);
+void vga_put_cursor_at(size_t row, size_t col);
 void vga_scroll(void);

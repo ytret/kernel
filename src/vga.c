@@ -38,8 +38,20 @@ vga_init (void)
     port_outb(PORT_CRTC_DATA, ((port_inb(PORT_CRTC_DATA) & 0xC0) | end));
 }
 
+size_t
+vga_height_chars (void)
+{
+    return (MAX_ROWS);
+}
+
+size_t
+vga_width_chars (void)
+{
+    return (MAX_COLS);
+}
+
 void
-vga_put_char_at (uint8_t row, uint8_t col, char ch)
+vga_put_char_at (size_t row, size_t col, char ch)
 {
     if ((row >= MAX_ROWS) || (col >= MAX_COLS))
     {
@@ -51,7 +63,7 @@ vga_put_char_at (uint8_t row, uint8_t col, char ch)
 }
 
 void
-vga_put_cursor_at (uint8_t row, uint8_t col)
+vga_put_cursor_at (size_t row, size_t col)
 {
     if ((row >= MAX_ROWS) || (col >= MAX_COLS))
     {
