@@ -165,6 +165,7 @@ if __name__ == "__main__":
         "src/entry.s",
         "src/alloc.c",
         "src/elf.c",
+        "src/framebuf.c",
         "src/gdt.c",
         "src/gdt.s",
         "src/idt.c",
