@@ -56,6 +56,16 @@ main (uint32_t magic_num, mbi_t const * p_mbi)
 
     pic_set_mask(KBD_IRQ, false);
 
+    if (!(p_mbi->flags & MBI_FLAG_FRAMEBUF))
+    {
+        printf("No framebuffer in MBI\n");
+    }
+    else
+    {
+        printf("framebuffer_addr = %P\n", p_mbi->framebuffer_addr);
+        printf("framebuffer_type = %u\n", p_mbi->framebuffer_type);
+    }
+
     taskmgr_init();
     taskmgr_start_scheduler(init_entry);
 
