@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mbi.h>
+
 #include <stdint.h>
 
 #define VMM_HEAP_START  0x400000
@@ -7,7 +9,7 @@
 
 #define VMM_USER_START  0x40000000
 
-void vmm_init(void);
+void vmm_init(mbi_t const * p_mbi);
 
 uint32_t const * vmm_kvas_dir(void);
 uint32_t       * vmm_clone_kvas(void);

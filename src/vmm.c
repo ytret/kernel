@@ -1,4 +1,5 @@
 #include <alloc.h>
+#include <mbi.h>
 #include <panic.h>
 #include <pmm.h>
 #include <printf.h>
@@ -35,7 +36,7 @@ static void unmap_page(uint32_t * p_dir, uint32_t virt);
 static void invlpg(uint32_t addr);
 
 void
-vmm_init (void)
+vmm_init (mbi_t const * p_mbi)
 {
     // Identity map the first 8 MiBs.
     //
@@ -69,6 +70,32 @@ vmm_init (void)
         (((uint32_t) gpp_kvas_tables[0]) | TABLE_RW | TABLE_PRESENT);
     gp_kvas_dir[1] =
         (((uint32_t) gpp_kvas_tables[1]) | TABLE_RW | TABLE_PRESENT);
+
+    // If the framebuffer is still not mapped, map it.
+    //
+    if ((p_mbi->flags & MBI_FLAG_FRAMEBUF)
+        && (p_mbi->framebuffer_type != MBI_FRAMEBUF_EGA))
+    {
+        size_t size = (p_mbi->framebuffer_height * p_mbi->framebuffer_pitch);
+        uint64_t framebuf_end = (p_mbi->framebuffer_addr + size);
+        if (framebuf_end > 0x100000000)
+        {
+            // We allow framebuf_end to be 0x1_0000_000, but not more than that.
+            //
+            printf("vmm: vmm_init: framebuffer end is beyond 4 GiBs at"
+                   " 0x%08X_%08X\n", ((uint32_t) (framebuf_end >> 32)),
+                   ((uint32_t) framebuf_end));
+            panic("framebuffer is too large");
+        }
+
+        for (uint32_t virt = p_mbi->framebuffer_addr;
+             virt < framebuf_end;
+             virt += 4096)
+        {
+            uint32_t phys = virt;
+            vmm_map_kernel_page(virt, phys);
+        }
+    }
 
     // Enable paging.
     //
@@ -166,8 +193,6 @@ map_page (uint32_t * p_dir, uint32_t virt, uint32_t phys, uint32_t flags)
     uint32_t * p_tbl;
     if (p_dir[dir_idx] & TABLE_PRESENT)
     {
-        printf("vmm: map_page: page table %u is present\n", dir_idx);
-
         if ((p_dir[dir_idx] & FLAG_CHECK_MASK) != flags)
         {
             printf("vmm: map_page: page table for %P is present, but its"

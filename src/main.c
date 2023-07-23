@@ -47,9 +47,10 @@ main (uint32_t magic_num, mbi_t const * p_mbi)
     __asm__ volatile ("sti");
     printf("Interrupts enabled\n");
 
-    pmm_init(p_mbi);
-    vmm_init();
     alloc_init(((void *) VMM_HEAP_START), VMM_HEAP_SIZE);
+
+    pmm_init(p_mbi);
+    vmm_init(p_mbi);
 
     mbi_copy(p_mbi);
 
