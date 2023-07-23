@@ -6,7 +6,7 @@
 #include <string.h>
 #include <term.h>
 
-#define CMD_BUF_SIZE    8
+#define CMD_BUF_SIZE    256
 
 // Shell state.
 //
