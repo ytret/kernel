@@ -39,18 +39,12 @@ static void move_cursor(int32_t inc_row, int32_t inc_col);
 static bool move_check_pos(size_t row, size_t col);
 
 void
-vasview (void)
+vasview (uint32_t pgdir_virt)
 {
     kbd_set_callback(kbd_callback);
 
-    uint32_t cr3 = 0xDEADBEEF;
-    __asm__ volatile ("mov %%cr3, %%eax"
-                      : "=a" (cr3)
-                      : /* no inputs */
-                      : /* no clobber */);
-
     gb_exit  = false;
-    gp_pgdir = ((uint32_t *) cr3);
+    gp_pgdir = ((uint32_t *) pgdir_virt);
     g_row    = 0;
     g_col    = 0;
 

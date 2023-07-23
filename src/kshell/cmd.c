@@ -340,11 +340,31 @@ cmd_tasks (char ** pp_args, size_t num_args)
 static void
 cmd_vasview (char ** pp_args, size_t num_args)
 {
-    if (1 != num_args)
+    if (num_args > 2)
     {
-        printf("Usage: %s\n", pp_args[0]);
+        printf("Usage: %s [pgdir]\n", pp_args[0]);
+        printf("Optional arguments:\n");
+        printf("  pgdir  virtual address of a page directory to view"
+               " (default: kshell task VAS)\n");
         return;
     }
 
-    vasview();
+    uint32_t pgdir;
+    __asm__ volatile ("mov %%cr3, %0"
+                      : "=a" (pgdir)
+                      : /* no inputs */
+                      : /* no clobber */);
+
+    if (2 == num_args)
+    {
+        bool ok = string_to_uint32(pp_args[1], &pgdir, 16);
+        if (!ok)
+        {
+            printf("Invalid argument: '%s'\n", pp_args[1]);
+            printf("pgdir must be a hexadecimal 32-bit unsigned integer\n");
+            return;
+        }
+    }
+
+    vasview(pgdir);
 }
