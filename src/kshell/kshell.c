@@ -40,10 +40,13 @@ static char char_from_key(uint8_t key);
 void
 kshell (void)
 {
-    kbd_set_callback(kbd_callback);
-
     for (;;)
     {
+        // Set the keyboard event callback in the loop, so that commands can
+        // reset it to their own callbacks.
+        //
+        kbd_set_callback(kbd_callback);
+
         printf("> ");
         char const * p_cmd = read_cmd();
         if ((!p_cmd) || (0 == string_len(p_cmd)))
