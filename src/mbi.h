@@ -4,6 +4,11 @@
 
 #define MBI_FLAG_MODS           (1 << 3)
 #define MBI_FLAG_MMAP           (1 << 6)
+#define MBI_FLAG_FRAMEBUF       (1 << 12)
+
+// Value of mbi_t.framebuffer_type for an EGA text mode.
+//
+#define MBI_FRAMEBUF_EGA        2
 
 typedef struct
 __attribute__ ((packed))
