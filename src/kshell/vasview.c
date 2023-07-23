@@ -8,7 +8,7 @@
 #include <stdint.h>
 
 #define VIEW_START_ROW  2
-#define VIEW_START_COL  3
+#define VIEW_START_COL  8
 #define VIEW_ROWS       16
 #define VIEW_COLS       64
 
