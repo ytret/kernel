@@ -224,29 +224,7 @@ cmd_elfhdr (char ** pp_args, size_t num_args)
     }
 
     mbi_t const * p_mbi = mbi_get_ptr();
-
-    if (!(p_mbi->flags & MBI_FLAG_MODS))
-    {
-        printf("Module 'user' is not found\n");
-        return;
-    }
-
-    void const * p_elf_user = NULL;
-    for (size_t idx = 0; idx < p_mbi->mods_count; idx++)
-    {
-        mbi_mod_t const * p_mods = ((mbi_mod_t const *) p_mbi->mods_addr);
-
-        if (!p_mods[idx].string)
-        {
-            continue;
-        }
-
-        if (string_equals(((char const *) p_mods[idx].string), "user"))
-        {
-            p_elf_user = ((void const *) p_mods[idx].mod_start);
-        }
-    }
-
+    void const * p_elf_user = mbi_find_mod(p_mbi, "user");
     if (!p_elf_user)
     {
         printf("Module 'user' is not found\n");
