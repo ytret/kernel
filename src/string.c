@@ -122,3 +122,59 @@ string_split (char const * p_str, char ch, bool b_ignore_empty, char ** pp_res,
 
     return (res_idx);
 }
+
+bool
+string_to_uint32 (char const * p_str, uint32_t * p_num, int base)
+{
+    // Construct an uppercase copy of p_str.
+    //
+    char * p_strup = alloc(string_len(p_str));
+    __builtin_memcpy(p_strup, p_str, string_len(p_str));
+    string_to_upper(p_strup);
+
+    // Reset *p_num.
+    //
+    *p_num = 0;
+
+    while (*p_strup)
+    {
+        int digit;
+        if (('0' <= (*p_strup)) && ((*p_strup) <= '9'))
+        {
+            digit = ((*p_strup) - '0');
+        }
+        else if (('A' <= (*p_strup)) && ((*p_strup) <= 'Z'))
+        {
+            digit = (((*p_strup) - 'A') + 10);
+        }
+        else
+        {
+            // Cannot convert char to a digit.
+            //
+            *p_num = 0;
+            return (false);
+        }
+
+        if (digit >= base)
+        {
+            // The digit is greater than the base.
+            //
+            *p_num = 0;
+            return (false);
+        }
+
+        uint64_t check_overflow = (((uint64_t) (*p_num)) * base + digit);
+        if (check_overflow > UINT32_MAX)
+        {
+            *p_num = 0;
+            return (false);
+        }
+
+        *p_num *= base;
+        *p_num += digit;
+
+        p_strup++;
+    }
+
+    return (true);
+}
