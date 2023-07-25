@@ -1,7 +1,7 @@
 /*
  * Command handling functions of kshell.
  *
- * Adding a new command:
+ * To add a new command:
  *
  *      1. Increment NUM_CMDS.
  *
@@ -27,7 +27,9 @@
 #include <term.h>
 #include <vmm.h>
 
-#define NUM_CMDS        8
+#include <cpuid.h>
+
+#define NUM_CMDS        9
 #define MAX_ARGS        32
 
 static char const * const gp_cmd_names[NUM_CMDS] =
@@ -40,6 +42,7 @@ static char const * const gp_cmd_names[NUM_CMDS] =
     "exec",
     "tasks",
     "vasview",
+    "cpuid",
 };
 
 static uint32_t g_exec_entry;
@@ -53,6 +56,7 @@ static void cmd_exec(char ** pp_args, size_t num_args);
 static void cmd_exec_entry(void);
 static void cmd_tasks(char ** pp_args, size_t num_args);
 static void cmd_vasview(char ** pp_args, size_t num_args);
+static void cmd_cpuid(char ** pp_args, size_t num_args);
 
 void
 kshell_cmd_parse (char const * p_cmd)
@@ -82,6 +86,7 @@ kshell_cmd_parse (char const * p_cmd)
             cmd_exec,
             cmd_tasks,
             cmd_vasview,
+            cmd_cpuid,
         };
 
     for (size_t idx = 0; idx < NUM_CMDS; idx++)
@@ -345,4 +350,36 @@ cmd_vasview (char ** pp_args, size_t num_args)
     }
 
     vasview(pgdir);
+}
+
+static void
+cmd_cpuid (char ** pp_args, size_t num_args)
+{
+    if (2 != num_args)
+    {
+        printf("Usage: %s <leaf>\n", pp_args[0]);
+        return;
+    }
+
+    uint32_t leaf;
+    bool b_arg_ok = string_to_uint32(pp_args[1], &leaf, 10);
+    if (!b_arg_ok)
+    {
+        printf("Invalid argument: '%s'\n", pp_args[1]);
+        printf("leaf must be a decimal 32-bit unsigned integer\n");
+        return;
+    }
+
+    unsigned int eax, ebx, ecx, edx;
+    int cpuid_ok = __get_cpuid(leaf, &eax, &ebx, &ecx, &edx);
+    if (!cpuid_ok)
+    {
+        printf("Unsupported cpuid leaf: %u\n", leaf);
+        return;
+    }
+
+    printf("EAX = %08x\n", eax);
+    printf("EBX = %08x\n", ebx);
+    printf("ECX = %08x\n", ecx);
+    printf("EDX = %08x\n", edx);
 }
