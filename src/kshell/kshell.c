@@ -10,12 +10,12 @@
 
 // Shell state.
 //
-static bool gb_reading_cmd;
+static volatile bool gb_reading_cmd;
 
 // Command buffer.
 //
-static char   gp_cmd_buf[CMD_BUF_SIZE];
-static size_t g_cmd_buf_pos;
+static volatile char   gp_cmd_buf[CMD_BUF_SIZE];
+static volatile size_t g_cmd_buf_pos;
 
 // Keyboard state.
 //
@@ -29,7 +29,7 @@ static char const * read_cmd(void);
 //
 static void         buf_append(char ch);
 static void         buf_remove(void);
-static char const * buf_get_cmd(void);
+static volatile char const * buf_get_cmd(void);
 
 // Keyboard-related functions.
 //
@@ -73,7 +73,7 @@ read_cmd (void)
     while (gb_reading_cmd)
     {}
 
-    return (buf_get_cmd());
+    return ((char const *) buf_get_cmd());
 }
 
 static void
@@ -100,7 +100,7 @@ buf_remove (void)
 /*
  * Returns a NUL-terminated command buffer string and resets the buffer.
  */
-static char const *
+static volatile char const *
 buf_get_cmd (void)
 {
     if (g_cmd_buf_pos >= CMD_BUF_SIZE)
