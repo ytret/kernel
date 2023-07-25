@@ -110,3 +110,4 @@
 #define KEY_PAUSEBREAK          0x66
 
 void kbd_set_callback(void (* p_callback)(uint8_t key, bool b_released));
+void kbd_irq_handler(void);
