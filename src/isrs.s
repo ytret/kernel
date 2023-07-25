@@ -117,6 +117,9 @@ isr_irq0:       cli
 
                 pusha
                 cld
+                ## NOTE: when changing the C handler name here, also update
+                ## pic_spurious_irq_handler(), so that it calls the SAME handler
+                ## as this ISR.
                 call    pit_irq_handler
                 popa
 
@@ -133,12 +136,52 @@ isr_irq1:       cli
 
                 pusha
                 cld
+                ## NOTE: when changing the C handler name here, also update
+                ## pic_spurious_irq_handler(), so that it calls the SAME handler
+                ## as this ISR.
                 call    kbd_irq_handler
                 popa
 
                 pop     %ebp
                 iret
                 .size   isr_irq1, . - isr_irq1
+
+                ## ISR for IRQ7 (spurious IRQ).
+                .global isr_irq7
+                .type   isr_irq7, @function
+isr_irq7:       cli
+                push    %ebp
+                mov     %esp, %ebp
+
+                pusha
+                push    $7
+                cld
+                call    pic_spurious_irq_handler
+                add     $4, %esp
+                popa
+
+                pop     %ebp
+                iret
+                .size   isr_irq7, . - isr_irq7
+
+                ## ISR for IRQ15 (spurious IRQ from slave PIC).
+                .global isr_irq15
+                .type   isr_irq15, @function
+isr_irq15:       cli
+                push    %ebp
+                mov     %esp, %ebp
+
+                pusha
+                push    $15
+                cld
+                call    pic_spurious_irq_handler
+                add     $4, %esp
+                popa
+
+                pop     %ebp
+                iret
+                .size   isr_irq15, . - isr_irq15
+
 
                 ## ISR for all the other interrupts.  Same as
                 ## ISR_EXCEPTION_NO_EC, but does not push the interrupt number

@@ -76,13 +76,15 @@ idt_init (void)
     fill_entry(&gp_idt[30], isr_30);
     fill_entry(&gp_idt[31], isr_31);
 
-    fill_entry(&gp_idt[32], isr_irq0);
-    fill_entry(&gp_idt[33], isr_irq1);
-
-    for (size_t idx = 34; idx < NUM_ENTRIES; idx++)
+    for (size_t idx = 32; idx < NUM_ENTRIES; idx++)
     {
 	fill_entry(&gp_idt[idx], isr_dummy);
     }
+
+    fill_entry(&gp_idt[32 + 0], isr_irq0);
+    fill_entry(&gp_idt[32 + 1], isr_irq1);
+    fill_entry(&gp_idt[32 + 7], isr_irq7);
+    fill_entry(&gp_idt[32 + 15], isr_irq15);
 
     fill_desc(p_desc, gp_idt, (sizeof(gp_idt) - 1));
     idt_load(p_desc);
