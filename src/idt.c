@@ -81,6 +81,9 @@ idt_init (void)
 	fill_entry(&gp_idt[idx], isr_dummy);
     }
 
+    // When adding a new IRQ handler, also update pic_spurious_irq_handler(),
+    // so that it calls the new handler too, in case of a spurious IRQ.
+    //
     fill_entry(&gp_idt[32 + 0], isr_irq0);
     fill_entry(&gp_idt[32 + 1], isr_irq1);
     fill_entry(&gp_idt[32 + 7], isr_irq7);
