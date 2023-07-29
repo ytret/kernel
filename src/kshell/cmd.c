@@ -394,20 +394,20 @@ cmd_pci (char ** pp_args, size_t num_args)
     if (num_args < 2)
     {
         printf("Usage: %s <cmd> [args]\n", pp_args[0]);
-        printf("cmd must be one of: dump, walk\n");
+        printf("cmd must be one of: dump, list\n");
         printf("args depend on cmd\n");
         return;
     }
 
-    if (string_equals(pp_args[1], "walk"))
+    if (string_equals(pp_args[1], "list"))
     {
         if (num_args != 2)
         {
-            printf("Usage: pci walk\n");
+            printf("Usage: pci list\n");
             return;
         }
 
-        pci_walk();
+        pci_list_devices();
     }
     else if (string_equals(pp_args[1], "dump"))
     {
