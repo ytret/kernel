@@ -21,6 +21,7 @@
 #include <kshell/vasview.h>
 #include <mbi.h>
 #include <panic.h>
+#include <pci.h>
 #include <printf.h>
 #include <string.h>
 #include <taskmgr.h>
@@ -29,7 +30,7 @@
 
 #include <cpuid.h>
 
-#define NUM_CMDS        9
+#define NUM_CMDS        10
 #define MAX_ARGS        32
 
 static char const * const gp_cmd_names[NUM_CMDS] =
@@ -43,6 +44,7 @@ static char const * const gp_cmd_names[NUM_CMDS] =
     "tasks",
     "vasview",
     "cpuid",
+    "pci",
 };
 
 static uint32_t g_exec_entry;
@@ -57,6 +59,7 @@ static void cmd_exec_entry(void);
 static void cmd_tasks(char ** pp_args, size_t num_args);
 static void cmd_vasview(char ** pp_args, size_t num_args);
 static void cmd_cpuid(char ** pp_args, size_t num_args);
+static void cmd_pci(char ** pp_args, size_t num_args);
 
 void
 kshell_cmd_parse (char const * p_cmd)
@@ -87,6 +90,7 @@ kshell_cmd_parse (char const * p_cmd)
             cmd_tasks,
             cmd_vasview,
             cmd_cpuid,
+            cmd_pci,
         };
 
     for (size_t idx = 0; idx < NUM_CMDS; idx++)
@@ -382,4 +386,52 @@ cmd_cpuid (char ** pp_args, size_t num_args)
     printf("EBX = %08x\n", ebx);
     printf("ECX = %08x\n", ecx);
     printf("EDX = %08x\n", edx);
+}
+
+static void
+cmd_pci (char ** pp_args, size_t num_args)
+{
+    if (num_args < 2)
+    {
+        printf("Usage: %s <cmd> [args]\n", pp_args[0]);
+        printf("cmd must be one of: dump, walk\n");
+        printf("args depend on cmd\n");
+        return;
+    }
+
+    if (string_equals(pp_args[1], "walk"))
+    {
+        if (num_args != 2)
+        {
+            printf("Usage: pci walk\n");
+            return;
+        }
+
+        pci_walk();
+    }
+    else if (string_equals(pp_args[1], "dump"))
+    {
+        if (num_args != 3)
+        {
+            printf("Usage: pci dump <device number>\n");
+            return;
+        }
+
+        uint32_t dev;
+        bool b_ok = string_to_uint32(pp_args[2], &dev, 10);
+        if (!b_ok)
+        {
+            printf("Invalid argument: '%s'\n", pp_args[2]);
+            printf("device number must be an unsigned decimal number less than"
+                   " 32\n");
+            return;
+        }
+
+        pci_dump_config(0, dev);
+    }
+    else
+    {
+        printf("pci: unknown command: '%s'\n", pp_args[1]);
+        return;
+    }
 }
