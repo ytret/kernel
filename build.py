@@ -163,6 +163,7 @@ if __name__ == "__main__":
     kernel_ld_script = "./src/link.ld"
     kernel_sources = [
         "src/entry.s",
+        "src/ahci.c",
         "src/alloc.c",
         "src/elf.c",
         "src/framebuf.c",
