@@ -19,6 +19,9 @@
 #define CONFIG_ADDR_OFFSET_POS  0
 #define CONFIG_ADDR_OFFSET_MASK (0xFF << CONFIG_ADDR_OFFSET_POS)
 
+#define CLASS_MASS_STORAGE      0x01
+#define SUBCLASS_SATA           0x06
+
 static uint32_t read_config_u32(uint8_t bus, uint8_t dev, uint8_t fun,
                                 uint8_t offset);
 static uint16_t read_config_u16(uint8_t bus, uint8_t dev, uint8_t fun,
@@ -27,12 +30,84 @@ static uint8_t  read_config_u8(uint8_t bus, uint8_t dev, uint8_t fun,
                                uint8_t offset);
 
 void
-pci_walk (void)
+pci_init (void)
 {
     for (uint8_t dev = 0; dev < 32; dev++)
     {
-        uint16_t vendor_id = read_config_u16(0, dev, 0, 0x0);
-        uint16_t device_id = read_config_u16(0, dev, 0, 0x2);
+        uint16_t vendor_id = read_config_u16(0, dev, 0, 0x00);
+        if (0xFFFF != vendor_id)
+        {
+            pci_init_device(0, dev);
+        }
+    }
+}
+
+bool
+pci_init_device (uint8_t bus, uint8_t dev)
+{
+    uint8_t p_config_u8[PCI_CONFIG_SIZE];
+    pci_read_config(bus, dev, p_config_u8);
+
+    pci_config_t * p_config = ((pci_config_t *) p_config_u8);
+
+    // Check the header type.
+    //
+    if (p_config->header_type != 0x00)
+    {
+        printf("pci: unknown header type %u\n", p_config->header_type);
+        return (false);
+    }
+
+    // AHCI.
+    //
+    if ((CLASS_MASS_STORAGE == p_config->base_class)
+        && (SUBCLASS_SATA == p_config->subclass))
+    {
+        printf("pci: bus %u device %u: mass storage device, SATA,", bus, dev);
+
+        if (0x01 == p_config->prog_intf)
+        {
+            printf(" AHCI HBA (major rev. 1)\n");
+            bool b_ok = ahci_init(bus, dev);
+            if (!b_ok)
+            {
+                printf("pci: failed to initialize bus %u device %u\n",
+                       bus, dev);
+            }
+            return (b_ok);
+        }
+        else
+        {
+            printf(" unknown programming interface\n");
+        }
+    }
+    else
+    {
+        printf("pci: ignoring unknown bus %u device %u\n", bus, dev);
+    }
+
+    return (false);
+}
+
+void
+pci_read_config (uint8_t bus, uint8_t dev, void * p_config)
+{
+    __builtin_memset(p_config, 0, sizeof(*p_config));
+
+    uint32_t * p_config_u32 = ((uint32_t *) p_config);
+    for (size_t idx = 0; idx < (PCI_CONFIG_SIZE / 4); idx++)
+    {
+        p_config_u32[idx] = read_config_u32(bus, dev, 0, (4 * idx));
+    }
+}
+
+void
+pci_list_devices (void)
+{
+    for (uint8_t dev = 0; dev < 32; dev++)
+    {
+        uint16_t vendor_id = read_config_u16(0, dev, 0, 0x00);
+        uint16_t device_id = read_config_u16(0, dev, 0, 0x02);
 
         if (0xFFFF == vendor_id)
         {
@@ -41,11 +116,6 @@ pci_walk (void)
 
         printf("dev %u vendor id %02x device id %02x\n", dev, vendor_id,
                device_id);
-
-        if ((0x8086 == vendor_id) && (0x2922 == device_id))
-        {
-            ahci_init(0, dev);
-        }
     }
 }
 
