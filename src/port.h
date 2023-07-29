@@ -21,3 +21,23 @@ port_inb (uint16_t port)
                       : "memory");
     return (byte);
 }
+
+static inline void
+port_outl (uint16_t port, uint32_t dword)
+{
+    __asm__ volatile ("outl %0, %1"
+                      : /* no outputs */
+                      : "a" (dword), "Nd" (port)
+                      : "memory");
+}
+
+static inline uint32_t
+port_inl (uint16_t port)
+{
+    uint32_t dword;
+    __asm__ volatile ("inl %1, %0"
+                      : "=a" (dword)
+                      : "Nd" (port)
+                      : "memory");
+    return (dword);
+}
