@@ -419,7 +419,7 @@ cmd_pci (char ** pp_args, size_t num_args)
 
         uint32_t dev;
         bool b_ok = string_to_uint32(pp_args[2], &dev, 10);
-        if (!b_ok)
+        if ((!b_ok) || (dev >= 32))
         {
             printf("Invalid argument: '%s'\n", pp_args[2]);
             printf("device number must be an unsigned decimal number less than"
