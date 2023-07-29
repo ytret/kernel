@@ -6,10 +6,10 @@
 
 #include <stdint.h>
 
-#define PORT_MASTER_CMD         0x20
-#define PORT_MASTER_DATA        0x21
-#define PORT_SLAVE_CMD          0xA0
-#define PORT_SLAVE_DATA         0xA1
+#define PORT_MASTER_CMD         0x0020
+#define PORT_MASTER_DATA        0x0021
+#define PORT_SLAVE_CMD          0x00A0
+#define PORT_SLAVE_DATA         0x00A1
 
 #define CMD_EOI                 0x20
 

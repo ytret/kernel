@@ -5,8 +5,8 @@
 #include <printf.h>
 #include <taskmgr.h>
 
-#define PORT_CMD                0x43
-#define PORT_CH0_DATA           0x40
+#define PORT_CMD                0x0043
+#define PORT_CH0_DATA           0x0040
 
 #define REG_CH0                 (0 << 6)
 #define REG_BOTH_BYTES          (3 << 4)

@@ -7,9 +7,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define PORT_DATA       0x60
-#define PORT_CMD        0x64
-#define PORT_STATUS     0x64
+#define PORT_DATA       0x0060
+#define PORT_CMD        0x0064
+#define PORT_STATUS     0x0064
 
 #define CODE_BUF_SIZE   10
 #define EVENT_BUF_SIZE  10

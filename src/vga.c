@@ -10,8 +10,8 @@
 #define MAX_ROWS                25
 #define MAX_COLS                80
 
-#define PORT_CRTC_ADDR          ((uint16_t) 0x3D4)
-#define PORT_CRTC_DATA          ((uint16_t) 0x3D5)
+#define PORT_CRTC_ADDR          ((uint16_t) 0x03D4)
+#define PORT_CRTC_DATA          ((uint16_t) 0x03D5)
 
 #define REG_CRTC_MAX_SCAN_LINE  ((uint8_t) 0x09)
 #define REG_CRTC_CURSOR_START   ((uint8_t) 0x0A)
