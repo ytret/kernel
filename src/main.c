@@ -4,6 +4,7 @@
 #include <kbd.h>
 #include <kshell/kshell.h>
 #include <panic.h>
+#include <pci.h>
 #include <pic.h>
 #include <pit.h>
 #include <pmm.h>
@@ -65,6 +66,8 @@ main (uint32_t magic_num, mbi_t const * p_mbi)
         printf("framebuffer_addr = %P\n", p_mbi->framebuffer_addr);
         printf("framebuffer_type = %u\n", p_mbi->framebuffer_type);
     }
+
+    pci_init();
 
     taskmgr_init();
     taskmgr_start_scheduler(init_entry);
