@@ -1,5 +1,6 @@
 #include <alloc.h>
 #include <gdt.h>
+#include <gpt.h>
 #include <idt.h>
 #include <kbd.h>
 #include <kshell/kshell.h>
@@ -68,6 +69,15 @@ main (uint32_t magic_num, mbi_t const * p_mbi)
     }
 
     pci_init();
+
+    uint64_t root_start_sector;
+    uint64_t root_num_sectors;
+    bool b_root_found =
+        gpt_find_root_part(&root_start_sector, &root_num_sectors);
+    if (!b_root_found)
+    {
+        printf("Could not find root partition\n");
+    }
 
     taskmgr_init();
     taskmgr_start_scheduler(init_entry);
