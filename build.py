@@ -169,6 +169,7 @@ if __name__ == "__main__":
         "src/framebuf.c",
         "src/gdt.c",
         "src/gdt.s",
+        "src/gpt.c",
         "src/idt.c",
         "src/idt.s",
         "src/isrs.s",
