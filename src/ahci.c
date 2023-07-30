@@ -171,7 +171,7 @@ static bool ensure_ahci_mode(void);
 static bool find_root_port(void);
 static bool identify_device(void);
 
-static bool read_sectors(reg_port_t * p_port, uint64_t offset,
+static bool read_sectors(reg_port_t * p_port, uint64_t start_sector,
                          uint32_t num_sectors, void * p_buf);
 
 static int  send_read_cmd(reg_port_t * p_port, cmd_t cmd, void * p_buf,
@@ -256,42 +256,13 @@ ahci_init (uint8_t bus, uint8_t dev)
         return (false);
     }
 
-    uint8_t * p_buf  = alloc_aligned(512 * 9, 2);
-    bool      b_read = read_sectors(gp_port, 0, 9, p_buf);
-    if (!b_read)
-    {
-        printf("ahci: failed to read bytes\n");
-        return (false);
-    }
-
-    __builtin_memset(p_buf, 0, (512 * 9));
-    b_read = read_sectors(gp_port, 9, 9, p_buf);
-    if (!b_read)
-    {
-        printf("SECOND READ failed\n");
-        return (false);
-    }
-
-    printf("p_buf = %P\n", p_buf);
-    for (size_t sidx = 9; sidx < 9 + 9; sidx++)
-    {
-        for (size_t widx = 0; widx < 256; widx++)
-        {
-            size_t offset = ((512 * (sidx - 9)) + (2 * widx));
-
-            uint16_t exp = ((2 * widx) + (sidx << 8));
-            uint16_t act = ((p_buf[offset] << 8) | p_buf[offset + 1]);
-
-            if (act != exp)
-            {
-                printf("sidx %u widx %u offset %04x is %04x, not %04x\n",
-                       sidx, widx, offset, act, exp);
-                return (false);
-            }
-        }
-    }
-
     return (true);
+}
+
+bool
+ahci_read_sectors (uint64_t start_sector, uint32_t num_sectors, void * p_buf)
+{
+    return (read_sectors(gp_port, start_sector, num_sectors, p_buf));
 }
 
 /*
