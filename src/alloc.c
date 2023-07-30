@@ -5,6 +5,10 @@
 
 #include <stdbool.h>
 
+// Default allocation alignment.
+//
+// NOTE: AHCI code assumes that the alignment is always at least 2 bytes.
+//
 #define DEFAULT_ALIGN           4
 
 #define TAG_SIZE                (sizeof(tag_t))
