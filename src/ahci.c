@@ -168,9 +168,9 @@ static uint32_t     g_max_sectors;
 
 // FIS buffers.
 //
-static volatile rfis_t      g_rfis           __attribute__ ((aligned(256)));
-static volatile cmd_hdr_t   gp_cmd_list[32]  __attribute__ ((aligned(1024)));
-static volatile cmd_table_t gp_cmd_tables[1] __attribute__ ((aligned(128)));
+static rfis_t      g_rfis           __attribute__ ((aligned(256)));
+static cmd_hdr_t   gp_cmd_list[32]  __attribute__ ((aligned(1024)));
+static cmd_table_t gp_cmd_tables[1] __attribute__ ((aligned(128)));
 
 static bool ensure_ahci_mode(void);
 static bool find_root_port(void);
