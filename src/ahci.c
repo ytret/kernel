@@ -160,8 +160,8 @@ static volatile cmd_table_t gp_cmd_tables[1] __attribute__ ((aligned(128)));
 static bool ensure_ahci_mode(void);
 static bool find_root_port(void);
 
-static bool read_bytes(reg_port_t * p_port, uint32_t offset_lo,
-                       uint32_t offset_hi, uint32_t num_bytes, void * p_buf);
+static bool read_sectors(reg_port_t * p_port, uint64_t offset,
+                         uint32_t num_sectors, void * p_buf);
 static int  find_cmd_slot(reg_port_t * p_port);
 
 bool
@@ -228,8 +228,8 @@ ahci_init (uint8_t bus, uint8_t dev)
     gp_port->cmd |= PORT_CMD_FRE;
     gp_port->cmd |= PORT_CMD_ST;
 
-    uint8_t * p_buf  = alloc_aligned(1024, 2);
-    bool      b_read = read_bytes(gp_port, 0, 0, 1024, p_buf);
+    uint8_t * p_buf  = alloc_aligned(512 * 9, 2);
+    bool      b_read = read_sectors(gp_port, 0, 9, p_buf);
     if (!b_read)
     {
         printf("ahci: failed to read bytes\n");
@@ -378,16 +378,29 @@ find_root_port (void)
 }
 
 static bool
-read_bytes (reg_port_t * p_port, uint32_t offset_lo, uint32_t offset_hi,
-            uint32_t num_bytes, void * p_buf)
+read_sectors (reg_port_t * p_port, uint64_t offset, uint32_t num_sectors,
+              void * p_buf)
 {
-    if (num_bytes % 2)
+    if (offset >> 48)
     {
-        printf("ahci: cannot read an odd number of bytes\n");
+        printf("ahci: offset cannot be wider than a 48-bit width value\n");
         return (false);
     }
 
-    uint16_t num_sectors = ((num_bytes + 511) / 512);
+    if (0 == num_sectors)
+    {
+        return (true);
+    }
+
+    // We have a finite amount of PRDs.  Each can describe a 4 MiB data block,
+    // or 8192 512-byte sectors.
+    //
+    if (num_sectors > (8 * CMD_TABLE_NUM_PRDS))
+    {
+        printf("ahci: number of sectors to read cannot be greater than %u\n",
+               (8 * CMD_TABLE_NUM_PRDS));
+        return (false);
+    }
 
     // Find a free command slot.
     //
@@ -410,16 +423,21 @@ read_bytes (reg_port_t * p_port, uint32_t offset_lo, uint32_t offset_hi,
     p_cmd_hdr->b_bist      = 0;
     p_cmd_hdr->b_clear_bsy = false;
     p_cmd_hdr->pmp         = 0;
-    p_cmd_hdr->prdtl       = 1;
+    p_cmd_hdr->prdtl       = CMD_TABLE_NUM_PRDS;
 
-    // Fill the command table.  Start with the PRD table.
+    // Fill the command table.  Start with the PRD table.  We have N PRDs, each
+    // can describe 4 MiBs, or 8192 sectors.
     //
-    prd_t * p_prd = &gp_cmd_tables[0].p_prd_table[0];
-    // __builtin_memset(p_prd, 0, sizeof(*p_prd));
-    p_prd->dba   = ((uint32_t) p_buf);
-    p_prd->dbau  = 0;
-    p_prd->dbc   = (num_bytes - 1);
-    p_prd->b_int = true;
+    for (size_t prd_idx = 0; prd_idx < ((num_sectors + 7) / 8); prd_idx++)
+    {
+        prd_t * p_prd = &gp_cmd_tables[0].p_prd_table[prd_idx];
+
+        // __builtin_memset(p_prd, 0, sizeof(*p_prd));
+        p_prd->dba   = (((uint32_t) p_buf) + (512 * 8 * prd_idx));
+        p_prd->dbau  = 0;
+        p_prd->dbc   = ((512 * (num_sectors - (8 * prd_idx))) - 1);
+        p_prd->b_int = true;
+    }
 
     // Finish by setting the CFIS.
     //
@@ -430,9 +448,14 @@ read_bytes (reg_port_t * p_port, uint32_t offset_lo, uint32_t offset_hi,
     p_cfis->b_cmd     = true;
     p_cfis->command   = SATA_CMD_READ_DMA_EXT;
     p_cfis->device    = (1 << 6); // shall be set to one for this command
-    p_cfis->lba_23_0  = (offset_lo & 0xFFFFFF);
-    p_cfis->lba_47_24 = ((offset_hi & 0xFF) | ((offset_lo >> 24) & 0xFF));
-    p_cfis->count     = num_sectors;
+
+    p_cfis->lba0  = ((offset >> 0) & 0xFF);
+    p_cfis->lba1  = ((offset >> 8) & 0xFF);
+    p_cfis->lba2  = ((offset >> 16) & 0xFF);
+    p_cfis->lba3  = ((offset >> 24) & 0xFF);
+    p_cfis->lba4  = ((offset >> 32) & 0xFF);
+    p_cfis->lba5  = ((offset >> 40) & 0xFF);
+    p_cfis->count = num_sectors;
 
     // Wait until the port is no longer busy.
     //
@@ -456,12 +479,15 @@ read_bytes (reg_port_t * p_port, uint32_t offset_lo, uint32_t offset_hi,
 
     // Wait for completion.
     //
+    bool b_has_err = false;
     while (true)
     {
         if (p_port->is & PORT_IS_TFES)
         {
+            b_has_err  = true;
+            p_port->is = PORT_IS_TFES;
             printf("ahci: task file error\n");
-            return (false);
+            break;
         }
 
         if (!(p_port->ci & (1 << cmd_slot)))
@@ -480,23 +506,22 @@ read_bytes (reg_port_t * p_port, uint32_t offset_lo, uint32_t offset_hi,
         return (false);
     }
 
-    // Check the Sector Count register.
-    //
-    if (g_rfis.rfis.count > 0)
-    {
-        // Non-zero value happens when the target buffer is not enough to hold N
-        // sectors.  Because (512 * num_sectors) is always greater than or equal
-        // to num_bytes, num_bytes must be a multiple of 512 for this error not
-        // to appear.
-        //
-        printf("ahci: PRDT buffers must be large enough to hold requested"
-               " data\n");
-        return (false);
-    }
-
     // Clear RFIS interrupt flag.
     //
-    gp_port->is |= PORT_IS_DHRS;
+    gp_port->is = PORT_IS_DHRS;
+
+    // Check the error.
+    //
+    if (b_has_err)
+    {
+        printf("ahci: Error register is set to %x", g_rfis.rfis.error);
+        if (g_rfis.rfis.error & SATA_ERROR_ABORT)
+        {
+            printf("; device aborted command");
+        }
+        printf("\n");
+        return (false);
+    }
 
     return (true);
 }
