@@ -224,8 +224,6 @@ ahci_init (uint8_t bus, uint8_t dev)
     gp_port->cmd |= PORT_CMD_FRE;
     gp_port->cmd |= PORT_CMD_ST;
 
-    gp_port->is |= PORT_IS_DHRS;
-
     uint8_t * p_buf  = alloc_aligned(1024, 2);
     bool      b_read = read_bytes(gp_port, 0, 0, 1024, p_buf);
     if (!b_read)
