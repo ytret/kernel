@@ -13,7 +13,8 @@
 #define SATA_FIS_PIO_SETUP      0x5F  // PIO setup - device to host
 #define SATA_FIS_DEV_BITS       0xA1  // set device bits - device to host
 
-#define SATA_CMD_READ_DMA_EXT   0x25
+#define SATA_CMD_IDENTIFY_DEVICE        0xEC
+#define SATA_CMD_READ_DMA_EXT           0x25
 
 #define SATA_ERROR_ABORT        (1 << 2)
 
