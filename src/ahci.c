@@ -156,6 +156,10 @@ _Static_assert(0x100 == sizeof(rfis_t));
 _Static_assert( 0x20 == sizeof(cmd_hdr_t));
 _Static_assert( 0x10 == sizeof(prd_t));
 
+// Driver state.
+//
+static bool gb_initialized;
+
 // Root disk.
 //
 static void       * gp_hba;
@@ -255,6 +259,7 @@ ahci_init (uint8_t bus, uint8_t dev)
         return (false);
     }
 
+    gb_initialized = true;
     return (true);
 }
 
@@ -262,6 +267,12 @@ bool
 ahci_read_sectors (uint64_t start_sector, uint32_t num_sectors, void * p_buf)
 {
     return (read_sectors(gp_port, start_sector, num_sectors, p_buf));
+}
+
+bool
+ahci_is_init (void)
+{
+    return (gb_initialized);
 }
 
 /*
