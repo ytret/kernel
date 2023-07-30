@@ -32,6 +32,7 @@
 
 // Bits of port register.
 #define PORT_IS_TFES            (1 << 30)    // task file error status
+#define PORT_IS_PSS             (1 << 1)     // PIO setup FIS interrupt
 #define PORT_IS_DHRS            (1 << 0)     // device to host register FIS int.
 #define PORT_CMD_CR             (1 << 15)    // command list running
 #define PORT_CMD_FR             (1 << 14)    // FIS receive running
@@ -140,6 +141,15 @@ __attribute__ ((packed))
     prd_t   p_prd_table[CMD_TABLE_NUM_PRDS];
 } cmd_table_t;
 
+typedef struct
+{
+    uint16_t feature;
+    uint16_t count;
+    uint64_t lba;
+    uint8_t  device;
+    uint8_t  command;
+} cmd_t;
+
 _Static_assert( 0x2C == sizeof(reg_ghc_t));
 _Static_assert( 0x80 == sizeof(reg_port_t));
 _Static_assert(0x100 == sizeof(rfis_t));
@@ -159,9 +169,14 @@ static volatile cmd_table_t gp_cmd_tables[1] __attribute__ ((aligned(128)));
 
 static bool ensure_ahci_mode(void);
 static bool find_root_port(void);
+static bool identify_device(void);
 
 static bool read_sectors(reg_port_t * p_port, uint64_t offset,
                          uint32_t num_sectors, void * p_buf);
+
+static int  send_read_cmd(reg_port_t * p_port, cmd_t cmd, void * p_buf,
+                          size_t read_len);
+static bool wait_for_cmd(reg_port_t * p_port, int cmd_slot);
 static int  find_cmd_slot(reg_port_t * p_port);
 
 static void dump_port_reg(reg_port_t * p_port) __attribute__ ((unused));
@@ -230,6 +245,17 @@ ahci_init (uint8_t bus, uint8_t dev)
     gp_port->cmd |= PORT_CMD_FRE;
     gp_port->cmd |= PORT_CMD_ST;
 
+    // Wait for them to start.
+    //
+    while ((!(gp_port->cmd & PORT_CMD_CR)) || (!(gp_port->cmd & PORT_CMD_FR)))
+    {}
+
+    bool b_id = identify_device();
+    if (!b_id)
+    {
+        return (false);
+    }
+
     uint8_t * p_buf  = alloc_aligned(512 * 9, 2);
     bool      b_read = read_sectors(gp_port, 0, 9, p_buf);
     if (!b_read)
@@ -238,47 +264,31 @@ ahci_init (uint8_t bus, uint8_t dev)
         return (false);
     }
 
-    size_t idx;
-    printf("00  ");
-    for (idx = 0; idx <= 128; idx++)
+    __builtin_memset(p_buf, 0, (512 * 9));
+    b_read = read_sectors(gp_port, 9, 9, p_buf);
+    if (!b_read)
     {
-        if (idx > 0)
-        {
-            if ((idx % 16) == 0)
-            {
-                printf("  |");
-                for (size_t j = (idx - 16); j < idx; j++)
-                {
-                    if ((' ' <= p_buf[j]) && (p_buf[j] <= '~'))
-                    {
-                        char p_s[2] = { 0 };
-                        p_s[0] = p_buf[j];
-                        printf("%s", p_s);
-                    }
-                    else
-                    {
-                        printf(".");
-                    }
-                }
-                printf("|");
-                if (idx >= 128)
-                {
-                    break;
-                }
+        printf("SECOND READ failed\n");
+        return (false);
+    }
 
-                printf("\n%02x  ", idx);
-            }
-            else if ((idx % 8) == 0)
+    printf("p_buf = %P\n", p_buf);
+    for (size_t sidx = 9; sidx < 9 + 9; sidx++)
+    {
+        for (size_t widx = 0; widx < 256; widx++)
+        {
+            size_t offset = ((512 * (sidx - 9)) + (2 * widx));
+
+            uint16_t exp = ((2 * widx) + (sidx << 8));
+            uint16_t act = ((p_buf[offset] << 8) | p_buf[offset + 1]);
+
+            if (act != exp)
             {
-                printf(" ");
+                printf("sidx %u widx %u offset %04x is %04x, not %04x\n",
+                       sidx, widx, offset, act, exp);
+                return (false);
             }
         }
-
-        printf("%02x ", p_buf[idx]);
-    }
-    if ((idx - 1) % 16)
-    {
-        printf("\n");
     }
 
     return (true);
@@ -380,6 +390,34 @@ find_root_port (void)
 }
 
 static bool
+identify_device (void)
+{
+    cmd_t cmd   = { 0 };
+    cmd.command = SATA_CMD_IDENTIFY_DEVICE;
+
+    uint16_t * p_ident  = alloc_aligned(512, 2);
+    int        cmd_slot = send_read_cmd(gp_port, cmd, p_ident, 512);
+    if (-1 == cmd_slot)
+    {
+        printf("ahci: could not issue identify command\n");
+        return (false);
+    }
+
+    bool b_ok = wait_for_cmd(gp_port, cmd_slot);
+    if (!b_ok)
+    {
+        printf("ahci: identify command failed\n");
+        return (false);
+    }
+
+    char p_serial[21] = { 0 };
+    __builtin_memcpy(p_serial, (p_ident + 10), 20);
+    printf("ahci: serial number is '%s'\n", p_serial);
+
+    return (true);
+}
+
+static bool
 read_sectors (reg_port_t * p_port, uint64_t offset, uint32_t num_sectors,
               void * p_buf)
 {
@@ -397,11 +435,60 @@ read_sectors (reg_port_t * p_port, uint64_t offset, uint32_t num_sectors,
     // We have a finite amount of PRDs.  Each can describe a 4 MiB data block,
     // or 8192 512-byte sectors.
     //
-    if (num_sectors > (8 * CMD_TABLE_NUM_PRDS))
+    if (num_sectors > (8192 * CMD_TABLE_NUM_PRDS))
     {
         printf("ahci: number of sectors to read cannot be greater than %u\n",
-               (8 * CMD_TABLE_NUM_PRDS));
+               (8192 * CMD_TABLE_NUM_PRDS));
         return (false);
+    }
+
+    cmd_t cmd   = { 0 };
+    cmd.count   = num_sectors;
+    cmd.lba     = offset;
+    cmd.device  = (1 << 6);
+    cmd.command = SATA_CMD_READ_DMA_EXT;
+    int cmd_slot = send_read_cmd(p_port, cmd, p_buf, (512 * num_sectors));
+    if (-1 == cmd_slot)
+    {
+        printf("ahci: failed to issue read command\n");
+        return (false);
+    }
+
+    // Wait for completion.
+    //
+    bool b_ok = wait_for_cmd(p_port, cmd_slot);
+    if (!b_ok)
+    {
+        printf("ahci: command failed\n");
+        return (false);
+    }
+
+    return (true);
+}
+
+/*
+ * Sends an ATA command to read from device using AHCI.
+ *
+ * Arguments:
+ *   p_port   - port to issue the command to,
+ *   cmd      - the ATA command itself,
+ *   p_buf    - destination buffer of size read_len or bigger,
+ *   read_len - number of bytes to be transferred.
+ *
+ * Returns command slot of the issued command on success, otherwise -1.
+ *
+ * NOTE: does not check if the command was aborted, or for any other ATA error.
+ */
+static int
+send_read_cmd (reg_port_t * p_port, cmd_t cmd, void * p_buf, size_t read_len)
+{
+    // One PRD can describe a 4 MiB block of data.
+    //
+    uint16_t prdtl = ((read_len + ((4 * 1024 * 1024) - 1)) / (4 * 1024 * 1024));
+    if (prdtl > CMD_TABLE_NUM_PRDS)
+    {
+        printf("ahci: cannot transfer %u bytes of data\n", read_len);
+        return (-1);
     }
 
     // Find a free command slot.
@@ -410,13 +497,12 @@ read_sectors (reg_port_t * p_port, uint64_t offset, uint32_t num_sectors,
     if (-1 == cmd_slot)
     {
         printf("ahci: could not find free command slot\n");
-        return (false);
+        return (-1);
     }
 
     // Set up the command header.
     //
     cmd_hdr_t * p_cmd_hdr  = &gp_cmd_list[cmd_slot];
-    // __builtin_memset(p_cmd_hdr, 0, sizeof(*p_cmd_hdr));
     p_cmd_hdr->cfl         = (sizeof(sata_fis_reg_h2d_t) / 4);
     p_cmd_hdr->b_atapi     = false;
     p_cmd_hdr->b_write     = false;
@@ -425,19 +511,17 @@ read_sectors (reg_port_t * p_port, uint64_t offset, uint32_t num_sectors,
     p_cmd_hdr->b_bist      = 0;
     p_cmd_hdr->b_clear_bsy = false;
     p_cmd_hdr->pmp         = 0;
-    p_cmd_hdr->prdtl       = CMD_TABLE_NUM_PRDS;
+    p_cmd_hdr->prdtl       = prdtl;
 
     // Fill the command table.  Start with the PRD table.  We have N PRDs, each
-    // can describe 4 MiBs, or 8192 sectors.
+    // can describe 4 MiBs.
     //
-    for (size_t prd_idx = 0; prd_idx < ((num_sectors + 7) / 8); prd_idx++)
+    for (size_t prd_idx = 0; prd_idx < prdtl; prd_idx++)
     {
         prd_t * p_prd = &gp_cmd_tables[0].p_prd_table[prd_idx];
-
-        // __builtin_memset(p_prd, 0, sizeof(*p_prd));
-        p_prd->dba   = (((uint32_t) p_buf) + (512 * 8 * prd_idx));
+        p_prd->dba   = (((uint32_t) p_buf) + (4 * 1024 * 1024 * prd_idx));
         p_prd->dbau  = 0;
-        p_prd->dbc   = ((512 * (num_sectors - (8 * prd_idx))) - 1);
+        p_prd->dbc   = ((read_len - (4 * 1024 * 1024 * prd_idx)) - 1);
         p_prd->b_int = true;
     }
 
@@ -446,18 +530,17 @@ read_sectors (reg_port_t * p_port, uint64_t offset, uint32_t num_sectors,
     sata_fis_reg_h2d_t * p_cfis =
         ((sata_fis_reg_h2d_t *) &gp_cmd_tables[0].p_cfis);
     // __builtin_memset(p_cfis, 0, sizeof(*p_cfis));
-    p_cfis->fis_type  = SATA_FIS_REG_H2D;
-    p_cfis->b_cmd     = true;
-    p_cfis->command   = SATA_CMD_READ_DMA_EXT;
-    p_cfis->device    = (1 << 6); // shall be set to one for this command
-
-    p_cfis->lba0  = ((offset >> 0) & 0xFF);
-    p_cfis->lba1  = ((offset >> 8) & 0xFF);
-    p_cfis->lba2  = ((offset >> 16) & 0xFF);
-    p_cfis->lba3  = ((offset >> 24) & 0xFF);
-    p_cfis->lba4  = ((offset >> 32) & 0xFF);
-    p_cfis->lba5  = ((offset >> 40) & 0xFF);
-    p_cfis->count = num_sectors;
+    p_cfis->fis_type = SATA_FIS_REG_H2D;
+    p_cfis->b_cmd    = true;
+    p_cfis->command  = cmd.command;
+    p_cfis->device   = cmd.device;
+    p_cfis->lba0     = ((cmd.lba >> 0) & 0xFF);
+    p_cfis->lba1     = ((cmd.lba >> 8) & 0xFF);
+    p_cfis->lba2     = ((cmd.lba >> 16) & 0xFF);
+    p_cfis->lba3     = ((cmd.lba >> 24) & 0xFF);
+    p_cfis->lba4     = ((cmd.lba >> 32) & 0xFF);
+    p_cfis->lba5     = ((cmd.lba >> 40) & 0xFF);
+    p_cfis->count    = cmd.count;
 
     // Wait until the port is no longer busy.
     //
@@ -468,7 +551,7 @@ read_sectors (reg_port_t * p_port, uint64_t offset, uint32_t num_sectors,
     if (spin >= 100000)
     {
         printf("ahci: port is busy\n");
-        return (false);
+        return (-1);
     }
 
     // Clear RFIS interrupt flag.
@@ -479,8 +562,21 @@ read_sectors (reg_port_t * p_port, uint64_t offset, uint32_t num_sectors,
     //
     p_port->ci = (1 << cmd_slot);
 
-    // Wait for completion.
-    //
+    return (cmd_slot);
+}
+
+/*
+ * Waits for the command in slot cmd_slot to finish.
+ *
+ * Returns false if Error bit is set in the received FIS, or if the FIS is not
+ * received at all.  Otherwise returns true.
+ *
+ * NOTE: use this right after e.g. send_read_cmd(), so that IS.DHRS is not reset
+ * between the calls.
+ */
+static bool
+wait_for_cmd (reg_port_t * p_port, int cmd_slot)
+{
     bool b_has_err = false;
     while (true)
     {
@@ -500,17 +596,17 @@ read_sectors (reg_port_t * p_port, uint64_t offset, uint32_t num_sectors,
 
     // We expect RFIS to arrive.
     //
-    if (!(gp_port->is & PORT_IS_DHRS))
+    if (!(p_port->is & PORT_IS_DHRS))
     {
         // RFIS did not arrive.
         //
-        printf("ahci: command completed, but RFIS has not been received\n");
+        printf("ahci: command completed, but RFIS was not received\n");
         return (false);
     }
 
     // Clear RFIS interrupt flag.
     //
-    gp_port->is = PORT_IS_DHRS;
+    p_port->is = PORT_IS_DHRS;
 
     // Check the error.
     //
