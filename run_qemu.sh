@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euxo pipefail
+set -euo pipefail
 
 HD_PATH=./hd.img
 HD_SIZE=4M  # must be understandable by qemu-img
