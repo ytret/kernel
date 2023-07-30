@@ -7,6 +7,10 @@
 
 #include <stddef.h>
 
+// Number of PRDT entries in each command table.
+//
+#define CMD_TABLE_NUM_PRDS      8
+
 // Although AHCI 1.3.1 specifies 12..04 as reserved (section 2.1.11), QEMU uses
 // the 12th bit.  Maybe the whole reserved field is meant to be used as an
 // address, but that may take away its page alignment, which the code relies on.
@@ -133,7 +137,7 @@ __attribute__ ((packed))
     uint8_t p_acmd[16];
     uint8_t _reserved[48];
 
-    prd_t   p_prd_table[8];
+    prd_t   p_prd_table[CMD_TABLE_NUM_PRDS];
 } cmd_table_t;
 
 _Static_assert( 0x2C == sizeof(reg_ghc_t));
