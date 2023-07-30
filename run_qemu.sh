@@ -21,4 +21,6 @@ qemu-system-i386 -cdrom kernel.iso                               \
                  -drive file=$HD_PATH,format=raw,if=none,id=disk \
                  -device ahci,id=ahci                            \
                  -device ide-hd,drive=disk,bus=ahci.0            \
-                 -d guest_errors "$@"
+                 -boot order=d                                   \
+                 -d guest_errors                                 \
+                 "$@"
