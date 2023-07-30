@@ -164,6 +164,8 @@ static bool read_sectors(reg_port_t * p_port, uint64_t offset,
                          uint32_t num_sectors, void * p_buf);
 static int  find_cmd_slot(reg_port_t * p_port);
 
+static void dump_port_reg(reg_port_t * p_port) __attribute__ ((unused));
+
 bool
 ahci_init (uint8_t bus, uint8_t dev)
 {
@@ -539,4 +541,27 @@ find_cmd_slot (reg_port_t * p_port)
         }
     }
     return (-1);
+}
+
+static void
+dump_port_reg (reg_port_t * p_port)
+{
+    printf("Port register at %P:\n", p_port);
+    printf("    clb = %08x\n", p_port->clb);
+    printf("   clbu = %08x\n", p_port->clbu);
+    printf("     fb = %08x\n", p_port->fb);
+    printf("    fbu = %08x\n", p_port->fbu);
+    printf("     is = %08x\n", p_port->is);
+    printf("     ie = %08x\n", p_port->ie);
+    printf("    cmd = %08x\n", p_port->cmd);
+    printf("    tfd = %08x\n", p_port->tfd);
+    printf("    sig = %08x\n", p_port->sig);
+    printf("   ssts = %08x\n", p_port->ssts);
+    printf("   sctl = %08x\n", p_port->sctl);
+    printf("   serr = %08x\n", p_port->serr);
+    printf("   sact = %08x\n", p_port->sact);
+    printf("     ci = %08x\n", p_port->ci);
+    printf("   sntf = %08x\n", p_port->sntf);
+    printf("    fbs = %08x\n", p_port->fbs);
+    printf(" devslp = %08x\n", p_port->devslp);
 }
