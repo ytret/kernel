@@ -160,6 +160,7 @@ _Static_assert( 0x10 == sizeof(prd_t));
 //
 static void       * gp_hba;
 static reg_port_t * gp_port;
+static uint32_t     g_max_sectors;
 
 // FIS buffers.
 //
@@ -385,6 +386,26 @@ identify_device (void)
     __builtin_memcpy(p_serial, (p_ident + 10), 20);
     printf("ahci: serial number is '%s'\n", p_serial);
 
+    g_max_sectors = *((uint32_t *) &p_ident[60]);
+
+    uint32_t disk_size_kib = (g_max_sectors / 2);
+    uint32_t disk_size_mib = (disk_size_kib / 1024);
+    uint32_t disk_size_gib = (disk_size_mib / 1024);
+
+    printf("ahci: disk size is");
+    if (disk_size_mib > 9999)
+    {
+        printf(" %u GiB\n", disk_size_gib);
+    }
+    else if (disk_size_kib > 9999)
+    {
+        printf(" %u MiB\n", disk_size_mib);
+    }
+    else
+    {
+        printf(" %u KiB\n", disk_size_kib);
+    }
+
     return (true);
 }
 
@@ -392,15 +413,31 @@ static bool
 read_sectors (reg_port_t * p_port, uint64_t start_sector, uint32_t num_sectors,
               void * p_buf)
 {
+    // Check start_sector.
+    //
     if (start_sector >> 48)
     {
         printf("ahci: start sector number cannot be wider than 48 bits\n");
         return (false);
     }
+    if (start_sector >= g_max_sectors)
+    {
+        printf("ahci: start sector is past disk end by %u sectors\n",
+               (start_sector - g_max_sectors));
+        return (false);
+    }
 
+    // Check num_sectors.
+    //
     if (0 == num_sectors)
     {
         return (true);
+    }
+    if ((start_sector + num_sectors) > g_max_sectors)
+    {
+        printf("ahci: cannot read past disk end by %u sectors\n",
+               (start_sector + num_sectors) - g_max_sectors);
+        return (false);
     }
 
     // We have a finite amount of PRDs.  Each can describe a 4 MiB data block,
@@ -413,11 +450,16 @@ read_sectors (reg_port_t * p_port, uint64_t start_sector, uint32_t num_sectors,
         return (false);
     }
 
+    // Set up a command.
+    //
     cmd_t cmd   = { 0 };
     cmd.count   = num_sectors;
     cmd.lba     = start_sector;
     cmd.device  = (1 << 6);
     cmd.command = SATA_CMD_READ_DMA_EXT;
+
+    // Issue the command.
+    //
     int cmd_slot = send_read_cmd(p_port, cmd, p_buf, (512 * num_sectors));
     if (-1 == cmd_slot)
     {
@@ -425,7 +467,7 @@ read_sectors (reg_port_t * p_port, uint64_t start_sector, uint32_t num_sectors,
         return (false);
     }
 
-    // Wait for completion.
+    // Wait for its completion.
     //
     bool b_ok = wait_for_cmd(p_port, cmd_slot);
     if (!b_ok)
