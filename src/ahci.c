@@ -418,12 +418,12 @@ identify_device (void)
 }
 
 static bool
-read_sectors (reg_port_t * p_port, uint64_t offset, uint32_t num_sectors,
+read_sectors (reg_port_t * p_port, uint64_t start_sector, uint32_t num_sectors,
               void * p_buf)
 {
-    if (offset >> 48)
+    if (start_sector >> 48)
     {
-        printf("ahci: offset cannot be wider than a 48-bit width value\n");
+        printf("ahci: start sector number cannot be wider than 48 bits\n");
         return (false);
     }
 
@@ -444,7 +444,7 @@ read_sectors (reg_port_t * p_port, uint64_t offset, uint32_t num_sectors,
 
     cmd_t cmd   = { 0 };
     cmd.count   = num_sectors;
-    cmd.lba     = offset;
+    cmd.lba     = start_sector;
     cmd.device  = (1 << 6);
     cmd.command = SATA_CMD_READ_DMA_EXT;
     int cmd_slot = send_read_cmd(p_port, cmd, p_buf, (512 * num_sectors));
