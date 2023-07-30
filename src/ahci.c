@@ -193,7 +193,6 @@ ahci_init (uint8_t bus, uint8_t dev)
     pci_config_t * p_config     = ((pci_config_t *) p_config_u8);
     uint32_t       abar         = p_config->bar5;
     uint32_t       hba_mem_addr = (abar & ABAR_ADDR_MASK);
-    printf("ahci: abar = %P, base addr = %P\n", abar, hba_mem_addr);
 
     // Map the HBA memory registers.
     //
@@ -205,7 +204,6 @@ ahci_init (uint8_t bus, uint8_t dev)
         vmm_map_kernel_page(page, page);
         page_count++;
     }
-    printf("ahci: allocated %u pages for HBA memory registers\n", page_count);
 
     // Set the root disk HBA.
     //
