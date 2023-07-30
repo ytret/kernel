@@ -29,11 +29,15 @@ __attribute__ ((packed))
     uint8_t features_7_0;
 
     // 0x04
-    uint32_t lba_23_0:24;
+    uint8_t  lba0;
+    uint8_t  lba1;
+    uint8_t  lba2;
     uint8_t  device;
 
     // 0x08
-    uint32_t lba_47_24:24;
+    uint8_t  lba3;
+    uint8_t  lba4;
+    uint8_t  lba5;
     uint8_t  features_15_8;
 
     // 0x0C
@@ -59,11 +63,15 @@ __attribute__ ((packed))
     uint8_t error;
 
     // 0x04
-    uint32_t lba_23_0:24;
+    uint8_t  lba0;
+    uint8_t  lba1;
+    uint8_t  lba2;
     uint8_t  device;
 
     // 0x08
-    uint32_t lba_47_24:24;
+    uint8_t  lba3;
+    uint8_t  lba4;
+    uint8_t  lba5;
     uint8_t  _reserved_3;
 
     // 0x0C
@@ -140,11 +148,15 @@ __attribute__ ((packed))
     uint8_t error;
 
     // 0x04
-    uint32_t lba_23_0:24;
+    uint8_t  lba0;
+    uint8_t  lba1;
+    uint8_t  lba2;
     uint8_t  device;
 
     // 0x08
-    uint32_t lba_47_24:24;
+    uint8_t  lba3;
+    uint8_t  lba4;
+    uint8_t  lba5;
     uint8_t  _reserved_3;
 
     // 0x0C
