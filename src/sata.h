@@ -117,8 +117,8 @@ __attribute__ ((packed))
     uint8_t  pm_port:4;
     uint32_t _reserved:20;
 
-    // This is only a header.  N dwords of data follow (1 <= N <= 2048).
-} sata_fis_data_hdr_t;
+    uint32_t data[];
+} sata_fis_data_t;
 
 typedef volatile struct
 __attribute__ ((packed))
@@ -192,7 +192,7 @@ _Static_assert(20 == sizeof(sata_fis_reg_h2d_t));
 _Static_assert(20 == sizeof(sata_fis_reg_d2h_t));
 _Static_assert( 4 == sizeof(sata_fis_dma_act_t));
 _Static_assert(28 == sizeof(sata_fis_dma_setup_t));
-_Static_assert( 4 == sizeof(sata_fis_data_hdr_t));
+_Static_assert( 4 == sizeof(sata_fis_data_t));
 _Static_assert(12 == sizeof(sata_fis_bist_act_t));
 _Static_assert(20 == sizeof(sata_fis_pio_setup_t));
 _Static_assert( 8 == sizeof(sata_fis_dev_bits_t));
