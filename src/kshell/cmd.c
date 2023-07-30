@@ -15,6 +15,7 @@
  *      5. Add the function definition near the other command handlers.
  */
 
+#include <ahci.h>
 #include <alloc.h>
 #include <elf.h>
 #include <kshell/cmd.h>
@@ -30,7 +31,7 @@
 
 #include <cpuid.h>
 
-#define NUM_CMDS        10
+#define NUM_CMDS        11
 #define MAX_ARGS        32
 
 static char const * const gp_cmd_names[NUM_CMDS] =
@@ -45,6 +46,7 @@ static char const * const gp_cmd_names[NUM_CMDS] =
     "vasview",
     "cpuid",
     "pci",
+    "ahci",
 };
 
 static uint32_t g_exec_entry;
@@ -60,6 +62,7 @@ static void cmd_tasks(char ** pp_args, size_t num_args);
 static void cmd_vasview(char ** pp_args, size_t num_args);
 static void cmd_cpuid(char ** pp_args, size_t num_args);
 static void cmd_pci(char ** pp_args, size_t num_args);
+static void cmd_ahci(char ** pp_args, size_t num_args);
 
 void
 kshell_cmd_parse (char const * p_cmd)
@@ -91,6 +94,7 @@ kshell_cmd_parse (char const * p_cmd)
             cmd_vasview,
             cmd_cpuid,
             cmd_pci,
+            cmd_ahci,
         };
 
     for (size_t idx = 0; idx < NUM_CMDS; idx++)
@@ -433,5 +437,61 @@ cmd_pci (char ** pp_args, size_t num_args)
     {
         printf("pci: unknown command: '%s'\n", pp_args[1]);
         return;
+    }
+}
+
+static void
+cmd_ahci (char ** pp_args, size_t num_args)
+{
+    if ((num_args != 4)
+        || ((num_args > 1) && (!string_equals(pp_args[1], "dump"))))
+    {
+        printf("Usage: ahci dump <sector> <num sectors>\n");
+        return;
+    }
+
+    uint32_t sector;
+    uint32_t num_sectors;
+
+    bool b_sector_ok = string_to_uint32(pp_args[2], &sector, 10);
+    if (!b_sector_ok)
+    {
+        printf("Invalid argument: '%s'\n", pp_args[2]);
+        printf("sector must be a 32-bit unsigned integer\n");
+        return;
+    }
+
+    bool b_num_ok = string_to_uint32(pp_args[3], &num_sectors, 10);
+    if ((!b_num_ok) || (0 == num_sectors))
+    {
+        printf("Invalid argument: '%s'\n", pp_args[3]);
+        printf("num sectors must be a non-zero 32-bit unsigned integer\n");
+        return;
+    }
+
+    uint8_t * p_buf = alloc_aligned((512 * num_sectors), 2);
+    bool b_ok = ahci_read_sectors(sector, num_sectors, p_buf);
+    if (!b_ok)
+    {
+        printf("ahci: dump command failed\n");
+        return;
+    }
+
+    // Print the bytes.
+    //
+    size_t num_bytes = (512 * num_sectors);
+    for (size_t row = 0; row < (num_bytes / 24); row++)
+    {
+        printf("%02x  ", row);
+        for (size_t byte = 0; byte < 24; byte++)
+        {
+            if ((byte > 0) && ((byte % 8) == 0))
+            {
+                printf(" ");
+            }
+            size_t idx = ((row * 24) + byte);
+            printf("%02x ", p_buf[idx]);
+        }
+        printf("\n");
     }
 }
