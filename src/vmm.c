@@ -8,8 +8,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define ADDR_TO_DIR_ENTRY_IDX(addr)     (((addr) >> 22) & 0x3FF)
-#define ADDR_TO_TBL_ENTRY_IDX(addr)     (((addr) >> 12) & 0x3FF)
+#define ADDR_TO_DIR_IDX(addr)     (((addr) >> 22) & 0x3FF)
+#define ADDR_TO_TBL_IDX(addr)     (((addr) >> 12) & 0x3FF)
 
 #define TABLE_USER      (1 << 2)
 #define TABLE_RW        (1 << 1)
@@ -96,7 +96,7 @@ vmm_clone_kvas (void)
     __builtin_memset(p_dir, 0, 4096);
 
     for (uint32_t dir_idx = 0;
-         dir_idx < ADDR_TO_DIR_ENTRY_IDX(VMM_USER_START);
+         dir_idx < ADDR_TO_DIR_IDX(VMM_USER_START);
          dir_idx++)
     {
         if (gp_kvas_dir[dir_idx] & TABLE_PRESENT)
@@ -165,8 +165,8 @@ map_page (uint32_t * p_dir, uint32_t virt, uint32_t phys, uint32_t flags)
         panic("invalid argument");
     }
 
-    uint32_t dir_idx = ADDR_TO_DIR_ENTRY_IDX(virt);
-    uint32_t tbl_idx = ADDR_TO_TBL_ENTRY_IDX(virt);
+    uint32_t dir_idx = ADDR_TO_DIR_IDX(virt);
+    uint32_t tbl_idx = ADDR_TO_TBL_IDX(virt);
 
     uint32_t * p_tbl;
     if (p_dir[dir_idx] & TABLE_PRESENT)
@@ -217,8 +217,8 @@ unmap_page (uint32_t * p_dir, uint32_t virt)
         panic("invalid argument");
     }
 
-    uint32_t dir_idx = ADDR_TO_DIR_ENTRY_IDX(virt);
-    uint32_t tbl_idx = ADDR_TO_TBL_ENTRY_IDX(virt);
+    uint32_t dir_idx = ADDR_TO_DIR_IDX(virt);
+    uint32_t tbl_idx = ADDR_TO_TBL_IDX(virt);
 
     if (!(p_dir[dir_idx] & TABLE_PRESENT))
     {
