@@ -31,7 +31,7 @@
 
 #include <cpuid.h>
 
-#define NUM_CMDS        11
+#define NUM_CMDS        12
 #define MAX_ARGS        32
 
 static char const * const gp_cmd_names[NUM_CMDS] =
@@ -47,6 +47,7 @@ static char const * const gp_cmd_names[NUM_CMDS] =
     "cpuid",
     "pci",
     "ahci",
+    "execrep",
 };
 
 static uint32_t g_exec_entry;
@@ -63,6 +64,7 @@ static void cmd_vasview(char ** pp_args, size_t num_args);
 static void cmd_cpuid(char ** pp_args, size_t num_args);
 static void cmd_pci(char ** pp_args, size_t num_args);
 static void cmd_ahci(char ** pp_args, size_t num_args);
+static void cmd_execrep(char ** pp_args, size_t num_args);
 
 void
 kshell_cmd_parse (char const * p_cmd)
@@ -95,6 +97,7 @@ kshell_cmd_parse (char const * p_cmd)
             cmd_cpuid,
             cmd_pci,
             cmd_ahci,
+            cmd_execrep,
         };
 
     for (size_t idx = 0; idx < NUM_CMDS; idx++)
@@ -493,5 +496,21 @@ cmd_ahci (char ** pp_args, size_t num_args)
             printf("%02x ", p_buf[idx]);
         }
         printf("\n");
+    }
+}
+
+static void
+cmd_execrep (char ** pp_args, size_t num_args)
+{
+    if (num_args != 1)
+    {
+        printf("Usage: %s\n", pp_args[0]);
+        return;
+    }
+
+    for (;;)
+    {
+        char const * p_cmd = "exec";
+        kshell_cmd_parse(p_cmd);
     }
 }
