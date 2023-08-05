@@ -80,7 +80,8 @@ vmm_init (mbi_t const * p_mbi)
         uint64_t framebuf_end = (p_mbi->framebuffer_addr + size);
         if (framebuf_end > 0x100000000)
         {
-            // We allow framebuf_end to be 0x1_0000_000, but not more than that.
+            // We allow framebuf_end to be at 0x1_0000_000, but not past that
+            // point.
             //
             printf("vmm: vmm_init: framebuffer end is beyond 4 GiBs at"
                    " 0x%08X_%08X\n", ((uint32_t) (framebuf_end >> 32)),
