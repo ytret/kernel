@@ -107,9 +107,9 @@ static char const * sect_name(elf_hdr_t const * p_hdr,
 static void const * offset(elf_hdr_t const * p_hdr, uint32_t offset);
 
 bool
-elf_load (uint32_t * p_dir, void const * p_addr, uint32_t * p_entry)
+elf_load (uint32_t * p_dir, uint32_t addr, uint32_t * p_entry)
 {
-    elf_hdr_t const * p_hdr = ((elf_hdr_t const *) p_addr);
+    elf_hdr_t const * p_hdr = ((elf_hdr_t const *) addr);
     check_hdr_valid(p_hdr);
 
     // Check if the header is loadable.

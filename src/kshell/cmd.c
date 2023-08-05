@@ -239,14 +239,14 @@ cmd_elfhdr (char ** pp_args, size_t num_args)
         return;
     }
 
-    mbi_mod_t const * p_elf_user = mbi_find_mod("user");
-    if (!p_elf_user)
+    mbi_mod_t const * p_mod_user = mbi_find_mod("user");
+    if (!p_mod_user)
     {
         printf("Module 'user' is not found\n");
         return;
     }
 
-    elf_dump(p_elf_user->mod_start);
+    elf_dump(p_mod_user->mod_start);
 }
 
 static void
@@ -266,23 +266,8 @@ cmd_exec (char ** pp_args, size_t num_args)
         return;
     }
 
-    void const * p_elf_user = NULL;
-    for (size_t idx = 0; idx < p_mbi->mods_count; idx++)
-    {
-        mbi_mod_t const * p_mods = ((mbi_mod_t const *) p_mbi->mods_addr);
-
-        if (!p_mods[idx].string)
-        {
-            continue;
-        }
-
-        if (string_equals(((char const *) p_mods[idx].string), "user"))
-        {
-            p_elf_user = ((void const *) p_mods[idx].mod_start);
-        }
-    }
-
-    if (!p_elf_user)
+    mbi_mod_t const * p_mod_user = mbi_find_mod("user");
+    if (!p_mod_user)
     {
         printf("Module 'user' is not found\n");
         return;
@@ -291,7 +276,7 @@ cmd_exec (char ** pp_args, size_t num_args)
     uint32_t * p_dir = vmm_clone_kvas();
     printf("kshell: cloned kernel VAS at %P\n", p_dir);
 
-    bool ok = elf_load(p_dir, p_elf_user, &g_exec_entry);
+    bool ok = elf_load(p_dir, p_mod_user->mod_start, &g_exec_entry);
     if (!ok)
     {
         printf("kshell: failed to load the executable\n");
