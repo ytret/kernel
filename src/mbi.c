@@ -2,6 +2,9 @@
 #include <mbi.h>
 #include <string.h>
 
+#include <panic.h>
+#include <printf.h>
+
 static mbi_t g_mbi;
 
 void
@@ -40,28 +43,63 @@ mbi_get_ptr (void)
     return (&g_mbi);
 }
 
-void const *
-mbi_find_mod (mbi_t const * p_mbi, char const * p_name)
+size_t
+mbi_num_mods (mbi_t const * p_mbi)
 {
-    if (!(p_mbi->flags & MBI_FLAG_MODS))
+    if (p_mbi->flags & MBI_FLAG_MODS)
+    {
+        return (p_mbi->mods_count);
+    }
+    else
+    {
+        return (0);
+    }
+}
+
+mbi_mod_t const *
+mbi_nth_mod (mbi_t const * p_mbi, size_t idx)
+{
+    if (idx >= mbi_num_mods(p_mbi))
     {
         return (NULL);
     }
 
-    for (size_t idx = 0; idx < p_mbi->mods_count; idx++)
-    {
-        mbi_mod_t const * p_mods = ((mbi_mod_t const *) p_mbi->mods_addr);
+    mbi_mod_t const * p_mods = (mbi_mod_t const *) p_mbi->mods_addr;
+    return (&p_mods[idx]);
+}
 
-        if (!p_mods[idx].string)
+mbi_mod_t const *
+mbi_find_mod (mbi_t const * p_mbi, char const * p_name)
+{
+    for (size_t idx = 0; idx < mbi_num_mods(p_mbi); idx++)
+    {
+        mbi_mod_t const * p_mod = mbi_nth_mod(p_mbi, idx);
+
+        if (!p_mod)
         {
-            continue;
+            printf("mbi_nth_mod() returned NULL for index %u < number of"
+                   " modules %u\n", idx, mbi_num_mods(p_mbi));
+            panic("unexpected behavior");
         }
 
-        if (string_equals(((char const *) p_mods[idx].string), p_name))
+        if (string_equals((char const *) p_mod->string, p_name))
         {
-            return ((void const *) p_mods[idx].mod_start);
+            return (p_mod);
         }
     }
 
     return (NULL);
+}
+
+mbi_mod_t const *
+mbi_last_mod (mbi_t const * p_mbi)
+{
+    if (0 == mbi_num_mods(p_mbi))
+    {
+        return (NULL);
+    }
+    else
+    {
+        return (mbi_nth_mod(p_mbi, (mbi_num_mods(p_mbi) - 1)));
+    }
 }

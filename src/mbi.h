@@ -67,4 +67,7 @@ __attribute__ ((packed))
 void          mbi_copy(mbi_t const * p_src);
 mbi_t const * mbi_get_ptr(void);
 
-void const  * mbi_find_mod(mbi_t const * p_mbi, char const * p_name);
+size_t            mbi_num_mods(mbi_t const * p_mbi);
+mbi_mod_t const * mbi_nth_mod(mbi_t const * p_mbi, size_t idx);
+mbi_mod_t const * mbi_find_mod(mbi_t const * p_mbi, char const * p_name);
+mbi_mod_t const * mbi_last_mod(mbi_t const * p_mbi);
