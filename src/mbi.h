@@ -65,10 +65,12 @@ __attribute__ ((packed))
     uint32_t reserved;
 } mbi_mod_t;
 
-void          mbi_copy(mbi_t const * p_src);
-mbi_t const * mbi_get_ptr(void);
+void mbi_init(uint32_t mbi_addr);
+void mbi_deep_copy(void);
 
-size_t            mbi_num_mods(mbi_t const * p_mbi);
-mbi_mod_t const * mbi_nth_mod(mbi_t const * p_mbi, size_t idx);
-mbi_mod_t const * mbi_find_mod(mbi_t const * p_mbi, char const * p_name);
-mbi_mod_t const * mbi_last_mod(mbi_t const * p_mbi);
+mbi_t const * mbi_ptr(void);
+
+size_t            mbi_num_mods(void);
+mbi_mod_t const * mbi_nth_mod(size_t idx);
+mbi_mod_t const * mbi_find_mod(char const * p_name);
+mbi_mod_t const * mbi_last_mod(void);

@@ -4,6 +4,7 @@
 #include <idt.h>
 #include <kbd.h>
 #include <kshell/kshell.h>
+#include <mbi.h>
 #include <panic.h>
 #include <pci.h>
 #include <pic.h>
@@ -21,16 +22,18 @@
 static void init_entry(void) __attribute__ ((noreturn));
 
 void
-main (uint32_t magic_num, mbi_t const * p_mbi)
+main (uint32_t magic_num, uint32_t mbi_addr)
 {
-    term_init(p_mbi);
+    mbi_init(mbi_addr);
+
+    term_init();
     term_clear();
     printf("Hello, world!\n");
 
     if (MULTIBOOT_MAGIC_NUM == magic_num)
     {
 	printf("Booted by a multiboot-compliant bootloader\n");
-	printf("Multiboot information structure is at %P\n", p_mbi);
+	printf("Multiboot information structure is at %P\n", mbi_addr);
     }
     else
     {
@@ -49,24 +52,14 @@ main (uint32_t magic_num, mbi_t const * p_mbi)
     __asm__ volatile ("sti");
     printf("Interrupts enabled\n");
 
-    alloc_init(p_mbi);
+    alloc_init();
 
-    vmm_init(p_mbi);
-    pmm_init(p_mbi);
+    mbi_deep_copy();
 
-    mbi_copy(p_mbi);
+    vmm_init();
+    pmm_init();
 
     pic_set_mask(KBD_IRQ, false);
-
-    if (!(p_mbi->flags & MBI_FLAG_FRAMEBUF))
-    {
-        printf("No framebuffer in MBI\n");
-    }
-    else
-    {
-        printf("framebuffer_addr = %P\n", p_mbi->framebuffer_addr);
-        printf("framebuffer_type = %u\n", p_mbi->framebuffer_type);
-    }
 
     pci_init();
 

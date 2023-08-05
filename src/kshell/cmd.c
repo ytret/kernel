@@ -154,7 +154,7 @@ cmd_mbimap (char ** pp_args, size_t num_args)
         return;
     }
 
-    mbi_t const * p_mbi = mbi_get_ptr();
+    mbi_t const * p_mbi = mbi_ptr();
 
     if (!(p_mbi->flags & MBI_FLAG_MMAP))
     {
@@ -200,7 +200,7 @@ cmd_mbimod (char ** pp_args, size_t num_args)
         return;
     }
 
-    mbi_t const * p_mbi = mbi_get_ptr();
+    mbi_t const * p_mbi = mbi_ptr();
 
     if (!(p_mbi->flags & MBI_FLAG_MODS))
     {
@@ -239,15 +239,14 @@ cmd_elfhdr (char ** pp_args, size_t num_args)
         return;
     }
 
-    mbi_t const * p_mbi = mbi_get_ptr();
-    void const * p_elf_user = mbi_find_mod(p_mbi, "user");
+    mbi_mod_t const * p_elf_user = mbi_find_mod("user");
     if (!p_elf_user)
     {
         printf("Module 'user' is not found\n");
         return;
     }
 
-    elf_dump(p_elf_user);
+    elf_dump(p_elf_user->mod_start);
 }
 
 static void
@@ -259,7 +258,7 @@ cmd_exec (char ** pp_args, size_t num_args)
         return;
     }
 
-    mbi_t const * p_mbi = mbi_get_ptr();
+    mbi_t const * p_mbi = mbi_ptr();
 
     if (!(p_mbi->flags & MBI_FLAG_MODS))
     {

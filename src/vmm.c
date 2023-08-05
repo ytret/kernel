@@ -32,8 +32,10 @@ static void unmap_page(uint32_t * p_dir, uint32_t virt);
 static void invlpg(uint32_t addr);
 
 void
-vmm_init (mbi_t const * p_mbi)
+vmm_init (void)
 {
+    mbi_t const * p_mbi = mbi_ptr();
+
     gp_kvas_dir = alloc_aligned(4096, 4096);
     printf("vmm: kernel page dir is at %P\n", gp_kvas_dir);
 

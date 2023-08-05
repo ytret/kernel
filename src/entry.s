@@ -3,7 +3,7 @@
                 .set    FLAG_VIDEO,     1 << 2
 
                 .set    MAGIC,    0x1BADB002
-                .set    FLAGS,    FLAG_MODALIGN | FLAG_MEMINFO
+                .set    FLAGS,    FLAG_MODALIGN | FLAG_MEMINFO | FLAG_VIDEO
                 .set    CHECKSUM, -(MAGIC + FLAGS)
 
                 ## Preferred video mode.

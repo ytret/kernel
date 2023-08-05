@@ -1,10 +1,8 @@
 #pragma once
 
-#include <mbi.h>
-
 #include <stddef.h>
 
-void framebuf_init(mbi_t const * p_mbi);
+void framebuf_init(void);
 
 size_t framebuf_height_chars(void);
 size_t framebuf_width_chars(void);

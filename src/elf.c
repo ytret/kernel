@@ -217,9 +217,9 @@ elf_load (uint32_t * p_dir, void const * p_addr, uint32_t * p_entry)
 }
 
 void
-elf_dump (void const * p_addr)
+elf_dump (uint32_t addr)
 {
-    elf_hdr_t const * p_hdr = ((elf_hdr_t const *) p_addr);
+    elf_hdr_t const * p_hdr = ((elf_hdr_t const *) addr);
     check_hdr_valid(p_hdr);
 
     dump_general(p_hdr);

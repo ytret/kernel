@@ -1,4 +1,5 @@
 #include <alloc.h>
+#include <mbi.h>
 #include <panic.h>
 #include <printf.h>
 #include <vmm.h>
@@ -31,16 +32,16 @@ static tag_t * gp_start;
 //
 extern uint32_t ld_vmm_kernel_end;
 
-static uint32_t find_heap_start(mbi_t const * p_mbi);
+static uint32_t find_heap_start(void);
 
 static void fill_tag(tag_t * p_tag, bool b_used, size_t size, tag_t * p_next);
 static void print_tag(tag_t const * p_tag);
 static void check_tags(bool b_after_alloc);
 
 void
-alloc_init (mbi_t const * p_mbi)
+alloc_init (void)
 {
-    uint32_t heap_start = find_heap_start(p_mbi);
+    uint32_t heap_start = find_heap_start();
 
     gp_start = ((tag_t *) heap_start);
     fill_tag(gp_start, false, (HEAP_SIZE - TAG_SIZE), NULL);
@@ -173,11 +174,11 @@ alloc_dump_tags (void)
 }
 
 static uint32_t
-find_heap_start (mbi_t const * p_mbi)
+find_heap_start (void)
 {
     uint32_t last_used_addr;
 
-    mbi_mod_t const * p_last_mod = mbi_last_mod(p_mbi);
+    mbi_mod_t const * p_last_mod = mbi_last_mod();
     if (!p_last_mod)
     {
         // No modules.

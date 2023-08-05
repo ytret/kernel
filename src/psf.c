@@ -17,9 +17,9 @@ __attribute__ ((packed))
 } hdr_t;
 
 bool
-psf_load (psf_t * p_font, void const * p_addr)
+psf_load (psf_t * p_font, uint32_t addr)
 {
-    hdr_t const * p_hdr = p_addr;
+    hdr_t const * p_hdr = (hdr_t const *) addr;
 
     if ((p_hdr->magic != HEADER_MAGIC)
         || (p_hdr->version != 0)
@@ -31,7 +31,7 @@ psf_load (psf_t * p_font, void const * p_addr)
         return (false);
     }
 
-    p_font->p_glyphs   = (((uint8_t *) p_addr) + sizeof(hdr_t));
+    p_font->p_glyphs   = (((uint8_t *) addr) + sizeof(hdr_t));
     p_font->num_glyphs = p_hdr->num_glyphs;
     p_font->glyph_size = p_hdr->glyph_size;
     p_font->height_px  = p_hdr->height_px;

@@ -14,5 +14,5 @@ typedef struct
     size_t    width_px;
 } psf_t;
 
-bool            psf_load(psf_t * p_font, void const * p_addr);
+bool            psf_load(psf_t * p_font, uint32_t addr);
 uint8_t const * psf_glyph(psf_t const * p_font, char ch);

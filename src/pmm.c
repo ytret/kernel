@@ -1,4 +1,5 @@
 #include <alloc.h>
+#include <mbi.h>
 #include <panic.h>
 #include <pmm.h>
 #include <printf.h>
@@ -30,8 +31,10 @@ static void add_region(uint32_t start, uint32_t num_bytes);
 static void print_usage(void);
 
 void
-pmm_init (mbi_t const * p_mbi)
+pmm_init (void)
 {
+    mbi_t const * p_mbi = mbi_ptr();
+
     if (!(p_mbi->flags & MBI_FLAG_MMAP))
     {
         printf("PMM: memory map is not present in multiboot info struct\n");

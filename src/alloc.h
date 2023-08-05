@@ -1,11 +1,9 @@
 #pragma once
 
-#include <mbi.h>
-
 #include <stddef.h>
 #include <stdint.h>
 
-void     alloc_init(mbi_t const * p_mbi);
+void     alloc_init(void);
 uint32_t alloc_end(void);
 
 void * alloc(size_t num_bytes);

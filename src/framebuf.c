@@ -21,8 +21,10 @@ static void clear_pixel_at(size_t y, size_t x);
 static void scroll_pixels(size_t num_px);
 
 void
-framebuf_init (mbi_t const * p_mbi)
+framebuf_init (void)
 {
+    mbi_t const * p_mbi = mbi_ptr();
+
     gp_framebuf = ((uint8_t *) ((uint32_t) p_mbi->framebuffer_addr));
     g_pitch     = p_mbi->framebuffer_pitch;
     g_bpp       = p_mbi->framebuffer_bpp;
@@ -32,13 +34,13 @@ framebuf_init (mbi_t const * p_mbi)
 
     // Load the font.
     //
-    void const * p_psf_mod = mbi_find_mod(p_mbi, "font");
+    mbi_mod_t const * p_psf_mod = mbi_find_mod("font");
     if (!p_psf_mod)
     {
         panic_silent();
     }
 
-    bool b_font_ok = psf_load(&g_font, p_psf_mod);
+    bool b_font_ok = psf_load(&g_font, p_psf_mod->mod_start);
     if (!b_font_ok)
     {
         panic_silent();

@@ -1,4 +1,5 @@
 #include <framebuf.h>
+#include <mbi.h>
 #include <term.h>
 #include <vga.h>
 
@@ -15,12 +16,14 @@ static void (* gp_scroll)(void);
 static void put_char(char ch);
 
 void
-term_init (mbi_t const * p_mbi)
+term_init (void)
 {
+    mbi_t const * p_mbi = mbi_ptr();
+
     if ((p_mbi->flags & MBI_FLAG_FRAMEBUF)
         && (MBI_FRAMEBUF_EGA != p_mbi->framebuffer_type))
     {
-        framebuf_init(p_mbi);
+        framebuf_init();
 
         g_max_row = framebuf_height_chars();
         g_max_col = framebuf_width_chars();
