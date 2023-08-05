@@ -1,3 +1,4 @@
+#include <alloc.h>
 #include <panic.h>
 #include <pmm.h>
 #include <printf.h>
@@ -42,7 +43,7 @@ pmm_init (mbi_t const * p_mbi)
 
     // Determine the first free page.
     //
-    g_first_free_page = (VMM_HEAP_START + VMM_HEAP_SIZE);
+    g_first_free_page = ((alloc_end() + 0xFFF) & ~0xFFF);
     printf("PMM: first free page: %P\n", g_first_free_page);
 
     // Prepare the free page stack.

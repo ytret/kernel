@@ -24,11 +24,7 @@
 //
 #define FLAG_CHECK_MASK (TABLE_USER | TABLE_RW | TABLE_PRESENT)
 
-extern uint32_t ld_vmm_kernel_start;
-extern uint32_t ld_vmm_kernel_end;
-
-static uint32_t gp_kvas_dir[1024] __attribute__ ((aligned(4096)));
-static uint32_t gpp_kvas_tables[2][1024] __attribute__ ((aligned(4096)));
+static uint32_t * gp_kvas_dir;
 
 static void map_page(uint32_t * p_dir, uint32_t virt, uint32_t phys,
                      uint32_t flags);
@@ -38,38 +34,17 @@ static void invlpg(uint32_t addr);
 void
 vmm_init (mbi_t const * p_mbi)
 {
-    // Identity map the first 8 MiBs.
+    gp_kvas_dir = alloc_aligned(4096, 4096);
+    printf("vmm: kernel page dir is at %P\n", gp_kvas_dir);
+
+    // Identity map everything from 0 to heap end.
     //
-    uint32_t map_end = 0x800000;
-
-    // The kernel needs to be page-aligned for simplicity.
-    //
-    uint32_t kernel_start = ((uint32_t) &ld_vmm_kernel_start);
-    uint32_t kernel_end   = ((uint32_t) &ld_vmm_kernel_end);
-    if ((kernel_start & 0xFFF) || (kernel_end & 0xFFF))
+    uint32_t map_start = 0;
+    uint32_t map_end   = (alloc_end() + 0xFFF) & ~0xFFF;
+    for (uint32_t page = map_start; page < map_end; page += 4096)
     {
-        printf("VMM: kernel boundaries are not page-aligned\n");
-        panic("cannot init VMM");
+        vmm_map_kernel_page(page, page);
     }
-
-    for (uint32_t page = 0; page < map_end; page += 4096)
-    {
-        size_t dir_idx = ADDR_TO_DIR_ENTRY_IDX(page);
-        size_t tbl_idx = ADDR_TO_TBL_ENTRY_IDX(page);
-
-        if ((dir_idx != 0) && (dir_idx != 1))
-        {
-            printf("VMM: kernel pages do not fit into two page tables\n");
-            panic("cannot init VMM");
-        }
-
-        gpp_kvas_tables[dir_idx][tbl_idx] = (page | PAGE_RW | PAGE_PRESENT);
-    }
-
-    gp_kvas_dir[0] =
-        (((uint32_t) gpp_kvas_tables[0]) | TABLE_RW | TABLE_PRESENT);
-    gp_kvas_dir[1] =
-        (((uint32_t) gpp_kvas_tables[1]) | TABLE_RW | TABLE_PRESENT);
 
     // If the framebuffer is still not mapped, map it.
     //
@@ -102,8 +77,8 @@ vmm_init (mbi_t const * p_mbi)
     //
     vmm_load_dir(gp_kvas_dir);
 
-    printf("VMM: memory range %P..%P is identity mapped\n", 0, map_end);
-    printf("VMM: kernel start: %P, kernel end: %P\n", kernel_start, kernel_end);
+    printf("vmm: memory range %P..%P is identity mapped\n",
+           map_start, map_end);
 }
 
 uint32_t const *

@@ -5,6 +5,8 @@
 
 #include <stdbool.h>
 
+#define HEAP_SIZE               (4 * 1024 * 1024)
+
 // Default allocation alignment.
 //
 // NOTE: AHCI code assumes that the alignment is always at least 2 bytes.
@@ -25,42 +27,32 @@ typedef struct tag
 
 static tag_t * gp_start;
 
+// See link.ld.
+//
+extern uint32_t ld_vmm_kernel_end;
+
+static uint32_t find_heap_start(mbi_t const * p_mbi);
+
 static void fill_tag(tag_t * p_tag, bool b_used, size_t size, tag_t * p_next);
 static void print_tag(tag_t const * p_tag);
 static void check_tags(bool b_after_alloc);
 
 void
-alloc_init (void * p_start, size_t num_bytes)
+alloc_init (mbi_t const * p_mbi)
 {
-    if (!p_start)
-    {
-        printf("alloc_init: p_start is NULL\n");
-        panic("invalid argument");
-    }
+    uint32_t heap_start = find_heap_start(p_mbi);
 
-    if (((uint32_t) p_start) & 0xFFF)
-    {
-        printf("alloc_init: p_start is not page-aligned\n");
-        panic("invalid argument");
-    }
+    gp_start = ((tag_t *) heap_start);
+    fill_tag(gp_start, false, (HEAP_SIZE - TAG_SIZE), NULL);
 
-    if (0 == num_bytes)
-    {
-        printf("alloc_init: num_bytes is zero\n");
-        panic("invalid argument");
-    }
+    printf("alloc: heap starts at %P with size of %u bytes\n",
+           gp_start, HEAP_SIZE);
+}
 
-    if (num_bytes % 4096)
-    {
-        printf("alloc_init: num_bytes must be a multiple of page size\n");
-        panic("invalid argument");
-    }
-
-    gp_start = ((tag_t *) p_start);
-    fill_tag(gp_start, false, (num_bytes - TAG_SIZE), NULL);
-
-    printf("alloc: initialized heap with size of %u bytes starting at %P\n",
-           num_bytes, p_start);
+uint32_t
+alloc_end (void)
+{
+    return (((uint32_t) gp_start) + HEAP_SIZE);
 }
 
 void *
@@ -167,9 +159,10 @@ alloc_dump_tags (void)
 
     for (tag_t const * p_tag = gp_start; p_tag != NULL; p_tag = p_tag->p_next)
     {
-        if (((uint32_t) p_tag)
-            < (VMM_HEAP_START + VMM_HEAP_SIZE - sizeof(*p_tag)))
+        if (((uint32_t) p_tag) < (((uint32_t) gp_start) + HEAP_SIZE))
         {
+            // This tag is within heap.
+            //
             print_tag(p_tag);
         }
         else
@@ -177,6 +170,30 @@ alloc_dump_tags (void)
             return;
         }
     }
+}
+
+static uint32_t
+find_heap_start (mbi_t const * p_mbi)
+{
+    uint32_t last_used_addr;
+
+    mbi_mod_t const * p_last_mod = mbi_last_mod(p_mbi);
+    if (!p_last_mod)
+    {
+        // No modules.
+        //
+        last_used_addr = (uint32_t) &ld_vmm_kernel_end;
+    }
+    else
+    {
+        last_used_addr = p_last_mod->mod_end;
+    }
+
+    // Align to the next 4 MiB region.
+    //
+    uint32_t heap_start =
+        (last_used_addr + ((4 * 1024 * 1024) - 1)) & ~((4 * 1024 * 1024) - 1);
+    return (heap_start);
 }
 
 static void
@@ -223,14 +240,14 @@ check_tags (bool b_after_alloc)
 
     for (tag_t const * p_tag = gp_start; p_tag != NULL; p_tag = p_tag->p_next)
     {
-        if (((uint32_t) p_tag) < VMM_HEAP_START)
+        if (((uint32_t) p_tag) < ((uint32_t) gp_start))
         {
             printf("alloc: check_tags: tag %P is below heap\n", p_tag);
             b_panic = true;
             break;
         }
 
-        if (((uint32_t) p_tag) >= (VMM_HEAP_START + VMM_HEAP_SIZE))
+        if (((uint32_t) p_tag) >= (((uint32_t) gp_start) + HEAP_SIZE))
         {
             printf("alloc: check_tags: tag %P is above heap\n", p_tag);
             b_panic = true;
@@ -238,7 +255,7 @@ check_tags (bool b_after_alloc)
         }
 
         if ((((uint32_t) p_tag) + sizeof(*p_tag) + p_tag->size)
-            > (VMM_HEAP_START + VMM_HEAP_SIZE))
+            > (((uint32_t) gp_start) + HEAP_SIZE))
         {
             printf("alloc: check_tags: chunk of tag %P ends beyond heap at"
                    " 0x%08X\n",
