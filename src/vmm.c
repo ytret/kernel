@@ -1,4 +1,5 @@
 #include <alloc.h>
+#include <framebuf.h>
 #include <mbi.h>
 #include <panic.h>
 #include <pmm.h>
@@ -125,6 +126,18 @@ vmm_clone_kvas (void)
                 }
             }
         }
+    }
+
+    // Clone the video framebuffer.  If the framebuffer is text-only, both of
+    // these variables are zero, and no mapping is performed.
+    //
+    uint32_t fb_start_page = framebuf_start() & ~0xFFF;
+    uint32_t fb_end_page   = (framebuf_end() + 0xFFF) & ~0xFFF;
+    for (uint32_t fb_page = fb_start_page;
+         fb_page < fb_end_page;
+         fb_page += 4096)
+    {
+        map_page(p_dir, fb_page, fb_page, (PAGE_RW | PAGE_PRESENT));
     }
 
     return (p_dir);
