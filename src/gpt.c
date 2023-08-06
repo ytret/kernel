@@ -1,6 +1,6 @@
 #include <ahci.h>
-#include <alloc.h>
 #include <gpt.h>
+#include <heap.h>
 #include <printf.h>
 
 typedef struct
@@ -69,7 +69,7 @@ gpt_find_root_part (uint64_t * p_lba_start, uint64_t * p_lba_end)
 
     // Read the partition table header.
     //
-    pt_hdr_t * p_hdr = alloc(512);
+    pt_hdr_t * p_hdr = heap_alloc(512);
     ahci_read_sectors(1, 1, p_hdr);
 
     char p_sig[9] = { 0 };
@@ -92,7 +92,7 @@ gpt_find_root_part (uint64_t * p_lba_start, uint64_t * p_lba_end)
     // Read all the partition entries.
     //
     size_t ptes_sectors = (((p_hdr->ptes_num * p_hdr->pte_size) + 511) / 512);
-    uint8_t * p_ptes_u8 = alloc(512 * ptes_sectors);
+    uint8_t * p_ptes_u8 = heap_alloc(512 * ptes_sectors);
     bool b_read = ahci_read_sectors(p_hdr->ptes_lba, ptes_sectors, p_ptes_u8);
     if (!b_read)
     {
@@ -111,7 +111,7 @@ gpt_find_root_part (uint64_t * p_lba_start, uint64_t * p_lba_end)
         if (is_pte_used(p_pte))
         {
             size_t name_len = (p_hdr->pte_size - sizeof(pte_t));
-            char * p_name   = alloc(name_len);
+            char * p_name   = heap_alloc(name_len);
             __builtin_memcpy(p_name, p_pte->p_part_name, name_len);
 
             printf("gpt: partition %u: type ", idx);

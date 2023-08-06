@@ -1,5 +1,5 @@
-#include <alloc.h>
 #include <framebuf.h>
+#include <heap.h>
 #include <mbi.h>
 #include <panic.h>
 #include <pmm.h>
@@ -37,13 +37,13 @@ vmm_init (void)
 {
     mbi_t const * p_mbi = mbi_ptr();
 
-    gp_kvas_dir = alloc_aligned(4096, 4096);
+    gp_kvas_dir = heap_alloc_aligned(4096, 4096);
     printf("vmm: kernel page dir is at %P\n", gp_kvas_dir);
 
     // Identity map everything from 0 to heap end.
     //
     uint32_t map_start = 0;
-    uint32_t map_end   = (alloc_end() + 0xFFF) & ~0xFFF;
+    uint32_t map_end   = (heap_end() + 0xFFF) & ~0xFFF;
     for (uint32_t page = map_start; page < map_end; page += 4096)
     {
         vmm_map_kernel_page(page, page);
@@ -93,7 +93,7 @@ vmm_kvas_dir (void)
 uint32_t *
 vmm_clone_kvas (void)
 {
-    uint32_t * p_dir = alloc_aligned(4096, 4096);
+    uint32_t * p_dir = heap_alloc_aligned(4096, 4096);
     __builtin_memset(p_dir, 0, 4096);
 
     for (uint32_t dir_idx = 0;
@@ -108,7 +108,7 @@ vmm_clone_kvas (void)
 
             // Allocate space for the new table.
             //
-            uint32_t * p_tbl = alloc_aligned(4096, 4096);
+            uint32_t * p_tbl = heap_alloc_aligned(4096, 4096);
             __builtin_memset(p_tbl, 0, 4096);
 
             // Fill the dir entry (flags are copied).
@@ -198,7 +198,7 @@ map_page (uint32_t * p_dir, uint32_t virt, uint32_t phys, uint32_t flags)
     {
         // Allocate a new page table.
         //
-        p_tbl = alloc_aligned(4096, 4096);
+        p_tbl = heap_alloc_aligned(4096, 4096);
         __builtin_memset(p_tbl, 0, 4096);
 
         printf("vmm: map_page: allocated a page table %u at %P\n",

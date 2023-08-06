@@ -1,4 +1,4 @@
-#include <alloc.h>
+#include <heap.h>
 #include <mbi.h>
 #include <panic.h>
 #include <printf.h>
@@ -39,47 +39,47 @@ static void print_tag(tag_t const * p_tag);
 static void check_tags(bool b_after_alloc);
 
 void
-alloc_init (void)
+heap_init (void)
 {
     uint32_t heap_start = find_heap_start();
 
     gp_start = ((tag_t *) heap_start);
     fill_tag(gp_start, false, (HEAP_SIZE - TAG_SIZE), NULL);
 
-    printf("alloc: heap starts at %P with size of %u bytes\n",
+    printf("heap: start at %P, size is %u bytes\n",
            gp_start, HEAP_SIZE);
 }
 
 uint32_t
-alloc_end (void)
+heap_end (void)
 {
     return (((uint32_t) gp_start) + HEAP_SIZE);
 }
 
 void *
-alloc (size_t num_bytes)
+heap_alloc (size_t num_bytes)
 {
-    return (alloc_aligned(num_bytes, DEFAULT_ALIGN));
+    return (heap_alloc_aligned(num_bytes, DEFAULT_ALIGN));
 }
 
 void *
-alloc_aligned (size_t num_bytes, size_t align)
+heap_alloc_aligned (size_t num_bytes, size_t align)
 {
     if (0 == num_bytes)
     {
-        printf("alloc: num_bytes is zero\n");
+        printf("heap_alloc_aligned: num_bytes is zero\n");
         panic("invalid argument");
     }
 
     if (0 == align)
     {
-        printf("alloc: align is zero\n");
+        printf("heap_alloc_aligned: align is zero\n");
         panic("invalid argument");
     }
 
     if (NULL == gp_start)
     {
-        printf("alloc: heap is not initialized\n");
+        printf("heap_alloc_aligned: heap is not initialized\n");
         panic("unexpected behavior");
     }
 
@@ -116,7 +116,7 @@ alloc_aligned (size_t num_bytes, size_t align)
 
     if (!p_found)
     {
-        printf("alloc: no suitable chunk\n");
+        printf("heap_alloc_aligned: no suitable chunk\n");
         panic("allocation failed");
     }
 
@@ -145,17 +145,17 @@ alloc_aligned (size_t num_bytes, size_t align)
 }
 
 void
-alloc_free (void * p_addr)
+heap_free (void * p_addr)
 {
     (void) p_addr;
 }
 
 void
-alloc_dump_tags (void)
+heap_dump_tags (void)
 {
     if (NULL == gp_start)
     {
-        printf("alloc: no tags\n");
+        printf("heap_dump_tags: no tags\n");
     }
 
     for (tag_t const * p_tag = gp_start; p_tag != NULL; p_tag = p_tag->p_next)
@@ -216,11 +216,11 @@ print_tag (tag_t const * p_tag)
 {
     if (NULL == p_tag)
     {
-        printf("alloc: print_tag: p_tag is NULL\n");
+        printf("heap: print_tag: p_tag is NULL\n");
         panic("invalid argument");
     }
 
-    printf("alloc: tag at %P: ", p_tag);
+    printf("heap: tag at %P: ", p_tag);
 
     if (p_tag->b_used)
     {
@@ -243,14 +243,14 @@ check_tags (bool b_after_alloc)
     {
         if (((uint32_t) p_tag) < ((uint32_t) gp_start))
         {
-            printf("alloc: check_tags: tag %P is below heap\n", p_tag);
+            printf("heap: check_tags: tag %P is below heap\n", p_tag);
             b_panic = true;
             break;
         }
 
         if (((uint32_t) p_tag) >= (((uint32_t) gp_start) + HEAP_SIZE))
         {
-            printf("alloc: check_tags: tag %P is above heap\n", p_tag);
+            printf("heap: check_tags: tag %P is above heap\n", p_tag);
             b_panic = true;
             break;
         }
@@ -258,7 +258,7 @@ check_tags (bool b_after_alloc)
         if ((((uint32_t) p_tag) + sizeof(*p_tag) + p_tag->size)
             > (((uint32_t) gp_start) + HEAP_SIZE))
         {
-            printf("alloc: check_tags: chunk of tag %P ends beyond heap at"
+            printf("heap: check_tags: chunk of tag %P ends beyond heap at"
                    " 0x%08X\n",
                    p_tag, (((uint32_t) p_tag) + sizeof(*p_tag) + p_tag->size));
             b_panic = true;
@@ -268,7 +268,7 @@ check_tags (bool b_after_alloc)
 
     if (b_panic)
     {
-        alloc_dump_tags();
+        heap_dump_tags();
         panic(b_after_alloc
               ? "invalid heap state after alloc"
               : "invalid heap state before alloc");

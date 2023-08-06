@@ -1,5 +1,5 @@
-#include <alloc.h>
 #include <gdt.h>
+#include <heap.h>
 #include <panic.h>
 #include <pmm.h>
 #include <printf.h>
@@ -211,13 +211,13 @@ taskmgr_dump_tasks (void)
 static task_t *
 new_task (uint32_t entry_point)
 {
-    task_t * p_task = alloc(sizeof(*p_task));
+    task_t * p_task = heap_alloc(sizeof(*p_task));
     p_task->id = (g_new_task_id++);
     printf("new_task: p_task = %P id %u\n", p_task, p_task->id);
 
     // Allocate the kernel stack.
     //
-    void * p_stack = alloc(KERNEL_STACK_SIZE);
+    void * p_stack = heap_alloc(KERNEL_STACK_SIZE);
     stack_new(&p_task->kernel_stack, p_stack, KERNEL_STACK_SIZE);
     printf("taskmgr: stack at %P\n", p_stack);
 

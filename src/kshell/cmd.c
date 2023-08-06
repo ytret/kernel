@@ -16,8 +16,8 @@
  */
 
 #include <ahci.h>
-#include <alloc.h>
 #include <elf.h>
+#include <heap.h>
 #include <kshell/cmd.h>
 #include <kshell/vasview.h>
 #include <mbi.h>
@@ -287,7 +287,7 @@ cmd_exec (char ** pp_args, size_t num_args)
 
     taskmgr_new_user_task(p_dir, ((uint32_t) cmd_exec_entry));
 
-    alloc_free(p_dir);
+    heap_free(p_dir);
 }
 
 static void
@@ -456,7 +456,7 @@ cmd_ahci (char ** pp_args, size_t num_args)
         return;
     }
 
-    uint8_t * p_buf = alloc_aligned((512 * num_sectors), 2);
+    uint8_t * p_buf = heap_alloc_aligned((512 * num_sectors), 2);
     bool b_ok = ahci_read_sectors(sector, num_sectors, p_buf);
     if (!b_ok)
     {

@@ -1,6 +1,6 @@
-#include <alloc.h>
 #include <gdt.h>
 #include <gpt.h>
+#include <heap.h>
 #include <idt.h>
 #include <kbd.h>
 #include <kshell/kshell.h>
@@ -52,7 +52,7 @@ main (uint32_t magic_num, uint32_t mbi_addr)
     __asm__ volatile ("sti");
     printf("Interrupts enabled\n");
 
-    alloc_init();
+    heap_init();
 
     mbi_deep_copy();
 

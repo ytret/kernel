@@ -1,4 +1,4 @@
-#include <alloc.h>
+#include <heap.h>
 #include <mbi.h>
 #include <string.h>
 
@@ -31,14 +31,14 @@ mbi_deep_copy (void)
     // The structure itself.
     //
     mbi_t const * p_src = gp_mbi;
-    gp_mbi = alloc(sizeof(mbi_t));
+    gp_mbi = heap_alloc(sizeof(mbi_t));
     __builtin_memcpy(gp_mbi, p_src, sizeof(mbi_t));
 
     if (p_src->flags & MBI_FLAG_MODS)
     {
         // Copy the modules info.
         //
-        uint8_t * p_mods = alloc(p_src->mods_count * sizeof(mbi_mod_t));
+        uint8_t * p_mods = heap_alloc(p_src->mods_count * sizeof(mbi_mod_t));
         __builtin_memcpy(p_mods,
                          ((void const *) p_src->mods_addr),
                          (p_src->mods_count * sizeof(mbi_mod_t)));
@@ -49,7 +49,7 @@ mbi_deep_copy (void)
     {
         // Copy the memory map.
         //
-        uint8_t * p_mmap = alloc(p_src->mmap_length);
+        uint8_t * p_mmap = heap_alloc(p_src->mmap_length);
         __builtin_memcpy(p_mmap,
                          ((void const *) p_src->mmap_addr),
                          p_src->mmap_length);

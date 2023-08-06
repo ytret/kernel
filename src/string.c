@@ -1,4 +1,4 @@
-#include <alloc.h>
+#include <heap.h>
 #include <string.h>
 
 void
@@ -78,7 +78,7 @@ string_split (char const * p_str, char ch, bool b_ignore_empty, char ** pp_res,
             {
                 // Allocate a string to store the substring.
                 //
-                char * p_substr = alloc(substr_len + 1);
+                char * p_substr = heap_alloc(substr_len + 1);
 
                 // Copy the substring.
                 //
@@ -128,7 +128,7 @@ string_to_uint32 (char const * p_str, uint32_t * p_num, int base)
 {
     // Construct an uppercase copy of p_str.
     //
-    char * p_strup = alloc(string_len(p_str));
+    char * p_strup = heap_alloc(string_len(p_str));
     __builtin_memcpy(p_strup, p_str, string_len(p_str));
     string_to_upper(p_strup);
 

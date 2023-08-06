@@ -1,5 +1,5 @@
 #include <ahci.h>
-#include <alloc.h>
+#include <heap.h>
 #include <pci.h>
 #include <printf.h>
 #include <sata.h>
@@ -376,7 +376,7 @@ identify_device (void)
     cmd_t cmd   = { 0 };
     cmd.command = SATA_CMD_IDENTIFY_DEVICE;
 
-    uint16_t * p_ident  = alloc_aligned(512, 2);
+    uint16_t * p_ident  = heap_alloc_aligned(512, 2);
     int        cmd_slot = send_read_cmd(gp_port, cmd, p_ident, 512);
     if (-1 == cmd_slot)
     {
