@@ -136,6 +136,7 @@ string_to_uint32 (char const * p_str, uint32_t * p_num, int base)
     //
     *p_num = 0;
 
+    bool b_ok = true;
     while (*p_strup)
     {
         int digit;
@@ -152,7 +153,8 @@ string_to_uint32 (char const * p_str, uint32_t * p_num, int base)
             // Cannot convert char to a digit.
             //
             *p_num = 0;
-            return (false);
+            b_ok   = false;
+            break;
         }
 
         if (digit >= base)
@@ -160,14 +162,16 @@ string_to_uint32 (char const * p_str, uint32_t * p_num, int base)
             // The digit is greater than the base.
             //
             *p_num = 0;
-            return (false);
+            b_ok   = false;
+            break;
         }
 
         uint64_t check_overflow = (((uint64_t) (*p_num)) * base + digit);
         if (check_overflow > UINT32_MAX)
         {
             *p_num = 0;
-            return (false);
+            b_ok   = false;
+            break;
         }
 
         *p_num *= base;
@@ -176,5 +180,6 @@ string_to_uint32 (char const * p_str, uint32_t * p_num, int base)
         p_strup++;
     }
 
-    return (true);
+    heap_free(p_strup);
+    return (b_ok);
 }

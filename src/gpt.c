@@ -133,8 +133,13 @@ gpt_find_root_part (uint64_t * p_lba_start, uint64_t * p_lba_end)
                 *p_lba_start = p_pte->lba_start;
                 *p_lba_end   = p_pte->lba_end;
             }
+
+            heap_free(p_name);
         }
     }
+
+    heap_free(p_ptes_u8);
+    heap_free(p_hdr);
 
     return (b_found);
 }

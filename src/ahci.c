@@ -415,6 +415,8 @@ identify_device (void)
         printf(" %u KiB\n", disk_size_kib);
     }
 
+    heap_free(p_ident);
+
     return (true);
 }
 

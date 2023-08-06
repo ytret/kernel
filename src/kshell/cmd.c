@@ -481,6 +481,8 @@ cmd_ahci (char ** pp_args, size_t num_args)
         }
         printf("\n");
     }
+
+    heap_free(p_buf);
 }
 
 static void
