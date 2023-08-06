@@ -1,8 +1,12 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdint.h>
 
 void framebuf_init(void);
+
+uint32_t framebuf_start(void);
+uint32_t framebuf_end(void);
 
 size_t framebuf_height_chars(void);
 size_t framebuf_width_chars(void);

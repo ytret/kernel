@@ -50,6 +50,19 @@ framebuf_init (void)
     g_width_chars = (g_width_px / g_font.width_px);
 }
 
+uint32_t
+framebuf_start (void)
+{
+    return ((uint32_t) gp_framebuf);
+}
+
+uint32_t
+framebuf_end (void)
+{
+    uint32_t start = framebuf_start();
+    return (start + (g_height_px * g_pitch));
+}
+
 size_t
 framebuf_height_chars (void)
 {
