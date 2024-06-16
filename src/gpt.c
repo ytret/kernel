@@ -39,8 +39,8 @@ __attribute__ ((packed))
     uint8_t  p_part_name[];
 } pte_t;
 
-_Static_assert(0x5C == sizeof(pt_hdr_t));
-_Static_assert(0x38 == sizeof(pte_t));
+_Static_assert(0x5C == sizeof(pt_hdr_t), "unexpected struct size");
+_Static_assert(0x38 == sizeof(pte_t), "unexpected struct size");
 
 static uint8_t const gp_root_guid[16] = {
     0xBC, 0x6E, 0x51, 0xF0, 0x9E, 0x2D, 0x06, 0x42,
