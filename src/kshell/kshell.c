@@ -42,8 +42,8 @@ kshell (void)
 {
     for (;;)
     {
-        // Set the keyboard event callback in the loop, so that commands can
-        // reset it to their own callbacks.
+        // Set the keyboard event callback on every iteration, so that commands
+        // can reset it to their own callbacks without affecting the prompt.
         //
         kbd_set_callback(kbd_callback);
 
@@ -98,7 +98,8 @@ buf_remove (void)
 }
 
 /*
- * Returns a NUL-terminated command buffer string and resets the buffer.
+ * Returns a NUL-terminated command string buffer and resets the buffer
+ * position.
  */
 static volatile char const *
 buf_get_cmd (void)
