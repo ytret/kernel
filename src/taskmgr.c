@@ -102,7 +102,7 @@ taskmgr_start_scheduler (__attribute__ ((noreturn)) void (* p_init_entry)(void))
     __asm__ ("cli");
 
     // If interrupts were disabled and PIT IRQ happened after the following line
-    // and before the entry, some bad things would happen with the stack.
+    // and before the entry, some bad things would happen to the stack.
     //
     gb_scheduling = true;
 
