@@ -89,6 +89,12 @@ gpt_find_root_part (uint64_t * p_lba_start, uint64_t * p_lba_end)
     printf("gpt: PTE size %u\n", p_hdr->pte_size);
     printf("gpt: PTE array cksum 0x%08x\n", p_hdr->ptes_cksum);
 
+    if (0 == p_hdr->ptes_num)
+    {
+        printf("gpt: disk has no partitions\n");
+        return (false);
+    }
+
     // Read all the partition entries.
     //
     size_t ptes_sectors = (((p_hdr->ptes_num * p_hdr->pte_size) + 511) / 512);
