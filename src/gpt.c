@@ -42,6 +42,8 @@ __attribute__ ((packed))
 _Static_assert(0x5C == sizeof(pt_hdr_t), "unexpected struct size");
 _Static_assert(0x38 == sizeof(pte_t), "unexpected struct size");
 
+// F0516EBC-2D9E-4206-ABFC-B14EC7A626CE
+//
 static uint8_t const gp_root_guid[16] = {
     0xBC, 0x6E, 0x51, 0xF0, 0x9E, 0x2D, 0x06, 0x42,
     0xAB, 0xFC, 0xB1, 0x4E, 0xC7, 0xA6, 0x26, 0xCE,
