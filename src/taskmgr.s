@@ -26,7 +26,7 @@ taskmgr_switch_tasks:
                 ## the very first task with the current stack being abandoned.
                 ## Go straight to loading the next task's context, since there
                 ## is no need to save the context.
-                cmp     $0, 8(%ebp)
+                cmpl    $0, 8(%ebp)
                 jz      1f
 
                 ## EBP already saved.  Push all the other registers onto the
