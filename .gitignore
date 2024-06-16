@@ -1,4 +1,5 @@
-/build
+/.cache/
+/build*/
 *.img
 *.iso
 *.elf
