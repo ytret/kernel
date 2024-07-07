@@ -3,11 +3,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define PCI_CONFIG_SIZE         256
+#define PCI_CONFIG_SIZE 256
 
-typedef struct
-__attribute__ ((packed, aligned(4)))
-{
+typedef struct __attribute__((packed, aligned(4))) {
     // Type 00h configuration space header.  See PCI Local Bus Specification,
     // rev. 3.0, p. 215.
 
@@ -20,17 +18,17 @@ __attribute__ ((packed, aligned(4)))
     uint16_t status;
 
     // 0x08
-    uint8_t  revision_id;
-    uint8_t  prog_intf;
-    uint8_t  subclass;
-    uint8_t  base_class;
+    uint8_t revision_id;
+    uint8_t prog_intf;
+    uint8_t subclass;
+    uint8_t base_class;
 
     // 0x0C
-    uint8_t  cacheline_size;
-    uint8_t  latency_timer;
-    uint8_t  header_type:7;
-    bool     b_multifun:1;
-    uint8_t  bist;              // built-in self test
+    uint8_t cacheline_size;
+    uint8_t latency_timer;
+    uint8_t header_type : 7;
+    bool b_multifun : 1;
+    uint8_t bist; // built-in self test
 
     // 0x10
     uint32_t bar0;
@@ -51,17 +49,17 @@ __attribute__ ((packed, aligned(4)))
     uint32_t exp_rom_base_addr;
 
     // 0x34
-    uint8_t  capabiltiies_ptr;
-    uint32_t reserved_1:24;
+    uint8_t capabiltiies_ptr;
+    uint32_t reserved_1 : 24;
 
     // 0x38
     uint32_t reserved_2;
 
     // 0x3C
-    uint8_t  int_line;
-    uint8_t  int_pin;
-    uint8_t  min_gnt;
-    uint8_t  max_lat;
+    uint8_t int_line;
+    uint8_t int_pin;
+    uint8_t min_gnt;
+    uint8_t max_lat;
 } pci_config_t;
 
 _Static_assert(0x40 == sizeof(pci_config_t), "invalid size of pci_config_t");
@@ -69,7 +67,7 @@ _Static_assert(0x40 == sizeof(pci_config_t), "invalid size of pci_config_t");
 void pci_init(void);
 bool pci_init_device(uint8_t bus, uint8_t dev);
 
-void pci_read_config(uint8_t bus, uint8_t dev, void * p_config);
+void pci_read_config(uint8_t bus, uint8_t dev, void *p_config);
 
 void pci_list_devices(void);
 void pci_dump_config(uint8_t bus, uint8_t dev);

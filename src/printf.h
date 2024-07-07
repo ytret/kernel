@@ -1,3 +1,3 @@
 #pragma once
 
-void printf(char const * restrict p_format, ...);
+void printf(char const *restrict p_format, ...);

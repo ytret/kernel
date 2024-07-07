@@ -17,29 +17,24 @@
 
 #include <stdint.h>
 
-#define MULTIBOOT_MAGIC_NUM	0x2BADB002
+#define MULTIBOOT_MAGIC_NUM 0x2BADB002
 
-static void init_entry(void) __attribute__ ((noreturn));
+static void init_entry(void) __attribute__((noreturn));
 
-void
-main (uint32_t magic_num, uint32_t mbi_addr)
-{
+void main(uint32_t magic_num, uint32_t mbi_addr) {
     mbi_init(mbi_addr);
 
     term_init();
     term_clear();
     printf("Hello, world!\n");
 
-    if (MULTIBOOT_MAGIC_NUM == magic_num)
-    {
-	printf("Booted by a multiboot-compliant bootloader\n");
-	printf("Multiboot information structure is at %P\n", mbi_addr);
-    }
-    else
-    {
-	printf("Magic number: 0x%X, expected: 0x%X\n",
-	       magic_num, MULTIBOOT_MAGIC_NUM);
-	panic("booted by an unknown bootloader");
+    if (MULTIBOOT_MAGIC_NUM == magic_num) {
+        printf("Booted by a multiboot-compliant bootloader\n");
+        printf("Multiboot information structure is at %P\n", mbi_addr);
+    } else {
+        printf("Magic number: 0x%X, expected: 0x%X\n", magic_num,
+               MULTIBOOT_MAGIC_NUM);
+        panic("booted by an unknown bootloader");
     }
 
     gdt_init();
@@ -49,7 +44,7 @@ main (uint32_t magic_num, uint32_t mbi_addr)
     pit_init(PIT_PERIOD_MS);
     pic_set_mask(PIT_IRQ, false);
 
-    __asm__ volatile ("sti");
+    __asm__ volatile("sti");
     printf("Interrupts enabled\n");
 
     heap_init();
@@ -67,10 +62,7 @@ main (uint32_t magic_num, uint32_t mbi_addr)
     uint64_t root_num_sectors;
     bool b_root_found =
         gpt_find_root_part(&root_start_sector, &root_num_sectors);
-    if (!b_root_found)
-    {
-        printf("Could not find root partition\n");
-    }
+    if (!b_root_found) { printf("Could not find root partition\n"); }
 
     taskmgr_init();
     taskmgr_start_scheduler(init_entry);
@@ -78,13 +70,9 @@ main (uint32_t magic_num, uint32_t mbi_addr)
     printf("End of main\n");
 }
 
-__attribute__ ((noreturn))
-static void
-init_entry (void)
-{
+__attribute__((noreturn)) static void init_entry(void) {
     // taskmgr_switch_tasks() requires that task entries enable interrupts.
-    //
-    __asm__ ("sti");
+    __asm__("sti");
 
     kshell();
 

@@ -7,8 +7,8 @@ void term_init(void);
 void term_clear(void);
 void term_clear_rows(size_t start_row, size_t num_rows);
 
-void term_print_str(char const * p_str);
-void term_print_str_len(char const * p_str, size_t len);
+void term_print_str(char const *p_str);
+void term_print_str_len(char const *p_str, size_t len);
 
 void term_put_char_at(size_t row, size_t col, char ch);
 void term_put_cursor_at(size_t row, size_t col);

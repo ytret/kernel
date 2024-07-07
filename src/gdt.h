@@ -2,9 +2,7 @@
 
 #include <stdint.h>
 
-typedef struct
-__attribute__ ((packed))
-{
+typedef struct __attribute__((packed)) {
     uint16_t prev;
     uint16_t reserved_prev;
     uint32_t esp0;
@@ -46,9 +44,8 @@ __attribute__ ((packed))
     uint32_t ssp;
 } tss_t;
 
-void    gdt_init(void);
-tss_t * gdt_get_tss(void);
+void gdt_init(void);
+tss_t *gdt_get_tss(void);
 
 // Defined in gdt.s.
-//
-void gdt_load(uint8_t const * p_desc);
+void gdt_load(uint8_t const *p_desc);

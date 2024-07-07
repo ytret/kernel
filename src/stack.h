@@ -4,22 +4,20 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef struct
-__attribute__ ((packed))
-{
+typedef struct __attribute__((packed)) {
     // This field order is relied upon by taskmgr_switch_tasks() assembly
     // function (see taskmgr.s).
 
-    uint32_t * p_top;
+    uint32_t *p_top;
 
-    uint32_t * p_bottom;
-    uint32_t * p_top_max;
+    uint32_t *p_bottom;
+    uint32_t *p_top_max;
 } stack_t;
 
-void stack_new(stack_t * p_stack, void * p_bottom, size_t size_bytes);
+void stack_new(stack_t *p_stack, void *p_bottom, size_t size_bytes);
 
-void     stack_push(stack_t * p_stack, uint32_t value);
-uint32_t stack_pop(stack_t * p_stack);
+void stack_push(stack_t *p_stack, uint32_t value);
+uint32_t stack_pop(stack_t *p_stack);
 
-bool stack_is_full(stack_t const * p_stack);
-bool stack_is_empty(stack_t const * p_stack);
+bool stack_is_full(stack_t const *p_stack);
+bool stack_is_empty(stack_t const *p_stack);

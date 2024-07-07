@@ -31,79 +31,49 @@
 
 #include <cpuid.h>
 
-#define NUM_CMDS        12
-#define MAX_ARGS        32
+#define NUM_CMDS 12
+#define MAX_ARGS 32
 
-static char const * const gp_cmd_names[NUM_CMDS] =
-{
-    "clear",
-    "help",
-    "mbimap",
-    "mbimod",
-    "elfhdr",
-    "exec",
-    "tasks",
-    "vasview",
-    "cpuid",
-    "pci",
-    "ahci",
-    "execrep",
+static char const *const gp_cmd_names[NUM_CMDS] = {
+    "clear", "help",    "mbimap", "mbimod", "elfhdr", "exec",
+    "tasks", "vasview", "cpuid",  "pci",    "ahci",   "execrep",
 };
 
 static uint32_t g_exec_entry;
 
-static void cmd_clear(char ** pp_args, size_t num_args);
-static void cmd_help(char ** pp_args, size_t num_args);
-static void cmd_mbimap(char ** pp_args, size_t num_args);
-static void cmd_mbimod(char ** pp_args, size_t num_args);
-static void cmd_elfhdr(char ** pp_args, size_t num_args);
-static void cmd_exec(char ** pp_args, size_t num_args);
+static void cmd_clear(char **pp_args, size_t num_args);
+static void cmd_help(char **pp_args, size_t num_args);
+static void cmd_mbimap(char **pp_args, size_t num_args);
+static void cmd_mbimod(char **pp_args, size_t num_args);
+static void cmd_elfhdr(char **pp_args, size_t num_args);
+static void cmd_exec(char **pp_args, size_t num_args);
 static void cmd_exec_entry(void);
-static void cmd_tasks(char ** pp_args, size_t num_args);
-static void cmd_vasview(char ** pp_args, size_t num_args);
-static void cmd_cpuid(char ** pp_args, size_t num_args);
-static void cmd_pci(char ** pp_args, size_t num_args);
-static void cmd_ahci(char ** pp_args, size_t num_args);
-static void cmd_execrep(char ** pp_args, size_t num_args);
+static void cmd_tasks(char **pp_args, size_t num_args);
+static void cmd_vasview(char **pp_args, size_t num_args);
+static void cmd_cpuid(char **pp_args, size_t num_args);
+static void cmd_pci(char **pp_args, size_t num_args);
+static void cmd_ahci(char **pp_args, size_t num_args);
+static void cmd_execrep(char **pp_args, size_t num_args);
 
-void
-kshell_cmd_parse (char const * p_cmd)
-{
-    char * pp_args[MAX_ARGS];
+void kshell_cmd_parse(char const *p_cmd) {
+    char *pp_args[MAX_ARGS];
     size_t num_args = string_split(p_cmd, ' ', true, pp_args, MAX_ARGS);
 
-    if (0 == num_args)
-    {
-        return;
-    }
+    if (0 == num_args) { return; }
 
-    if (num_args > MAX_ARGS)
-    {
+    if (num_args > MAX_ARGS) {
         printf("kshell: too much arguments (more than %u)\n", MAX_ARGS);
         return;
     }
 
-    static void (* const p_cmd_funs[NUM_CMDS])(char ** pp_args,
-                                               size_t num_args) =
-        {
-            cmd_clear,
-            cmd_help,
-            cmd_mbimap,
-            cmd_mbimod,
-            cmd_elfhdr,
-            cmd_exec,
-            cmd_tasks,
-            cmd_vasview,
-            cmd_cpuid,
-            cmd_pci,
-            cmd_ahci,
-            cmd_execrep,
-        };
+    static void (*const p_cmd_funs[NUM_CMDS])(char **pp_args,
+                                              size_t num_args) = {
+        cmd_clear, cmd_help,    cmd_mbimap, cmd_mbimod, cmd_elfhdr, cmd_exec,
+        cmd_tasks, cmd_vasview, cmd_cpuid,  cmd_pci,    cmd_ahci,   cmd_execrep,
+    };
 
-    for (size_t idx = 0; idx < NUM_CMDS; idx++)
-    {
-        if (string_equals(pp_args[0], gp_cmd_names[idx]))
-        {
+    for (size_t idx = 0; idx < NUM_CMDS; idx++) {
+        if (string_equals(pp_args[0], gp_cmd_names[idx])) {
             p_cmd_funs[idx](pp_args, num_args);
             return;
         }
@@ -112,11 +82,8 @@ kshell_cmd_parse (char const * p_cmd)
     printf("kshell: unknown command: '%s'\n", pp_args[0]);
 }
 
-static void
-cmd_clear (char ** pp_args, size_t num_args)
-{
-    if (1 != num_args)
-    {
+static void cmd_clear(char **pp_args, size_t num_args) {
+    if (1 != num_args) {
         printf("Usage: %s\n", pp_args[0]);
         return;
     }
@@ -124,66 +91,50 @@ cmd_clear (char ** pp_args, size_t num_args)
     term_clear();
 }
 
-static void
-cmd_help (char ** pp_args, size_t num_args)
-{
-    if (1 != num_args)
-    {
+static void cmd_help(char **pp_args, size_t num_args) {
+    if (1 != num_args) {
         printf("Usage: %s\n", pp_args[0]);
         return;
     }
 
     printf("Available commands:\n");
-    for (size_t idx = 0; idx < NUM_CMDS; idx++)
-    {
+    for (size_t idx = 0; idx < NUM_CMDS; idx++) {
         printf("%s", gp_cmd_names[idx]);
-        if (idx != (NUM_CMDS - 1))
-        {
-            printf(", ");
-        }
+        if (idx != (NUM_CMDS - 1)) { printf(", "); }
     }
     printf("\n");
 }
 
-static void
-cmd_mbimap (char ** pp_args, size_t num_args)
-{
-    if (1 != num_args)
-    {
+static void cmd_mbimap(char **pp_args, size_t num_args) {
+    if (1 != num_args) {
         printf("Usage: %s\n", pp_args[0]);
         return;
     }
 
-    mbi_t const * p_mbi = mbi_ptr();
+    mbi_t const *p_mbi = mbi_ptr();
 
-    if (!(p_mbi->flags & MBI_FLAG_MMAP))
-    {
+    if (!(p_mbi->flags & MBI_FLAG_MMAP)) {
         printf("No memory map in MBI\n");
         return;
     }
 
     uint32_t byte = 0;
-    while (byte < p_mbi->mmap_length)
-    {
-        uint32_t const * p_entry =
-            ((uint32_t const * ) (p_mbi->mmap_addr + byte));
+    while (byte < p_mbi->mmap_length) {
+        uint32_t const *p_entry = ((uint32_t const *)(p_mbi->mmap_addr + byte));
 
-        uint32_t size      = *(p_entry + 0);
-        uint64_t base_addr = *((uint64_t const *) (p_entry + 1));
-        uint64_t length    = *((uint64_t const *) (p_entry + 3));
-        uint32_t type      = *(p_entry + 5);
+        uint32_t size = *(p_entry + 0);
+        uint64_t base_addr = *((uint64_t const *)(p_entry + 1));
+        uint64_t length = *((uint64_t const *)(p_entry + 3));
+        uint32_t type = *(p_entry + 5);
 
         uint64_t end = (base_addr + length);
 
-        printf("size = %d, addr = 0x%P", size, ((uint32_t) base_addr));
-        if (end >> 32)
-        {
-            printf(", end = 0x%08X%08X",
-                   ((uint32_t) (end >> 32)), ((uint32_t) end));
-        }
-        else
-        {
-            printf(", end = 0x%08X", ((uint32_t) end));
+        printf("size = %d, addr = 0x%P", size, ((uint32_t)base_addr));
+        if (end >> 32) {
+            printf(", end = 0x%08X%08X", ((uint32_t)(end >> 32)),
+                   ((uint32_t)end));
+        } else {
+            printf(", end = 0x%08X", ((uint32_t)end));
         }
         printf(", type = %d\n", type);
 
@@ -191,35 +142,27 @@ cmd_mbimap (char ** pp_args, size_t num_args)
     }
 }
 
-static void
-cmd_mbimod (char ** pp_args, size_t num_args)
-{
-    if (1 != num_args)
-    {
+static void cmd_mbimod(char **pp_args, size_t num_args) {
+    if (1 != num_args) {
         printf("Usage: %s\n", pp_args[0]);
         return;
     }
 
-    mbi_t const * p_mbi = mbi_ptr();
+    mbi_t const *p_mbi = mbi_ptr();
 
-    if (!(p_mbi->flags & MBI_FLAG_MODS))
-    {
+    if (!(p_mbi->flags & MBI_FLAG_MODS)) {
         printf("No modules in MBI\n");
         return;
     }
 
     printf("Module count = %u\n", p_mbi->mods_count);
 
-    mbi_mod_t const * p_mod = ((mbi_mod_t const *) p_mbi->mods_addr);
-    for (size_t idx = 0; idx < p_mbi->mods_count; idx++)
-    {
+    mbi_mod_t const *p_mod = ((mbi_mod_t const *)p_mbi->mods_addr);
+    for (size_t idx = 0; idx < p_mbi->mods_count; idx++) {
         printf("Module %d: ", idx);
-        if (p_mod->string)
-        {
+        if (p_mod->string) {
             printf("'%s', ", p_mod->string);
-        }
-        else
-        {
+        } else {
             printf("string = NULL, ");
         }
         printf("start = %P, end = %P, size = %u", p_mod->mod_start,
@@ -230,18 +173,14 @@ cmd_mbimod (char ** pp_args, size_t num_args)
     }
 }
 
-static void
-cmd_elfhdr (char ** pp_args, size_t num_args)
-{
-    if (1 != num_args)
-    {
+static void cmd_elfhdr(char **pp_args, size_t num_args) {
+    if (1 != num_args) {
         printf("Usage: %s\n", pp_args[0]);
         return;
     }
 
-    mbi_mod_t const * p_mod_user = mbi_find_mod("user");
-    if (!p_mod_user)
-    {
+    mbi_mod_t const *p_mod_user = mbi_find_mod("user");
+    if (!p_mod_user) {
         printf("Module 'user' is not found\n");
         return;
     }
@@ -249,53 +188,42 @@ cmd_elfhdr (char ** pp_args, size_t num_args)
     elf_dump(p_mod_user->mod_start);
 }
 
-static void
-cmd_exec (char ** pp_args, size_t num_args)
-{
-    if (1 != num_args)
-    {
+static void cmd_exec(char **pp_args, size_t num_args) {
+    if (1 != num_args) {
         printf("Usage: %s\n", pp_args[0]);
         return;
     }
 
-    mbi_t const * p_mbi = mbi_ptr();
+    mbi_t const *p_mbi = mbi_ptr();
 
-    if (!(p_mbi->flags & MBI_FLAG_MODS))
-    {
+    if (!(p_mbi->flags & MBI_FLAG_MODS)) {
         printf("Module 'user' is not found\n");
         return;
     }
 
-    mbi_mod_t const * p_mod_user = mbi_find_mod("user");
-    if (!p_mod_user)
-    {
+    mbi_mod_t const *p_mod_user = mbi_find_mod("user");
+    if (!p_mod_user) {
         printf("Module 'user' is not found\n");
         return;
     }
 
-    uint32_t * p_dir = vmm_clone_kvas();
+    uint32_t *p_dir = vmm_clone_kvas();
     printf("kshell: cloned kernel VAS at %P\n", p_dir);
 
     bool ok = elf_load(p_dir, p_mod_user->mod_start, &g_exec_entry);
-    if (!ok)
-    {
-        printf("kshell: failed to load the executable\n");
-    }
+    if (!ok) { printf("kshell: failed to load the executable\n"); }
 
     printf("kshell: successfully loaded\n");
     printf("kshell: entry at 0x%08x\n", g_exec_entry);
 
-    taskmgr_new_user_task(p_dir, ((uint32_t) cmd_exec_entry));
+    taskmgr_new_user_task(p_dir, ((uint32_t)cmd_exec_entry));
 
     heap_free(p_dir);
 }
 
-static void
-cmd_exec_entry (void)
-{
+static void cmd_exec_entry(void) {
     // taskmgr_switch_tasks() requires that task entries enable interrupts.
-    //
-    __asm__ volatile ("sti");
+    __asm__ volatile("sti");
 
     taskmgr_go_usermode(g_exec_entry);
 
@@ -303,11 +231,8 @@ cmd_exec_entry (void)
     panic("unexpected behavior");
 }
 
-static void
-cmd_tasks (char ** pp_args, size_t num_args)
-{
-    if (1 != num_args)
-    {
+static void cmd_tasks(char **pp_args, size_t num_args) {
+    if (1 != num_args) {
         printf("Usage: %s\n", pp_args[0]);
         return;
     }
@@ -315,11 +240,8 @@ cmd_tasks (char ** pp_args, size_t num_args)
     taskmgr_dump_tasks();
 }
 
-static void
-cmd_vasview (char ** pp_args, size_t num_args)
-{
-    if (num_args > 2)
-    {
+static void cmd_vasview(char **pp_args, size_t num_args) {
+    if (num_args > 2) {
         printf("Usage: %s [pgdir]\n", pp_args[0]);
         printf("Optional arguments:\n");
         printf("  pgdir  virtual address of a page directory to view"
@@ -328,16 +250,14 @@ cmd_vasview (char ** pp_args, size_t num_args)
     }
 
     uint32_t pgdir;
-    __asm__ volatile ("mov %%cr3, %0"
-                      : "=a" (pgdir)
-                      : /* no inputs */
-                      : /* no clobber */);
+    __asm__ volatile("mov %%cr3, %0"
+                     : "=a"(pgdir)
+                     : /* no inputs */
+                     : /* no clobber */);
 
-    if (2 == num_args)
-    {
+    if (2 == num_args) {
         bool ok = string_to_uint32(pp_args[1], &pgdir, 16);
-        if (!ok)
-        {
+        if (!ok) {
             printf("Invalid argument: '%s'\n", pp_args[1]);
             printf("pgdir must be a hexadecimal 32-bit unsigned integer\n");
             return;
@@ -347,19 +267,15 @@ cmd_vasview (char ** pp_args, size_t num_args)
     vasview(pgdir);
 }
 
-static void
-cmd_cpuid (char ** pp_args, size_t num_args)
-{
-    if (2 != num_args)
-    {
+static void cmd_cpuid(char **pp_args, size_t num_args) {
+    if (2 != num_args) {
         printf("Usage: %s <leaf>\n", pp_args[0]);
         return;
     }
 
     uint32_t leaf;
     bool b_arg_ok = string_to_uint32(pp_args[1], &leaf, 10);
-    if (!b_arg_ok)
-    {
+    if (!b_arg_ok) {
         printf("Invalid argument: '%s'\n", pp_args[1]);
         printf("leaf must be a decimal 32-bit unsigned integer\n");
         return;
@@ -367,8 +283,7 @@ cmd_cpuid (char ** pp_args, size_t num_args)
 
     unsigned int eax, ebx, ecx, edx;
     int cpuid_ok = __get_cpuid(leaf, &eax, &ebx, &ecx, &edx);
-    if (!cpuid_ok)
-    {
+    if (!cpuid_ok) {
         printf("Unsupported cpuid leaf: %u\n", leaf);
         return;
     }
@@ -379,39 +294,30 @@ cmd_cpuid (char ** pp_args, size_t num_args)
     printf("EDX = %08x\n", edx);
 }
 
-static void
-cmd_pci (char ** pp_args, size_t num_args)
-{
-    if (num_args < 2)
-    {
+static void cmd_pci(char **pp_args, size_t num_args) {
+    if (num_args < 2) {
         printf("Usage: %s <cmd> [args]\n", pp_args[0]);
         printf("cmd must be one of: dump, list\n");
         printf("args depend on cmd\n");
         return;
     }
 
-    if (string_equals(pp_args[1], "list"))
-    {
-        if (num_args != 2)
-        {
+    if (string_equals(pp_args[1], "list")) {
+        if (num_args != 2) {
             printf("Usage: pci list\n");
             return;
         }
 
         pci_list_devices();
-    }
-    else if (string_equals(pp_args[1], "dump"))
-    {
-        if (num_args != 3)
-        {
+    } else if (string_equals(pp_args[1], "dump")) {
+        if (num_args != 3) {
             printf("Usage: pci dump <device number>\n");
             return;
         }
 
         uint32_t dev;
         bool b_ok = string_to_uint32(pp_args[2], &dev, 10);
-        if ((!b_ok) || (dev >= 32))
-        {
+        if ((!b_ok) || (dev >= 32)) {
             printf("Invalid argument: '%s'\n", pp_args[2]);
             printf("device number must be an unsigned decimal number less than"
                    " 32\n");
@@ -419,20 +325,15 @@ cmd_pci (char ** pp_args, size_t num_args)
         }
 
         pci_dump_config(0, dev);
-    }
-    else
-    {
+    } else {
         printf("pci: unknown command: '%s'\n", pp_args[1]);
         return;
     }
 }
 
-static void
-cmd_ahci (char ** pp_args, size_t num_args)
-{
-    if ((num_args != 4)
-        || ((num_args > 1) && (!string_equals(pp_args[1], "dump"))))
-    {
+static void cmd_ahci(char **pp_args, size_t num_args) {
+    if ((num_args != 4) ||
+        ((num_args > 1) && (!string_equals(pp_args[1], "dump")))) {
         printf("Usage: ahci dump <sector> <num sectors>\n");
         return;
     }
@@ -441,41 +342,32 @@ cmd_ahci (char ** pp_args, size_t num_args)
     uint32_t num_sectors;
 
     bool b_sector_ok = string_to_uint32(pp_args[2], &sector, 10);
-    if (!b_sector_ok)
-    {
+    if (!b_sector_ok) {
         printf("Invalid argument: '%s'\n", pp_args[2]);
         printf("sector must be a 32-bit unsigned integer\n");
         return;
     }
 
     bool b_num_ok = string_to_uint32(pp_args[3], &num_sectors, 10);
-    if ((!b_num_ok) || (0 == num_sectors))
-    {
+    if ((!b_num_ok) || (0 == num_sectors)) {
         printf("Invalid argument: '%s'\n", pp_args[3]);
         printf("num sectors must be a non-zero 32-bit unsigned integer\n");
         return;
     }
 
-    uint8_t * p_buf = heap_alloc_aligned((512 * num_sectors), 2);
+    uint8_t *p_buf = heap_alloc_aligned((512 * num_sectors), 2);
     bool b_ok = ahci_read_sectors(sector, num_sectors, p_buf);
-    if (!b_ok)
-    {
+    if (!b_ok) {
         printf("ahci: dump command failed\n");
         return;
     }
 
     // Print the bytes.
-    //
     size_t num_bytes = (512 * num_sectors);
-    for (size_t row = 0; row < (num_bytes / 24); row++)
-    {
+    for (size_t row = 0; row < (num_bytes / 24); row++) {
         printf("%02x  ", row);
-        for (size_t byte = 0; byte < 24; byte++)
-        {
-            if ((byte > 0) && ((byte % 8) == 0))
-            {
-                printf(" ");
-            }
+        for (size_t byte = 0; byte < 24; byte++) {
+            if ((byte > 0) && ((byte % 8) == 0)) { printf(" "); }
             size_t idx = ((row * 24) + byte);
             printf("%02x ", p_buf[idx]);
         }
@@ -485,18 +377,14 @@ cmd_ahci (char ** pp_args, size_t num_args)
     heap_free(p_buf);
 }
 
-static void
-cmd_execrep (char ** pp_args, size_t num_args)
-{
-    if (num_args != 1)
-    {
+static void cmd_execrep(char **pp_args, size_t num_args) {
+    if (num_args != 1) {
         printf("Usage: %s\n", pp_args[0]);
         return;
     }
 
-    for (;;)
-    {
-        char const * p_cmd = "exec";
+    for (;;) {
+        char const *p_cmd = "exec";
         kshell_cmd_parse(p_cmd);
     }
 }
