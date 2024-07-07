@@ -1,9 +1,11 @@
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR i686)
 
+set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Debug|Release")
+set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
+
 set(CMAKE_C_COMPILER "i686-elf-gcc")
 set(CMAKE_C_FLAGS "-ffreestanding -fdiagnostics-color=always")
-set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
 
 set(CMAKE_ASM_FLAGS "${CMAKE_C_FLAGS} -x assembler-with-cpp")
 

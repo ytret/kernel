@@ -5,13 +5,8 @@ project(kernel C ASM)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
-option(RELEASE "Build with optimization enabled" OFF)
-
-if(RELEASE)
-    set(OPTIMIZATION_FLAGS -O3 -g)
-else(RELEASE)
-    set(OPTIMIZATION_FLAGS -O0 -g)
-endif(RELEASE)
+set(CMAKE_C_FLAGS_DEBUG "-O0 -g")
+set(CMAKE_C_FLAGS_RELEASE "-O3")
 
 
 ############
