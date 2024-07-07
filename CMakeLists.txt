@@ -12,9 +12,6 @@ set(CMAKE_C_FLAGS_RELEASE "-O3")
 ############
 ## Kernel ##
 ############
-
-# NOTE: using set() makes flags from toolchain.cmake overridden.
-
 add_executable(kernel
     src/main.c
     src/ahci.c
@@ -51,22 +48,17 @@ add_executable(kernel
     src/kshell/cmd.c
     src/kshell/kshell.c
     src/kshell/vasview.c
-    )
-
+)
 target_compile_options(kernel PRIVATE
     -ffunction-sections -flto
     -Wall -Wextra
     ${OPTIMIZATION_FLAGS}
-    )
-
-target_include_directories(kernel PRIVATE
-    src
-    )
-
+)
+target_include_directories(kernel PRIVATE src)
 target_link_options(kernel PRIVATE
     -ffunction-sections -flto
     ${OPTIMIZATION_FLAGS}
-    )
-set_target_properties(kernel
-    PROPERTIES LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/link.ld
-    )
+)
+set_target_properties(kernel PROPERTIES
+    LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/link.ld
+)

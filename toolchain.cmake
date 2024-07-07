@@ -9,7 +9,9 @@ set(CMAKE_C_FLAGS "-ffreestanding -fdiagnostics-color=always")
 
 set(CMAKE_ASM_FLAGS "${CMAKE_C_FLAGS} -x assembler-with-cpp")
 
-set(CMAKE_EXE_LINKER_FLAGS "-nostdlib -T${CMAKE_CURRENT_SOURCE_DIR}/src/link.ld")
+set(CMAKE_EXE_LINKER_FLAGS
+    "-nostdlib -T${CMAKE_CURRENT_SOURCE_DIR}/src/link.ld"
+    )
 
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY NEVER)
