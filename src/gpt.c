@@ -56,7 +56,7 @@ bool gpt_find_root_part(uint64_t *p_lba_start, uint64_t *p_lba_end) {
     // Ensure the root disk was found.
     if (!ahci_is_init()) {
         kprintf("gpt: AHCI driver is not initialized\n");
-        return (false);
+        return false;
     }
 
     // Read the partition table header.
@@ -82,7 +82,7 @@ bool gpt_find_root_part(uint64_t *p_lba_start, uint64_t *p_lba_end) {
 
     if (0 == p_hdr->ptes_num) {
         kprintf("gpt: disk has no partitions\n");
-        return (false);
+        return false;
     }
 
     // Read all the partition entries.
@@ -91,7 +91,7 @@ bool gpt_find_root_part(uint64_t *p_lba_start, uint64_t *p_lba_end) {
     bool b_read = ahci_read_sectors(p_hdr->ptes_lba, ptes_sectors, p_ptes_u8);
     if (!b_read) {
         kprintf("gpt: AHCI read failed\n");
-        return (false);
+        return false;
     }
 
     // Iterate through the partition entries.
@@ -129,14 +129,14 @@ bool gpt_find_root_part(uint64_t *p_lba_start, uint64_t *p_lba_end) {
     heap_free(p_ptes_u8);
     heap_free(p_hdr);
 
-    return (b_found);
+    return b_found;
 }
 
 static bool is_pte_used(pte_t const *p_pte) {
     for (size_t idx = 0; idx < 16; idx++) {
-        if (0 != p_pte->p_type_guid[idx]) { return (true); }
+        if (0 != p_pte->p_type_guid[idx]) { return true; }
     }
-    return (false);
+    return false;
 }
 
 static void guid_print(uint8_t const p_guid[16]) {
@@ -157,7 +157,7 @@ static void guid_print(uint8_t const p_guid[16]) {
 static bool guid_equals(uint8_t const p_guid_a[16],
                         uint8_t const p_guid_b[16]) {
     for (size_t idx = 0; idx < 16; idx++) {
-        if (p_guid_a[idx] != p_guid_b[idx]) { return (false); }
+        if (p_guid_a[idx] != p_guid_b[idx]) { return false; }
     }
-    return (true);
+    return true;
 }

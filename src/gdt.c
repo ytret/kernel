@@ -64,7 +64,7 @@ void gdt_init(void) {
 }
 
 tss_t *gdt_get_tss(void) {
-    return (&g_tss);
+    return &g_tss;
 }
 
 static void fill_desc(uint8_t *p_desc, void const *p_gdt, uint16_t gdt_size) {

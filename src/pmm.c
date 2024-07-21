@@ -76,7 +76,7 @@ uint32_t pmm_pop_page(void) {
         panic("no free memory");
     }
 
-    return (stack_pop(&g_page_stack));
+    return stack_pop(&g_page_stack);
 }
 
 static void parse_mmap(uint32_t addr, uint32_t map_len) {

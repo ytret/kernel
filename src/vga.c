@@ -37,11 +37,11 @@ void vga_init(void) {
 }
 
 size_t vga_height_chars(void) {
-    return (MAX_ROWS);
+    return MAX_ROWS;
 }
 
 size_t vga_width_chars(void) {
-    return (MAX_COLS);
+    return MAX_COLS;
 }
 
 void vga_put_char_at(size_t row, size_t col, char ch) {

@@ -47,22 +47,22 @@ void mbi_deep_copy(void) {
 }
 
 mbi_t const *mbi_ptr(void) {
-    return (gp_mbi);
+    return gp_mbi;
 }
 
 size_t mbi_num_mods(void) {
     if (gp_mbi->flags & MBI_FLAG_MODS) {
-        return (gp_mbi->mods_count);
+        return gp_mbi->mods_count;
     } else {
-        return (0);
+        return 0;
     }
 }
 
 mbi_mod_t const *mbi_nth_mod(size_t idx) {
-    if (idx >= mbi_num_mods()) { return (NULL); }
+    if (idx >= mbi_num_mods()) { return NULL; }
 
     mbi_mod_t const *p_mods = (mbi_mod_t const *)gp_mbi->mods_addr;
-    return (&p_mods[idx]);
+    return &p_mods[idx];
 }
 
 mbi_mod_t const *mbi_find_mod(char const *p_name) {
@@ -77,17 +77,17 @@ mbi_mod_t const *mbi_find_mod(char const *p_name) {
         }
 
         if (string_equals((char const *)p_mod->string, p_name)) {
-            return (p_mod);
+            return p_mod;
         }
     }
 
-    return (NULL);
+    return NULL;
 }
 
 mbi_mod_t const *mbi_last_mod(void) {
     if (0 == mbi_num_mods()) {
-        return (NULL);
+        return NULL;
     } else {
-        return (mbi_nth_mod(mbi_num_mods() - 1));
+        return mbi_nth_mod(mbi_num_mods() - 1);
     }
 }

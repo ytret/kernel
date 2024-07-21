@@ -45,7 +45,7 @@ bool pci_init_device(uint8_t bus, uint8_t dev) {
     // Check the header type.
     if (p_config->header_type != 0x00) {
         kprintf("pci: unknown header type %u\n", p_config->header_type);
-        return (false);
+        return false;
     }
 
     // AHCI.
@@ -60,7 +60,7 @@ bool pci_init_device(uint8_t bus, uint8_t dev) {
                 kprintf("pci: failed to initialize bus %u device %u\n", bus,
                         dev);
             }
-            return (b_ok);
+            return b_ok;
         } else {
             kprintf(" unknown programming interface\n");
         }
@@ -68,7 +68,7 @@ bool pci_init_device(uint8_t bus, uint8_t dev) {
         kprintf("pci: ignoring unknown bus %u device %u\n", bus, dev);
     }
 
-    return (false);
+    return false;
 }
 
 void pci_read_config(uint8_t bus, uint8_t dev, void *p_config) {
@@ -118,17 +118,17 @@ static uint32_t read_config_u32(uint8_t bus, uint8_t dev, uint8_t fun,
     port_outl(PORT_CONFIG_ADDR, addr);
 
     uint32_t reg = port_inl(PORT_CONFIG_DATA);
-    return (reg);
+    return reg;
 }
 
 static uint16_t read_config_u16(uint8_t bus, uint8_t dev, uint8_t fun,
                                 uint8_t offset) {
     uint32_t reg = read_config_u32(bus, dev, fun, (offset & (~0x3)));
-    return ((uint16_t)(reg >> (8 * (offset & 0x3))));
+    return (uint16_t)(reg >> (8 * (offset & 0x3)));
 }
 
 static uint8_t read_config_u8(uint8_t bus, uint8_t dev, uint8_t fun,
                               uint8_t offset) {
     uint32_t reg = read_config_u32(bus, dev, fun, (offset & (~0x3)));
-    return ((uint8_t)(reg >> (8 * (offset & 0x3))));
+    return (uint8_t)(reg >> (8 * (offset & 0x3)));
 }

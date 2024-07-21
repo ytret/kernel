@@ -106,15 +106,15 @@ bool elf_load(uint32_t *p_dir, uint32_t addr, uint32_t *p_entry) {
     // Check if the header is loadable.
     if (BITS_32BIT != p_hdr->bits) {
         kprintf("elf: cannot load a non-32-bit executable\n");
-        return (false);
+        return false;
     }
     if (BYTE_ORDER_LITTLE != p_hdr->byte_order) {
         kprintf("elf: cannot load a non-little-endian executable\n");
-        return (false);
+        return false;
     }
     if (OS_ABI_SYSV != p_hdr->os_abi) {
         kprintf("elf: cannot load a non-SYSV-executable\n");
-        return (false);
+        return false;
     }
 
     // Check the program header table entry size.
@@ -122,7 +122,7 @@ bool elf_load(uint32_t *p_dir, uint32_t addr, uint32_t *p_entry) {
         kprintf("elf: cannot load an executable with program header size of %u"
                 " bytes\n",
                 p_hdr->ph_entry_size);
-        return (false);
+        return false;
     }
 
     // Load the program segments.
@@ -139,7 +139,7 @@ bool elf_load(uint32_t *p_dir, uint32_t addr, uint32_t *p_entry) {
             kprintf("elf: load failed: program header %u vaddr 0x%08X is not in"
                     " the user part of VAS\n",
                     idx, p_phdr->vaddr);
-            return (false);
+            return false;
         }
 
         // Check that the virtual address is page-aligned.
@@ -147,7 +147,7 @@ bool elf_load(uint32_t *p_dir, uint32_t addr, uint32_t *p_entry) {
             kprintf("elf: load failed: program header %u vaddr 0x%08X is not"
                     " page-aligned\n",
                     idx, p_phdr->vaddr);
-            return (false);
+            return false;
         }
 
         // Check that the file size is not greater than memory size.
@@ -156,7 +156,7 @@ bool elf_load(uint32_t *p_dir, uint32_t addr, uint32_t *p_entry) {
                 "elf: load failed: program header %u file size %u is greater"
                 " than memory size %u\n",
                 idx, p_phdr->file_size, p_phdr->mem_size);
-            return (false);
+            return false;
         }
 
         // Allocate memory.
@@ -184,7 +184,7 @@ bool elf_load(uint32_t *p_dir, uint32_t addr, uint32_t *p_entry) {
 
     *p_entry = p_hdr->entry;
 
-    return (true);
+    return true;
 }
 
 void elf_dump(uint32_t addr) {
@@ -200,33 +200,33 @@ static bool check_hdr_valid(elf_hdr_t const *p_hdr) {
     if (p_hdr->magic_num != MAGIC_NUM) {
         kprintf("elf: check_hdr: invalid magic number: 0x%08X\n",
                 p_hdr->magic_num);
-        return (false);
+        return false;
     }
 
     if ((p_hdr->bits != BITS_32BIT) && (p_hdr->bits != BITS_64BIT)) {
         kprintf("elf: check_hdr: invalid field 'bits': %u\n", p_hdr->bits);
-        return (false);
+        return false;
     }
 
     if ((p_hdr->byte_order != BYTE_ORDER_LITTLE) &&
         (p_hdr->byte_order != BYTE_ORDER_BIG)) {
         kprintf("elf: check_hdr: invalid field 'byte order': %u\n",
                 p_hdr->byte_order);
-        return (false);
+        return false;
     }
 
     if (p_hdr->header_version != HEADER_VERSION) {
         kprintf("elf: check_hdr: unknown header version: %u\n",
                 p_hdr->header_version);
-        return (false);
+        return false;
     }
 
     if (p_hdr->os_abi != OS_ABI_SYSV) {
         kprintf("elf: check_hdr: unknown OS ABI: %u\n", p_hdr->os_abi);
-        return (false);
+        return false;
     }
 
-    return (true);
+    return true;
 }
 
 static void dump_general(elf_hdr_t const *p_hdr) {
@@ -374,7 +374,7 @@ static void dump_sect_hdr(elf_hdr_t const *p_hdr, sect_hdr_t const *p_shdr) {
 }
 
 static char const *sect_name(elf_hdr_t const *p_hdr, sect_hdr_t const *p_shdr) {
-    if (0 == p_hdr->shstrndx) { return (NULL); }
+    if (0 == p_hdr->shstrndx) { return NULL; }
 
     // Get the string table.
     sect_hdr_t const *p_shdrs = offset(p_hdr, p_hdr->sh_offset);
@@ -382,11 +382,11 @@ static char const *sect_name(elf_hdr_t const *p_hdr, sect_hdr_t const *p_shdr) {
     char const *p_strtbl = offset(p_hdr, p_shstr->offset);
 
     // Get the string.
-    return (p_strtbl + p_shdr->name);
+    return p_strtbl + p_shdr->name;
 }
 
 static void const *offset(elf_hdr_t const *p_hdr, uint32_t offset) {
     uint32_t hdr_addr = ((uint32_t)p_hdr);
     uint32_t res_addr = hdr_addr + offset;
-    return ((void const *)res_addr);
+    return (void const *)res_addr;
 }

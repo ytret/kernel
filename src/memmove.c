@@ -16,5 +16,5 @@ void *memmove(void *p_dest, void const *p_src, size_t num_bytes) {
         }
     }
 
-    return (p_dest);
+    return p_dest;
 }

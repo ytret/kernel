@@ -73,7 +73,7 @@ void vmm_init(void) {
 }
 
 uint32_t const *vmm_kvas_dir(void) {
-    return (gp_kvas_dir);
+    return gp_kvas_dir;
 }
 
 uint32_t *vmm_clone_kvas(void) {
@@ -112,7 +112,7 @@ uint32_t *vmm_clone_kvas(void) {
         map_page(p_dir, fb_page, fb_page, (PAGE_RW | PAGE_PRESENT));
     }
 
-    return (p_dir);
+    return p_dir;
 }
 
 void vmm_map_user_page(uint32_t *p_dir, uint32_t virt, uint32_t phys) {

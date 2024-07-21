@@ -43,20 +43,20 @@ void framebuf_init(void) {
 }
 
 uint32_t framebuf_start(void) {
-    return ((uint32_t)gp_framebuf);
+    return (uint32_t)gp_framebuf;
 }
 
 uint32_t framebuf_end(void) {
     uint32_t start = framebuf_start();
-    return (start + (g_height_px * g_pitch));
+    return start + (g_height_px * g_pitch);
 }
 
 size_t framebuf_height_chars(void) {
-    return (g_height_chars);
+    return g_height_chars;
 }
 
 size_t framebuf_width_chars(void) {
-    return (g_width_chars);
+    return g_width_chars;
 }
 
 void framebuf_put_char_at(size_t row, size_t col, char ch) {

@@ -33,17 +33,17 @@ uint32_t stack_pop(stack_t *p_stack) {
         panic("unexpected behavior");
     }
 
-    return (*p_stack->p_top++);
+    return *p_stack->p_top++;
 }
 
 bool stack_is_full(stack_t const *p_stack) {
     check_stack(p_stack);
-    return (p_stack->p_top <= p_stack->p_bottom);
+    return p_stack->p_top <= p_stack->p_bottom;
 }
 
 bool stack_is_empty(stack_t const *p_stack) {
     check_stack(p_stack);
-    return (p_stack->p_top >= p_stack->p_top_max);
+    return p_stack->p_top >= p_stack->p_top_max;
 }
 
 static void check_stack(stack_t const *p_stack) {

@@ -10,12 +10,12 @@ void string_to_upper(char *p_str) {
 
 bool string_equals(char const *p_a, char const *p_b) {
     while (((*p_a) != 0) && ((*p_b) != 0)) {
-        if ((*p_a) != (*p_b)) { return (false); }
+        if ((*p_a) != (*p_b)) { return false; }
 
         p_a++;
         p_b++;
     }
-    return ((*p_a) == (*p_b));
+    return (*p_a) == (*p_b);
 }
 
 size_t string_len(char const *p_str) {
@@ -24,7 +24,7 @@ size_t string_len(char const *p_str) {
         len++;
         p_str++;
     }
-    return (len);
+    return len;
 }
 
 /*
@@ -66,7 +66,7 @@ size_t string_split(char const *p_str, char ch, bool b_ignore_empty,
                 if (res_idx == res_len) {
                     // pp_res is full, while the string has not been fully
                     // parsed.
-                    return (res_idx + 1);
+                    return res_idx + 1;
                 }
 
                 // Update pp_res.
@@ -88,7 +88,7 @@ size_t string_split(char const *p_str, char ch, bool b_ignore_empty,
         idx++;
     }
 
-    return (res_idx);
+    return res_idx;
 }
 
 bool string_to_uint32(char const *p_str, uint32_t *p_num, int base) {
@@ -135,5 +135,5 @@ bool string_to_uint32(char const *p_str, uint32_t *p_num, int base) {
     }
 
     heap_free(p_strup);
-    return (b_ok);
+    return b_ok;
 }

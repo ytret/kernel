@@ -84,19 +84,19 @@ void term_put_cursor_at(size_t row, size_t col) {
 }
 
 size_t term_row(void) {
-    return (g_row);
+    return g_row;
 }
 
 size_t term_col(void) {
-    return (g_col);
+    return g_col;
 }
 
 size_t term_height(void) {
-    return (g_max_row);
+    return g_max_row;
 }
 
 size_t term_width(void) {
-    return (g_max_col);
+    return g_max_col;
 }
 
 static void put_char(char ch) {

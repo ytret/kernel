@@ -45,11 +45,11 @@ void heap_init(void) {
 }
 
 uint32_t heap_end(void) {
-    return (((uint32_t)gp_start) + HEAP_SIZE);
+    return ((uint32_t)gp_start) + HEAP_SIZE;
 }
 
 void *heap_alloc(size_t num_bytes) {
-    return (heap_alloc_aligned(num_bytes, DEFAULT_ALIGN));
+    return heap_alloc_aligned(num_bytes, DEFAULT_ALIGN);
 }
 
 void *heap_alloc_aligned(size_t num_bytes, size_t align) {
@@ -114,7 +114,7 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
     // Check the heap after allocation.
     check_tags(true);
 
-    return ((void *)(((uint32_t)p_found) + TAG_SIZE + padding));
+    return (void *)(((uint32_t)p_found) + TAG_SIZE + padding);
 }
 
 void heap_free(void *p_addr) {
@@ -148,7 +148,7 @@ static uint32_t find_heap_start(void) {
     // Align to the next 4 MiB region.
     uint32_t heap_start =
         (last_used_addr + ((4 * 1024 * 1024) - 1)) & ~((4 * 1024 * 1024) - 1);
-    return (heap_start);
+    return heap_start;
 }
 
 static void fill_tag(tag_t *p_tag, bool b_used, size_t size, tag_t *p_next) {

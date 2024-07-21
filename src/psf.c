@@ -21,7 +21,7 @@ bool psf_load(psf_t *p_font, uint32_t addr) {
         (p_hdr->hdr_size != sizeof(hdr_t)) || (p_hdr->height_px != 16) ||
         (p_hdr->width_px != 8) ||
         (p_hdr->glyph_size != ((p_hdr->height_px * p_hdr->width_px) / 8))) {
-        return (false);
+        return false;
     }
 
     p_font->p_glyphs = (((uint8_t *)addr) + sizeof(hdr_t));
@@ -30,7 +30,7 @@ bool psf_load(psf_t *p_font, uint32_t addr) {
     p_font->height_px = p_hdr->height_px;
     p_font->width_px = p_hdr->width_px;
 
-    return (true);
+    return true;
 }
 
 uint8_t const *psf_glyph(psf_t const *p_psf, char ch) {
@@ -39,5 +39,5 @@ uint8_t const *psf_glyph(psf_t const *p_psf, char ch) {
     }
 
     size_t offset = (ch * p_psf->glyph_size);
-    return (&p_psf->p_glyphs[offset]);
+    return &p_psf->p_glyphs[offset];
 }

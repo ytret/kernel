@@ -188,7 +188,7 @@ static uint32_t entry_at_cursor(void) {
         kprintf("vasview: entry_at_cursor: invalid view state\n");
         panic("unexpected behavior");
     }
-    return (entry);
+    return entry;
 }
 
 static uint32_t idx_at_cursor(void) {
@@ -205,7 +205,7 @@ static uint32_t idx_at_cursor(void) {
         kprintf("vasview: idx_at_cursor: invalid view state\n");
         panic("unexpected behavior");
     }
-    return (idx);
+    return idx;
 }
 
 static void kbd_callback(uint8_t key, bool b_released) {

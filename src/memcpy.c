@@ -10,5 +10,5 @@ void *memcpy(void *p_dest, void const *p_src, size_t num_bytes) {
         p_dest_u8[idx] = p_src_u8[idx];
     }
 
-    return (p_dest);
+    return p_dest;
 }

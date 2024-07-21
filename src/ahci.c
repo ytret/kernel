@@ -187,10 +187,10 @@ bool ahci_init(uint8_t bus, uint8_t dev) {
     gp_hba = ((void *)hba_mem_addr);
 
     bool b_ahci = ensure_ahci_mode();
-    if (!b_ahci) { return (false); }
+    if (!b_ahci) { return false; }
 
     bool b_port = find_root_port();
-    if (!b_port) { return (false); }
+    if (!b_port) { return false; }
 
     // Stop FIS receive and command list DMA engines.
     gp_port->cmd &= ~PORT_CMD_ST;
@@ -216,19 +216,19 @@ bool ahci_init(uint8_t bus, uint8_t dev) {
     }
 
     bool b_id = identify_device();
-    if (!b_id) { return (false); }
+    if (!b_id) { return false; }
 
     gb_initialized = true;
-    return (true);
+    return true;
 }
 
 bool ahci_read_sectors(uint64_t start_sector, uint32_t num_sectors,
                        void *p_buf) {
-    return (read_sectors(gp_port, start_sector, num_sectors, p_buf));
+    return read_sectors(gp_port, start_sector, num_sectors, p_buf);
 }
 
 bool ahci_is_init(void) {
-    return (gb_initialized);
+    return gb_initialized;
 }
 
 /*
@@ -239,7 +239,7 @@ static bool ensure_ahci_mode(void) {
 
     if (p_ghc->ghc & GHC_GHC_AE) {
         // AE set means AHCI mode is enabled.
-        return (true);
+        return true;
     }
 
     if (p_ghc->cap & GHC_CAP_SAM) {
@@ -249,11 +249,11 @@ static bool ensure_ahci_mode(void) {
 
         // Ensure that AE was set.
         if (p_ghc->ghc & GHC_GHC_AE) {
-            return (true);
+            return true;
         } else {
             kprintf("ahci: cannot set GHC.AE bit, when it must be R/W"
                     " because CAP.SAM is set\n");
-            return (false);
+            return false;
         }
     } else {
         // SAM is zero, so the controller supports only AHCI mode.  However,
@@ -261,7 +261,7 @@ static bool ensure_ahci_mode(void) {
         kprintf("ahci: CAP.SAM is zero, meaning that SATA controller"
                 " supports only AHCI mode; but GHC.AE is zero, meaning that"
                 " AHCI mode is disabled\n");
-        return (false);
+        return false;
     }
 }
 
@@ -290,7 +290,7 @@ static bool find_root_port(void) {
             case SATA_SIG_ATA:
                 kprintf("(ATA)\n");
                 gp_port = p_port;
-                return (true);
+                return true;
 
             default:
                 kprintf("(unknown)\n");
@@ -303,7 +303,7 @@ static bool find_root_port(void) {
         }
     }
 
-    return (false);
+    return false;
 }
 
 static bool identify_device(void) {
@@ -314,13 +314,13 @@ static bool identify_device(void) {
     int cmd_slot = send_read_cmd(gp_port, cmd, p_ident, 512);
     if (-1 == cmd_slot) {
         kprintf("ahci: could not issue identify command\n");
-        return (false);
+        return false;
     }
 
     bool b_ok = wait_for_cmd(gp_port, cmd_slot);
     if (!b_ok) {
         kprintf("ahci: identify command failed\n");
-        return (false);
+        return false;
     }
 
     char p_serial[21] = {0};
@@ -344,7 +344,7 @@ static bool identify_device(void) {
 
     heap_free(p_ident);
 
-    return (true);
+    return true;
 }
 
 static bool read_sectors(reg_port_t *p_port, uint64_t start_sector,
@@ -352,20 +352,20 @@ static bool read_sectors(reg_port_t *p_port, uint64_t start_sector,
     // Check start_sector.
     if (start_sector >> 48) {
         kprintf("ahci: start sector number cannot be wider than 48 bits\n");
-        return (false);
+        return false;
     }
     if (start_sector >= g_max_sectors) {
         kprintf("ahci: start sector is past disk end by %u sectors\n",
                 (start_sector - g_max_sectors));
-        return (false);
+        return false;
     }
 
     // Check num_sectors.
-    if (0 == num_sectors) { return (true); }
+    if (0 == num_sectors) { return true; }
     if ((start_sector + num_sectors) > g_max_sectors) {
         kprintf("ahci: cannot read past disk end by %u sectors\n",
                 (start_sector + num_sectors) - g_max_sectors);
-        return (false);
+        return false;
     }
 
     // We have a finite amount of PRDs.  Each can describe a 4 MiB data block,
@@ -373,7 +373,7 @@ static bool read_sectors(reg_port_t *p_port, uint64_t start_sector,
     if (num_sectors > (8192 * CMD_TABLE_NUM_PRDS)) {
         kprintf("ahci: number of sectors to read cannot be greater than %u\n",
                 (8192 * CMD_TABLE_NUM_PRDS));
-        return (false);
+        return false;
     }
 
     // Set up a command.
@@ -387,17 +387,17 @@ static bool read_sectors(reg_port_t *p_port, uint64_t start_sector,
     int cmd_slot = send_read_cmd(p_port, cmd, p_buf, (512 * num_sectors));
     if (-1 == cmd_slot) {
         kprintf("ahci: failed to issue read command\n");
-        return (false);
+        return false;
     }
 
     // Wait for its completion.
     bool b_ok = wait_for_cmd(p_port, cmd_slot);
     if (!b_ok) {
         kprintf("ahci: command failed\n");
-        return (false);
+        return false;
     }
 
-    return (true);
+    return true;
 }
 
 /*
@@ -419,14 +419,14 @@ static int send_read_cmd(reg_port_t *p_port, cmd_t cmd, void *p_buf,
     uint16_t prdtl = ((read_len + ((4 * 1024 * 1024) - 1)) / (4 * 1024 * 1024));
     if (prdtl > CMD_TABLE_NUM_PRDS) {
         kprintf("ahci: cannot transfer %u bytes of data\n", read_len);
-        return (-1);
+        return -1;
     }
 
     // Find a free command slot.
     int cmd_slot = find_cmd_slot(p_port);
     if (-1 == cmd_slot) {
         kprintf("ahci: could not find free command slot\n");
-        return (-1);
+        return -1;
     }
 
     // Set up the command header.
@@ -473,7 +473,7 @@ static int send_read_cmd(reg_port_t *p_port, cmd_t cmd, void *p_buf,
     }
     if (spin >= 100000) {
         kprintf("ahci: port is busy\n");
-        return (-1);
+        return -1;
     }
 
     // Clear RFIS interrupt flag.
@@ -482,7 +482,7 @@ static int send_read_cmd(reg_port_t *p_port, cmd_t cmd, void *p_buf,
     // Issue the command.
     p_port->ci = (1 << cmd_slot);
 
-    return (cmd_slot);
+    return cmd_slot;
 }
 
 /*
@@ -511,7 +511,7 @@ static bool wait_for_cmd(reg_port_t *p_port, int cmd_slot) {
     if (!(p_port->is & PORT_IS_DHRS)) {
         // RFIS did not arrive.
         kprintf("ahci: command completed, but RFIS was not received\n");
-        return (false);
+        return false;
     }
 
     // Clear RFIS interrupt flag.
@@ -524,19 +524,19 @@ static bool wait_for_cmd(reg_port_t *p_port, int cmd_slot) {
             kprintf("; device aborted command");
         }
         kprintf("\n");
-        return (false);
+        return false;
     }
 
-    return (true);
+    return true;
 }
 
 static int find_cmd_slot(reg_port_t *p_port) {
     for (int slot = 0; slot < 32; slot++) {
         bool b_ds = (0 != (p_port->sact & (1 << slot))); // device status
         bool b_ci = (0 != (p_port->ci & (1 << slot)));   // command issued
-        if ((!b_ds) && (!b_ci)) { return (slot); }
+        if ((!b_ds) && (!b_ci)) { return slot; }
     }
-    return (-1);
+    return -1;
 }
 
 static void dump_port_reg(reg_port_t *p_port) {

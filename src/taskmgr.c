@@ -147,7 +147,7 @@ void taskmgr_go_usermode(uint32_t entry) {
 }
 
 uint32_t taskmgr_running_task_id(void) {
-    return (g_running_task_id);
+    return g_running_task_id;
 }
 
 void taskmgr_dump_tasks(void) {
@@ -190,7 +190,7 @@ static task_t *new_task(uint32_t entry_point) {
     stack_push(&p_task->kernel_stack, 6);           // esi
     stack_push(&p_task->kernel_stack, 7);           // edi
 
-    return (p_task);
+    return p_task;
 }
 
 static void map_user_stack(uint32_t *p_dir) {
@@ -239,16 +239,16 @@ static size_t list_len(task_t *p_first) {
         len++;
     }
 
-    return (len);
+    return len;
 }
 
 static task_t *list_find(task_t *p_first, uint32_t task_id) {
     task_t *p_iter = p_first;
     while (p_iter) {
-        if (p_iter->id == task_id) { return (p_iter); }
+        if (p_iter->id == task_id) { return p_iter; }
 
         p_iter = p_iter->p_next;
     }
 
-    return (NULL);
+    return NULL;
 }

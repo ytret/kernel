@@ -38,7 +38,7 @@ void kbd_irq_handler(void) {
 }
 
 static uint8_t read_code(void) {
-    return (port_inb(PORT_DATA));
+    return port_inb(PORT_DATA);
 }
 
 static void append_code(uint8_t sc) {

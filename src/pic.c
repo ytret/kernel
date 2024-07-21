@@ -129,5 +129,5 @@ static uint16_t read_isr(void) {
     port_outb(PORT_SLAVE_CMD, (OCW3 | OCW3_READ_REG | OCW3_ISR));
     uint8_t isr_slave = port_inb(PORT_SLAVE_CMD);
 
-    return ((isr_slave << 8) | isr_master);
+    return (isr_slave << 8) | isr_master;
 }
