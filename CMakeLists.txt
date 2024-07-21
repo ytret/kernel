@@ -50,15 +50,11 @@ add_executable(kernel
     src/kshell/vasview.c
 )
 target_compile_options(kernel PRIVATE
-    -ffunction-sections -flto
     -Wall -Wextra
     ${OPTIMIZATION_FLAGS}
 )
 target_include_directories(kernel PRIVATE src)
-target_link_options(kernel PRIVATE
-    -ffunction-sections -flto
-    ${OPTIMIZATION_FLAGS}
-)
+target_link_options(kernel PRIVATE ${OPTIMIZATION_FLAGS})
 set_target_properties(kernel PROPERTIES
     C_EXTENSIONS OFF
     LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/link.ld
