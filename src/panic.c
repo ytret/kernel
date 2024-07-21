@@ -1,7 +1,7 @@
-#include <panic.h>
-#include <printf.h>
-
 #include <stdbool.h>
+
+#include "panic.h"
+#include "printf.h"
 
 static volatile bool b_in_panic;
 

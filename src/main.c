@@ -1,21 +1,21 @@
-#include <gdt.h>
-#include <gpt.h>
-#include <heap.h>
-#include <idt.h>
-#include <kbd.h>
-#include <kshell/kshell.h>
-#include <mbi.h>
-#include <panic.h>
-#include <pci.h>
-#include <pic.h>
-#include <pit.h>
-#include <pmm.h>
-#include <printf.h>
-#include <taskmgr.h>
-#include <term.h>
-#include <vmm.h>
-
 #include <stdint.h>
+
+#include "gdt.h"
+#include "gpt.h"
+#include "heap.h"
+#include "idt.h"
+#include "kbd.h"
+#include "kshell/kshell.h"
+#include "mbi.h"
+#include "panic.h"
+#include "pci.h"
+#include "pic.h"
+#include "pit.h"
+#include "pmm.h"
+#include "printf.h"
+#include "taskmgr.h"
+#include "term.h"
+#include "vmm.h"
 
 #define MULTIBOOT_MAGIC_NUM 0x2BADB002
 

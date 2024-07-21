@@ -1,7 +1,7 @@
-#include <framebuf.h>
-#include <mbi.h>
-#include <panic.h>
-#include <psf.h>
+#include "framebuf.h"
+#include "mbi.h"
+#include "panic.h"
+#include "psf.h"
 
 static uint8_t *gp_framebuf;
 static uint32_t g_pitch;

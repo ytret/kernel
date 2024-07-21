@@ -1,7 +1,7 @@
-#include <framebuf.h>
-#include <mbi.h>
-#include <term.h>
-#include <vga.h>
+#include "framebuf.h"
+#include "mbi.h"
+#include "term.h"
+#include "vga.h"
 
 static size_t g_max_row;
 static size_t g_max_col;

@@ -1,9 +1,9 @@
-#include <idt.h>
-#include <isrs.h>
-#include <panic.h>
-#include <printf.h>
-
 #include <stddef.h>
+
+#include "idt.h"
+#include "isrs.h"
+#include "panic.h"
+#include "printf.h"
 
 #define NUM_ENTRIES     256
 #define DESC_SIZE_BYTES 6

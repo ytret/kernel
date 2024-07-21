@@ -1,10 +1,10 @@
-#include <kbd.h>
-#include <kshell/cmd.h>
-#include <kshell/kshell.h>
-#include <panic.h>
-#include <printf.h>
-#include <string.h>
-#include <term.h>
+#include "kbd.h"
+#include "kshell/cmd.h"
+#include "kshell/kshell.h"
+#include "panic.h"
+#include "printf.h"
+#include "string.h"
+#include "term.h"
 
 #define CMD_BUF_SIZE 256
 

@@ -1,11 +1,11 @@
-#include <kbd.h>
-#include <panic.h>
-#include <pic.h>
-#include <port.h>
-#include <printf.h>
-
 #include <stddef.h>
 #include <stdint.h>
+
+#include "kbd.h"
+#include "panic.h"
+#include "pic.h"
+#include "port.h"
+#include "printf.h"
 
 #define PORT_DATA   0x0060
 #define PORT_CMD    0x0064

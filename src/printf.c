@@ -1,11 +1,11 @@
-#include <printf.h>
-#include <string.h>
-#include <term.h>
-
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "printf.h"
+#include "string.h"
+#include "term.h"
 
 // Maximum lengths of unsigned and signed ints in base 10 and/or base 16.
 #define MAX_INT_LEN_10  11

@@ -1,11 +1,11 @@
-#include <kbd.h>
-#include <kshell/vasview.h>
-#include <panic.h>
-#include <printf.h>
-#include <term.h>
-
 #include <stdbool.h>
 #include <stdint.h>
+
+#include "kbd.h"
+#include "kshell/vasview.h"
+#include "panic.h"
+#include "printf.h"
+#include "term.h"
 
 #define VIEW_START_ROW 2
 #define VIEW_START_COL 8

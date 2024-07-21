@@ -15,21 +15,21 @@
  *      5. Add the function definition near the other command handlers.
  */
 
-#include <ahci.h>
-#include <elf.h>
-#include <heap.h>
-#include <kshell/cmd.h>
-#include <kshell/vasview.h>
-#include <mbi.h>
-#include <panic.h>
-#include <pci.h>
-#include <printf.h>
-#include <string.h>
-#include <taskmgr.h>
-#include <term.h>
-#include <vmm.h>
-
 #include <cpuid.h>
+
+#include "ahci.h"
+#include "elf.h"
+#include "heap.h"
+#include "kshell/cmd.h"
+#include "kshell/vasview.h"
+#include "mbi.h"
+#include "panic.h"
+#include "pci.h"
+#include "printf.h"
+#include "string.h"
+#include "taskmgr.h"
+#include "term.h"
+#include "vmm.h"
 
 #define NUM_CMDS 12
 #define MAX_ARGS 32
