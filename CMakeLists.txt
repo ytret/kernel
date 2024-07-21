@@ -54,8 +54,11 @@ target_compile_options(kernel PRIVATE
     ${OPTIMIZATION_FLAGS}
 )
 target_include_directories(kernel PRIVATE src)
-target_link_options(kernel PRIVATE ${OPTIMIZATION_FLAGS})
+target_link_options(kernel PRIVATE
+    ${OPTIMIZATION_FLAGS}
+    -T${CMAKE_SOURCE_DIR}/src/link.ld
+)
 set_target_properties(kernel PROPERTIES
     C_EXTENSIONS OFF
-    LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/link.ld
+    LINK_DEPENDS ${CMAKE_SOURCE_DIR}/src/link.ld
 )
