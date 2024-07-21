@@ -14,7 +14,7 @@ else
 fi
 
 cp -v build/kernel isodir/boot/kernel.elf
-# cp -v build/user.elf isodir/user.elf
+cp -v build/user/user isodir/user.elf
 
 if [ -e kernel.iso ]; then
     rm -ifv kernel.iso

@@ -62,3 +62,9 @@ set_target_properties(kernel PROPERTIES
     C_EXTENSIONS OFF
     LINK_DEPENDS ${CMAKE_SOURCE_DIR}/src/link.ld
 )
+
+
+###############
+## Userspace ##
+###############
+add_subdirectory(user)

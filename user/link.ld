@@ -1,4 +1,4 @@
-ENTRY(userprog_entry)
+ENTRY(entry)
 
 SECTIONS
 {
