@@ -133,11 +133,11 @@ typedef struct {
     uint8_t command;
 } cmd_t;
 
-_Static_assert(0x2C == sizeof(reg_ghc_t));
-_Static_assert(0x80 == sizeof(reg_port_t));
-_Static_assert(0x100 == sizeof(rfis_t));
-_Static_assert(0x20 == sizeof(cmd_hdr_t));
-_Static_assert(0x10 == sizeof(prd_t));
+_Static_assert(0x2C == sizeof(reg_ghc_t), "");
+_Static_assert(0x80 == sizeof(reg_port_t), "");
+_Static_assert(0x100 == sizeof(rfis_t), "");
+_Static_assert(0x20 == sizeof(cmd_hdr_t), "");
+_Static_assert(0x10 == sizeof(prd_t), "");
 
 // Driver state.
 static bool gb_initialized;
