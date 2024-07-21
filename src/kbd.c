@@ -2,10 +2,10 @@
 #include <stdint.h>
 
 #include "kbd.h"
+#include "kprintf.h"
 #include "panic.h"
 #include "pic.h"
 #include "port.h"
-#include "printf.h"
 
 #define PORT_DATA   0x0060
 #define PORT_CMD    0x0064
@@ -43,7 +43,7 @@ static uint8_t read_code(void) {
 
 static void append_code(uint8_t sc) {
     if (g_code_buf_pos >= CODE_BUF_SIZE) {
-        printf("kbd: append_code: scancode buffer is full\n");
+        kprintf("kbd: append_code: scancode buffer is full\n");
         panic("buffer overflow");
     }
 
@@ -431,11 +431,11 @@ static void try_parse_codes(void) {
             b_released = false;
         }
     } else if (num_codes > 6) {
-        printf("kbd: discarding unknown sequence: ");
+        kprintf("kbd: discarding unknown sequence: ");
         for (size_t idx = 0; idx < num_codes; idx++) {
-            printf("%x ", gp_code_buf[idx]);
+            kprintf("%x ", gp_code_buf[idx]);
         }
-        printf("\n");
+        kprintf("\n");
 
         // Reset the scancode buffer.
         g_code_buf_pos = 0;

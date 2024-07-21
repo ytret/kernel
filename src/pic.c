@@ -1,10 +1,10 @@
 #include <stdint.h>
 
 #include "kbd.h"
+#include "kprintf.h"
 #include "pic.h"
 #include "pit.h"
 #include "port.h"
-#include "printf.h"
 
 #define PORT_MASTER_CMD  0x0020
 #define PORT_MASTER_DATA 0x0021
@@ -94,13 +94,13 @@ void pic_spurious_irq_handler(int irq) {
         } else if (isr & (1 << 1)) {
             kbd_irq_handler();
         } else {
-            printf("pic: unknown spurious IRQ from master PIC\n");
-            printf("pic: ISR = 0x%04X\n", isr);
+            kprintf("pic: unknown spurious IRQ from master PIC\n");
+            kprintf("pic: ISR = 0x%04X\n", isr);
         }
     } else {
         // Spurious IRQ from slave PIC.
-        printf("pic: unknown spurious IRQ from slave PIC\n");
-        printf("pic: ISR = 0x%04X\n", isr);
+        kprintf("pic: unknown spurious IRQ from slave PIC\n");
+        kprintf("pic: ISR = 0x%04X\n", isr);
 
         send_master_cmd(CMD_EOI);
     }

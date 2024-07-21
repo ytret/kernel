@@ -2,9 +2,9 @@
 #include <stdint.h>
 
 #include "ahci.h"
+#include "kprintf.h"
 #include "pci.h"
 #include "port.h"
-#include "printf.h"
 
 #define PORT_CONFIG_ADDR 0x0CF8
 #define PORT_CONFIG_DATA 0x0CFC
@@ -44,28 +44,28 @@ bool pci_init_device(uint8_t bus, uint8_t dev) {
 
     // Check the header type.
     if (p_config->header_type != 0x00) {
-        printf("pci: unknown header type %u\n", p_config->header_type);
+        kprintf("pci: unknown header type %u\n", p_config->header_type);
         return (false);
     }
 
     // AHCI.
     if ((CLASS_MASS_STORAGE == p_config->base_class) &&
         (SUBCLASS_SATA == p_config->subclass)) {
-        printf("pci: bus %u device %u: mass storage device, SATA,", bus, dev);
+        kprintf("pci: bus %u device %u: mass storage device, SATA,", bus, dev);
 
         if (0x01 == p_config->prog_intf) {
-            printf(" AHCI HBA (major rev. 1)\n");
+            kprintf(" AHCI HBA (major rev. 1)\n");
             bool b_ok = ahci_init(bus, dev);
             if (!b_ok) {
-                printf("pci: failed to initialize bus %u device %u\n", bus,
-                       dev);
+                kprintf("pci: failed to initialize bus %u device %u\n", bus,
+                        dev);
             }
             return (b_ok);
         } else {
-            printf(" unknown programming interface\n");
+            kprintf(" unknown programming interface\n");
         }
     } else {
-        printf("pci: ignoring unknown bus %u device %u\n", bus, dev);
+        kprintf("pci: ignoring unknown bus %u device %u\n", bus, dev);
     }
 
     return (false);
@@ -87,8 +87,8 @@ void pci_list_devices(void) {
 
         if (0xFFFF == vendor_id) { continue; }
 
-        printf("dev %u vendor id %02x device id %02x\n", dev, vendor_id,
-               device_id);
+        kprintf("dev %u vendor id %02x device id %02x\n", dev, vendor_id,
+                device_id);
     }
 }
 
@@ -96,16 +96,16 @@ void pci_dump_config(uint8_t bus, uint8_t dev) {
     size_t const row_bytes = 24;
 
     for (size_t row = 0; row < (256 / row_bytes); row++) {
-        printf("%02x  ", (row * row_bytes));
+        kprintf("%02x  ", (row * row_bytes));
 
         for (size_t col = 0; col < row_bytes; col++) {
-            if ((col > 0) && ((col % 8) == 0)) { printf(" "); }
+            if ((col > 0) && ((col % 8) == 0)) { kprintf(" "); }
 
             uint8_t idx = ((row * row_bytes) + col);
-            printf("%02x ", read_config_u8(bus, dev, 0, idx));
+            kprintf("%02x ", read_config_u8(bus, dev, 0, idx));
         }
 
-        printf("\n");
+        kprintf("\n");
     }
 }
 

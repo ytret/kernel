@@ -1,8 +1,8 @@
 #include "kbd.h"
+#include "kprintf.h"
 #include "kshell/cmd.h"
 #include "kshell/kshell.h"
 #include "panic.h"
-#include "printf.h"
 #include "string.h"
 #include "term.h"
 
@@ -37,7 +37,7 @@ void kshell(void) {
         // can reset it to their own callbacks without affecting the prompt.
         kbd_set_callback(kbd_callback);
 
-        printf("> ");
+        kprintf("> ");
         char const *p_cmd = read_cmd();
         if (!p_cmd) { continue; }
 
@@ -76,7 +76,7 @@ static void buf_remove(void) {
  */
 static volatile char const *buf_get_cmd(void) {
     if (g_cmd_buf_pos >= CMD_BUF_SIZE) {
-        printf("kshell: command buffer overflow\n");
+        kprintf("kshell: command buffer overflow\n");
         panic("buffer overflow");
     }
 
@@ -132,7 +132,7 @@ static void kbd_callback(uint8_t key, bool b_released) {
 static void echo_key(uint8_t key) {
     char p_echoed[2] = {0};
     p_echoed[0] = char_from_key(key);
-    if (p_echoed[0]) { printf("%s", p_echoed); }
+    if (p_echoed[0]) { kprintf("%s", p_echoed); }
 }
 
 static char char_from_key(uint8_t key) {

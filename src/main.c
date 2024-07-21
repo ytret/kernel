@@ -5,6 +5,7 @@
 #include "heap.h"
 #include "idt.h"
 #include "kbd.h"
+#include "kprintf.h"
 #include "kshell/kshell.h"
 #include "mbi.h"
 #include "panic.h"
@@ -12,7 +13,6 @@
 #include "pic.h"
 #include "pit.h"
 #include "pmm.h"
-#include "printf.h"
 #include "taskmgr.h"
 #include "term.h"
 #include "vmm.h"
@@ -26,14 +26,14 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     term_init();
     term_clear();
-    printf("Hello, world!\n");
+    kprintf("Hello, world!\n");
 
     if (MULTIBOOT_MAGIC_NUM == magic_num) {
-        printf("Booted by a multiboot-compliant bootloader\n");
-        printf("Multiboot information structure is at %P\n", mbi_addr);
+        kprintf("Booted by a multiboot-compliant bootloader\n");
+        kprintf("Multiboot information structure is at %P\n", mbi_addr);
     } else {
-        printf("Magic number: 0x%X, expected: 0x%X\n", magic_num,
-               MULTIBOOT_MAGIC_NUM);
+        kprintf("Magic number: 0x%X, expected: 0x%X\n", magic_num,
+                MULTIBOOT_MAGIC_NUM);
         panic("booted by an unknown bootloader");
     }
 
@@ -45,7 +45,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     pic_set_mask(PIT_IRQ, false);
 
     __asm__ volatile("sti");
-    printf("Interrupts enabled\n");
+    kprintf("Interrupts enabled\n");
 
     heap_init();
 
@@ -62,12 +62,12 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     uint64_t root_num_sectors;
     bool b_root_found =
         gpt_find_root_part(&root_start_sector, &root_num_sectors);
-    if (!b_root_found) { printf("Could not find root partition\n"); }
+    if (!b_root_found) { kprintf("Could not find root partition\n"); }
 
     taskmgr_init();
     taskmgr_start_scheduler(init_entry);
 
-    printf("End of main\n");
+    kprintf("End of main\n");
 }
 
 __attribute__((noreturn)) static void init_entry(void) {
@@ -76,6 +76,6 @@ __attribute__((noreturn)) static void init_entry(void) {
 
     kshell();
 
-    printf("init_entry: kshell returned\n");
+    kprintf("init_entry: kshell returned\n");
     panic("unexpected behavior");
 }

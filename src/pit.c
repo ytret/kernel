@@ -1,8 +1,8 @@
+#include "kprintf.h"
 #include "panic.h"
 #include "pic.h"
 #include "pit.h"
 #include "port.h"
-#include "printf.h"
 #include "taskmgr.h"
 
 #define PORT_CMD      0x0043
@@ -20,9 +20,9 @@ void pit_init(uint8_t period_ms) {
     // Calculate the reload value.
     uint32_t reload_u32 = (BASE_FREQ_KHZ * period_ms);
     if (reload_u32 > 65535) {
-        printf("PIT: reload value (%u) for period_ms = %u is too big\n",
-               reload_u32, period_ms);
-        printf("It must be less than or equal to 65535\n");
+        kprintf("PIT: reload value (%u) for period_ms = %u is too big\n",
+                reload_u32, period_ms);
+        kprintf("It must be less than or equal to 65535\n");
         panic("pit_init() failed");
     }
 
@@ -39,7 +39,7 @@ void pit_init(uint8_t period_ms) {
 
 void pit_irq_handler(void) {
     if (!gb_initialized) {
-        printf("PIT: IRQ0 handler was called before initialization\n");
+        kprintf("PIT: IRQ0 handler was called before initialization\n");
         panic("unexpected behavior");
     }
 

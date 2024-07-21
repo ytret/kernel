@@ -2,8 +2,8 @@
 
 #include "ahci.h"
 #include "heap.h"
+#include "kprintf.h"
 #include "pci.h"
-#include "printf.h"
 #include "sata.h"
 #include "vmm.h"
 
@@ -251,16 +251,16 @@ static bool ensure_ahci_mode(void) {
         if (p_ghc->ghc & GHC_GHC_AE) {
             return (true);
         } else {
-            printf("ahci: cannot set GHC.AE bit, when it must be R/W"
-                   " because CAP.SAM is set\n");
+            kprintf("ahci: cannot set GHC.AE bit, when it must be R/W"
+                    " because CAP.SAM is set\n");
             return (false);
         }
     } else {
         // SAM is zero, so the controller supports only AHCI mode.  However,
         // AE is zero, meaning that AHCI mode is disabled.
-        printf("ahci: CAP.SAM is zero, meaning that SATA controller"
-               " supports only AHCI mode; but GHC.AE is zero, meaning that"
-               " AHCI mode is disabled\n");
+        kprintf("ahci: CAP.SAM is zero, meaning that SATA controller"
+                " supports only AHCI mode; but GHC.AE is zero, meaning that"
+                " AHCI mode is disabled\n");
         return (false);
     }
 }
@@ -268,7 +268,7 @@ static bool ensure_ahci_mode(void) {
 static bool find_root_port(void) {
     reg_ghc_t *p_ghc = gp_hba;
 
-    printf("ahci: ports implemented: 0x%08X\n", p_ghc->pi);
+    kprintf("ahci: ports implemented: 0x%08X\n", p_ghc->pi);
     for (size_t port = 0; port < 32; port++) {
         if (!(p_ghc->pi & (1 << port))) {
             // Skip an unimplemented port.
@@ -279,26 +279,26 @@ static bool find_root_port(void) {
         reg_port_t *p_port = ((reg_port_t *)HBA_REG_PORT(gp_hba, port));
         switch (p_port->ssts & PORT_SSTS_DET_MASK) {
         case 1:
-            printf("ahci: port %u: device detected, but there is no"
-                   " communication\n",
-                   port);
+            kprintf("ahci: port %u: device detected, but there is no"
+                    " communication\n",
+                    port);
             break;
 
         case 3:
-            printf("ahci: port %u: signature = %08x ", port, p_port->sig);
+            kprintf("ahci: port %u: signature = %08x ", port, p_port->sig);
             switch (p_port->sig) {
             case SATA_SIG_ATA:
-                printf("(ATA)\n");
+                kprintf("(ATA)\n");
                 gp_port = p_port;
                 return (true);
 
             default:
-                printf("(unknown)\n");
+                kprintf("(unknown)\n");
             }
             break;
 
         case 4:
-            printf("ahci: port %u: phy in offline mode\n", port);
+            kprintf("ahci: port %u: phy in offline mode\n", port);
             break;
         }
     }
@@ -313,19 +313,19 @@ static bool identify_device(void) {
     uint16_t *p_ident = heap_alloc_aligned(512, 2);
     int cmd_slot = send_read_cmd(gp_port, cmd, p_ident, 512);
     if (-1 == cmd_slot) {
-        printf("ahci: could not issue identify command\n");
+        kprintf("ahci: could not issue identify command\n");
         return (false);
     }
 
     bool b_ok = wait_for_cmd(gp_port, cmd_slot);
     if (!b_ok) {
-        printf("ahci: identify command failed\n");
+        kprintf("ahci: identify command failed\n");
         return (false);
     }
 
     char p_serial[21] = {0};
     __builtin_memcpy(p_serial, (p_ident + 10), 20);
-    printf("ahci: serial number is '%s'\n", p_serial);
+    kprintf("ahci: serial number is '%s'\n", p_serial);
 
     g_max_sectors = *((uint32_t *)&p_ident[60]);
 
@@ -333,13 +333,13 @@ static bool identify_device(void) {
     uint32_t disk_size_mib = (disk_size_kib / 1024);
     uint32_t disk_size_gib = (disk_size_mib / 1024);
 
-    printf("ahci: disk size is");
+    kprintf("ahci: disk size is");
     if (disk_size_mib > 9999) {
-        printf(" %u GiB\n", disk_size_gib);
+        kprintf(" %u GiB\n", disk_size_gib);
     } else if (disk_size_kib > 9999) {
-        printf(" %u MiB\n", disk_size_mib);
+        kprintf(" %u MiB\n", disk_size_mib);
     } else {
-        printf(" %u KiB\n", disk_size_kib);
+        kprintf(" %u KiB\n", disk_size_kib);
     }
 
     heap_free(p_ident);
@@ -351,28 +351,28 @@ static bool read_sectors(reg_port_t *p_port, uint64_t start_sector,
                          uint32_t num_sectors, void *p_buf) {
     // Check start_sector.
     if (start_sector >> 48) {
-        printf("ahci: start sector number cannot be wider than 48 bits\n");
+        kprintf("ahci: start sector number cannot be wider than 48 bits\n");
         return (false);
     }
     if (start_sector >= g_max_sectors) {
-        printf("ahci: start sector is past disk end by %u sectors\n",
-               (start_sector - g_max_sectors));
+        kprintf("ahci: start sector is past disk end by %u sectors\n",
+                (start_sector - g_max_sectors));
         return (false);
     }
 
     // Check num_sectors.
     if (0 == num_sectors) { return (true); }
     if ((start_sector + num_sectors) > g_max_sectors) {
-        printf("ahci: cannot read past disk end by %u sectors\n",
-               (start_sector + num_sectors) - g_max_sectors);
+        kprintf("ahci: cannot read past disk end by %u sectors\n",
+                (start_sector + num_sectors) - g_max_sectors);
         return (false);
     }
 
     // We have a finite amount of PRDs.  Each can describe a 4 MiB data block,
     // or 8192 512-byte sectors.
     if (num_sectors > (8192 * CMD_TABLE_NUM_PRDS)) {
-        printf("ahci: number of sectors to read cannot be greater than %u\n",
-               (8192 * CMD_TABLE_NUM_PRDS));
+        kprintf("ahci: number of sectors to read cannot be greater than %u\n",
+                (8192 * CMD_TABLE_NUM_PRDS));
         return (false);
     }
 
@@ -386,14 +386,14 @@ static bool read_sectors(reg_port_t *p_port, uint64_t start_sector,
     // Issue the command.
     int cmd_slot = send_read_cmd(p_port, cmd, p_buf, (512 * num_sectors));
     if (-1 == cmd_slot) {
-        printf("ahci: failed to issue read command\n");
+        kprintf("ahci: failed to issue read command\n");
         return (false);
     }
 
     // Wait for its completion.
     bool b_ok = wait_for_cmd(p_port, cmd_slot);
     if (!b_ok) {
-        printf("ahci: command failed\n");
+        kprintf("ahci: command failed\n");
         return (false);
     }
 
@@ -418,14 +418,14 @@ static int send_read_cmd(reg_port_t *p_port, cmd_t cmd, void *p_buf,
     // One PRD can describe a 4 MiB block of data.
     uint16_t prdtl = ((read_len + ((4 * 1024 * 1024) - 1)) / (4 * 1024 * 1024));
     if (prdtl > CMD_TABLE_NUM_PRDS) {
-        printf("ahci: cannot transfer %u bytes of data\n", read_len);
+        kprintf("ahci: cannot transfer %u bytes of data\n", read_len);
         return (-1);
     }
 
     // Find a free command slot.
     int cmd_slot = find_cmd_slot(p_port);
     if (-1 == cmd_slot) {
-        printf("ahci: could not find free command slot\n");
+        kprintf("ahci: could not find free command slot\n");
         return (-1);
     }
 
@@ -472,7 +472,7 @@ static int send_read_cmd(reg_port_t *p_port, cmd_t cmd, void *p_buf,
     while ((p_port->tfd & (PORT_TFD_BSY | PORT_TFD_DRQ)) && (spin++ < 100000)) {
     }
     if (spin >= 100000) {
-        printf("ahci: port is busy\n");
+        kprintf("ahci: port is busy\n");
         return (-1);
     }
 
@@ -500,7 +500,7 @@ static bool wait_for_cmd(reg_port_t *p_port, int cmd_slot) {
         if (p_port->is & PORT_IS_TFES) {
             b_has_err = true;
             p_port->is = PORT_IS_TFES;
-            printf("ahci: task file error\n");
+            kprintf("ahci: task file error\n");
             break;
         }
 
@@ -510,7 +510,7 @@ static bool wait_for_cmd(reg_port_t *p_port, int cmd_slot) {
     // We expect RFIS to arrive.
     if (!(p_port->is & PORT_IS_DHRS)) {
         // RFIS did not arrive.
-        printf("ahci: command completed, but RFIS was not received\n");
+        kprintf("ahci: command completed, but RFIS was not received\n");
         return (false);
     }
 
@@ -519,11 +519,11 @@ static bool wait_for_cmd(reg_port_t *p_port, int cmd_slot) {
 
     // Check the error.
     if (b_has_err) {
-        printf("ahci: Error register is set to %x", g_rfis.rfis.error);
+        kprintf("ahci: Error register is set to %x", g_rfis.rfis.error);
         if (g_rfis.rfis.error & SATA_ERROR_ABORT) {
-            printf("; device aborted command");
+            kprintf("; device aborted command");
         }
-        printf("\n");
+        kprintf("\n");
         return (false);
     }
 
@@ -540,22 +540,22 @@ static int find_cmd_slot(reg_port_t *p_port) {
 }
 
 static void dump_port_reg(reg_port_t *p_port) {
-    printf("Port register at %P:\n", p_port);
-    printf("    clb = %08x\n", p_port->clb);
-    printf("   clbu = %08x\n", p_port->clbu);
-    printf("     fb = %08x\n", p_port->fb);
-    printf("    fbu = %08x\n", p_port->fbu);
-    printf("     is = %08x\n", p_port->is);
-    printf("     ie = %08x\n", p_port->ie);
-    printf("    cmd = %08x\n", p_port->cmd);
-    printf("    tfd = %08x\n", p_port->tfd);
-    printf("    sig = %08x\n", p_port->sig);
-    printf("   ssts = %08x\n", p_port->ssts);
-    printf("   sctl = %08x\n", p_port->sctl);
-    printf("   serr = %08x\n", p_port->serr);
-    printf("   sact = %08x\n", p_port->sact);
-    printf("     ci = %08x\n", p_port->ci);
-    printf("   sntf = %08x\n", p_port->sntf);
-    printf("    fbs = %08x\n", p_port->fbs);
-    printf(" devslp = %08x\n", p_port->devslp);
+    kprintf("Port register at %P:\n", p_port);
+    kprintf("    clb = %08x\n", p_port->clb);
+    kprintf("   clbu = %08x\n", p_port->clbu);
+    kprintf("     fb = %08x\n", p_port->fb);
+    kprintf("    fbu = %08x\n", p_port->fbu);
+    kprintf("     is = %08x\n", p_port->is);
+    kprintf("     ie = %08x\n", p_port->ie);
+    kprintf("    cmd = %08x\n", p_port->cmd);
+    kprintf("    tfd = %08x\n", p_port->tfd);
+    kprintf("    sig = %08x\n", p_port->sig);
+    kprintf("   ssts = %08x\n", p_port->ssts);
+    kprintf("   sctl = %08x\n", p_port->sctl);
+    kprintf("   serr = %08x\n", p_port->serr);
+    kprintf("   sact = %08x\n", p_port->sact);
+    kprintf("     ci = %08x\n", p_port->ci);
+    kprintf("   sntf = %08x\n", p_port->sntf);
+    kprintf("    fbs = %08x\n", p_port->fbs);
+    kprintf(" devslp = %08x\n", p_port->devslp);
 }

@@ -1,7 +1,7 @@
 #include <stdbool.h>
 
+#include "kprintf.h"
 #include "panic.h"
-#include "printf.h"
 
 static volatile bool b_in_panic;
 
@@ -11,7 +11,7 @@ __attribute__((noreturn)) void panic(char const *p_msg) {
     if (b_in_panic) { panic_silent(); }
 
     b_in_panic = true;
-    printf("Kernel panic: %s. Halting.\n", p_msg);
+    kprintf("Kernel panic: %s. Halting.\n", p_msg);
 
     for (;;) {}
 }

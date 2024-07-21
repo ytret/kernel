@@ -22,6 +22,7 @@ add_executable(kernel
     src/heap.c
     src/idt.c
     src/kbd.c
+    src/kprintf.c
     src/mbi.c
     src/memcpy.c
     src/memmove.c
@@ -31,7 +32,6 @@ add_executable(kernel
     src/pic.c
     src/pit.c
     src/pmm.c
-    src/printf.c
     src/psf.c
     src/stack.c
     src/string.c

@@ -2,9 +2,9 @@
 
 #include "gdt.h"
 #include "heap.h"
+#include "kprintf.h"
 #include "panic.h"
 #include "pmm.h"
-#include "printf.h"
 #include "stack.h"
 #include "taskmgr.h"
 #include "vmm.h"
@@ -98,7 +98,7 @@ taskmgr_start_scheduler(__attribute__((noreturn)) void (*p_init_entry)(void)) {
 
     taskmgr_switch_tasks(NULL, &gp_first_task->tcb, gdt_get_tss());
 
-    printf("initial task entry has returned\n");
+    kprintf("initial task entry has returned\n");
     panic("unexpected behavior");
 
     for (;;) {}
@@ -111,8 +111,8 @@ void taskmgr_schedule(void) {
 
     task_t *p_running_task = list_find(gp_first_task, g_running_task_id);
     if (!p_running_task) {
-        printf("taskmgr: cannot find running task %u in the task list\n",
-               g_running_task_id);
+        kprintf("taskmgr: cannot find running task %u in the task list\n",
+                g_running_task_id);
         panic("unexpected behavior");
     }
 
@@ -151,7 +151,7 @@ uint32_t taskmgr_running_task_id(void) {
 }
 
 void taskmgr_dump_tasks(void) {
-    printf(" ID     PAGEDIR         ESP     MAX ESP   USED\n");
+    kprintf(" ID     PAGEDIR         ESP     MAX ESP   USED\n");
 
     task_t *p_iter = gp_first_task;
     while (p_iter) {
@@ -160,8 +160,8 @@ void taskmgr_dump_tasks(void) {
         uint32_t esp = ((uint32_t)p_iter->tcb.p_kernel_stack->p_top);
         uint32_t max_esp = ((uint32_t)p_iter->tcb.p_kernel_stack->p_top_max);
         int32_t used = (max_esp - esp);
-        printf("%3u  0x%08x  0x%08x  0x%08x  %5d\n", id, pagedir, esp, max_esp,
-               used);
+        kprintf("%3u  0x%08x  0x%08x  0x%08x  %5d\n", id, pagedir, esp, max_esp,
+                used);
         p_iter = p_iter->p_next;
     }
 }
@@ -169,12 +169,12 @@ void taskmgr_dump_tasks(void) {
 static task_t *new_task(uint32_t entry_point) {
     task_t *p_task = heap_alloc(sizeof(*p_task));
     p_task->id = (g_new_task_id++);
-    printf("new_task: p_task = %P id %u\n", p_task, p_task->id);
+    kprintf("new_task: p_task = %P id %u\n", p_task, p_task->id);
 
     // Allocate the kernel stack.
     void *p_stack = heap_alloc(KERNEL_STACK_SIZE);
     stack_new(&p_task->kernel_stack, p_stack, KERNEL_STACK_SIZE);
-    printf("taskmgr: stack at %P\n", p_stack);
+    kprintf("taskmgr: stack at %P\n", p_stack);
 
     // Set up the control block.
     p_task->tcb.page_dir_phys = ((uint32_t)vmm_kvas_dir());
@@ -195,8 +195,8 @@ static task_t *new_task(uint32_t entry_point) {
 
 static void map_user_stack(uint32_t *p_dir) {
     if (USER_STACK_PAGES != 1) {
-        printf("taskmgr: map_user_stack: USER_STACK_PAGES != 1 is not"
-               " implemented\n");
+        kprintf("taskmgr: map_user_stack: USER_STACK_PAGES != 1 is not"
+                " implemented\n");
         panic("unimplemented");
     }
 
@@ -218,7 +218,7 @@ static void list_append(task_t *p_first, task_t *p_task) {
     p_task->p_next = NULL;
 
     if (!p_first) {
-        printf("taskmgr: list_append: cannot append to empty list\n");
+        kprintf("taskmgr: list_append: cannot append to empty list\n");
         panic("unexpected behavior");
     }
 

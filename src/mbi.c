@@ -1,5 +1,5 @@
+#include <kprintf.h>
 #include <panic.h>
-#include <printf.h>
 
 #include "heap.h"
 #include "mbi.h"
@@ -70,9 +70,9 @@ mbi_mod_t const *mbi_find_mod(char const *p_name) {
         mbi_mod_t const *p_mod = mbi_nth_mod(idx);
 
         if (!p_mod) {
-            printf("mbi_nth_mod() returned NULL for index %u < number of"
-                   " modules %u\n",
-                   idx, mbi_num_mods());
+            kprintf("mbi_nth_mod() returned NULL for index %u < number of"
+                    " modules %u\n",
+                    idx, mbi_num_mods());
             panic("unexpected behavior");
         }
 

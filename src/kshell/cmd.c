@@ -20,12 +20,12 @@
 #include "ahci.h"
 #include "elf.h"
 #include "heap.h"
+#include "kprintf.h"
 #include "kshell/cmd.h"
 #include "kshell/vasview.h"
 #include "mbi.h"
 #include "panic.h"
 #include "pci.h"
-#include "printf.h"
 #include "string.h"
 #include "taskmgr.h"
 #include "term.h"
@@ -62,7 +62,7 @@ void kshell_cmd_parse(char const *p_cmd) {
     if (0 == num_args) { return; }
 
     if (num_args > MAX_ARGS) {
-        printf("kshell: too much arguments (more than %u)\n", MAX_ARGS);
+        kprintf("kshell: too much arguments (more than %u)\n", MAX_ARGS);
         return;
     }
 
@@ -79,12 +79,12 @@ void kshell_cmd_parse(char const *p_cmd) {
         }
     }
 
-    printf("kshell: unknown command: '%s'\n", pp_args[0]);
+    kprintf("kshell: unknown command: '%s'\n", pp_args[0]);
 }
 
 static void cmd_clear(char **pp_args, size_t num_args) {
     if (1 != num_args) {
-        printf("Usage: %s\n", pp_args[0]);
+        kprintf("Usage: %s\n", pp_args[0]);
         return;
     }
 
@@ -93,28 +93,28 @@ static void cmd_clear(char **pp_args, size_t num_args) {
 
 static void cmd_help(char **pp_args, size_t num_args) {
     if (1 != num_args) {
-        printf("Usage: %s\n", pp_args[0]);
+        kprintf("Usage: %s\n", pp_args[0]);
         return;
     }
 
-    printf("Available commands:\n");
+    kprintf("Available commands:\n");
     for (size_t idx = 0; idx < NUM_CMDS; idx++) {
-        printf("%s", gp_cmd_names[idx]);
-        if (idx != (NUM_CMDS - 1)) { printf(", "); }
+        kprintf("%s", gp_cmd_names[idx]);
+        if (idx != (NUM_CMDS - 1)) { kprintf(", "); }
     }
-    printf("\n");
+    kprintf("\n");
 }
 
 static void cmd_mbimap(char **pp_args, size_t num_args) {
     if (1 != num_args) {
-        printf("Usage: %s\n", pp_args[0]);
+        kprintf("Usage: %s\n", pp_args[0]);
         return;
     }
 
     mbi_t const *p_mbi = mbi_ptr();
 
     if (!(p_mbi->flags & MBI_FLAG_MMAP)) {
-        printf("No memory map in MBI\n");
+        kprintf("No memory map in MBI\n");
         return;
     }
 
@@ -129,14 +129,14 @@ static void cmd_mbimap(char **pp_args, size_t num_args) {
 
         uint64_t end = (base_addr + length);
 
-        printf("size = %d, addr = 0x%P", size, ((uint32_t)base_addr));
+        kprintf("size = %d, addr = 0x%P", size, ((uint32_t)base_addr));
         if (end >> 32) {
-            printf(", end = 0x%08X%08X", ((uint32_t)(end >> 32)),
-                   ((uint32_t)end));
+            kprintf(", end = 0x%08X%08X", ((uint32_t)(end >> 32)),
+                    ((uint32_t)end));
         } else {
-            printf(", end = 0x%08X", ((uint32_t)end));
+            kprintf(", end = 0x%08X", ((uint32_t)end));
         }
-        printf(", type = %d\n", type);
+        kprintf(", type = %d\n", type);
 
         byte += (4 + size);
     }
@@ -144,30 +144,30 @@ static void cmd_mbimap(char **pp_args, size_t num_args) {
 
 static void cmd_mbimod(char **pp_args, size_t num_args) {
     if (1 != num_args) {
-        printf("Usage: %s\n", pp_args[0]);
+        kprintf("Usage: %s\n", pp_args[0]);
         return;
     }
 
     mbi_t const *p_mbi = mbi_ptr();
 
     if (!(p_mbi->flags & MBI_FLAG_MODS)) {
-        printf("No modules in MBI\n");
+        kprintf("No modules in MBI\n");
         return;
     }
 
-    printf("Module count = %u\n", p_mbi->mods_count);
+    kprintf("Module count = %u\n", p_mbi->mods_count);
 
     mbi_mod_t const *p_mod = ((mbi_mod_t const *)p_mbi->mods_addr);
     for (size_t idx = 0; idx < p_mbi->mods_count; idx++) {
-        printf("Module %d: ", idx);
+        kprintf("Module %d: ", idx);
         if (p_mod->string) {
-            printf("'%s', ", p_mod->string);
+            kprintf("'%s', ", p_mod->string);
         } else {
-            printf("string = NULL, ");
+            kprintf("string = NULL, ");
         }
-        printf("start = %P, end = %P, size = %u", p_mod->mod_start,
-               p_mod->mod_end, (p_mod->mod_end - p_mod->mod_start));
-        printf("\n");
+        kprintf("start = %P, end = %P, size = %u", p_mod->mod_start,
+                p_mod->mod_end, (p_mod->mod_end - p_mod->mod_start));
+        kprintf("\n");
 
         p_mod += 1;
     }
@@ -175,13 +175,13 @@ static void cmd_mbimod(char **pp_args, size_t num_args) {
 
 static void cmd_elfhdr(char **pp_args, size_t num_args) {
     if (1 != num_args) {
-        printf("Usage: %s\n", pp_args[0]);
+        kprintf("Usage: %s\n", pp_args[0]);
         return;
     }
 
     mbi_mod_t const *p_mod_user = mbi_find_mod("user");
     if (!p_mod_user) {
-        printf("Module 'user' is not found\n");
+        kprintf("Module 'user' is not found\n");
         return;
     }
 
@@ -190,31 +190,31 @@ static void cmd_elfhdr(char **pp_args, size_t num_args) {
 
 static void cmd_exec(char **pp_args, size_t num_args) {
     if (1 != num_args) {
-        printf("Usage: %s\n", pp_args[0]);
+        kprintf("Usage: %s\n", pp_args[0]);
         return;
     }
 
     mbi_t const *p_mbi = mbi_ptr();
 
     if (!(p_mbi->flags & MBI_FLAG_MODS)) {
-        printf("Module 'user' is not found\n");
+        kprintf("Module 'user' is not found\n");
         return;
     }
 
     mbi_mod_t const *p_mod_user = mbi_find_mod("user");
     if (!p_mod_user) {
-        printf("Module 'user' is not found\n");
+        kprintf("Module 'user' is not found\n");
         return;
     }
 
     uint32_t *p_dir = vmm_clone_kvas();
-    printf("kshell: cloned kernel VAS at %P\n", p_dir);
+    kprintf("kshell: cloned kernel VAS at %P\n", p_dir);
 
     bool ok = elf_load(p_dir, p_mod_user->mod_start, &g_exec_entry);
-    if (!ok) { printf("kshell: failed to load the executable\n"); }
+    if (!ok) { kprintf("kshell: failed to load the executable\n"); }
 
-    printf("kshell: successfully loaded\n");
-    printf("kshell: entry at 0x%08x\n", g_exec_entry);
+    kprintf("kshell: successfully loaded\n");
+    kprintf("kshell: entry at 0x%08x\n", g_exec_entry);
 
     taskmgr_new_user_task(p_dir, ((uint32_t)cmd_exec_entry));
 
@@ -227,13 +227,13 @@ static void cmd_exec_entry(void) {
 
     taskmgr_go_usermode(g_exec_entry);
 
-    printf("kshell: call to taskmgr_go_usermode() has returned\n");
+    kprintf("kshell: call to taskmgr_go_usermode() has returned\n");
     panic("unexpected behavior");
 }
 
 static void cmd_tasks(char **pp_args, size_t num_args) {
     if (1 != num_args) {
-        printf("Usage: %s\n", pp_args[0]);
+        kprintf("Usage: %s\n", pp_args[0]);
         return;
     }
 
@@ -242,10 +242,10 @@ static void cmd_tasks(char **pp_args, size_t num_args) {
 
 static void cmd_vasview(char **pp_args, size_t num_args) {
     if (num_args > 2) {
-        printf("Usage: %s [pgdir]\n", pp_args[0]);
-        printf("Optional arguments:\n");
-        printf("  pgdir  virtual address of a page directory to view"
-               " (default: kshell task VAS)\n");
+        kprintf("Usage: %s [pgdir]\n", pp_args[0]);
+        kprintf("Optional arguments:\n");
+        kprintf("  pgdir  virtual address of a page directory to view"
+                " (default: kshell task VAS)\n");
         return;
     }
 
@@ -258,8 +258,8 @@ static void cmd_vasview(char **pp_args, size_t num_args) {
     if (2 == num_args) {
         bool ok = string_to_uint32(pp_args[1], &pgdir, 16);
         if (!ok) {
-            printf("Invalid argument: '%s'\n", pp_args[1]);
-            printf("pgdir must be a hexadecimal 32-bit unsigned integer\n");
+            kprintf("Invalid argument: '%s'\n", pp_args[1]);
+            kprintf("pgdir must be a hexadecimal 32-bit unsigned integer\n");
             return;
         }
     }
@@ -269,64 +269,64 @@ static void cmd_vasview(char **pp_args, size_t num_args) {
 
 static void cmd_cpuid(char **pp_args, size_t num_args) {
     if (2 != num_args) {
-        printf("Usage: %s <leaf>\n", pp_args[0]);
+        kprintf("Usage: %s <leaf>\n", pp_args[0]);
         return;
     }
 
     uint32_t leaf;
     bool b_arg_ok = string_to_uint32(pp_args[1], &leaf, 10);
     if (!b_arg_ok) {
-        printf("Invalid argument: '%s'\n", pp_args[1]);
-        printf("leaf must be a decimal 32-bit unsigned integer\n");
+        kprintf("Invalid argument: '%s'\n", pp_args[1]);
+        kprintf("leaf must be a decimal 32-bit unsigned integer\n");
         return;
     }
 
     unsigned int eax, ebx, ecx, edx;
     int cpuid_ok = __get_cpuid(leaf, &eax, &ebx, &ecx, &edx);
     if (!cpuid_ok) {
-        printf("Unsupported cpuid leaf: %u\n", leaf);
+        kprintf("Unsupported cpuid leaf: %u\n", leaf);
         return;
     }
 
-    printf("EAX = %08x\n", eax);
-    printf("EBX = %08x\n", ebx);
-    printf("ECX = %08x\n", ecx);
-    printf("EDX = %08x\n", edx);
+    kprintf("EAX = %08x\n", eax);
+    kprintf("EBX = %08x\n", ebx);
+    kprintf("ECX = %08x\n", ecx);
+    kprintf("EDX = %08x\n", edx);
 }
 
 static void cmd_pci(char **pp_args, size_t num_args) {
     if (num_args < 2) {
-        printf("Usage: %s <cmd> [args]\n", pp_args[0]);
-        printf("cmd must be one of: dump, list\n");
-        printf("args depend on cmd\n");
+        kprintf("Usage: %s <cmd> [args]\n", pp_args[0]);
+        kprintf("cmd must be one of: dump, list\n");
+        kprintf("args depend on cmd\n");
         return;
     }
 
     if (string_equals(pp_args[1], "list")) {
         if (num_args != 2) {
-            printf("Usage: pci list\n");
+            kprintf("Usage: pci list\n");
             return;
         }
 
         pci_list_devices();
     } else if (string_equals(pp_args[1], "dump")) {
         if (num_args != 3) {
-            printf("Usage: pci dump <device number>\n");
+            kprintf("Usage: pci dump <device number>\n");
             return;
         }
 
         uint32_t dev;
         bool b_ok = string_to_uint32(pp_args[2], &dev, 10);
         if ((!b_ok) || (dev >= 32)) {
-            printf("Invalid argument: '%s'\n", pp_args[2]);
-            printf("device number must be an unsigned decimal number less than"
-                   " 32\n");
+            kprintf("Invalid argument: '%s'\n", pp_args[2]);
+            kprintf("device number must be an unsigned decimal number less than"
+                    " 32\n");
             return;
         }
 
         pci_dump_config(0, dev);
     } else {
-        printf("pci: unknown command: '%s'\n", pp_args[1]);
+        kprintf("pci: unknown command: '%s'\n", pp_args[1]);
         return;
     }
 }
@@ -334,7 +334,7 @@ static void cmd_pci(char **pp_args, size_t num_args) {
 static void cmd_ahci(char **pp_args, size_t num_args) {
     if ((num_args != 4) ||
         ((num_args > 1) && (!string_equals(pp_args[1], "dump")))) {
-        printf("Usage: ahci dump <sector> <num sectors>\n");
+        kprintf("Usage: ahci dump <sector> <num sectors>\n");
         return;
     }
 
@@ -343,35 +343,35 @@ static void cmd_ahci(char **pp_args, size_t num_args) {
 
     bool b_sector_ok = string_to_uint32(pp_args[2], &sector, 10);
     if (!b_sector_ok) {
-        printf("Invalid argument: '%s'\n", pp_args[2]);
-        printf("sector must be a 32-bit unsigned integer\n");
+        kprintf("Invalid argument: '%s'\n", pp_args[2]);
+        kprintf("sector must be a 32-bit unsigned integer\n");
         return;
     }
 
     bool b_num_ok = string_to_uint32(pp_args[3], &num_sectors, 10);
     if ((!b_num_ok) || (0 == num_sectors)) {
-        printf("Invalid argument: '%s'\n", pp_args[3]);
-        printf("num sectors must be a non-zero 32-bit unsigned integer\n");
+        kprintf("Invalid argument: '%s'\n", pp_args[3]);
+        kprintf("num sectors must be a non-zero 32-bit unsigned integer\n");
         return;
     }
 
     uint8_t *p_buf = heap_alloc_aligned((512 * num_sectors), 2);
     bool b_ok = ahci_read_sectors(sector, num_sectors, p_buf);
     if (!b_ok) {
-        printf("ahci: dump command failed\n");
+        kprintf("ahci: dump command failed\n");
         return;
     }
 
     // Print the bytes.
     size_t num_bytes = (512 * num_sectors);
     for (size_t row = 0; row < (num_bytes / 24); row++) {
-        printf("%02x  ", row);
+        kprintf("%02x  ", row);
         for (size_t byte = 0; byte < 24; byte++) {
-            if ((byte > 0) && ((byte % 8) == 0)) { printf(" "); }
+            if ((byte > 0) && ((byte % 8) == 0)) { kprintf(" "); }
             size_t idx = ((row * 24) + byte);
-            printf("%02x ", p_buf[idx]);
+            kprintf("%02x ", p_buf[idx]);
         }
-        printf("\n");
+        kprintf("\n");
     }
 
     heap_free(p_buf);
@@ -379,7 +379,7 @@ static void cmd_ahci(char **pp_args, size_t num_args) {
 
 static void cmd_execrep(char **pp_args, size_t num_args) {
     if (num_args != 1) {
-        printf("Usage: %s\n", pp_args[0]);
+        kprintf("Usage: %s\n", pp_args[0]);
         return;
     }
 

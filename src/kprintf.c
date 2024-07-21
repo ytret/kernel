@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "printf.h"
+#include "kprintf.h"
 #include "string.h"
 #include "term.h"
 
@@ -17,7 +17,7 @@ static void itoa(unsigned int num, bool b_signed, char *p_buf,
 static void print_field(char const *p_field, size_t field_width,
                         bool b_zero_pad, bool b_left_just);
 
-void printf(char const *restrict p_format, ...) {
+void kprintf(char const *restrict p_format, ...) {
     va_list args;
     va_start(args, p_format);
 

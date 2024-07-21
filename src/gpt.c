@@ -1,7 +1,7 @@
 #include "ahci.h"
 #include "gpt.h"
 #include "heap.h"
-#include "printf.h"
+#include "kprintf.h"
 
 typedef struct __attribute__((packed)) {
     uint64_t sig;
@@ -55,7 +55,7 @@ bool gpt_find_root_part(uint64_t *p_lba_start, uint64_t *p_lba_end) {
 
     // Ensure the root disk was found.
     if (!ahci_is_init()) {
-        printf("gpt: AHCI driver is not initialized\n");
+        kprintf("gpt: AHCI driver is not initialized\n");
         return (false);
     }
 
@@ -66,22 +66,22 @@ bool gpt_find_root_part(uint64_t *p_lba_start, uint64_t *p_lba_end) {
     char p_sig[9] = {0};
     __builtin_memcpy(p_sig, p_hdr, 8);
 
-    printf("gpt: signature '%s'\n", p_sig);
-    printf("gpt: GPT revision 0x%08x\n", p_hdr->gpt_rev);
-    printf("gpt: header size %u\n", p_hdr->hdr_size);
-    printf("gpt: header cksum 0x%08x\n", p_hdr->hdr_cksum);
-    printf("gpt: LBA of this header %u\n", p_hdr->lba_this_hdr);
-    printf("gpt: LBA of alternate header %u\n", p_hdr->lba_alt_hdr);
-    printf("gpt: disk GUID ");
+    kprintf("gpt: signature '%s'\n", p_sig);
+    kprintf("gpt: GPT revision 0x%08x\n", p_hdr->gpt_rev);
+    kprintf("gpt: header size %u\n", p_hdr->hdr_size);
+    kprintf("gpt: header cksum 0x%08x\n", p_hdr->hdr_cksum);
+    kprintf("gpt: LBA of this header %u\n", p_hdr->lba_this_hdr);
+    kprintf("gpt: LBA of alternate header %u\n", p_hdr->lba_alt_hdr);
+    kprintf("gpt: disk GUID ");
     guid_print(p_hdr->p_disk_guid);
-    printf("\n");
-    printf("gpt: PTE array starts at LBA %u\n", p_hdr->ptes_lba);
-    printf("gpt: PTE array length %u entries\n", p_hdr->ptes_num);
-    printf("gpt: PTE size %u\n", p_hdr->pte_size);
-    printf("gpt: PTE array cksum 0x%08x\n", p_hdr->ptes_cksum);
+    kprintf("\n");
+    kprintf("gpt: PTE array starts at LBA %u\n", p_hdr->ptes_lba);
+    kprintf("gpt: PTE array length %u entries\n", p_hdr->ptes_num);
+    kprintf("gpt: PTE size %u\n", p_hdr->pte_size);
+    kprintf("gpt: PTE array cksum 0x%08x\n", p_hdr->ptes_cksum);
 
     if (0 == p_hdr->ptes_num) {
-        printf("gpt: disk has no partitions\n");
+        kprintf("gpt: disk has no partitions\n");
         return (false);
     }
 
@@ -90,7 +90,7 @@ bool gpt_find_root_part(uint64_t *p_lba_start, uint64_t *p_lba_end) {
     uint8_t *p_ptes_u8 = heap_alloc(512 * ptes_sectors);
     bool b_read = ahci_read_sectors(p_hdr->ptes_lba, ptes_sectors, p_ptes_u8);
     if (!b_read) {
-        printf("gpt: AHCI read failed\n");
+        kprintf("gpt: AHCI read failed\n");
         return (false);
     }
 
@@ -105,17 +105,18 @@ bool gpt_find_root_part(uint64_t *p_lba_start, uint64_t *p_lba_end) {
             char *p_name = heap_alloc(name_len);
             __builtin_memcpy(p_name, p_pte->p_part_name, name_len);
 
-            printf("gpt: partition %u: type ", idx);
+            kprintf("gpt: partition %u: type ", idx);
             guid_print(p_pte->p_type_guid);
-            printf(", start 0x%08x%08x, end 0x%08x%08x, attr 0x%08x%08x"
-                   ", name '%s'\n",
-                   (uint32_t)(p_pte->lba_start >> 32),
-                   (uint32_t)p_pte->lba_start, (uint32_t)(p_pte->lba_end >> 32),
-                   (uint32_t)p_pte->lba_end, (uint32_t)(p_pte->attr >> 8),
-                   (uint32_t)(p_pte->attr & 0xFFFFFFFF), p_name);
+            kprintf(", start 0x%08x%08x, end 0x%08x%08x, attr 0x%08x%08x"
+                    ", name '%s'\n",
+                    (uint32_t)(p_pte->lba_start >> 32),
+                    (uint32_t)p_pte->lba_start,
+                    (uint32_t)(p_pte->lba_end >> 32), (uint32_t)p_pte->lba_end,
+                    (uint32_t)(p_pte->attr >> 8),
+                    (uint32_t)(p_pte->attr & 0xFFFFFFFF), p_name);
 
             if (guid_equals(p_pte->p_type_guid, gp_root_guid)) {
-                printf("gpt: found root parttion\n");
+                kprintf("gpt: found root parttion\n");
                 b_found = true;
                 *p_lba_start = p_pte->lba_start;
                 *p_lba_end = p_pte->lba_end;
@@ -145,11 +146,11 @@ static void guid_print(uint8_t const p_guid[16]) {
     uint8_t *p_four = (uint8_t *)&p_guid[8];    // 8
     uint8_t *p_five = (uint8_t *)&p_guid[9];    // 9
 
-    printf("%08X-%04X-%04X-%02X%02X-", *p_one, *p_two, *p_three, *p_four,
-           *p_five);
+    kprintf("%08X-%04X-%04X-%02X%02X-", *p_one, *p_two, *p_three, *p_four,
+            *p_five);
 
     for (size_t idx = 10; idx < 16; idx++) {
-        printf("%02X", p_guid[idx]);
+        kprintf("%02X", p_guid[idx]);
     }
 }
 

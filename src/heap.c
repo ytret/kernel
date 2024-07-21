@@ -1,9 +1,9 @@
 #include <stdbool.h>
 
 #include "heap.h"
+#include "kprintf.h"
 #include "mbi.h"
 #include "panic.h"
-#include "printf.h"
 #include "vmm.h"
 
 #define HEAP_SIZE (4 * 1024 * 1024)
@@ -41,7 +41,7 @@ void heap_init(void) {
     gp_start = ((tag_t *)heap_start);
     fill_tag(gp_start, false, (HEAP_SIZE - TAG_SIZE), NULL);
 
-    printf("heap: start at %P, size is %u bytes\n", gp_start, HEAP_SIZE);
+    kprintf("heap: start at %P, size is %u bytes\n", gp_start, HEAP_SIZE);
 }
 
 uint32_t heap_end(void) {
@@ -54,17 +54,17 @@ void *heap_alloc(size_t num_bytes) {
 
 void *heap_alloc_aligned(size_t num_bytes, size_t align) {
     if (0 == num_bytes) {
-        printf("heap_alloc_aligned: num_bytes is zero\n");
+        kprintf("heap_alloc_aligned: num_bytes is zero\n");
         panic("invalid argument");
     }
 
     if (0 == align) {
-        printf("heap_alloc_aligned: align is zero\n");
+        kprintf("heap_alloc_aligned: align is zero\n");
         panic("invalid argument");
     }
 
     if (NULL == gp_start) {
-        printf("heap_alloc_aligned: heap is not initialized\n");
+        kprintf("heap_alloc_aligned: heap is not initialized\n");
         panic("unexpected behavior");
     }
 
@@ -92,7 +92,7 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
     }
 
     if (!p_found) {
-        printf("heap_alloc_aligned: no suitable chunk\n");
+        kprintf("heap_alloc_aligned: no suitable chunk\n");
         panic("allocation failed");
     }
 
@@ -122,7 +122,7 @@ void heap_free(void *p_addr) {
 }
 
 void heap_dump_tags(void) {
-    if (NULL == gp_start) { printf("heap_dump_tags: no tags\n"); }
+    if (NULL == gp_start) { kprintf("heap_dump_tags: no tags\n"); }
 
     for (tag_t const *p_tag = gp_start; p_tag != NULL; p_tag = p_tag->p_next) {
         if (((uint32_t)p_tag) < (((uint32_t)gp_start) + HEAP_SIZE)) {
@@ -153,7 +153,7 @@ static uint32_t find_heap_start(void) {
 
 static void fill_tag(tag_t *p_tag, bool b_used, size_t size, tag_t *p_next) {
     if (!p_tag) {
-        printf("fill_tag: p_tag is NULL\n");
+        kprintf("fill_tag: p_tag is NULL\n");
         panic("invalid argument");
     }
 
@@ -164,19 +164,19 @@ static void fill_tag(tag_t *p_tag, bool b_used, size_t size, tag_t *p_next) {
 
 static void print_tag(tag_t const *p_tag) {
     if (NULL == p_tag) {
-        printf("heap: print_tag: p_tag is NULL\n");
+        kprintf("heap: print_tag: p_tag is NULL\n");
         panic("invalid argument");
     }
 
-    printf("heap: tag at %P: ", p_tag);
+    kprintf("heap: tag at %P: ", p_tag);
 
     if (p_tag->b_used) {
-        printf("used, ");
+        kprintf("used, ");
     } else {
-        printf("free, ");
+        kprintf("free, ");
     }
 
-    printf("size = %u bytes\n", p_tag->size);
+    kprintf("size = %u bytes\n", p_tag->size);
 }
 
 static void check_tags(bool b_after_alloc) {
@@ -184,22 +184,22 @@ static void check_tags(bool b_after_alloc) {
 
     for (tag_t const *p_tag = gp_start; p_tag != NULL; p_tag = p_tag->p_next) {
         if (((uint32_t)p_tag) < ((uint32_t)gp_start)) {
-            printf("heap: check_tags: tag %P is below heap\n", p_tag);
+            kprintf("heap: check_tags: tag %P is below heap\n", p_tag);
             b_panic = true;
             break;
         }
 
         if (((uint32_t)p_tag) >= (((uint32_t)gp_start) + HEAP_SIZE)) {
-            printf("heap: check_tags: tag %P is above heap\n", p_tag);
+            kprintf("heap: check_tags: tag %P is above heap\n", p_tag);
             b_panic = true;
             break;
         }
 
         if ((((uint32_t)p_tag) + sizeof(*p_tag) + p_tag->size) >
             (((uint32_t)gp_start) + HEAP_SIZE)) {
-            printf("heap: check_tags: chunk of tag %P ends beyond heap at"
-                   " 0x%08X\n",
-                   p_tag, (((uint32_t)p_tag) + sizeof(*p_tag) + p_tag->size));
+            kprintf("heap: check_tags: chunk of tag %P ends beyond heap at"
+                    " 0x%08X\n",
+                    p_tag, (((uint32_t)p_tag) + sizeof(*p_tag) + p_tag->size));
             b_panic = true;
             break;
         }

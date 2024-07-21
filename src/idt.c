@@ -2,8 +2,8 @@
 
 #include "idt.h"
 #include "isrs.h"
+#include "kprintf.h"
 #include "panic.h"
-#include "printf.h"
 
 #define NUM_ENTRIES     256
 #define DESC_SIZE_BYTES 6
@@ -159,14 +159,14 @@ void idt_dummy_exception_handler(uint32_t exc_num, uint32_t err_code,
         p_name = "reserved";
     }
 
-    printf("Exception: %d (%s)\n", exc_num, p_name);
-    printf("Error code: %d\n", err_code);
+    kprintf("Exception: %d (%s)\n", exc_num, p_name);
+    kprintf("Error code: %d\n", err_code);
     print_stack_frame(p_stack_frame);
     panic("no handler defined");
 }
 
 void idt_dummy_handler(int_frame_t *p_stack_frame) {
-    printf("idt_dummy_handler()\n");
+    kprintf("idt_dummy_handler()\n");
     print_stack_frame(p_stack_frame);
     panic("no handler defined");
 }
@@ -191,17 +191,17 @@ static void fill_entry(entry_t *p_entry, void (*p_handler)(void)) {
 }
 
 static void print_entry(entry_t const *p_entry) {
-    printf("offset=%P, P=%d, DPL=%d, type=0x%X, selector=0x%X (%X %X)\n",
-           ((p_entry->offset_31_16 << 16) | p_entry->offset_15_0),
-           ((p_entry->present_dpl_type >> 7) & 1),
-           ((p_entry->present_dpl_type >> 5) & 3),
-           (p_entry->present_dpl_type & 0xF), p_entry->selector,
-           ((uint32_t const *)p_entry)[0], ((uint32_t const *)p_entry)[1]);
+    kprintf("offset=%P, P=%d, DPL=%d, type=0x%X, selector=0x%X (%X %X)\n",
+            ((p_entry->offset_31_16 << 16) | p_entry->offset_15_0),
+            ((p_entry->present_dpl_type >> 7) & 1),
+            ((p_entry->present_dpl_type >> 5) & 3),
+            (p_entry->present_dpl_type & 0xF), p_entry->selector,
+            ((uint32_t const *)p_entry)[0], ((uint32_t const *)p_entry)[1]);
 }
 
 static void print_stack_frame(int_frame_t const *p_stack_frame) {
-    printf("Stack frame is at %P:\n", p_stack_frame);
-    printf("   eip = 0x%X\n", p_stack_frame->eip);
-    printf("    cs = 0x%X\n", p_stack_frame->cs);
-    printf("eflags = 0x%X\n", p_stack_frame->eflags);
+    kprintf("Stack frame is at %P:\n", p_stack_frame);
+    kprintf("   eip = 0x%X\n", p_stack_frame->eip);
+    kprintf("    cs = 0x%X\n", p_stack_frame->cs);
+    kprintf("eflags = 0x%X\n", p_stack_frame->eflags);
 }
