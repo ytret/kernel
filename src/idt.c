@@ -198,7 +198,7 @@ static void fill_user_entry(entry_t *p_entry, void (*p_handler)(void)) {
     p_entry->offset_15_0 = ((offset >> 0) & 0xFFFF);
     p_entry->offset_31_16 = ((offset >> 16) & 0xFFFF);
 
-    p_entry->selector = 0x18;
+    p_entry->selector = 0x08;
     p_entry->present_dpl_type =
         (ENTRY_PRESENT | ENTRY_DPL_USER | ENTRY_TYPE_INT_32BIT);
 }
