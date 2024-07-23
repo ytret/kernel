@@ -35,16 +35,19 @@ add_executable(kernel
     src/psf.c
     src/stack.c
     src/string.c
+    src/syscall.c
     src/taskmgr.c
     src/term.c
     src/vga.c
     src/vmm.c
+
     src/entry.s
     src/gdt.s
     src/idt.s
     src/isrs.s
     src/taskmgr.s
     src/vmm.s
+
     src/kshell/cmd.c
     src/kshell/kshell.c
     src/kshell/vasview.c
