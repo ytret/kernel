@@ -8,8 +8,11 @@
 #define NUM_ENTRIES     256
 #define DESC_SIZE_BYTES 6
 
-#define ENTRY_PRESENT        (1 << 7)
-#define ENTRY_DPL_KERNEL     (0 << 5)
+#define ENTRY_PRESENT (1 << 7)
+
+#define ENTRY_DPL_KERNEL (0 << 5)
+#define ENTRY_DPL_USER   (3 << 5)
+
 #define ENTRY_TYPE_INT_32BIT (0xE << 0)
 
 typedef struct __attribute__((packed)) {
@@ -188,6 +191,18 @@ static void fill_entry(entry_t *p_entry, void (*p_handler)(void)) {
     p_entry->selector = 0x08;
     p_entry->present_dpl_type =
         (ENTRY_PRESENT | ENTRY_DPL_KERNEL | ENTRY_TYPE_INT_32BIT);
+}
+
+static void fill_user_entry(entry_t *p_entry, void (*p_handler)(void)) {
+    __builtin_memset(p_entry, 0, sizeof(*p_entry));
+
+    uint32_t offset = ((uint32_t)p_handler);
+    p_entry->offset_15_0 = ((offset >> 0) & 0xFFFF);
+    p_entry->offset_31_16 = ((offset >> 16) & 0xFFFF);
+
+    p_entry->selector = 0x18;
+    p_entry->present_dpl_type =
+        (ENTRY_PRESENT | ENTRY_DPL_USER | ENTRY_TYPE_INT_32BIT);
 }
 
 static void print_entry(entry_t const *p_entry) {
