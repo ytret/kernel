@@ -23,12 +23,6 @@ typedef struct __attribute__((packed)) {
     uint16_t offset_31_16;
 } entry_t;
 
-typedef struct __attribute__((packed)) {
-    uint32_t eip;
-    uint32_t cs;
-    uint32_t eflags;
-} int_frame_t;
-
 static uint8_t p_desc[DESC_SIZE_BYTES];
 static entry_t gp_idt[NUM_ENTRIES];
 
