@@ -4,6 +4,7 @@
 #include "isrs.h"
 #include "kprintf.h"
 #include "panic.h"
+#include "syscall.h"
 
 #define NUM_ENTRIES     256
 #define DESC_SIZE_BYTES 6
@@ -28,6 +29,7 @@ static entry_t gp_idt[NUM_ENTRIES];
 
 static void fill_desc(uint8_t *p_desc, void const *p_idt, uint16_t idt_size);
 static void fill_entry(entry_t *p_entry, void (*p_handler)(void));
+static void fill_user_entry(entry_t *p_entry, void (*p_handler)(void));
 
 static void print_entry(entry_t const *p_entry) __attribute__((unused));
 static void print_stack_frame(int_frame_t const *p_stack_frame)
@@ -77,6 +79,8 @@ void idt_init(void) {
     fill_entry(&gp_idt[32 + 1], isr_irq1);
     fill_entry(&gp_idt[32 + 7], isr_irq7);
     fill_entry(&gp_idt[32 + 15], isr_irq15);
+
+    fill_user_entry(&gp_idt[SYSCALL_INT_NUM], isr_syscall);
 
     fill_desc(p_desc, gp_idt, (sizeof(gp_idt) - 1));
     idt_load(p_desc);

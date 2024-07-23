@@ -42,4 +42,6 @@ extern void isr_irq1(void);
 extern void isr_irq7(void);
 extern void isr_irq15(void);
 
+extern void isr_syscall(void);
+
 extern void isr_dummy(void);

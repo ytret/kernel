@@ -167,7 +167,7 @@ isr_irq7:       cli
                 ## ISR for IRQ15 (spurious IRQ from slave PIC).
                 .global isr_irq15
                 .type   isr_irq15, @function
-isr_irq15:       cli
+isr_irq15:      cli
                 push    %ebp
                 mov     %esp, %ebp
 
@@ -181,6 +181,23 @@ isr_irq15:       cli
                 pop     %ebp
                 iret
                 .size   isr_irq15, . - isr_irq15
+
+
+                ## Syscall ISR.
+                .global isr_syscall
+                .type   isr_syscall, @function
+isr_syscall:    cli
+                push    %ebp
+                mov     %esp, %ebp
+
+                pusha
+                cld
+                call    syscall_dispatch
+                popa
+
+                pop     %ebp
+                iret
+                .size   isr_syscall, . - isr_syscall
 
 
                 ## ISR for all the other interrupts.  Same as
