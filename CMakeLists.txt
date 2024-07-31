@@ -24,9 +24,7 @@ add_executable(kernel
     src/kbd.c
     src/kprintf.c
     src/mbi.c
-    src/memcpy.c
-    src/memmove.c
-    src/memset.c
+    src/memfun.c
     src/panic.c
     src/pci.c
     src/pic.c

@@ -1,6 +1,17 @@
 #include <stdint.h>
 
-#include "memmove.h"
+#include "memfun.h"
+
+void *memcpy(void *p_dest, void const *p_src, size_t num_bytes) {
+    uint8_t *p_dest_u8 = (uint8_t *)p_dest;
+    uint8_t const *p_src_u8 = (uint8_t const *)p_src;
+
+    for (size_t idx = 0; idx < num_bytes; idx++) {
+        p_dest_u8[idx] = p_src_u8[idx];
+    }
+
+    return p_dest;
+}
 
 void *memmove(void *p_dest, void const *p_src, size_t num_bytes) {
     uint8_t *p_dest_u8 = (uint8_t *)p_dest;
@@ -16,5 +27,13 @@ void *memmove(void *p_dest, void const *p_src, size_t num_bytes) {
         }
     }
 
+    return p_dest;
+}
+
+void *memset(void *p_dest, int ch, size_t num_bytes) {
+    uint8_t *p_dest_u8 = ((uint8_t *)p_dest);
+    for (size_t idx = 0; idx < num_bytes; idx++) {
+        p_dest_u8[idx] = ((char)ch);
+    }
     return p_dest;
 }
