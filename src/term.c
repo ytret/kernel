@@ -10,6 +10,7 @@ typedef struct {
 } output_impl_t;
 
 static output_impl_t g_output_impl;
+static term_kbd_handler_t g_kbd_handler;
 
 static size_t g_max_row;
 static size_t g_max_col;
@@ -101,6 +102,16 @@ size_t term_height(void) {
 
 size_t term_width(void) {
     return g_max_col;
+}
+
+void term_kbd_callback(uint8_t key, bool b_released) {
+    if (g_kbd_handler.p_event_handler) {
+        g_kbd_handler.p_event_handler(key, b_released);
+    }
+}
+
+void term_attach_kbd_handler(term_kbd_handler_t handler) {
+    g_kbd_handler = handler;
 }
 
 static void put_char(char ch) {

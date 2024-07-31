@@ -17,6 +17,8 @@ static volatile size_t g_cmd_buf_pos;
 
 // Keyboard state.
 static volatile bool gb_shifted;
+static term_kbd_handler_t g_kbd_handler;
+static void (*gp_cmd_kbd_handler)(uint8_t key, bool b_released);
 
 // Input reading functions.
 static char const *read_cmd(void);
@@ -27,22 +29,29 @@ static void buf_remove(void);
 static volatile char const *buf_get_cmd(void);
 
 // Keyboard-related functions.
-static void kbd_callback(uint8_t key, bool b_released);
+static void parse_kbd_event(uint8_t key, bool b_released);
+static void shell_kbd_handler(uint8_t key, bool b_released);
 static void echo_key(uint8_t key);
 static char char_from_key(uint8_t key);
 
 void kshell(void) {
-    for (;;) {
-        // Set the keyboard event callback on every iteration, so that commands
-        // can reset it to their own callbacks without affecting the prompt.
-        kbd_set_callback(kbd_callback);
+    g_kbd_handler.p_event_handler = parse_kbd_event;
+    term_attach_kbd_handler(g_kbd_handler);
 
+    for (;;) {
         kprintf("> ");
         char const *p_cmd = read_cmd();
         if (!p_cmd) { continue; }
 
         kshell_cmd_parse(p_cmd);
+
+        // Reset the keyboard handler in case it was redefined by the command.
+        kshell_set_kbd_handler(NULL);
     }
+}
+
+void kshell_set_kbd_handler(void (*p_handler)(uint8_t, bool)) {
+    gp_cmd_kbd_handler = p_handler;
 }
 
 /*
@@ -85,7 +94,15 @@ static volatile char const *buf_get_cmd(void) {
     return gp_cmd_buf;
 }
 
-static void kbd_callback(uint8_t key, bool b_released) {
+static void parse_kbd_event(uint8_t key, bool b_released) {
+    if (gp_cmd_kbd_handler) {
+        gp_cmd_kbd_handler(key, b_released);
+    } else {
+        shell_kbd_handler(key, b_released);
+    }
+}
+
+static void shell_kbd_handler(uint8_t key, bool b_released) {
     if ((KEY_LSHIFT == key) || (KEY_RSHIFT == key)) {
         gb_shifted = (!b_released);
     }

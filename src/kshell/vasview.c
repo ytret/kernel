@@ -3,6 +3,7 @@
 
 #include "kbd.h"
 #include "kprintf.h"
+#include "kshell/kshell.h"
 #include "kshell/vasview.h"
 #include "panic.h"
 #include "term.h"
@@ -48,7 +49,7 @@ static void deeper_view(void);
 static void shallower_view(void);
 
 void vasview(uint32_t pgdir_virt) {
-    kbd_set_callback(kbd_callback);
+    kshell_set_kbd_handler(kbd_callback);
 
     gb_exit = false;
     gp_pgdir = ((uint32_t *)pgdir_virt);

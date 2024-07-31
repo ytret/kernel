@@ -41,6 +41,10 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     idt_init();
     pic_init();
 
+    // Initialize the keyboard and attach it to the terminal.
+    kbd_init();
+    kbd_set_callback(term_kbd_callback);
+
     pit_init(PIT_PERIOD_MS);
     pic_set_mask(PIT_IRQ, false);
 
@@ -53,8 +57,6 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     vmm_init();
     pmm_init();
-
-    pic_set_mask(KBD_IRQ, false);
 
     pci_init();
 

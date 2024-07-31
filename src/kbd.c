@@ -25,6 +25,10 @@ static void append_code(uint8_t sc);
 static void try_parse_codes(void);
 static void new_event(uint8_t key, bool b_released);
 
+void kbd_init(void) {
+    pic_set_mask(KBD_IRQ, false);
+}
+
 void kbd_set_callback(void (*p_callback)(uint8_t key, bool b_released)) {
     gp_event_callback = p_callback;
 }
