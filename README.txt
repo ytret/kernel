@@ -1,3 +1,13 @@
+KERNEL FEATURES
+===============
+
+* Text-mode or framebuffer terminal
+* PCI device enumeration
+* Reading from an AHCI disk with a GPT disklabel
+* Preemptive multitasking
+* Usermode programs with syscalls
+
+
 BUILDING AND RUNNING
 ====================
 
