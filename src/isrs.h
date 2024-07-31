@@ -4,6 +4,14 @@
 
 #pragma once
 
+#include <stdint.h>
+
+typedef struct {
+    uint32_t eip;
+    uint32_t cs;
+    uint32_t eflags;
+} __attribute__((packed)) isr_stack_frame_t;
+
 extern void isr_0(void);
 extern void isr_1(void);
 extern void isr_2(void);

@@ -32,7 +32,7 @@ static void fill_entry(entry_t *p_entry, void (*p_handler)(void));
 static void fill_user_entry(entry_t *p_entry, void (*p_handler)(void));
 
 static void print_entry(entry_t const *p_entry) __attribute__((unused));
-static void print_stack_frame(int_frame_t const *p_stack_frame)
+static void print_stack_frame(isr_stack_frame_t const *p_stack_frame)
     __attribute__((unused));
 
 void idt_init(void) {
@@ -87,7 +87,7 @@ void idt_init(void) {
 }
 
 void idt_dummy_exception_handler(uint32_t exc_num, uint32_t err_code,
-                                 int_frame_t *p_stack_frame) {
+                                 isr_stack_frame_t *p_stack_frame) {
     char const *p_name;
     switch (exc_num) {
     case 0:
@@ -166,7 +166,7 @@ void idt_dummy_exception_handler(uint32_t exc_num, uint32_t err_code,
     panic("no handler defined");
 }
 
-void idt_dummy_handler(int_frame_t *p_stack_frame) {
+void idt_dummy_handler(isr_stack_frame_t *p_stack_frame) {
     kprintf("idt_dummy_handler()\n");
     print_stack_frame(p_stack_frame);
     panic("no handler defined");
@@ -212,7 +212,7 @@ static void print_entry(entry_t const *p_entry) {
             ((uint32_t const *)p_entry)[0], ((uint32_t const *)p_entry)[1]);
 }
 
-static void print_stack_frame(int_frame_t const *p_stack_frame) {
+static void print_stack_frame(isr_stack_frame_t const *p_stack_frame) {
     kprintf("Stack frame is at %P:\n", p_stack_frame);
     kprintf("   eip = 0x%X\n", p_stack_frame->eip);
     kprintf("    cs = 0x%X\n", p_stack_frame->cs);
