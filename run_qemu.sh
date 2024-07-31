@@ -7,14 +7,9 @@ HD_SIZE=4M  # must be understandable by qemu-img
 
 if [[ ! -f $HD_PATH ]]; then
     echo "'$HD_PATH' does not exist or is not a regular file."
-    read -p "Create a new hard disk at '$HD_PATH' of size $HD_SIZE? [Y/n] " -n 1 -r
-    echo
-
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        qemu-img create $HD_PATH $HD_SIZE
-    else
-        exit 0
-    fi
+    echo "See README.txt for instructions on how to create a disk image with" \
+         "a root partition."
+    exit 1
 fi
 
 qemu-system-i386 -cdrom kernel.iso                               \
