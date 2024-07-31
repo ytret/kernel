@@ -190,10 +190,25 @@ isr_syscall:    cli
                 push    %ebp
                 mov     %esp, %ebp
 
-                pusha
+                push    %eax
+                push    %ecx
+                push    %edx
+                push    %ebx
+                push    %esi
+                push    %edi
+
+                mov     %esp, %ebx
+                push    %ebx            # registers -> 1st arg
                 cld
                 call    syscall_dispatch
-                popa
+                add     $4, %esp        # skip the argument
+
+                pop     %edi
+                pop     %esi
+                pop     %ebx
+                pop     %edx
+                pop     %ecx
+                pop     %eax
 
                 pop     %ebp
                 iret
@@ -217,7 +232,7 @@ isr_dummy:      cli
 
                 mov     %ebp, %edx
                 add     $4, %edx
-                push    %edx            # int stack frame     -> 1st arg
+                push    %edx            # int stack frame -> 1st arg
                 cld
                 call    idt_dummy_handler
                 add     $4, %esp        # skip the argument

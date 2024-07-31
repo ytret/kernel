@@ -12,6 +12,15 @@ typedef struct {
     uint32_t eflags;
 } __attribute__((packed)) isr_stack_frame_t;
 
+typedef struct {
+    uint32_t edi;
+    uint32_t esi;
+    uint32_t ebx;
+    uint32_t edx;
+    uint32_t ecx;
+    uint32_t eax;
+} __attribute__((packed)) isr_regs_t;
+
 extern void isr_0(void);
 extern void isr_1(void);
 extern void isr_2(void);
