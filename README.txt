@@ -18,11 +18,11 @@ Arch Linux packages are specified in parentheses.
 
 1. Building:
 
-  * binutils and GCC cross-compiled for i686-elf
+  * binutils and GCC targeting i686-elf
   * CMake (cmake)
   * Optionally, Ninja (ninja)
 
-2. Creating an ISO:
+2. Creating a bootable ISO:
 
   * grub-mkrescue or grub2-mkrescue (grub)
   * xorriso (libisoburn)
@@ -33,7 +33,7 @@ Arch Linux packages are specified in parentheses.
   * QEMU disk image manipulating tools (qemu-img)
   * mkfs.ext4 (e2fsprogs)
 
-3. Running in an emulator:
+4. Running in an emulator:
 
   * QEMU for x86 (qemu-desktop, qemu-system-x86)
 
@@ -44,6 +44,7 @@ Building
 $ mkdir build
 $ cd build
 $ cmake .. -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake -DCMAKE_BUILD_TYPE=Debug
+$ make  # or ninja
 
 Optionally, pass `-GNinja' to `cmake' to use Ninja instead of GNU make.
 
@@ -51,7 +52,7 @@ Optionally, pass `-GNinja' to `cmake' to use Ninja instead of GNU make.
 Running
 -------
 
-1. Create an ISO:
+1. Create an ISO with GRUB and the kernel:
 
   $ ./create_iso.sh
 
