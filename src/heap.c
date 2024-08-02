@@ -4,7 +4,6 @@
 #include "kprintf.h"
 #include "mbi.h"
 #include "panic.h"
-#include "vmm.h"
 
 #define HEAP_SIZE (4 * 1024 * 1024)
 
