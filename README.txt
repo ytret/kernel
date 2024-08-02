@@ -67,7 +67,7 @@ Running
   > w  # write changes and exit
   $ sudo losetup -P loop0 hd.img
   $ sudo mkfs.ext4 /dev/loop0p1
-  $ sudo losetup -D loop0
+  $ sudo losetup -d loop0
 
 3. Run QEMU:
 
