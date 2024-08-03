@@ -168,6 +168,7 @@ void taskmgr_dump_tasks(void) {
 
 static task_t *new_task(uint32_t entry_point) {
     task_t *p_task = heap_alloc(sizeof(*p_task));
+    __builtin_memset(p_task, 0, sizeof(*p_task));
     p_task->id = (g_new_task_id++);
     kprintf("new_task: p_task = %P id %u\n", p_task, p_task->id);
 
