@@ -60,7 +60,7 @@ target_link_options(kernel PRIVATE
     -T${CMAKE_SOURCE_DIR}/src/link.ld
 )
 set_target_properties(kernel PROPERTIES
-    C_EXTENSIONS OFF
+    C_EXTENSIONS ON
     LINK_DEPENDS ${CMAKE_SOURCE_DIR}/src/link.ld
 )
 
