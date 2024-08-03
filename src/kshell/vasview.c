@@ -23,14 +23,14 @@
 #define FLAG_WRITABLE (1 << 1)
 #define FLAG_ANY_DPL  (1 << 2)
 
-static bool gb_exit;
+static volatile bool gb_exit;
 
-static int g_view;
+static volatile int g_view;
 static uint32_t *gp_pgdir;
 
 // Cursors on level 1 (dir) and level 2 (table).
-static size_t g_dir_idx;
-static size_t g_tbl_idx;
+static volatile size_t g_dir_idx;
+static volatile size_t g_tbl_idx;
 
 static void update(void);
 static void update_view(void);
@@ -243,7 +243,7 @@ static void kbd_callback(uint8_t key, bool b_released) {
 }
 
 static void move_cursor(int32_t inc_idx) {
-    uint32_t *p_idx;
+    volatile uint32_t *p_idx;
     switch (g_view) {
     case VIEW_DIR:
         p_idx = &g_dir_idx;
