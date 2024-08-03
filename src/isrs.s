@@ -93,7 +93,49 @@ isr_\num:       cli
                 ISR_EXCEPTION_DUMMY_EC      11    # segment not present
                 ISR_EXCEPTION_DUMMY_EC      12    # stack fault
                 ISR_EXCEPTION_DUMMY_EC      13    # general protection
-                ISR_EXCEPTION_DUMMY_EC      14    # page fault
+
+                .global isr_14
+                .type   isr_14, @function
+isr_14:         cli
+                push    %ebp
+                mov     %esp, %ebp
+
+                push    %eax
+                push    %ecx
+                push    %edx
+                push    %ebx
+                push    %edi
+                push    %esi
+
+                # 3rd arg - interrupt stack frame.
+                mov     %ebp, %eax
+                add     $8, %eax
+                push    %eax
+
+                # 2nd arg - error code.
+                push    4(%ebp)
+
+                # 1st arg - faulty address.
+                mov     %cr2, %edx
+                push    %edx
+
+                cld
+                call    idt_page_fault_handler
+                add     $12, %esp       # skip the arguments
+
+                pop     %esi
+                pop     %edi
+                pop     %ebx
+                pop     %edx
+                pop     %ecx
+                pop     %eax
+
+                pop     %ebp
+                add     $4, %esp        # skip the error code
+                iret
+                .size   isr_14, . - isr_14
+
+
                 ISR_EXCEPTION_DUMMY_NO_EC   15    # reserved
                 ISR_EXCEPTION_DUMMY_NO_EC   16    # x87 FPU floating-point
                 ISR_EXCEPTION_DUMMY_EC      17    # alignment check

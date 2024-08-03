@@ -172,6 +172,15 @@ void idt_dummy_handler(isr_stack_frame_t *p_stack_frame) {
     panic("no handler defined");
 }
 
+void idt_page_fault_handler(uint32_t addr, uint32_t err_code,
+                            isr_stack_frame_t *p_stack_frame) {
+    kprintf("Page fault exception\n");
+    kprintf("Virtual address: 0x%08X\n", addr);
+    kprintf("Error code: %d\n", err_code);
+    print_stack_frame(p_stack_frame);
+    panic("unresolved page fault");
+}
+
 static void fill_desc(uint8_t *p_desc, void const *p_idt, uint16_t idt_size) {
     __builtin_memset(p_desc, 0, DESC_SIZE_BYTES);
 
