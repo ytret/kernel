@@ -22,6 +22,7 @@
 #include "heap.h"
 #include "kprintf.h"
 #include "kshell/cmd.h"
+#include "kshell/kbdlog.h"
 #include "kshell/vasview.h"
 #include "mbi.h"
 #include "panic.h"
@@ -31,12 +32,12 @@
 #include "term.h"
 #include "vmm.h"
 
-#define NUM_CMDS 12
+#define NUM_CMDS 13
 #define MAX_ARGS 32
 
 static char const *const gp_cmd_names[NUM_CMDS] = {
-    "clear", "help",    "mbimap", "mbimod", "elfhdr", "exec",
-    "tasks", "vasview", "cpuid",  "pci",    "ahci",   "execrep",
+    "clear",   "help",  "mbimap", "mbimod", "elfhdr",  "exec",   "tasks",
+    "vasview", "cpuid", "pci",    "ahci",   "execrep", "kbdlog",
 };
 
 static uint32_t g_exec_entry;
@@ -54,6 +55,7 @@ static void cmd_cpuid(char **pp_args, size_t num_args);
 static void cmd_pci(char **pp_args, size_t num_args);
 static void cmd_ahci(char **pp_args, size_t num_args);
 static void cmd_execrep(char **pp_args, size_t num_args);
+static void cmd_kbdlog(char **pp_args, size_t num_args);
 
 void kshell_cmd_parse(char const *p_cmd) {
     char *pp_args[MAX_ARGS];
@@ -68,8 +70,9 @@ void kshell_cmd_parse(char const *p_cmd) {
 
     static void (*const p_cmd_funs[NUM_CMDS])(char **pp_args,
                                               size_t num_args) = {
-        cmd_clear, cmd_help,    cmd_mbimap, cmd_mbimod, cmd_elfhdr, cmd_exec,
-        cmd_tasks, cmd_vasview, cmd_cpuid,  cmd_pci,    cmd_ahci,   cmd_execrep,
+        cmd_clear, cmd_help,    cmd_mbimap,  cmd_mbimod, cmd_elfhdr,
+        cmd_exec,  cmd_tasks,   cmd_vasview, cmd_cpuid,  cmd_pci,
+        cmd_ahci,  cmd_execrep, cmd_kbdlog,
     };
 
     for (size_t idx = 0; idx < NUM_CMDS; idx++) {
@@ -387,4 +390,21 @@ static void cmd_execrep(char **pp_args, size_t num_args) {
         char const *p_cmd = "exec";
         kshell_cmd_parse(p_cmd);
     }
+}
+
+static void cmd_kbdlog(char **pp_args, size_t num_args) {
+    if (num_args != 2) {
+        kprintf("Usage: %s <number of events>\n", pp_args[0]);
+        return;
+    }
+
+    uint32_t num_events;
+    bool ok = string_to_uint32(pp_args[1], &num_events, 10);
+    if (!ok) {
+        kprintf("Invalid argument: '%s'\n", pp_args[1]);
+        kprintf("number of events must be a decimal 32-bit unsigned integer\n");
+        return;
+    }
+
+    kbdlog((size_t)num_events);
 }

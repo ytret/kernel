@@ -47,6 +47,7 @@ add_executable(kernel
     src/vmm.s
 
     src/kshell/cmd.c
+    src/kshell/kbdlog.c
     src/kshell/kshell.c
     src/kshell/vasview.c
 )
