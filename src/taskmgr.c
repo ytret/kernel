@@ -86,7 +86,7 @@ void taskmgr_init(void) {
 __attribute__((noreturn)) void
 taskmgr_start_scheduler(__attribute__((noreturn)) void (*p_init_entry)(void)) {
     // Critical section.  It ends when the entry is reached.
-    __asm__("cli");
+    __asm__ volatile("cli");
 
     // If interrupts were disabled and PIT IRQ happened after the following line
     // and before the entry, some bad things would happen to the stack.
