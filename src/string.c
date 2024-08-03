@@ -93,8 +93,8 @@ size_t string_split(char const *p_str, char ch, bool b_ignore_empty,
 
 bool string_to_uint32(char const *p_str, uint32_t *p_num, int base) {
     // Construct an uppercase copy of p_str.
-    char *p_strup = heap_alloc(string_len(p_str));
-    __builtin_memcpy(p_strup, p_str, string_len(p_str));
+    char *p_strup = heap_alloc(string_len(p_str) + 1);
+    __builtin_memcpy(p_strup, p_str, string_len(p_str) + 1);
     string_to_upper(p_strup);
 
     // Reset *p_num.
