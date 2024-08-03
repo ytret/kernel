@@ -10,6 +10,7 @@ isr_\num:       cli
                 push    %eax
                 push    %ecx
                 push    %edx
+                push    %ebx
                 push    %edi
                 push    %esi
 
@@ -24,6 +25,7 @@ isr_\num:       cli
 
                 pop     %esi
                 pop     %edi
+                pop     %ebx
                 pop     %edx
                 pop     %ecx
                 pop     %eax
@@ -43,6 +45,7 @@ isr_\num:       cli
                 push    %eax
                 push    %ecx
                 push    %edx
+                push    %ebx
                 push    %edi
                 push    %esi
 
@@ -57,6 +60,7 @@ isr_\num:       cli
 
                 pop     %esi
                 pop     %edi
+                pop     %ebx
                 pop     %edx
                 pop     %ecx
                 pop     %eax
