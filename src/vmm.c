@@ -35,6 +35,7 @@ void vmm_init(void) {
     mbi_t const *p_mbi = mbi_ptr();
 
     gp_kvas_dir = heap_alloc_aligned(4096, 4096);
+    __builtin_memset(gp_kvas_dir, 0, 4096);
     kprintf("vmm: kernel page dir is at %P\n", gp_kvas_dir);
 
     // Identity map everything from 0 to heap end.
