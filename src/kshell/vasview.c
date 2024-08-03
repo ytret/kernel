@@ -214,15 +214,19 @@ static void kbd_callback(uint8_t key, bool b_released) {
 
     switch (key) {
     case KEY_LEFTARROW:
+    case KEY_H:
         move_cursor(-1);
         break;
     case KEY_RIGHTARROW:
+    case KEY_L:
         move_cursor(+1);
         break;
     case KEY_UPARROW:
+    case KEY_K:
         move_cursor(-VIEW_COLS);
         break;
     case KEY_DOWNARROW:
+    case KEY_J:
         move_cursor(+VIEW_COLS);
         break;
 
