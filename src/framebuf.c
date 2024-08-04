@@ -1,5 +1,6 @@
 #include "framebuf.h"
 #include "mbi.h"
+#include "memfun.h"
 #include "panic.h"
 #include "psf.h"
 
@@ -170,8 +171,8 @@ static bool get_pixel_at(size_t y, size_t x) {
 
 static void scroll_pixels(size_t num_px) {
     // Move rows up.
-    __builtin_memmove(gp_framebuf, &gp_framebuf[num_px * g_pitch],
-                      (g_height_px - num_px) * g_pitch);
+    memmove_sse2(gp_framebuf, &gp_framebuf[num_px * g_pitch],
+                 (g_height_px - num_px) * g_pitch);
 
     // Clear the lower part.
     __builtin_memset(&gp_framebuf[(g_height_px - num_px) * g_pitch], 0,
