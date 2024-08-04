@@ -2,10 +2,10 @@
 
 #include "memfun.h"
 
-typedef int si128_t __attribute__((vector_size(16), __aligned__(16)));
+typedef int si128_t __attribute__((vector_size(16), aligned(16)));
 
-static void *memmove_si128(si128_t *p_dest, const si128_t *p_src,
-                           size_t num_si128);
+static void memmove_si128(si128_t *p_dest, const si128_t *p_src,
+                          size_t num_si128);
 
 void *memcpy(void *p_dest, const void *p_src, size_t num_bytes) {
     __asm__ volatile("rep movsb"
@@ -47,8 +47,8 @@ void *memset(void *p_dest, int ch, size_t num_bytes) {
 /*
  * Move `num_bytes` bytes from `p_src` to `p_dest` using SIMD instructions.
  *
- * NOTE: `p_dest` and `p_src` should have the same alignment for maximum
- * performance. Different alignments still work, though.
+ * NOTE: `p_dest` and `p_src` must have the same alignment, otherwise a GP#
+ * exception is generated.
  */
 void *memmove_sse2(void *p_dest, const void *p_src, size_t num_bytes) {
     void *const p_orig_dest = p_dest;
@@ -81,18 +81,17 @@ void *memmove_sse2(void *p_dest, const void *p_src, size_t num_bytes) {
  * Moves `num_si128` 128-bit SIMD integers from `p_src` to `p_dest` using SSE2
  * instructions.
  *
- * NOTE: `p_dest` and `p_src` should be 16-byte aligned for maximum performance.
- * Different alignments still work, though.
+ * NOTE: `p_dest` and `p_src` must be 16-byte aligned.
  */
-static void *memmove_si128(si128_t *p_dest, const si128_t *p_src,
-                           size_t num_si128) {
+static void memmove_si128(si128_t *p_dest, const si128_t *p_src,
+                          size_t num_si128) {
     si128_t *p_dest_end = p_dest + num_si128;
     const si128_t *p_src_end = p_src + num_si128;
 
     if (p_dest < p_src) {
         while (p_dest < p_dest_end) {
-            __asm__ volatile("movdqu (%0), %%xmm0\n"
-                             "movdqu %%xmm0, (%1)"
+            __asm__ volatile("movdqa (%0), %%xmm0\n"
+                             "movdqa %%xmm0, (%1)"
                              :                         /* output */
                              : "r"(p_src), "r"(p_dest) /* input */
                              : "memory"                /* clobbers */
@@ -106,8 +105,8 @@ static void *memmove_si128(si128_t *p_dest, const si128_t *p_src,
         p_dest_end--;
         p_src_end--;
         while (p_dest_end >= p_dest) {
-            __asm__ volatile("movdqu (%0), %%xmm0\n"
-                             "movdqu %%xmm0, (%1)"
+            __asm__ volatile("movdqa (%0), %%xmm0\n"
+                             "movdqa %%xmm0, (%1)"
                              :                                 /* output */
                              : "r"(p_src_end), "r"(p_dest_end) /* input */
                              : "memory"                        /* clobbers */
@@ -119,5 +118,4 @@ static void *memmove_si128(si128_t *p_dest, const si128_t *p_src,
             p_src_end--;
         }
     }
-    return p_dest;
 }
