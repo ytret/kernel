@@ -175,6 +175,6 @@ static void scroll_pixels(size_t num_px) {
                  (g_height_px - num_px) * g_pitch);
 
     // Clear the lower part.
-    __builtin_memset(&gp_framebuf[(g_height_px - num_px) * g_pitch], 0,
-                     num_px * g_pitch);
+    memclr_sse2(&gp_framebuf[(g_height_px - num_px) * g_pitch],
+                num_px * g_pitch);
 }
