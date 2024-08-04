@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "memfun.h"
 #include "panic.h"
 #include "port.h"
 #include "vga.h"
@@ -9,6 +10,7 @@
 
 #define MAX_ROWS 25
 #define MAX_COLS 80
+#define PITCH    (MAX_COLS * 2)
 
 #define PORT_CRTC_ADDR ((uint16_t)0x03D4)
 #define PORT_CRTC_DATA ((uint16_t)0x03D5)
@@ -23,7 +25,6 @@ static uint16_t *const gp_vga_memory = (uint16_t *)VGA_MEMORY_ADDR;
 
 void vga_init(void) {
     // Set up the cursor.
-
     port_outb(PORT_CRTC_ADDR, REG_CRTC_MAX_SCAN_LINE);
     uint8_t max_scan_line = (port_inb(PORT_CRTC_DATA) & 0x1F);
 
@@ -59,6 +60,12 @@ void vga_put_cursor_at(size_t row, size_t col) {
     port_outb(PORT_CRTC_DATA, ((uint8_t)(char_idx >> 8)));
     port_outb(PORT_CRTC_ADDR, REG_CRTC_CURSOR_LOC_LO);
     port_outb(PORT_CRTC_DATA, ((uint8_t)char_idx));
+}
+
+void vga_clear_rows(size_t start_row, size_t num_rows) {
+    size_t start_offset = start_row * PITCH;
+    size_t num_words = num_rows * MAX_COLS;
+    memset_word(&gp_vga_memory[start_offset], 0x0F << 8, num_words);
 }
 
 void vga_scroll(void) {

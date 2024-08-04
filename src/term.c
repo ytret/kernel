@@ -6,6 +6,7 @@
 typedef struct {
     void (*p_put_char_at)(size_t row, size_t col, char ch);
     void (*p_put_cursor_at)(size_t row, size_t col);
+    void (*p_clear_rows)(size_t start_row, size_t num_rows);
     void (*p_scroll)(void);
 } output_impl_t;
 
@@ -32,6 +33,7 @@ void term_init(void) {
 
         g_output_impl.p_put_char_at = framebuf_put_char_at;
         g_output_impl.p_put_cursor_at = framebuf_put_cursor_at;
+        g_output_impl.p_clear_rows = framebuf_clear_rows;
         g_output_impl.p_scroll = framebuf_scroll;
     } else {
         vga_init();
@@ -41,22 +43,18 @@ void term_init(void) {
 
         g_output_impl.p_put_char_at = vga_put_char_at;
         g_output_impl.p_put_cursor_at = vga_put_cursor_at;
+        g_output_impl.p_clear_rows = vga_clear_rows;
         g_output_impl.p_scroll = vga_scroll;
     }
 }
 
 void term_clear(void) {
-    term_clear_rows(0, g_max_row);
+    g_output_impl.p_clear_rows(0, g_max_row);
+    term_put_cursor_at(0, 0);
 }
 
 void term_clear_rows(size_t start_row, size_t num_rows) {
-    for (size_t row = start_row; row < (start_row + num_rows); row++) {
-        for (size_t col = 0; col < g_max_col; col++) {
-            g_output_impl.p_put_char_at(row, col, ' ');
-        }
-    }
-
-    term_put_cursor_at(0, 0);
+    g_output_impl.p_clear_rows(start_row, num_rows);
 }
 
 void term_print_str(char const *p_str) {
