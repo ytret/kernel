@@ -1,5 +1,3 @@
-#include <stdint.h>
-
 #include "memfun.h"
 
 typedef int si128_t __attribute__((vector_size(16), aligned(16)));
@@ -41,6 +39,14 @@ void *memset(void *p_dest, int ch, size_t num_bytes) {
     __asm__ volatile("rep stosb"
                      : "=D"(p_dest), "=a"(ch), "=c"(num_bytes)
                      : "0"(p_dest), "1"(ch), "2"(num_bytes)
+                     : "memory");
+    return p_dest;
+}
+
+void *memset_word(void *p_dest, uint16_t word, size_t num_bytes) {
+    __asm__ volatile("rep stosw"
+                     : "=D"(p_dest), "=a"(word), "=c"(num_bytes)
+                     : "0"(p_dest), "1"(word), "2"(num_bytes)
                      : "memory");
     return p_dest;
 }
