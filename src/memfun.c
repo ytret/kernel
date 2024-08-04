@@ -6,6 +6,7 @@ typedef int si128_t __attribute__((vector_size(16), aligned(16)));
 
 static void memmove_si128(si128_t *p_dest, const si128_t *p_src,
                           size_t num_si128);
+static void memclr_si128(si128_t *p_dest, size_t num_si128);
 
 void *memcpy(void *p_dest, const void *p_src, size_t num_bytes) {
     __asm__ volatile("rep movsb"
@@ -78,6 +79,34 @@ void *memmove_sse2(void *p_dest, const void *p_src, size_t num_bytes) {
 }
 
 /*
+ * Zeroes `num_bytes` bytes starting at `p_dest` using SIMD instructions.
+ */
+void *memclr_sse2(void *p_dest, size_t num_bytes) {
+    void *const p_orig_dest = p_dest;
+
+    // 1. Set the first non-16-byte-addresable part.
+    size_t num_non_aligned = (16 - ((uintptr_t)p_dest & 15)) % 16;
+    if (num_non_aligned > 0) {
+        memset(p_dest, 0, num_non_aligned);
+        p_dest += num_non_aligned;
+        num_bytes -= num_non_aligned;
+    }
+
+    // 2. Set the 16-byte-addressable double qwords.
+    size_t num_si128 = num_bytes / 16;
+    if (num_si128 > 0) {
+        memclr_si128(p_dest, num_si128);
+        p_dest += num_si128 * 16;
+        num_bytes -= num_si128 * 16;
+    }
+
+    // 3. Set the remaining non-16-byte-addressable part.
+    memset(p_dest, 0, num_bytes);
+
+    return p_orig_dest;
+}
+
+/*
  * Moves `num_si128` 128-bit SIMD integers from `p_src` to `p_dest` using SSE2
  * instructions.
  *
@@ -117,5 +146,32 @@ static void memmove_si128(si128_t *p_dest, const si128_t *p_src,
             p_dest_end--;
             p_src_end--;
         }
+    }
+}
+
+/*
+ * Zeroes `num_si128` 128-bit SIMD integers starting at `p_dest` using SSE2
+ * instructions.
+ *
+ * NOTE: `p_dest` must be 16-byte aligned, otherwise a GP# exception is
+ * generated.
+ */
+static void memclr_si128(si128_t *p_dest, size_t num_si128) {
+    __asm__ volatile(
+        "xorpd %%xmm0, %%xmm0"
+        : /* output */
+        : /* input */
+        : /* clobbers */
+        // NOTE: %xmm0 cannot be clobbered because -msse2 is not passed to GCC.
+    );
+
+    si128_t *const p_dest_end = p_dest + num_si128;
+    while (p_dest < p_dest_end) {
+        __asm__ volatile("movdqa %%xmm0, (%0)"
+                         :             /* output */
+                         : "a"(p_dest) /* input */
+                         : "memory"    /* clobbers */
+        );
+        p_dest++;
     }
 }
