@@ -48,8 +48,10 @@ static bool gb_scheduling;
 // NOTE: this must be the initial task.
 static task_t *gp_first_task;
 
+static task_t *gp_running_task;
+
+// ID for the next new task.
 static uint32_t g_new_task_id;
-static uint32_t g_running_task_id;
 
 static task_t *new_task(uint32_t entry_point);
 static void map_user_stack(uint32_t *p_dir);
@@ -94,7 +96,7 @@ taskmgr_start_scheduler(__attribute__((noreturn)) void (*p_init_entry)(void)) {
 
     // Create the initial task.
     gp_first_task = new_task((uint32_t)p_init_entry);
-    g_running_task_id = gp_first_task->id;
+    gp_running_task = gp_first_task;
 
     taskmgr_switch_tasks(NULL, &gp_first_task->tcb, gdt_get_tss());
 
@@ -109,21 +111,14 @@ void taskmgr_schedule(void) {
 
     if (list_len(gp_first_task) < 2) { return; }
 
-    task_t *p_running_task = list_find(gp_first_task, g_running_task_id);
-    if (!p_running_task) {
-        kprintf("taskmgr: cannot find running task %u in the task list\n",
-                g_running_task_id);
-        panic("unexpected behavior");
-    }
-
-    task_t *p_next_task = p_running_task->p_next;
+    task_t *p_next_task = gp_running_task->p_next;
     if (!p_next_task) { p_next_task = gp_first_task; }
 
-    // Update the running task ID.
-    g_running_task_id = p_next_task->id;
+    // Update the running task.
+    gp_running_task = p_next_task;
 
     // Switch tasks.
-    taskmgr_switch_tasks(&p_running_task->tcb, &p_next_task->tcb,
+    taskmgr_switch_tasks(&gp_running_task->tcb, &p_next_task->tcb,
                          gdt_get_tss());
 }
 
@@ -144,10 +139,6 @@ void taskmgr_go_usermode(uint32_t entry) {
     gen_regs.esp = USER_STACK_TOP;
 
     taskmgr_go_usermode_impl(0x18, 0x20, 0x28, entry, &gen_regs);
-}
-
-uint32_t taskmgr_running_task_id(void) {
-    return g_running_task_id;
 }
 
 void taskmgr_dump_tasks(void) {
