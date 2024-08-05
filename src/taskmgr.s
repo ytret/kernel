@@ -29,7 +29,7 @@ taskmgr_switch_tasks:
                 cmpl    $0, 8(%ebp)
                 jz      1f
 
-                ## EBP already saved.  Push all the other registers onto the
+                ## EBP was pushed above.  Push all the other registers onto the
                 ## kernel stack of this task.
                 push    %eax
                 push    %ecx
