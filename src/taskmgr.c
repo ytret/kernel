@@ -15,22 +15,6 @@
 #define USER_STACK_PAGES 1
 
 typedef struct __attribute__((packed)) {
-    // This field order is relied upon by taskmgr_switch_tasks() assembly
-    // function (see taskmgr.s).
-
-    uint32_t page_dir_phys;
-    stack_t *p_kernel_stack;
-} tcb_t;
-
-typedef struct task {
-    uint32_t id;
-    stack_t kernel_stack;
-    tcb_t tcb;
-
-    struct task *p_next;
-} task_t;
-
-typedef struct __attribute__((packed)) {
     uint32_t edi;
     uint32_t esi;
     uint32_t ebp;
@@ -41,7 +25,9 @@ typedef struct __attribute__((packed)) {
     uint32_t eax;
 } gen_regs_t;
 
-static bool gb_scheduling;
+// Nested locks preventing task switching. Initial value of 1 is decremented
+// after the scheduler is initialized.
+static int g_scheduler_lock = 1;
 
 // First task in the list.
 //
@@ -55,6 +41,9 @@ static uint32_t g_new_task_id;
 
 static task_t *new_task(uint32_t entry_point);
 static void map_user_stack(uint32_t *p_dir);
+
+static void increase_scheduler_lock(void);
+static void decrease_scheduler_lock(void);
 
 static void list_append(task_t *p_first, task_t *p_task);
 static size_t list_len(task_t *p_first);
@@ -96,7 +85,7 @@ taskmgr_start_scheduler(__attribute__((noreturn)) void (*p_init_entry)(void)) {
 
     // If interrupts were enabled and PIT IRQ happened after the following line
     // and before the entry, some bad things would happen to the stack.
-    gb_scheduling = true;
+    g_scheduler_lock = 0;
 
     taskmgr_switch_tasks(NULL, &gp_first_task->tcb, gdt_get_tss());
 
@@ -105,7 +94,7 @@ taskmgr_start_scheduler(__attribute__((noreturn)) void (*p_init_entry)(void)) {
 }
 
 void taskmgr_schedule(void) {
-    if (!gb_scheduling) { return; }
+    if (g_scheduler_lock > 0) { return; }
 
     task_t *p_caller_task = gp_running_task;
     task_t *p_next_task = gp_running_task->p_next;
@@ -127,7 +116,9 @@ void taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry) {
     p_task->tcb.page_dir_phys = ((uint32_t)p_dir);
 
     // Add the task to the task list.
+    increase_scheduler_lock();
     list_append(gp_first_task, p_task);
+    decrease_scheduler_lock();
 }
 
 void taskmgr_go_usermode(uint32_t entry) {
@@ -137,9 +128,39 @@ void taskmgr_go_usermode(uint32_t entry) {
     taskmgr_go_usermode_impl(0x18, 0x20, 0x28, entry, &gen_regs);
 }
 
+void taskmgr_acquire_mutex(task_mutex_t *p_mutex) {
+    if (__sync_bool_compare_and_swap(&p_mutex->p_locking_task, NULL,
+                                     gp_running_task)) {
+        // Caller task has successfuly acquired the mutex.
+    } else {
+        // The mutex is blocked by another task.
+        increase_scheduler_lock();
+        if (p_mutex->p_first_waiting_task == NULL) {
+            p_mutex->p_first_waiting_task = gp_running_task;
+        } else {
+            p_mutex->p_last_waiting_task->p_next = gp_running_task;
+        }
+        p_mutex->p_last_waiting_task = gp_running_task;
+        decrease_scheduler_lock();
+    }
+}
+
+void taskmgr_release_mutex(task_mutex_t *p_mutex) {
+    increase_scheduler_lock();
+
+    if (gp_first_task && p_mutex->p_first_waiting_task) {
+        task_t *p_unblocked_task = p_mutex->p_first_waiting_task;
+        p_mutex->p_first_waiting_task = p_mutex->p_first_waiting_task->p_next;
+        list_append(gp_first_task, p_unblocked_task);
+    }
+
+    decrease_scheduler_lock();
+}
+
 void taskmgr_dump_tasks(void) {
     kprintf(" ID     PAGEDIR         ESP     MAX ESP   USED\n");
 
+    increase_scheduler_lock();
     task_t *p_iter = gp_first_task;
     while (p_iter) {
         uint32_t id = p_iter->id;
@@ -151,6 +172,7 @@ void taskmgr_dump_tasks(void) {
                 used);
         p_iter = p_iter->p_next;
     }
+    decrease_scheduler_lock();
 }
 
 static task_t *new_task(uint32_t entry_point) {
@@ -200,6 +222,16 @@ static void map_user_stack(uint32_t *p_dir) {
 
     // Unmap the kernel view.
     vmm_unmap_kernel_page(USER_STACK_TOP - 4096);
+}
+
+static void increase_scheduler_lock(void) {
+    __asm__ volatile("cli");
+    g_scheduler_lock++;
+}
+
+static void decrease_scheduler_lock(void) {
+    g_scheduler_lock--;
+    if (g_scheduler_lock == 0) { __asm__ volatile("sti"); }
 }
 
 static void list_append(task_t *p_first, task_t *p_task) {
