@@ -107,6 +107,7 @@ taskmgr_start_scheduler(__attribute__((noreturn)) void (*p_init_entry)(void)) {
 void taskmgr_schedule(void) {
     if (!gb_scheduling) { return; }
 
+    task_t *p_caller_task = gp_running_task;
     task_t *p_next_task = gp_running_task->p_next;
     if (!p_next_task) { p_next_task = gp_first_task; }
 
@@ -114,8 +115,7 @@ void taskmgr_schedule(void) {
     gp_running_task = p_next_task;
 
     // Switch tasks.
-    taskmgr_switch_tasks(&gp_running_task->tcb, &p_next_task->tcb,
-                         gdt_get_tss());
+    taskmgr_switch_tasks(&p_caller_task->tcb, &p_next_task->tcb, gdt_get_tss());
 }
 
 void taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry) {
