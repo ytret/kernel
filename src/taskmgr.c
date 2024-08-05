@@ -107,8 +107,6 @@ taskmgr_start_scheduler(__attribute__((noreturn)) void (*p_init_entry)(void)) {
 void taskmgr_schedule(void) {
     if (!gb_scheduling) { return; }
 
-    if (list_len(gp_first_task) < 2) { return; }
-
     task_t *p_next_task = gp_running_task->p_next;
     if (!p_next_task) { p_next_task = gp_first_task; }
 
