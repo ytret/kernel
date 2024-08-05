@@ -90,13 +90,13 @@ taskmgr_start_scheduler(__attribute__((noreturn)) void (*p_init_entry)(void)) {
     // Critical section.  It ends when the entry is reached.
     __asm__ volatile("cli");
 
-    // If interrupts were enabled and PIT IRQ happened after the following line
-    // and before the entry, some bad things would happen to the stack.
-    gb_scheduling = true;
-
     // Create the initial task.
     gp_first_task = new_task((uint32_t)p_init_entry);
     gp_running_task = gp_first_task;
+
+    // If interrupts were enabled and PIT IRQ happened after the following line
+    // and before the entry, some bad things would happen to the stack.
+    gb_scheduling = true;
 
     taskmgr_switch_tasks(NULL, &gp_first_task->tcb, gdt_get_tss());
 
