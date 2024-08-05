@@ -102,8 +102,6 @@ taskmgr_start_scheduler(__attribute__((noreturn)) void (*p_init_entry)(void)) {
 
     kprintf("initial task entry has returned\n");
     panic("unexpected behavior");
-
-    for (;;) {}
 }
 
 void taskmgr_schedule(void) {
