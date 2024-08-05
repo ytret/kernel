@@ -1,5 +1,6 @@
 #include "framebuf.h"
 #include "mbi.h"
+#include "taskmgr.h"
 #include "term.h"
 #include "vga.h"
 
@@ -10,6 +11,7 @@ typedef struct {
     void (*p_scroll)(void);
 } output_impl_t;
 
+static task_mutex_t g_mutex;
 static output_impl_t g_output_impl;
 static term_kbd_handler_t g_kbd_handler;
 
@@ -49,41 +51,53 @@ void term_init(void) {
 }
 
 void term_clear(void) {
+    taskmgr_acquire_mutex(&g_mutex);
     g_output_impl.p_clear_rows(0, g_max_row);
+    taskmgr_release_mutex(&g_mutex);
+
     term_put_cursor_at(0, 0);
 }
 
 void term_clear_rows(size_t start_row, size_t num_rows) {
+    taskmgr_acquire_mutex(&g_mutex);
     g_output_impl.p_clear_rows(start_row, num_rows);
+    taskmgr_release_mutex(&g_mutex);
 }
 
 void term_print_str(char const *p_str) {
+    taskmgr_acquire_mutex(&g_mutex);
     while ((*p_str) != 0) {
         char ch = (*p_str);
         put_char(ch);
         p_str++;
     }
+    taskmgr_release_mutex(&g_mutex);
 
     term_put_cursor_at(g_row, g_col);
 }
 
 void term_print_str_len(char const *p_str, size_t len) {
+    taskmgr_acquire_mutex(&g_mutex);
     for (size_t idx = 0; idx < len; idx++) {
         put_char(p_str[idx]);
     }
+    taskmgr_release_mutex(&g_mutex);
 
     term_put_cursor_at(g_row, g_col);
 }
 
 void term_put_char_at(size_t row, size_t col, char ch) {
+    taskmgr_acquire_mutex(&g_mutex);
     g_output_impl.p_put_char_at(row, col, ch);
+    taskmgr_release_mutex(&g_mutex);
 }
 
 void term_put_cursor_at(size_t row, size_t col) {
+    taskmgr_acquire_mutex(&g_mutex);
     g_output_impl.p_put_cursor_at(row, col);
-
     g_row = row;
     g_col = col;
+    taskmgr_release_mutex(&g_mutex);
 }
 
 size_t term_row(void) {
@@ -109,7 +123,9 @@ void term_kbd_callback(uint8_t key, bool b_released) {
 }
 
 void term_attach_kbd_handler(term_kbd_handler_t handler) {
+    taskmgr_acquire_mutex(&g_mutex);
     g_kbd_handler = handler;
+    taskmgr_release_mutex(&g_mutex);
 }
 
 static void put_char(char ch) {
