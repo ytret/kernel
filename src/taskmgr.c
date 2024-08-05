@@ -29,10 +29,9 @@ typedef struct __attribute__((packed)) {
 // after the scheduler is initialized.
 static int g_scheduler_lock = 1;
 
-// First task in the list.
+// Linked list of runnable tasks.
 //
-// NOTE: this must be the initial task.
-static task_t *gp_first_task;
+static task_t *gp_runnable_task;
 
 static task_t *gp_running_task;
 
@@ -45,7 +44,7 @@ static void map_user_stack(uint32_t *p_dir);
 static void increase_scheduler_lock(void);
 static void decrease_scheduler_lock(void);
 
-static void list_append(task_t *p_first, task_t *p_task);
+static void list_append(task_t **p_first, task_t *p_task);
 static size_t list_len(task_t *p_first);
 static task_t *list_find(task_t *p_first, uint32_t task_id);
 
@@ -80,14 +79,13 @@ taskmgr_start_scheduler(__attribute__((noreturn)) void (*p_init_entry)(void)) {
     __asm__ volatile("cli");
 
     // Create the initial task.
-    gp_first_task = new_task((uint32_t)p_init_entry);
-    gp_running_task = gp_first_task;
+    gp_running_task = new_task((uint32_t)p_init_entry);
 
     // If interrupts were enabled and PIT IRQ happened after the following line
     // and before the entry, some bad things would happen to the stack.
     g_scheduler_lock = 0;
 
-    taskmgr_switch_tasks(NULL, &gp_first_task->tcb, gdt_get_tss());
+    taskmgr_switch_tasks(NULL, &gp_running_task->tcb, gdt_get_tss());
 
     kprintf("initial task entry has returned\n");
     panic("unexpected behavior");
@@ -95,15 +93,18 @@ taskmgr_start_scheduler(__attribute__((noreturn)) void (*p_init_entry)(void)) {
 
 void taskmgr_schedule(void) {
     if (g_scheduler_lock > 0) { return; }
+    if (gp_runnable_task == NULL) {
+        // No runnable tasks. Continue running the caller task.
+        return;
+    }
 
     task_t *p_caller_task = gp_running_task;
-    task_t *p_next_task = gp_running_task->p_next;
-    if (!p_next_task) { p_next_task = gp_first_task; }
+    task_t *p_next_task = gp_runnable_task;
 
-    // Update the running task.
+    gp_runnable_task = gp_runnable_task->p_next;
+    list_append(&gp_runnable_task, p_caller_task);
+
     gp_running_task = p_next_task;
-
-    // Switch tasks.
     taskmgr_switch_tasks(&p_caller_task->tcb, &p_next_task->tcb, gdt_get_tss());
 }
 
@@ -115,9 +116,9 @@ void taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry) {
     task_t *p_task = new_task(entry);
     p_task->tcb.page_dir_phys = ((uint32_t)p_dir);
 
-    // Add the task to the task list.
+    // Add the task to the list of runnable tasks.
     increase_scheduler_lock();
-    list_append(gp_first_task, p_task);
+    list_append(&gp_runnable_task, p_task);
     decrease_scheduler_lock();
 }
 
@@ -141,27 +142,35 @@ void taskmgr_acquire_mutex(task_mutex_t *p_mutex) {
             p_mutex->p_last_waiting_task->p_next = gp_running_task;
         }
         p_mutex->p_last_waiting_task = gp_running_task;
+        gp_running_task->p_next = NULL;
         decrease_scheduler_lock();
+
+        taskmgr_schedule();
     }
 }
 
 void taskmgr_release_mutex(task_mutex_t *p_mutex) {
     increase_scheduler_lock();
 
-    if (gp_first_task && p_mutex->p_first_waiting_task) {
+    p_mutex->p_locking_task = NULL;
+
+    if (gp_running_task && p_mutex->p_first_waiting_task) {
         task_t *p_unblocked_task = p_mutex->p_first_waiting_task;
-        p_mutex->p_first_waiting_task = p_mutex->p_first_waiting_task->p_next;
-        list_append(gp_first_task, p_unblocked_task);
+        p_mutex->p_first_waiting_task = p_unblocked_task->p_next;
+        p_unblocked_task->p_next = NULL;
+        list_append(&gp_runnable_task, p_unblocked_task);
     }
 
     decrease_scheduler_lock();
 }
 
 void taskmgr_dump_tasks(void) {
+    // TODO: move this to kshell + print the running task.
+
     kprintf(" ID     PAGEDIR         ESP     MAX ESP   USED\n");
 
     increase_scheduler_lock();
-    task_t *p_iter = gp_first_task;
+    task_t *p_iter = gp_runnable_task;
     while (p_iter) {
         uint32_t id = p_iter->id;
         uint32_t pagedir = p_iter->tcb.page_dir_phys;
@@ -234,20 +243,18 @@ static void decrease_scheduler_lock(void) {
     if (g_scheduler_lock == 0) { __asm__ volatile("sti"); }
 }
 
-static void list_append(task_t *p_first, task_t *p_task) {
+static void list_append(task_t **p_first, task_t *p_task) {
     p_task->p_next = NULL;
 
-    if (!p_first) {
-        kprintf("taskmgr: list_append: cannot append to empty list\n");
-        panic("unexpected behavior");
+    if (*p_first == NULL) {
+        *p_first = p_task;
+    } else {
+        task_t *p_iter = *p_first;
+        while (p_iter->p_next != NULL) {
+            p_iter = p_iter->p_next;
+        }
+        p_iter->p_next = p_task;
     }
-
-    // Add to the end.
-    task_t *p_iter = p_first;
-    while (p_iter->p_next != NULL) {
-        p_iter = p_iter->p_next;
-    }
-    p_iter->p_next = p_task;
 }
 
 static size_t list_len(task_t *p_first) {
