@@ -50,6 +50,8 @@ add_executable(kernel
     src/kshell/kbdlog.c
     src/kshell/kshell.c
     src/kshell/vasview.c
+
+    src/list.c
 )
 target_compile_options(kernel PRIVATE
     -Wall -Wextra
