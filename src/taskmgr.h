@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "stack.h"
+#include "list.h"
 
 typedef struct __attribute__((packed)) {
     // This field order is relied upon by taskmgr_switch_tasks() assembly
@@ -17,7 +18,7 @@ typedef struct task {
     stack_t kernel_stack;
     tcb_t tcb;
 
-    struct task *p_next;
+    list_node_t list_node;
 } task_t;
 
 typedef struct {
@@ -25,12 +26,7 @@ typedef struct {
     task_t *p_locking_task;
 
     // List of tasks waiting to acquire the lock.
-    task_t *p_first_waiting_task;
-
-    // The most recent task that has failed to acquire the lock.
-    // NOTE: this is a valid pointer only when `p_first_waiting_task` is
-    // non-NULL.
-    task_t *p_last_waiting_task;
+    list_t waiting_tasks;
 } task_mutex_t;
 
 void taskmgr_init(void);

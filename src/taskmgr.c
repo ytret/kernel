@@ -29,10 +29,7 @@ typedef struct __attribute__((packed)) {
 // after the scheduler is initialized.
 static int g_scheduler_lock = 1;
 
-// Linked list of runnable tasks.
-//
-static task_t *gp_runnable_task;
-
+static list_t g_runnable_tasks;
 static task_t *gp_running_task;
 
 // ID for the next new task.
@@ -43,10 +40,6 @@ static void map_user_stack(uint32_t *p_dir);
 
 static void increase_scheduler_lock(void);
 static void decrease_scheduler_lock(void);
-
-static void list_append(task_t **p_first, task_t *p_task);
-static size_t list_len(task_t *p_first);
-static task_t *list_find(task_t *p_first, uint32_t task_id);
 
 // Defined in taskmgr.s.
 extern void taskmgr_switch_tasks(tcb_t *p_from, tcb_t const *p_to,
@@ -93,32 +86,26 @@ taskmgr_start_scheduler(__attribute__((noreturn)) void (*p_init_entry)(void)) {
 
 void taskmgr_schedule(void) {
     if (g_scheduler_lock > 0) { return; }
-    if (gp_runnable_task == NULL) {
-        // No runnable tasks. Continue running the caller task.
-        return;
-    }
+
+    list_node_t *p_next_node = list_pop_first(&g_runnable_tasks);
+    if (!p_next_node) { return; }
+    task_t *p_next_task = LIST_NODE_TO_STRUCT(p_next_node, task_t, list_node);
 
     task_t *p_caller_task = gp_running_task;
-    task_t *p_next_task = gp_runnable_task;
-
-    gp_runnable_task = gp_runnable_task->p_next;
-    list_append(&gp_runnable_task, p_caller_task);
+    list_append(&g_runnable_tasks, &p_caller_task->list_node);
 
     gp_running_task = p_next_task;
     taskmgr_switch_tasks(&p_caller_task->tcb, &p_next_task->tcb, gdt_get_tss());
 }
 
 void taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry) {
-    // Set up usermode stack.
     map_user_stack(p_dir);
 
-    // Create a task with filled stack that will be popped on the task switch.
     task_t *p_task = new_task(entry);
     p_task->tcb.page_dir_phys = ((uint32_t)p_dir);
 
-    // Add the task to the list of runnable tasks.
     increase_scheduler_lock();
-    list_append(&gp_runnable_task, p_task);
+    list_append(&g_runnable_tasks, &p_task->list_node);
     decrease_scheduler_lock();
 }
 
@@ -136,13 +123,7 @@ void taskmgr_acquire_mutex(task_mutex_t *p_mutex) {
     } else {
         // The mutex is blocked by another task.
         increase_scheduler_lock();
-        if (p_mutex->p_first_waiting_task == NULL) {
-            p_mutex->p_first_waiting_task = gp_running_task;
-        } else {
-            p_mutex->p_last_waiting_task->p_next = gp_running_task;
-        }
-        p_mutex->p_last_waiting_task = gp_running_task;
-        gp_running_task->p_next = NULL;
+        list_append(&p_mutex->waiting_tasks, &gp_running_task->list_node);
         decrease_scheduler_lock();
 
         taskmgr_schedule();
@@ -154,11 +135,11 @@ void taskmgr_release_mutex(task_mutex_t *p_mutex) {
 
     p_mutex->p_locking_task = NULL;
 
-    if (gp_running_task && p_mutex->p_first_waiting_task) {
-        task_t *p_unblocked_task = p_mutex->p_first_waiting_task;
-        p_mutex->p_first_waiting_task = p_unblocked_task->p_next;
-        p_unblocked_task->p_next = NULL;
-        list_append(&gp_runnable_task, p_unblocked_task);
+    list_node_t *p_waiting_task_node = list_pop_first(&p_mutex->waiting_tasks);
+    if (gp_running_task && p_waiting_task_node) {
+        task_t *p_waiting_task =
+            LIST_NODE_TO_STRUCT(p_waiting_task_node, task_t, list_node);
+        list_append(&g_runnable_tasks, &p_waiting_task->list_node);
     }
 
     decrease_scheduler_lock();
@@ -170,16 +151,17 @@ void taskmgr_dump_tasks(void) {
     kprintf(" ID     PAGEDIR         ESP     MAX ESP   USED\n");
 
     increase_scheduler_lock();
-    task_t *p_iter = gp_runnable_task;
-    while (p_iter) {
-        uint32_t id = p_iter->id;
-        uint32_t pagedir = p_iter->tcb.page_dir_phys;
-        uint32_t esp = ((uint32_t)p_iter->tcb.p_kernel_stack->p_top);
-        uint32_t max_esp = ((uint32_t)p_iter->tcb.p_kernel_stack->p_top_max);
+    for (list_node_t *p_node = list_pop_first(&g_runnable_tasks);
+         p_node != NULL; p_node = list_pop_first(&g_runnable_tasks)) {
+        task_t *p_task = LIST_NODE_TO_STRUCT(p_node, task_t, list_node);
+
+        uint32_t id = p_task->id;
+        uint32_t pagedir = p_task->tcb.page_dir_phys;
+        uint32_t esp = ((uint32_t)p_task->tcb.p_kernel_stack->p_top);
+        uint32_t max_esp = ((uint32_t)p_task->tcb.p_kernel_stack->p_top_max);
         int32_t used = (max_esp - esp);
         kprintf("%3u  0x%08x  0x%08x  0x%08x  %5d\n", id, pagedir, esp, max_esp,
                 used);
-        p_iter = p_iter->p_next;
     }
     decrease_scheduler_lock();
 }
@@ -241,41 +223,4 @@ static void increase_scheduler_lock(void) {
 static void decrease_scheduler_lock(void) {
     g_scheduler_lock--;
     if (g_scheduler_lock == 0) { __asm__ volatile("sti"); }
-}
-
-static void list_append(task_t **p_first, task_t *p_task) {
-    p_task->p_next = NULL;
-
-    if (*p_first == NULL) {
-        *p_first = p_task;
-    } else {
-        task_t *p_iter = *p_first;
-        while (p_iter->p_next != NULL) {
-            p_iter = p_iter->p_next;
-        }
-        p_iter->p_next = p_task;
-    }
-}
-
-static size_t list_len(task_t *p_first) {
-    size_t len = 0;
-
-    task_t *p_iter = p_first;
-    while (p_iter) {
-        p_iter = p_iter->p_next;
-        len++;
-    }
-
-    return len;
-}
-
-static task_t *list_find(task_t *p_first, uint32_t task_id) {
-    task_t *p_iter = p_first;
-    while (p_iter) {
-        if (p_iter->id == task_id) { return p_iter; }
-
-        p_iter = p_iter->p_next;
-    }
-
-    return NULL;
 }
