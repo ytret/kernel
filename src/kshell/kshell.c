@@ -117,10 +117,14 @@ static void shell_kbd_handler(uint8_t key, bool b_released) {
         // buffer.
         if (0 == g_cmd_buf_pos) { return; }
 
+        term_acquire_mutex();
         size_t row = term_row();
         size_t col = term_col();
 
-        if ((row == 0) && (col == 0)) { return; }
+        if ((row == 0) && (col == 0)) {
+            term_release_mutex();
+            return;
+        }
 
         if (col > 0) {
             col--;
@@ -131,6 +135,7 @@ static void shell_kbd_handler(uint8_t key, bool b_released) {
 
         term_put_char_at(row, col, ' ');
         term_put_cursor_at(row, col);
+        term_release_mutex();
 
         // Remove one char from the buffer.
         buf_remove();
