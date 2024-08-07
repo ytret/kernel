@@ -1,3 +1,4 @@
+#include <stdatomic.h>
 #include <stdint.h>
 
 #include "gdt.h"
@@ -99,11 +100,11 @@ void taskmgr_schedule(void) {
 
 void taskmgr_lock_scheduler(void) {
     __asm__ volatile("cli");
-    g_scheduler_lock++;
+    atomic_fetch_add_explicit(&g_scheduler_lock, 1, memory_order_acquire);
 }
 
 void taskmgr_unlock_scheduler(void) {
-    g_scheduler_lock--;
+    atomic_fetch_sub_explicit(&g_scheduler_lock, 1, memory_order_release);
     if (g_scheduler_lock == 0) { __asm__ volatile("sti"); }
 }
 
