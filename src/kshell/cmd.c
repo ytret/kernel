@@ -91,7 +91,9 @@ static void cmd_clear(char **pp_args, size_t num_args) {
         return;
     }
 
+    term_acquire_mutex();
     term_clear();
+    term_release_mutex();
 }
 
 static void cmd_help(char **pp_args, size_t num_args) {
