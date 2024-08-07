@@ -21,6 +21,8 @@ void kprintf(char const *restrict p_format, ...) {
     va_list args;
     va_start(args, p_format);
 
+    term_acquire_mutex();
+
     // A string not containing '%'.
     char const *p_pure_str = p_format;
     size_t pure_str_len = 0;
@@ -130,6 +132,8 @@ void kprintf(char const *restrict p_format, ...) {
         // Otherwise, print the last sequence of non-special characters.
         term_print_str_len(p_pure_str, pure_str_len);
     }
+
+    term_release_mutex();
 
     va_end(args);
 }
