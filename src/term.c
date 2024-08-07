@@ -70,6 +70,10 @@ void term_release_mutex(void) {
     taskmgr_release_mutex(&g_mutex);
 }
 
+bool term_owns_mutex(void) {
+    return taskmgr_owns_mutex(&g_mutex);
+}
+
 void term_clear(void) {
     assert_owns_mutex();
     g_output_impl.p_clear_rows(0, g_max_row);
