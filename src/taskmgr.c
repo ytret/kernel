@@ -38,9 +38,6 @@ static uint32_t g_new_task_id;
 static task_t *new_task(uint32_t entry_point);
 static void map_user_stack(uint32_t *p_dir);
 
-static void increase_scheduler_lock(void);
-static void decrease_scheduler_lock(void);
-
 // Defined in taskmgr.s.
 extern void taskmgr_switch_tasks(tcb_t *p_from, tcb_t const *p_to,
                                  tss_t *p_tss);
@@ -100,15 +97,25 @@ void taskmgr_schedule(void) {
     taskmgr_switch_tasks(&p_caller_task->tcb, &p_next_task->tcb, gdt_get_tss());
 }
 
+void taskmgr_lock_scheduler(void) {
+    __asm__ volatile("cli");
+    g_scheduler_lock++;
+}
+
+void taskmgr_unlock_scheduler(void) {
+    g_scheduler_lock--;
+    if (g_scheduler_lock == 0) { __asm__ volatile("sti"); }
+}
+
 void taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry) {
     map_user_stack(p_dir);
 
     task_t *p_task = new_task(entry);
     p_task->tcb.page_dir_phys = ((uint32_t)p_dir);
 
-    increase_scheduler_lock();
+    taskmgr_lock_scheduler();
     list_append(&g_runnable_tasks, &p_task->list_node);
-    decrease_scheduler_lock();
+    taskmgr_unlock_scheduler();
 }
 
 void taskmgr_go_usermode(uint32_t entry) {
@@ -119,30 +126,26 @@ void taskmgr_go_usermode(uint32_t entry) {
 }
 
 void taskmgr_acquire_mutex(task_mutex_t *p_mutex) {
-    if (gp_running_task && taskmgr_owns_mutex(p_mutex)) {
-        panic_silent();
-    }
+    if (gp_running_task && taskmgr_owns_mutex(p_mutex)) { panic_silent(); }
 
     if (__sync_bool_compare_and_swap(&p_mutex->p_locking_task, NULL,
                                      gp_running_task)) {
         // Caller task has successfuly acquired the mutex.
     } else {
         // The mutex is blocked by another task.
-        increase_scheduler_lock();
+        taskmgr_lock_scheduler();
         gp_running_task->b_is_blocked = true;
         list_append(&p_mutex->waiting_tasks, &gp_running_task->list_node);
-        decrease_scheduler_lock();
+        taskmgr_unlock_scheduler();
 
         taskmgr_schedule();
     }
 }
 
 void taskmgr_release_mutex(task_mutex_t *p_mutex) {
-    increase_scheduler_lock();
+    taskmgr_lock_scheduler();
 
-    if (gp_running_task && !taskmgr_owns_mutex(p_mutex)) {
-        panic_silent();
-    }
+    if (gp_running_task && !taskmgr_owns_mutex(p_mutex)) { panic_silent(); }
 
     list_node_t *p_waiting_task_node = list_pop_first(&p_mutex->waiting_tasks);
     if (gp_running_task && p_waiting_task_node) {
@@ -155,7 +158,7 @@ void taskmgr_release_mutex(task_mutex_t *p_mutex) {
         p_mutex->p_locking_task = NULL;
     }
 
-    decrease_scheduler_lock();
+    taskmgr_unlock_scheduler();
 }
 
 bool taskmgr_owns_mutex(task_mutex_t *p_mutex) {
@@ -167,7 +170,7 @@ void taskmgr_dump_tasks(void) {
 
     kprintf(" ID     PAGEDIR         ESP     MAX ESP   USED\n");
 
-    increase_scheduler_lock();
+    taskmgr_lock_scheduler();
     for (list_node_t *p_node = list_pop_first(&g_runnable_tasks);
          p_node != NULL; p_node = list_pop_first(&g_runnable_tasks)) {
         task_t *p_task = LIST_NODE_TO_STRUCT(p_node, task_t, list_node);
@@ -180,7 +183,7 @@ void taskmgr_dump_tasks(void) {
         kprintf("%3u  0x%08x  0x%08x  0x%08x  %5d\n", id, pagedir, esp, max_esp,
                 used);
     }
-    decrease_scheduler_lock();
+    taskmgr_unlock_scheduler();
 }
 
 static task_t *new_task(uint32_t entry_point) {
@@ -230,14 +233,4 @@ static void map_user_stack(uint32_t *p_dir) {
 
     // Unmap the kernel view.
     vmm_unmap_kernel_page(USER_STACK_TOP - 4096);
-}
-
-static void increase_scheduler_lock(void) {
-    __asm__ volatile("cli");
-    g_scheduler_lock++;
-}
-
-static void decrease_scheduler_lock(void) {
-    g_scheduler_lock--;
-    if (g_scheduler_lock == 0) { __asm__ volatile("sti"); }
 }

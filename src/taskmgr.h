@@ -35,6 +35,9 @@ void taskmgr_start_scheduler(
     __attribute__((noreturn)) void (*p_init_entry)(void));
 
 void taskmgr_schedule(void);
+void taskmgr_lock_scheduler(void);
+void taskmgr_unlock_scheduler(void);
+
 void taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry);
 
 void taskmgr_go_usermode(uint32_t entry);
