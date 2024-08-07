@@ -145,6 +145,10 @@ void taskmgr_release_mutex(task_mutex_t *p_mutex) {
     decrease_scheduler_lock();
 }
 
+bool taskmgr_owns_mutex(task_mutex_t *p_mutex) {
+    return p_mutex->p_locking_task == gp_running_task;
+}
+
 void taskmgr_dump_tasks(void) {
     // TODO: move this to kshell + print the running task.
 
