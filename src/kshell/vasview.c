@@ -56,13 +56,17 @@ void vasview(uint32_t pgdir_virt) {
     g_dir_idx = 0;
     g_tbl_idx = 0;
 
+    term_acquire_mutex();
     update();
+    term_release_mutex();
 
     while (!gb_exit) {}
 
     // Before returning to kshell, put the cursor on the last row, to make the
     // prompt appear there.
+    term_acquire_mutex();
     term_put_cursor_at((term_height() - 1), 0);
+    term_release_mutex();
 }
 
 static void update(void) {
@@ -212,6 +216,8 @@ static uint32_t idx_at_cursor(void) {
 static void kbd_callback(uint8_t key, bool b_released) {
     if (b_released) { return; }
 
+    term_acquire_mutex();
+
     switch (key) {
     case KEY_LEFTARROW:
     case KEY_H:
@@ -240,10 +246,9 @@ static void kbd_callback(uint8_t key, bool b_released) {
     case KEY_ESCAPE:
         shallower_view();
         break;
-
-    default:
-        return;
     }
+
+    term_release_mutex();
 }
 
 static void move_cursor(int32_t inc_idx) {
