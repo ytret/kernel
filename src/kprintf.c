@@ -21,7 +21,11 @@ void kprintf(char const *restrict p_format, ...) {
     va_list args;
     va_start(args, p_format);
 
-    term_acquire_mutex();
+    bool b_release_mutex = false;
+    if (!term_owns_mutex()) {
+        term_acquire_mutex();
+        b_release_mutex = true;
+    }
 
     // A string not containing '%'.
     char const *p_pure_str = p_format;
@@ -133,7 +137,7 @@ void kprintf(char const *restrict p_format, ...) {
         term_print_str_len(p_pure_str, pure_str_len);
     }
 
-    term_release_mutex();
+    if (b_release_mutex) { term_release_mutex(); }
 
     va_end(args);
 }
