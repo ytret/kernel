@@ -108,6 +108,14 @@ void taskmgr_unlock_scheduler(void) {
     if (g_scheduler_lock == 0) { __asm__ volatile("sti"); }
 }
 
+task_t *taskmgr_running_task(void) {
+    return gp_running_task;
+}
+
+list_t *taskmgr_runnable_tasks(void) {
+    return &g_runnable_tasks;
+}
+
 void taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry) {
     map_user_stack(p_dir);
 
@@ -164,27 +172,6 @@ void taskmgr_release_mutex(task_mutex_t *p_mutex) {
 
 bool taskmgr_owns_mutex(task_mutex_t *p_mutex) {
     return p_mutex->p_locking_task == gp_running_task;
-}
-
-void taskmgr_dump_tasks(void) {
-    // TODO: move this to kshell + print the running task.
-
-    kprintf(" ID     PAGEDIR         ESP     MAX ESP   USED\n");
-
-    taskmgr_lock_scheduler();
-    for (list_node_t *p_node = list_pop_first(&g_runnable_tasks);
-         p_node != NULL; p_node = list_pop_first(&g_runnable_tasks)) {
-        task_t *p_task = LIST_NODE_TO_STRUCT(p_node, task_t, list_node);
-
-        uint32_t id = p_task->id;
-        uint32_t pagedir = p_task->tcb.page_dir_phys;
-        uint32_t esp = ((uint32_t)p_task->tcb.p_kernel_stack->p_top);
-        uint32_t max_esp = ((uint32_t)p_task->tcb.p_kernel_stack->p_top_max);
-        int32_t used = (max_esp - esp);
-        kprintf("%3u  0x%08x  0x%08x  0x%08x  %5d\n", id, pagedir, esp, max_esp,
-                used);
-    }
-    taskmgr_unlock_scheduler();
 }
 
 static task_t *new_task(uint32_t entry_point) {

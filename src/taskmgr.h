@@ -38,11 +38,11 @@ void taskmgr_schedule(void);
 void taskmgr_lock_scheduler(void);
 void taskmgr_unlock_scheduler(void);
 
+task_t *taskmgr_running_task(void);
+list_t *taskmgr_runnable_tasks(void);
 void taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry);
 
 void taskmgr_go_usermode(uint32_t entry);
 void taskmgr_acquire_mutex(task_mutex_t *p_mutex);
 void taskmgr_release_mutex(task_mutex_t *p_mutex);
 bool taskmgr_owns_mutex(task_mutex_t *p_mutex);
-
-void taskmgr_dump_tasks(void);
