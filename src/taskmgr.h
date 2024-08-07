@@ -2,8 +2,8 @@
 
 #include <stdint.h>
 
-#include "stack.h"
 #include "list.h"
+#include "stack.h"
 
 typedef struct __attribute__((packed)) {
     // This field order is relied upon by taskmgr_switch_tasks() assembly
@@ -17,6 +17,7 @@ typedef struct task {
     uint32_t id;
     stack_t kernel_stack;
     tcb_t tcb;
+    bool b_is_blocked;
 
     list_node_t list_node;
 } task_t;

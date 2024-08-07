@@ -92,7 +92,9 @@ void taskmgr_schedule(void) {
     task_t *p_next_task = LIST_NODE_TO_STRUCT(p_next_node, task_t, list_node);
 
     task_t *p_caller_task = gp_running_task;
-    list_append(&g_runnable_tasks, &p_caller_task->list_node);
+    if (!p_caller_task->b_is_blocked) {
+        list_append(&g_runnable_tasks, &p_caller_task->list_node);
+    }
 
     gp_running_task = p_next_task;
     taskmgr_switch_tasks(&p_caller_task->tcb, &p_next_task->tcb, gdt_get_tss());
@@ -123,6 +125,7 @@ void taskmgr_acquire_mutex(task_mutex_t *p_mutex) {
     } else {
         // The mutex is blocked by another task.
         increase_scheduler_lock();
+        gp_running_task->b_is_blocked = true;
         list_append(&p_mutex->waiting_tasks, &gp_running_task->list_node);
         decrease_scheduler_lock();
 
@@ -133,13 +136,15 @@ void taskmgr_acquire_mutex(task_mutex_t *p_mutex) {
 void taskmgr_release_mutex(task_mutex_t *p_mutex) {
     increase_scheduler_lock();
 
-    p_mutex->p_locking_task = NULL;
-
     list_node_t *p_waiting_task_node = list_pop_first(&p_mutex->waiting_tasks);
     if (gp_running_task && p_waiting_task_node) {
         task_t *p_waiting_task =
             LIST_NODE_TO_STRUCT(p_waiting_task_node, task_t, list_node);
+        p_waiting_task->b_is_blocked = false;
+        p_mutex->p_locking_task = p_waiting_task;
         list_append(&g_runnable_tasks, &p_waiting_task->list_node);
+    } else {
+        p_mutex->p_locking_task = NULL;
     }
 
     decrease_scheduler_lock();
