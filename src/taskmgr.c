@@ -119,6 +119,10 @@ void taskmgr_go_usermode(uint32_t entry) {
 }
 
 void taskmgr_acquire_mutex(task_mutex_t *p_mutex) {
+    if (gp_running_task && taskmgr_owns_mutex(p_mutex)) {
+        panic_silent();
+    }
+
     if (__sync_bool_compare_and_swap(&p_mutex->p_locking_task, NULL,
                                      gp_running_task)) {
         // Caller task has successfuly acquired the mutex.
@@ -135,6 +139,10 @@ void taskmgr_acquire_mutex(task_mutex_t *p_mutex) {
 
 void taskmgr_release_mutex(task_mutex_t *p_mutex) {
     increase_scheduler_lock();
+
+    if (gp_running_task && !taskmgr_owns_mutex(p_mutex)) {
+        panic_silent();
+    }
 
     list_node_t *p_waiting_task_node = list_pop_first(&p_mutex->waiting_tasks);
     if (gp_running_task && p_waiting_task_node) {
