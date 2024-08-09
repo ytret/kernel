@@ -1,0 +1,2 @@
+CompileFlags:
+  Add: -D_GCC_MAX_ALIGN_T
