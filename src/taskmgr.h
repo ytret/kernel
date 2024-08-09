@@ -30,9 +30,7 @@ typedef struct {
     list_t waiting_tasks;
 } task_mutex_t;
 
-void taskmgr_init(void);
-void taskmgr_start_scheduler(
-    __attribute__((noreturn)) void (*p_init_entry)(void));
+void taskmgr_init(__attribute__((noreturn)) void (*p_init_entry)(void));
 
 void taskmgr_schedule(void);
 void taskmgr_lock_scheduler(void);

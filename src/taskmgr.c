@@ -47,14 +47,6 @@ extern void taskmgr_go_usermode_impl(uint32_t user_code_seg,
                                      uint32_t entry_point,
                                      gen_regs_t *p_user_regs);
 
-void taskmgr_init(void) {
-    // Load the TSS.
-    __asm__ volatile("ltr %%ax"
-                     :           /* no outputs */
-                     : "a"(0x28) /* TSS segment */
-                     : /* no clobber */);
-}
-
 /*
  * Starts the scheduler and causes the initial task to start executing.
  *
@@ -65,7 +57,13 @@ void taskmgr_init(void) {
  * will happen.
  */
 __attribute__((noreturn)) void
-taskmgr_start_scheduler(__attribute__((noreturn)) void (*p_init_entry)(void)) {
+taskmgr_init(__attribute__((noreturn)) void (*p_init_entry)(void)) {
+    // Load the TSS.
+    __asm__ volatile("ltr %%ax"
+                     :           /* no outputs */
+                     : "a"(0x28) /* TSS segment */
+                     : /* no clobber */);
+
     // Critical section.  It ends when the entry is reached.
     __asm__ volatile("cli");
 

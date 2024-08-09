@@ -52,7 +52,6 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     kprintf("Interrupts enabled\n");
 
     heap_init();
-
     mbi_save_on_heap();
 
     vmm_init();
@@ -66,8 +65,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
         gpt_find_root_part(&root_start_sector, &root_num_sectors);
     if (!b_root_found) { kprintf("Could not find root partition\n"); }
 
-    taskmgr_init();
-    taskmgr_start_scheduler(init_entry);
+    taskmgr_init(init_entry);
 
     kprintf("End of main\n");
 }
