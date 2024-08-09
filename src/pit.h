@@ -6,4 +6,5 @@
 #define PIT_PERIOD_MS 10
 
 void pit_init(uint8_t period_ms);
+void pit_enable_interrupt(void);
 void pit_irq_handler(void);

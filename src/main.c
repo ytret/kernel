@@ -46,7 +46,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     kbd_set_callback(term_kbd_callback);
 
     pit_init(PIT_PERIOD_MS);
-    pic_set_mask(PIT_IRQ, false);
+    pit_enable_interrupt();
 
     __asm__ volatile("sti");
     kprintf("Interrupts enabled\n");
