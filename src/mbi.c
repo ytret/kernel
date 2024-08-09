@@ -23,7 +23,7 @@ void mbi_init(uint32_t mbi_addr) {
  *
  * NOTE: requires the heap to be initialized.
  */
-void mbi_deep_copy(void) {
+void mbi_save_on_heap(void) {
     // The structure itself.
     mbi_t const *p_src = gp_mbi;
     gp_mbi = heap_alloc(sizeof(mbi_t));

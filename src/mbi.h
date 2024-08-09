@@ -73,7 +73,7 @@ typedef struct __attribute__((packed)) {
 } mbi_mod_t;
 
 void mbi_init(uint32_t mbi_addr);
-void mbi_deep_copy(void);
+void mbi_save_on_heap(void);
 
 mbi_t const *mbi_ptr(void);
 

@@ -53,7 +53,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     heap_init();
 
-    mbi_deep_copy();
+    mbi_save_on_heap();
 
     vmm_init();
     pmm_init();
