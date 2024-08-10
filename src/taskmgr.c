@@ -132,44 +132,18 @@ void taskmgr_go_usermode(uint32_t entry) {
     taskmgr_go_usermode_impl(0x18, 0x20, 0x28, entry, &gen_regs);
 }
 
-void taskmgr_acquire_mutex(task_mutex_t *p_mutex) {
-    if (gp_running_task && taskmgr_owns_mutex(p_mutex)) { panic_silent(); }
-
-    if (__sync_bool_compare_and_swap(&p_mutex->p_locking_task, NULL,
-                                     gp_running_task)) {
-        // Caller task has successfuly acquired the mutex.
-    } else {
-        // The mutex is blocked by another task.
-        taskmgr_lock_scheduler();
-        gp_running_task->b_is_blocked = true;
-        list_append(&p_mutex->waiting_tasks, &gp_running_task->list_node);
-        taskmgr_unlock_scheduler();
-
-        taskmgr_schedule();
-    }
-}
-
-void taskmgr_release_mutex(task_mutex_t *p_mutex) {
+void taskmgr_block_running_task(list_t *p_wait_list) {
     taskmgr_lock_scheduler();
-
-    if (gp_running_task && !taskmgr_owns_mutex(p_mutex)) { panic_silent(); }
-
-    list_node_t *p_waiting_task_node = list_pop_first(&p_mutex->waiting_tasks);
-    if (gp_running_task && p_waiting_task_node) {
-        task_t *p_waiting_task =
-            LIST_NODE_TO_STRUCT(p_waiting_task_node, task_t, list_node);
-        p_waiting_task->b_is_blocked = false;
-        p_mutex->p_locking_task = p_waiting_task;
-        list_append(&g_runnable_tasks, &p_waiting_task->list_node);
-    } else {
-        p_mutex->p_locking_task = NULL;
-    }
-
+    gp_running_task->b_is_blocked = true;
+    list_append(p_wait_list, &gp_running_task->list_node);
     taskmgr_unlock_scheduler();
 }
 
-bool taskmgr_owns_mutex(task_mutex_t *p_mutex) {
-    return p_mutex->p_locking_task == gp_running_task;
+void taskmgr_unblock(task_t *p_task) {
+    taskmgr_lock_scheduler();
+    p_task->b_is_blocked = false;
+    list_append(&g_runnable_tasks, &p_task->list_node);
+    taskmgr_unlock_scheduler();
 }
 
 static task_t *new_task(uint32_t entry_point) {

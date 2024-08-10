@@ -52,6 +52,7 @@ add_executable(kernel
     src/kshell/vasview.c
 
     src/list.c
+    src/mutex.c
 )
 target_compile_options(kernel PRIVATE
     -Wall -Wextra

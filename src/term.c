@@ -1,7 +1,7 @@
 #include "framebuf.h"
 #include "mbi.h"
+#include "mutex.h"
 #include "panic.h"
-#include "taskmgr.h"
 #include "term.h"
 #include "vga.h"
 
@@ -25,7 +25,7 @@ static size_t g_col;
 static void put_char(char ch);
 
 __attribute__((artificial)) static inline void assert_owns_mutex(void) {
-    if (!taskmgr_owns_mutex(&g_mutex)) { panic_silent(); }
+    if (!mutex_caller_owns(&g_mutex)) { panic_silent(); }
 }
 
 __attribute__((artificial)) static inline void put_cursor_at(size_t row,
@@ -63,15 +63,15 @@ void term_init(void) {
 }
 
 void term_acquire_mutex(void) {
-    taskmgr_acquire_mutex(&g_mutex);
+    mutex_acquire(&g_mutex);
 }
 
 void term_release_mutex(void) {
-    taskmgr_release_mutex(&g_mutex);
+    mutex_release(&g_mutex);
 }
 
 bool term_owns_mutex(void) {
-    return taskmgr_owns_mutex(&g_mutex);
+    return mutex_caller_owns(&g_mutex);
 }
 
 void term_clear(void) {
