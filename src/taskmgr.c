@@ -103,7 +103,7 @@ void taskmgr_lock_scheduler(void) {
 
 void taskmgr_unlock_scheduler(void) {
     atomic_fetch_sub_explicit(&g_scheduler_lock, 1, memory_order_release);
-    if (g_scheduler_lock == 0) { __asm__ volatile("sti"); }
+    if (atomic_load(&g_scheduler_lock) == 0) { __asm__ volatile("sti"); }
 }
 
 task_t *taskmgr_running_task(void) {
