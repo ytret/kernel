@@ -55,7 +55,7 @@ enable_sse:     push    %eax
                 mov     %cr0, %eax
                 ## Disable coprocessor emulation.
                 and     $0xFFFFFFFB, %eax       # ~CR0.EM = ~(1 << 2)
-                ## Enable coprocessor emulation.
+                ## Enable coprocessor monitoring.
                 or      $0x2, %eax              # CR0.MP = 1 << 1
                 mov     %eax, %cr0
 
