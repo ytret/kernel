@@ -1,5 +1,5 @@
 /*
- * LIFO queue.
+ * FIFO queue.
  */
 
 #include <stdatomic.h>
