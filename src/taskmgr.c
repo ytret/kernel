@@ -39,6 +39,8 @@ static uint32_t g_new_task_id;
 static task_t *new_task(uint32_t entry_point);
 static void map_user_stack(uint32_t *p_dir);
 
+static void idle_task(void) __attribute__((noreturn));
+
 // Defined in taskmgr.s.
 extern void taskmgr_switch_tasks(tcb_t *p_from, tcb_t const *p_to,
                                  tss_t *p_tss);
@@ -66,6 +68,10 @@ taskmgr_init(__attribute__((noreturn)) void (*p_init_entry)(void)) {
 
     // Critical section.  It ends when the entry is reached.
     __asm__ volatile("cli");
+
+    // Create an idle task.
+    task_t *p_idle_task = new_task((uint32_t)idle_task);
+    list_append(&g_runnable_tasks, &p_idle_task->list_node);
 
     // Create the initial task.
     gp_running_task = new_task((uint32_t)p_init_entry);
@@ -193,4 +199,11 @@ static void map_user_stack(uint32_t *p_dir) {
 
     // Unmap the kernel view.
     vmm_unmap_kernel_page(USER_STACK_TOP - 4096);
+}
+
+__attribute__((noreturn)) static void idle_task(void) {
+    __asm__ volatile("sti");
+    for (;;) {
+        __asm__ volatile("nop");
+    }
 }
