@@ -2,11 +2,12 @@
 
 #include "kprintf.h"
 #include "panic.h"
+#include "taskmgr.h"
 
 static volatile bool b_in_panic;
 
 __attribute__((noreturn)) void panic(char const *p_msg) {
-    __asm__ volatile("cli");
+    taskmgr_lock_scheduler();
 
     if (b_in_panic) { panic_silent(); }
 
@@ -17,7 +18,7 @@ __attribute__((noreturn)) void panic(char const *p_msg) {
 }
 
 __attribute__((noreturn)) void panic_silent(void) {
-    __asm__ volatile("cli");
+    taskmgr_lock_scheduler();
 
     for (;;) {}
 }
