@@ -60,6 +60,8 @@ void term_init(void) {
         g_output_impl.p_clear_rows = vga_clear_rows;
         g_output_impl.p_scroll = vga_scroll;
     }
+
+    mutex_init(&g_mutex);
 }
 
 void term_acquire_mutex(void) {
