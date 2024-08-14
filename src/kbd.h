@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "queue.h"
+
 #define KBD_IRQ 1
 
 #define KEY_ESCAPE      0x00
@@ -109,6 +111,13 @@
 #define KEY_PRINTSCREEN 0x65
 #define KEY_PAUSEBREAK  0x66
 
+typedef struct {
+    queue_item_t queue_item;
+
+    uint8_t key;
+    bool b_released;
+} kbd_event_t;
+
 void kbd_init(void);
-void kbd_set_callback(void (*p_callback)(uint8_t key, bool b_released));
 void kbd_irq_handler(void);
+queue_t *kbd_event_queue(void);

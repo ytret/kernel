@@ -1,9 +1,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "heap.h"
 #include "kbd.h"
 #include "kprintf.h"
-#include "kshell/kshell.h"
 #include "kshell/vasview.h"
 #include "panic.h"
 #include "term.h"
@@ -43,14 +43,12 @@ static void show_tbl(void);
 static uint32_t entry_at_cursor(void);
 static uint32_t idx_at_cursor(void);
 
-static void kbd_callback(uint8_t key, bool b_released);
+static void parse_kbd_event(kbd_event_t *p_event);
 static void move_cursor(int32_t inc_idx);
 static void deeper_view(void);
 static void shallower_view(void);
 
 void vasview(uint32_t pgdir_virt) {
-    kshell_set_kbd_handler(kbd_callback);
-
     gb_exit = false;
     gp_pgdir = ((uint32_t *)pgdir_virt);
     g_dir_idx = 0;
@@ -60,7 +58,11 @@ void vasview(uint32_t pgdir_virt) {
     update();
     term_release_mutex();
 
-    while (!gb_exit) {}
+    while (!gb_exit) {
+        kbd_event_t kbd_event;
+        term_read_kbd_event(&kbd_event);
+        parse_kbd_event(&kbd_event);
+    }
 
     // Before returning to kshell, put the cursor on the last row, to make the
     // prompt appear there.
@@ -213,12 +215,12 @@ static uint32_t idx_at_cursor(void) {
     return idx;
 }
 
-static void kbd_callback(uint8_t key, bool b_released) {
-    if (b_released) { return; }
+static void parse_kbd_event(kbd_event_t *p_event) {
+    if (p_event->b_released) { return; }
 
     term_acquire_mutex();
 
-    switch (key) {
+    switch (p_event->key) {
     case KEY_LEFTARROW:
     case KEY_H:
         move_cursor(-1);

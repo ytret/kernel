@@ -2,6 +2,8 @@
 #include "mbi.h"
 #include "mutex.h"
 #include "panic.h"
+#include "heap.h"
+#include "queue.h"
 #include "term.h"
 #include "vga.h"
 
@@ -14,7 +16,6 @@ typedef struct {
 
 static task_mutex_t g_mutex;
 static output_impl_t g_output_impl;
-static term_kbd_handler_t g_kbd_handler;
 
 static size_t g_max_row;
 static size_t g_max_col;
@@ -131,14 +132,8 @@ size_t term_width(void) {
     return g_max_col;
 }
 
-void term_kbd_callback(uint8_t key, bool b_released) {
-    if (g_kbd_handler.p_event_handler) {
-        g_kbd_handler.p_event_handler(key, b_released);
-    }
-}
-
-void term_attach_kbd_handler(term_kbd_handler_t handler) {
-    g_kbd_handler = handler;
+void term_read_kbd_event(kbd_event_t *p_event) {
+    queue_read(kbd_event_queue(), p_event, sizeof(kbd_event_t));
 }
 
 static void put_char(char ch) {

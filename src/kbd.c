@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "heap.h"
 #include "kbd.h"
 #include "kprintf.h"
 #include "panic.h"
@@ -18,19 +19,16 @@
 static volatile uint8_t gp_code_buf[CODE_BUF_SIZE];
 static volatile size_t g_code_buf_pos;
 
-static void (*gp_event_callback)(uint8_t key, bool b_released);
+static queue_t g_event_queue;
 
 static uint8_t read_code(void);
 static void append_code(uint8_t sc);
 static void try_parse_codes(void);
-static void new_event(uint8_t key, bool b_released);
+static void enqueue_event(uint8_t key, bool b_released);
 
 void kbd_init(void) {
     pic_set_mask(KBD_IRQ, false);
-}
-
-void kbd_set_callback(void (*p_callback)(uint8_t key, bool b_released)) {
-    gp_event_callback = p_callback;
+    queue_init(&g_event_queue);
 }
 
 void kbd_irq_handler(void) {
@@ -39,6 +37,10 @@ void kbd_irq_handler(void) {
     try_parse_codes();
 
     pic_send_eoi(1);
+}
+
+queue_t *kbd_event_queue(void) {
+    return &g_event_queue;
 }
 
 static uint8_t read_code(void) {
@@ -345,7 +347,6 @@ static void try_parse_codes(void) {
         default:
             return;
         }
-
     } else if ((2 == num_codes) && (0xE0 == gp_code_buf[0])) {
         b_parsed = true;
 
@@ -449,11 +450,16 @@ static void try_parse_codes(void) {
         // Reset the scancode buffer.
         g_code_buf_pos = 0;
 
-        // Let the callback parse the event.
-        new_event(key, b_released);
+        enqueue_event(key, b_released);
     }
 }
 
-static void new_event(uint8_t key, bool b_released) {
-    if (gp_event_callback) { gp_event_callback(key, b_released); }
+static void enqueue_event(uint8_t key, bool b_released) {
+    kbd_event_t *p_event = heap_alloc(sizeof(kbd_event_t));
+
+    __builtin_memset(p_event, 0, sizeof(*p_event));
+    p_event->key = key;
+    p_event->b_released = b_released;
+
+    queue_write(&g_event_queue, &p_event->queue_item);
 }

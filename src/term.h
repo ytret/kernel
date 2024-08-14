@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "kbd.h"
+
 typedef struct {
     void (*p_event_handler)(uint8_t key, bool b_released);
 } term_kbd_handler_t;
@@ -30,5 +32,4 @@ size_t term_height(void);
 size_t term_width(void);
 
 /* Input-related functions */
-void term_kbd_callback(uint8_t key, bool b_released);
-void term_attach_kbd_handler(term_kbd_handler_t handler);
+void term_read_kbd_event(kbd_event_t *p_event);

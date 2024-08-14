@@ -1,15 +1,12 @@
+#include "heap.h"
 #include "kbd.h"
 #include "kprintf.h"
 #include "kshell/cmd.h"
 #include "kshell/kshell.h"
 #include "panic.h"
-#include "string.h"
 #include "term.h"
 
 #define CMD_BUF_SIZE 256
-
-// Shell state.
-static volatile bool gb_reading_cmd;
 
 // Command buffer.
 static volatile char gp_cmd_buf[CMD_BUF_SIZE];
@@ -17,8 +14,6 @@ static volatile size_t g_cmd_buf_pos;
 
 // Keyboard state.
 static volatile bool gb_shifted;
-static term_kbd_handler_t g_kbd_handler;
-static void (*gp_cmd_kbd_handler)(uint8_t key, bool b_released);
 
 // Input reading functions.
 static char const *read_cmd(void);
@@ -29,29 +24,16 @@ static void buf_remove(void);
 static volatile char const *buf_get_cmd(void);
 
 // Keyboard-related functions.
-static void parse_kbd_event(uint8_t key, bool b_released);
-static void shell_kbd_handler(uint8_t key, bool b_released);
+static bool parse_kbd_event(kbd_event_t *p_event);
 static void echo_key(uint8_t key);
 static char char_from_key(uint8_t key);
 
 void kshell(void) {
-    g_kbd_handler.p_event_handler = parse_kbd_event;
-    term_attach_kbd_handler(g_kbd_handler);
-
     for (;;) {
         kprintf("> ");
         char const *p_cmd = read_cmd();
-        if (!p_cmd) { continue; }
-
         kshell_cmd_parse(p_cmd);
-
-        // Reset the keyboard handler in case it was redefined by the command.
-        kshell_set_kbd_handler(NULL);
     }
-}
-
-void kshell_set_kbd_handler(void (*p_handler)(uint8_t, bool)) {
-    gp_cmd_kbd_handler = p_handler;
 }
 
 /*
@@ -60,10 +42,12 @@ void kshell_set_kbd_handler(void (*p_handler)(uint8_t, bool)) {
  * NOTE: each call invalidates the pointer returned by the previous call.
  */
 static char const *read_cmd(void) {
-    gb_reading_cmd = true;
-
-    // kbd_callback() resets gb_reading_cmd once KEY_ENTER is pressed.
-    while (gb_reading_cmd) {}
+    bool b_enter = false;
+    while (!b_enter) {
+        kbd_event_t event;
+        term_read_kbd_event(&event);
+        b_enter = parse_kbd_event(&event);
+    }
 
     return (char const *)buf_get_cmd();
 }
@@ -94,28 +78,18 @@ static volatile char const *buf_get_cmd(void) {
     return gp_cmd_buf;
 }
 
-static void parse_kbd_event(uint8_t key, bool b_released) {
-    if (gp_cmd_kbd_handler) {
-        gp_cmd_kbd_handler(key, b_released);
-    } else {
-        shell_kbd_handler(key, b_released);
+static bool parse_kbd_event(kbd_event_t *p_event) {
+    if (p_event->key == KEY_LSHIFT || p_event->key == KEY_RSHIFT) {
+        gb_shifted = !p_event->b_released;
     }
-}
-
-static void shell_kbd_handler(uint8_t key, bool b_released) {
-    if ((KEY_LSHIFT == key) || (KEY_RSHIFT == key)) {
-        gb_shifted = (!b_released);
-    }
-
-    if (!gb_reading_cmd) { return; }
 
     // Henceforth parse only 'key pressed' events.
-    if (b_released) { return; }
+    if (p_event->b_released) { return false; }
 
-    if (KEY_BACKSPACE == key) {
+    if (p_event->key == KEY_BACKSPACE) {
         // Allow to delete as many characters, as there are in the command
         // buffer.
-        if (0 == g_cmd_buf_pos) { return; }
+        if (g_cmd_buf_pos == 0) { return false; }
 
         term_acquire_mutex();
         size_t row = term_row();
@@ -123,7 +97,7 @@ static void shell_kbd_handler(uint8_t key, bool b_released) {
 
         if ((row == 0) && (col == 0)) {
             term_release_mutex();
-            return;
+            return false;
         }
 
         if (col > 0) {
@@ -139,16 +113,18 @@ static void shell_kbd_handler(uint8_t key, bool b_released) {
 
         // Remove one char from the buffer.
         buf_remove();
-    } else if (KEY_ENTER == key) {
-        echo_key(key);
-        gb_reading_cmd = false;
+    } else if (p_event->key == KEY_ENTER) {
+        echo_key(p_event->key);
+        return true;
     } else {
         // Print the key and add it to the buffer, if it's a char.
-        echo_key(key);
+        echo_key(p_event->key);
 
-        char ch = char_from_key(key);
+        char ch = char_from_key(p_event->key);
         if (ch) { buf_append(ch); }
     }
+
+    return false;
 }
 
 static void echo_key(uint8_t key) {
