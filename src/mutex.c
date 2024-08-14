@@ -2,6 +2,11 @@
 #include "panic.h"
 #include "taskmgr.h"
 
+void mutex_init(task_mutex_t *p_mutex) {
+    __builtin_memset(p_mutex, 0, sizeof(*p_mutex));
+    list_init(&p_mutex->waiting_tasks, NULL);
+}
+
 void mutex_acquire(task_mutex_t *p_mutex) {
     task_t *p_caller_task = taskmgr_running_task();
     if (p_caller_task && mutex_caller_owns(p_mutex)) { panic_silent(); }
