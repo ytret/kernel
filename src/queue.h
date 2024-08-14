@@ -6,6 +6,10 @@
 
 struct queue_item;
 
+/*
+ * Queue item. This struct must be at the top of the outer struct which has
+ * data associated with this queue item. Otherwise queue_read() won't work.
+ */
 typedef struct queue_item {
     struct queue_item *p_next;
 } queue_item_t;
