@@ -6,7 +6,6 @@
 #include "panic.h"
 #include "pmm.h"
 #include "stack.h"
-#include "vmm.h"
 
 #define MMAP_ENTRY_AVAILABLE 1
 
