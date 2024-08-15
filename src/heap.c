@@ -14,6 +14,23 @@
 #define CHUNK_SIZE_MIN   64
 #define CHUNK_SIZE_ALIGN 4
 
+#define PADDING_BYTE 0xFF
+#define PADDING_DWORD                                                          \
+    ((uint32_t)((PADDING_BYTE << 24) | (PADDING_BYTE << 16) |                  \
+                (PADDING_BYTE << 8) | PADDING_BYTE))
+_Static_assert(PADDING_BYTE != 0x00, "padding byte must not be a zero");
+
+/*
+ * Both MIN_ALIGN and CHUNK_SIZE_ALIGN must be powers of two and not less than
+ * 4, so that each tag address is aligned at 4 bytes, too.
+ */
+_Static_assert((MIN_ALIGN & (MIN_ALIGN - 1)) == 0,
+               "MIN_ALIGN must be a power of two");
+_Static_assert((CHUNK_SIZE_ALIGN & (CHUNK_SIZE_ALIGN - 1)) == 0,
+               "CHUNK_SIZE_ALIGN must be a power of two");
+_Static_assert(MIN_ALIGN >= 4, "MIN_ALIGN must be more than 4");
+_Static_assert(CHUNK_SIZE_ALIGN >= 4, "CHUNK_SIZE_ALIGN must be more than 4");
+
 typedef struct tag {
     bool b_used;
     size_t size;
@@ -28,7 +45,7 @@ extern uint32_t ld_vmm_kernel_end;
 static uint32_t find_heap_start(void);
 
 static void print_tag(tag_t const *p_tag);
-static void check_tags(bool b_after_alloc);
+static void check_tags(void);
 
 void heap_init(void) {
     uint32_t heap_start = find_heap_start();
@@ -68,8 +85,7 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
         panic("unexpected behavior");
     }
 
-    // Check the heap before allocation.
-    check_tags(false);
+    check_tags();
 
     // Make the size aligned.
     num_bytes = (num_bytes + (CHUNK_SIZE_ALIGN - 1)) & ~(CHUNK_SIZE_ALIGN - 1);
@@ -91,6 +107,9 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
         }
     }
 
+    __builtin_memset((void *)((uint32_t)p_found + TAG_SIZE), PADDING_BYTE,
+                     num_padding);
+
     if (!p_found) {
         kprintf("heap_alloc_aligned: no suitable chunk\n");
         panic("allocation failed");
@@ -111,14 +130,20 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
 
     p_found->b_used = true;
 
-    // Check the heap after allocation.
-    check_tags(true);
+    check_tags();
 
     return (void *)((uint32_t)p_found + TAG_SIZE + num_padding);
 }
 
 void heap_free(void *p_addr) {
-    (void)p_addr;
+    tag_t *p_tag = (tag_t *)((uint32_t)p_addr - TAG_SIZE);
+    while ((uint32_t)p_tag->p_next == PADDING_DWORD) {
+        p_tag = (tag_t *)((uint32_t)p_tag - 4);
+    }
+
+    p_tag->b_used = false;
+
+    check_tags();
 }
 
 void heap_dump_tags(void) {
@@ -168,7 +193,7 @@ static void print_tag(tag_t const *p_tag) {
     kprintf("size = %u bytes\n", p_tag->size);
 }
 
-static void check_tags(bool b_after_alloc) {
+static void check_tags(void) {
     bool b_panic = false;
 
     for (tag_t const *p_tag = gp_start; p_tag != NULL; p_tag = p_tag->p_next) {
@@ -196,7 +221,6 @@ static void check_tags(bool b_after_alloc) {
 
     if (b_panic) {
         heap_dump_tags();
-        panic(b_after_alloc ? "invalid heap state after alloc"
-                            : "invalid heap state before alloc");
+        panic("invalid heap state");
     }
 }
