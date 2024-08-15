@@ -7,10 +7,7 @@
 
 #define HEAP_SIZE (4 * 1024 * 1024)
 
-// Default allocation alignment.
-//
-// NOTE: AHCI code assumes that the alignment is always at least 2 bytes.
-#define DEFAULT_ALIGN 4
+#define MIN_ALIGN 4
 
 #define TAG_SIZE (sizeof(tag_t))
 
@@ -50,7 +47,7 @@ uint32_t heap_end(void) {
 }
 
 void *heap_alloc(size_t num_bytes) {
-    return heap_alloc_aligned(num_bytes, DEFAULT_ALIGN);
+    return heap_alloc_aligned(num_bytes, MIN_ALIGN);
 }
 
 void *heap_alloc_aligned(size_t num_bytes, size_t align) {
@@ -59,8 +56,10 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
         panic("invalid argument");
     }
 
-    if (align == 0) {
-        kprintf("heap_alloc_aligned: align is zero\n");
+    if (align < MIN_ALIGN) {
+        align = MIN_ALIGN;
+    } else if ((align & (align - 1)) != 0) {
+        kprintf("heap_alloc_aligned: align must be a power of two\n");
         panic("invalid argument");
     }
 
