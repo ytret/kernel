@@ -12,10 +12,10 @@
 // First free page.
 //
 // Any page below this address will not be pushed onto the stack.  It is either
-// kernel end, if there are no modules, or the last module end.
+// the kernel end, if there are no modules, or the last module end.
 static uint32_t g_first_free_page;
 
-// See the linker script.
+// Variables from the linker script.
 extern uint32_t ld_pmm_stack_bottom;
 extern uint32_t ld_pmm_stack_top;
 extern uint32_t ld_vmm_kernel_end;
