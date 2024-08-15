@@ -223,8 +223,6 @@ static void cmd_exec(char **pp_args, size_t num_args) {
     kprintf("kshell: entry at 0x%08x\n", g_exec_entry);
 
     taskmgr_new_user_task(p_dir, ((uint32_t)cmd_exec_entry));
-
-    heap_free(p_dir);
 }
 
 static void cmd_exec_entry(void) {
