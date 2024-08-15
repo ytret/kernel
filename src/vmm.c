@@ -52,6 +52,7 @@ void vmm_init(void) {
         if (framebuf_end > 0x100000000) {
             // We allow framebuf_end to be at 0x1_0000_000, but not past that
             // point.
+            panic_enter();
             kprintf("vmm: vmm_init: framebuffer end is beyond 4 GiBs at"
                     " 0x%08X_%08X\n",
                     ((uint32_t)(framebuf_end >> 32)), ((uint32_t)framebuf_end));
@@ -132,11 +133,13 @@ void vmm_unmap_kernel_page(uint32_t virt) {
 static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
                      uint32_t flags) {
     if (virt & 0xFFF) {
+        panic_enter();
         kprintf("vmm: map_page: virt is not page-aligned\n");
         panic("invalid argument");
     }
 
     if (phys & 0xFFF) {
+        panic_enter();
         kprintf("vmm: map_page: phys is not page-aligned\n");
         panic("invalid argument");
     }
@@ -147,6 +150,7 @@ static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
     uint32_t *p_tbl;
     if (p_dir[dir_idx] & TABLE_PRESENT) {
         if ((p_dir[dir_idx] & FLAG_CHECK_MASK) != flags) {
+            panic_enter();
             kprintf("vmm: map_page: page table for %P is present, but its"
                     " checked flags 0x%03x are different from 0x%03x\n",
                     virt, (p_dir[dir_idx] & FLAG_CHECK_MASK), flags);
@@ -168,6 +172,7 @@ static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
 
     if (p_tbl[tbl_idx] != 0) {
         // The table entry is not empty.
+        panic_enter();
         kprintf("vmm: map_page: table entry %u for %P is not empty\n", tbl_idx,
                 ((void *)virt));
         panic("unexpected behavior");
@@ -178,6 +183,7 @@ static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
 
 static void unmap_page(uint32_t *p_dir, uint32_t virt) {
     if (virt & 0xFFF) {
+        panic_enter();
         kprintf("vmm: unmap_page: virt is not page-aligned\n");
         panic("invalid argument");
     }
@@ -186,6 +192,7 @@ static void unmap_page(uint32_t *p_dir, uint32_t virt) {
     uint32_t tbl_idx = ADDR_TO_TBL_IDX(virt);
 
     if (!(p_dir[dir_idx] & TABLE_PRESENT)) {
+        panic_enter();
         kprintf("vmm: unmap_page: table %u for %P is not present\n", dir_idx,
                 ((void *)virt));
         panic("unexpected behavior");
@@ -194,6 +201,7 @@ static void unmap_page(uint32_t *p_dir, uint32_t virt) {
     uint32_t *p_tbl = ((uint32_t *)(p_dir[dir_idx] & ~0xFFF));
 
     if (!(p_tbl[tbl_idx] & PAGE_PRESENT)) {
+        panic_enter();
         kprintf("vmm: unmap_page: page %u for %P is not present\n", tbl_idx,
                 ((void *)virt));
         panic("unexpected behavior");

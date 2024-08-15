@@ -231,6 +231,7 @@ static void cmd_exec_entry(void) {
 
     taskmgr_go_usermode(g_exec_entry);
 
+    panic_enter();
     kprintf("kshell: call to taskmgr_go_usermode() has returned\n");
     panic("unexpected behavior");
 }

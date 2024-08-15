@@ -2,7 +2,6 @@
 #include "mbi.h"
 #include "mutex.h"
 #include "panic.h"
-#include "heap.h"
 #include "queue.h"
 #include "term.h"
 #include "vga.h"
@@ -15,6 +14,7 @@ typedef struct {
 } output_impl_t;
 
 static task_mutex_t g_mutex;
+static bool gb_panic_mode;
 static output_impl_t g_output_impl;
 
 static size_t g_max_row;
@@ -26,7 +26,7 @@ static size_t g_col;
 static void put_char(char ch);
 
 __attribute__((artificial)) static inline void assert_owns_mutex(void) {
-    if (!mutex_caller_owns(&g_mutex)) { panic_silent(); }
+    if (!mutex_caller_owns(&g_mutex) && !gb_panic_mode) { panic_silent(); }
 }
 
 __attribute__((artificial)) static inline void put_cursor_at(size_t row,
@@ -67,15 +67,19 @@ void term_init(void) {
 }
 
 void term_acquire_mutex(void) {
-    mutex_acquire(&g_mutex);
+    if (!gb_panic_mode) { mutex_acquire(&g_mutex); }
 }
 
 void term_release_mutex(void) {
-    mutex_release(&g_mutex);
+    if (!gb_panic_mode) { mutex_release(&g_mutex); }
 }
 
 bool term_owns_mutex(void) {
     return mutex_caller_owns(&g_mutex);
+}
+
+void term_enter_panic_mode(void) {
+    gb_panic_mode = true;
 }
 
 void term_clear(void) {

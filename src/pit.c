@@ -20,6 +20,7 @@ void pit_init(uint8_t period_ms) {
     // Calculate the reload value.
     uint32_t reload_u32 = (BASE_FREQ_KHZ * period_ms);
     if (reload_u32 > 65535) {
+        panic_enter();
         kprintf("PIT: reload value (%u) for period_ms = %u is too big\n",
                 reload_u32, period_ms);
         kprintf("It must be less than or equal to 65535\n");
@@ -43,6 +44,7 @@ void pit_enable_interrupt(void) {
 
 void pit_irq_handler(void) {
     if (!gb_initialized) {
+        panic_enter();
         kprintf("PIT: IRQ0 handler was called before initialization\n");
         panic("unexpected behavior");
     }

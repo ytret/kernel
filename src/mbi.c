@@ -70,6 +70,7 @@ mbi_mod_t const *mbi_find_mod(char const *p_name) {
         mbi_mod_t const *p_mod = mbi_nth_mod(idx);
 
         if (!p_mod) {
+            panic_enter();
             kprintf("mbi_nth_mod() returned NULL for index %u < number of"
                     " modules %u\n",
                     idx, mbi_num_mods());

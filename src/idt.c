@@ -88,6 +88,8 @@ void idt_init(void) {
 
 void idt_dummy_exception_handler(uint32_t exc_num, uint32_t err_code,
                                  isr_stack_frame_t *p_stack_frame) {
+    panic_enter();
+
     char const *p_name;
     switch (exc_num) {
     case 0:
@@ -167,6 +169,7 @@ void idt_dummy_exception_handler(uint32_t exc_num, uint32_t err_code,
 }
 
 void idt_dummy_handler(isr_stack_frame_t *p_stack_frame) {
+    panic_enter();
     kprintf("idt_dummy_handler()\n");
     print_stack_frame(p_stack_frame);
     panic("no handler defined");
@@ -174,6 +177,7 @@ void idt_dummy_handler(isr_stack_frame_t *p_stack_frame) {
 
 void idt_page_fault_handler(uint32_t addr, uint32_t err_code,
                             isr_stack_frame_t *p_stack_frame) {
+    panic_enter();
     kprintf("Page fault exception\n");
     kprintf("Virtual address: 0x%08X\n", addr);
     kprintf("Error code: %d\n", err_code);

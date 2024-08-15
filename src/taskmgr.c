@@ -82,6 +82,7 @@ taskmgr_init(__attribute__((noreturn)) void (*p_init_entry)(void)) {
 
     taskmgr_switch_tasks(NULL, &gp_running_task->tcb, gdt_get_tss());
 
+    panic_enter();
     kprintf("initial task entry has returned\n");
     panic("unexpected behavior");
 }
@@ -182,6 +183,7 @@ static task_t *new_task(uint32_t entry_point) {
 
 static void map_user_stack(uint32_t *p_dir) {
     if (USER_STACK_PAGES != 1) {
+        panic_enter();
         kprintf("taskmgr: map_user_stack: USER_STACK_PAGES != 1 is not"
                 " implemented\n");
         panic("unimplemented");

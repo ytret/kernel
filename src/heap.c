@@ -69,6 +69,7 @@ void *heap_alloc(size_t num_bytes) {
 
 void *heap_alloc_aligned(size_t num_bytes, size_t align) {
     if (num_bytes == 0) {
+        panic_enter();
         kprintf("heap_alloc_aligned: num_bytes is zero\n");
         panic("invalid argument");
     }
@@ -76,11 +77,13 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
     if (align < MIN_ALIGN) {
         align = MIN_ALIGN;
     } else if ((align & (align - 1)) != 0) {
+        panic_enter();
         kprintf("heap_alloc_aligned: align must be a power of two\n");
         panic("invalid argument");
     }
 
     if (!gp_start) {
+        panic_enter();
         kprintf("heap_alloc_aligned: heap is not initialized\n");
         panic("unexpected behavior");
     }
@@ -111,6 +114,7 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
                      num_padding);
 
     if (!p_found) {
+        panic_enter();
         kprintf("heap_alloc_aligned: no suitable chunk\n");
         panic("allocation failed");
     }
@@ -178,6 +182,7 @@ static uint32_t find_heap_start(void) {
 
 static void print_tag(tag_t const *p_tag) {
     if (!p_tag) {
+        panic_enter();
         kprintf("heap: print_tag: p_tag is NULL\n");
         panic("invalid argument");
     }
@@ -220,6 +225,7 @@ static void check_tags(void) {
     }
 
     if (b_panic) {
+        panic_enter();
         heap_dump_tags();
         panic("invalid heap state");
     }

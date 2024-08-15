@@ -16,6 +16,8 @@ void term_init(void);
 void term_acquire_mutex(void);
 void term_release_mutex(void);
 bool term_owns_mutex(void);
+void term_enter_panic_mode(void);
+
 void term_clear(void);
 void term_clear_rows(size_t start_row, size_t num_rows);
 

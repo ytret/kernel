@@ -66,6 +66,7 @@ static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr) {
         kprintf("Booted by a multiboot-compliant bootloader\n");
         kprintf("Multiboot information structure is at %P\n", mbi_addr);
     } else {
+        panic_enter();
         kprintf("Magic number: 0x%X, expected: 0x%X\n", magic_num,
                 MULTIBOOT_MAGIC_NUM);
         panic("booted by an unknown bootloader");
@@ -78,6 +79,7 @@ __attribute__((noreturn)) static void init_entry(void) {
 
     kshell();
 
+    panic_enter();
     kprintf("init_entry: kshell returned\n");
     panic("unexpected behavior");
 }

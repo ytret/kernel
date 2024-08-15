@@ -3,12 +3,16 @@
 #include "kprintf.h"
 #include "panic.h"
 #include "taskmgr.h"
+#include "term.h"
 
 static volatile bool b_in_panic;
 
-__attribute__((noreturn)) void panic(char const *p_msg) {
+void panic_enter(void) {
     taskmgr_lock_scheduler();
+    term_enter_panic_mode();
+}
 
+__attribute__((noreturn)) void panic(char const *p_msg) {
     if (b_in_panic) { panic_silent(); }
 
     b_in_panic = true;
@@ -18,7 +22,6 @@ __attribute__((noreturn)) void panic(char const *p_msg) {
 }
 
 __attribute__((noreturn)) void panic_silent(void) {
-    taskmgr_lock_scheduler();
-
+    panic_enter();
     for (;;) {}
 }

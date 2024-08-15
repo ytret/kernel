@@ -87,6 +87,7 @@ static void update_view(void) {
         break;
 
     default:
+        panic_enter();
         kprintf("vasview: update_view: invalid view state\n");
         panic("unexpected behavior");
     }
@@ -192,6 +193,7 @@ static uint32_t entry_at_cursor(void) {
     } break;
 
     default:
+        panic_enter();
         kprintf("vasview: entry_at_cursor: invalid view state\n");
         panic("unexpected behavior");
     }
@@ -209,6 +211,7 @@ static uint32_t idx_at_cursor(void) {
         break;
 
     default:
+        panic_enter();
         kprintf("vasview: idx_at_cursor: invalid view state\n");
         panic("unexpected behavior");
     }
@@ -264,6 +267,7 @@ static void move_cursor(int32_t inc_idx) {
         break;
 
     default:
+        panic_enter();
         kprintf("vasview: move_cursor: invalid view state\n");
         panic("unexpected behvaior");
     }
@@ -286,6 +290,7 @@ static void deeper_view(void) {
         break;
 
     default:
+        panic_enter();
         kprintf("vasview: shallower_view: invalid view state\n");
         panic("unexpected behavior");
     }
@@ -303,6 +308,7 @@ static void shallower_view(void) {
         break;
 
     default:
+        panic_enter();
         kprintf("vasview: shallower_view: invalid view state\n");
         panic("unexpected behavior");
     }

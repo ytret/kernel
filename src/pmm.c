@@ -31,6 +31,7 @@ void pmm_init(void) {
     mbi_t const *p_mbi = mbi_ptr();
 
     if (!(p_mbi->flags & MBI_FLAG_MMAP)) {
+        panic_enter();
         kprintf("PMM: memory map is not present in multiboot info struct\n");
         panic("memory map unavailable");
     }
@@ -56,6 +57,7 @@ void pmm_init(void) {
 
 void pmm_push_page(uint32_t addr) {
     if (addr & 0xFFF) {
+        panic_enter();
         kprintf("PMM: cannot push page: addr is not page-aligned\n");
         panic("unexpected behavior");
     }
@@ -71,6 +73,7 @@ void pmm_push_page(uint32_t addr) {
 uint32_t pmm_pop_page(void) {
     if (stack_is_empty(&g_page_stack)) {
         // Cannot pop the page - the stack is empty.
+        panic_enter();
         kprintf("PMM: cannot pop page: stack is empty\n");
         panic("no free memory");
     }

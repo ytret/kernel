@@ -49,6 +49,7 @@ static uint8_t read_code(void) {
 
 static void append_code(uint8_t sc) {
     if (g_code_buf_pos >= CODE_BUF_SIZE) {
+        panic_enter();
         kprintf("kbd: append_code: scancode buffer is full\n");
         panic("buffer overflow");
     }
