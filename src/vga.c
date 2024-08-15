@@ -63,7 +63,7 @@ void vga_put_cursor_at(size_t row, size_t col) {
 }
 
 void vga_clear_rows(size_t start_row, size_t num_rows) {
-    size_t start_offset = start_row * PITCH;
+    size_t start_offset = start_row * MAX_COLS;
     size_t num_words = num_rows * MAX_COLS;
     memset_word(&gp_vga_memory[start_offset], 0x0F << 8, num_words);
 }
