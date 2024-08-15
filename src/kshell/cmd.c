@@ -33,13 +33,12 @@
 #include "term.h"
 #include "vmm.h"
 
-#define NUM_CMDS 13
+#define NUM_CMDS 14
 #define MAX_ARGS 32
 
 static char const *const gp_cmd_names[NUM_CMDS] = {
     "clear",   "help",  "mbimap", "mbimod", "elfhdr",  "exec",   "tasks",
-    "vasview", "cpuid", "pci",    "ahci",   "execrep", "kbdlog",
-};
+    "vasview", "cpuid", "pci",    "ahci",   "execrep", "kbdlog", "heap"};
 
 static uint32_t g_exec_entry;
 
@@ -57,6 +56,7 @@ static void cmd_pci(char **pp_args, size_t num_args);
 static void cmd_ahci(char **pp_args, size_t num_args);
 static void cmd_execrep(char **pp_args, size_t num_args);
 static void cmd_kbdlog(char **pp_args, size_t num_args);
+static void cmd_heap(char **pp_args, size_t num_args);
 
 void kshell_cmd_parse(char const *p_cmd) {
     char *pp_args[MAX_ARGS];
@@ -73,7 +73,7 @@ void kshell_cmd_parse(char const *p_cmd) {
                                               size_t num_args) = {
         cmd_clear, cmd_help,    cmd_mbimap,  cmd_mbimod, cmd_elfhdr,
         cmd_exec,  cmd_tasks,   cmd_vasview, cmd_cpuid,  cmd_pci,
-        cmd_ahci,  cmd_execrep, cmd_kbdlog,
+        cmd_ahci,  cmd_execrep, cmd_kbdlog,  cmd_heap,
     };
 
     for (size_t idx = 0; idx < NUM_CMDS; idx++) {
@@ -436,4 +436,19 @@ static void cmd_kbdlog(char **pp_args, size_t num_args) {
     }
 
     kbdlog((size_t)num_events);
+}
+
+static void cmd_heap(char **pp_args, size_t num_args) {
+    if (num_args != 2) {
+        kprintf("Usage: %s <cmd>\n", pp_args[0]);
+        kprintf("cmd must be one of: dump\n");
+        return;
+    }
+
+    if (string_equals(pp_args[1], "dump")) {
+        heap_dump_tags();
+    } else {
+        kprintf("%s: unknown command: '%s'\n", pp_args[0], pp_args[1]);
+        return;
+    }
 }
