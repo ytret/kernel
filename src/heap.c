@@ -30,7 +30,6 @@ extern uint32_t ld_vmm_kernel_end;
 
 static uint32_t find_heap_start(void);
 
-static void fill_tag(tag_t *p_tag, bool b_used, size_t size, tag_t *p_next);
 static void print_tag(tag_t const *p_tag);
 static void check_tags(bool b_after_alloc);
 
@@ -38,7 +37,10 @@ void heap_init(void) {
     uint32_t heap_start = find_heap_start();
 
     gp_start = ((tag_t *)heap_start);
-    fill_tag(gp_start, false, HEAP_SIZE - TAG_SIZE, NULL);
+    __builtin_memset(gp_start, 0, TAG_SIZE);
+    gp_start->b_used = false;
+    gp_start->size = HEAP_SIZE - TAG_SIZE;
+    gp_start->p_next = NULL;
 
     kprintf("heap: start at %P, size is %u bytes\n", gp_start, HEAP_SIZE);
 }
@@ -148,17 +150,6 @@ static uint32_t find_heap_start(void) {
     uint32_t heap_start =
         (last_used_addr + ((4 * 1024 * 1024) - 1)) & ~((4 * 1024 * 1024) - 1);
     return heap_start;
-}
-
-static void fill_tag(tag_t *p_tag, bool b_used, size_t size, tag_t *p_next) {
-    if (!p_tag) {
-        kprintf("fill_tag: p_tag is NULL\n");
-        panic("invalid argument");
-    }
-
-    p_tag->size = size;
-    p_tag->b_used = b_used;
-    p_tag->p_next = p_next;
 }
 
 static void print_tag(tag_t const *p_tag) {
