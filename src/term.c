@@ -63,6 +63,7 @@ void term_init(void) {
     }
 
     mutex_init(&g_mutex);
+    term_clear();
 }
 
 void term_acquire_mutex(void) {

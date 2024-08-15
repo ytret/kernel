@@ -25,7 +25,6 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     mbi_init(mbi_addr);
 
     term_init();
-    term_clear();
     kprintf("Hello, world!\n");
 
     if (MULTIBOOT_MAGIC_NUM == magic_num) {
