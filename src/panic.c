@@ -10,6 +10,9 @@ static volatile bool b_in_panic;
 void panic_enter(void) {
     taskmgr_lock_scheduler();
     term_enter_panic_mode();
+
+    term_print_str("\n");
+    kprintf("==== KERNEL PANIC ====\n");
 }
 
 __attribute__((noreturn)) void panic(char const *p_msg) {
