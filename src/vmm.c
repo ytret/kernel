@@ -6,7 +6,6 @@
 #include "kprintf.h"
 #include "mbi.h"
 #include "panic.h"
-#include "pmm.h"
 #include "vmm.h"
 
 #define ADDR_TO_DIR_IDX(addr) (((addr) >> 22) & 0x3FF)
