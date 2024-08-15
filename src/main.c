@@ -19,22 +19,16 @@
 
 #define MULTIBOOT_MAGIC_NUM 0x2BADB002
 
+static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr);
 static void init_entry(void) __attribute__((noreturn));
 
 void main(uint32_t magic_num, uint32_t mbi_addr) {
     mbi_init(mbi_addr);
 
     term_init();
-    kprintf("Hello, world!\n");
 
-    if (MULTIBOOT_MAGIC_NUM == magic_num) {
-        kprintf("Booted by a multiboot-compliant bootloader\n");
-        kprintf("Multiboot information structure is at %P\n", mbi_addr);
-    } else {
-        kprintf("Magic number: 0x%X, expected: 0x%X\n", magic_num,
-                MULTIBOOT_MAGIC_NUM);
-        panic("booted by an unknown bootloader");
-    }
+    kprintf("Hello, world!\n");
+    check_bootloader(magic_num, mbi_addr);
 
     gdt_init();
     idt_init();
@@ -65,6 +59,17 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     taskmgr_init(init_entry);
 
     kprintf("End of main\n");
+}
+
+static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr) {
+    if (MULTIBOOT_MAGIC_NUM == magic_num) {
+        kprintf("Booted by a multiboot-compliant bootloader\n");
+        kprintf("Multiboot information structure is at %P\n", mbi_addr);
+    } else {
+        kprintf("Magic number: 0x%X, expected: 0x%X\n", magic_num,
+                MULTIBOOT_MAGIC_NUM);
+        panic("booted by an unknown bootloader");
+    }
 }
 
 __attribute__((noreturn)) static void init_entry(void) {
