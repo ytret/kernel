@@ -2,13 +2,8 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdint.h>
 
 #include "kbd.h"
-
-typedef struct {
-    void (*p_event_handler)(uint8_t key, bool b_released);
-} term_kbd_handler_t;
 
 void term_init(void);
 
