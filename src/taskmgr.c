@@ -4,6 +4,7 @@
 #include "gdt.h"
 #include "heap.h"
 #include "kprintf.h"
+#include "list.h"
 #include "panic.h"
 #include "pit.h"
 #include "pmm.h"
@@ -154,7 +155,11 @@ void taskmgr_sleep_ms(uint32_t duration_ms) {
     }
 
     gp_running_task->sleep_until_counter_ms = pit_counter_ms() + duration_ms;
+
+    taskmgr_lock_scheduler();
     taskmgr_block_running_task(&g_sleeping_tasks);
+    taskmgr_unlock_scheduler();
+
     taskmgr_schedule();
 }
 
@@ -177,14 +182,19 @@ static void wake_up_sleeping_tasks(void) {
     list_t sleep_list_copy = g_sleeping_tasks;
     list_clear(&g_sleeping_tasks);
 
-    for (list_node_t *p_node = sleep_list_copy.p_first_node; p_node != NULL;
-         p_node = p_node->p_next) {
+    list_node_t *p_node = sleep_list_copy.p_first_node;
+    while (p_node != NULL) {
+        // Save the next node pointer because list_append() changes it below.
+        list_node_t *p_next = p_node->p_next;
+
         task_t *p_task = LIST_NODE_TO_STRUCT(p_node, task_t, list_node);
         if (p_task->sleep_until_counter_ms <= counter_ms) {
             taskmgr_unblock(p_task);
         } else {
             list_append(&g_sleeping_tasks, &p_task->list_node);
         }
+
+        p_node = p_next;
     }
 }
 
