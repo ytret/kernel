@@ -21,7 +21,11 @@ typedef struct task {
     bool b_is_blocked;
     uint64_t sleep_until_counter_ms;
 
+    // Node for the runnable tasks list, mutex waiting list, etc.
     list_node_t list_node;
+
+    // Node for the list of all tasks.
+    list_node_t all_tasks_list_node;
 } task_t;
 
 void taskmgr_init(__attribute__((noreturn)) void (*p_init_entry)(void));
@@ -31,7 +35,7 @@ void taskmgr_lock_scheduler(void);
 void taskmgr_unlock_scheduler(void);
 
 task_t *taskmgr_running_task(void);
-list_t *taskmgr_runnable_tasks(void);
+list_t *taskmgr_all_tasks_list(void);
 void taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry);
 
 void taskmgr_go_usermode(uint32_t entry);

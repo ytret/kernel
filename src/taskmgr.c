@@ -34,6 +34,7 @@ static int g_scheduler_lock = 1;
 static task_t *gp_running_task;
 static list_t g_runnable_tasks;
 static list_t g_sleeping_tasks;
+static list_t g_all_tasks;
 
 // ID for the next new task.
 static uint32_t g_new_task_id;
@@ -123,8 +124,8 @@ task_t *taskmgr_running_task(void) {
     return gp_running_task;
 }
 
-list_t *taskmgr_runnable_tasks(void) {
-    return &g_runnable_tasks;
+list_t *taskmgr_all_tasks_list(void) {
+    return &g_all_tasks;
 }
 
 void taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry) {
@@ -211,6 +212,8 @@ static task_t *new_task(uint32_t entry_point) {
     stack_push(&p_task->kernel_stack, 5);           // ebx
     stack_push(&p_task->kernel_stack, 6);           // esi
     stack_push(&p_task->kernel_stack, 7);           // edi
+
+    list_append(&g_all_tasks, &p_task->all_tasks_list_node);
 
     return p_task;
 }
