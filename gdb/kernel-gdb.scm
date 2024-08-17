@@ -64,20 +64,28 @@
 (define (task/print-task task)
   (format #t "id ~d\n" (value->integer (value-field task "id"))))
 
-(define (cmd/print-all-tasks self args from-tty)
+(define (cmd/y self args from-tty)
+  (execute "help y" #:from-tty #t))
+
+(define (cmd/y/tasks self args from-tty)
+  (execute "help y tasks" #:from-tty #t))
+
+(define (cmd/y/tasks/all self args from-tty)
   (let ((tasks (task/listify-all-tasks)))
     (if (equal? 0 (length tasks))
       (display "No tasks.\n")
       (map task/print-task tasks))))
 
 (register-command! (make-command "y"
+                                 #:invoke cmd/y
                                  #:prefix? #t
                                  #:doc "Custom kernel-related commands"))
 (register-command! (make-command "y tasks"
+                                 #:invoke cmd/y/tasks
                                  #:prefix? #t
                                  #:doc "Task enumeration commands"))
 (register-command!
   (make-command "y tasks all"
-                #:invoke cmd/print-all-tasks
+                #:invoke cmd/y/tasks/all
                 #:command-class COMMAND_DATA
                 #:doc "Print all tasks regardless of their state."))
