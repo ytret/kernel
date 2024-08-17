@@ -5,6 +5,7 @@
 #include "kprintf.h"
 #include "panic.h"
 #include "syscall.h"
+#include "taskmgr.h"
 
 #define NUM_ENTRIES     256
 #define DESC_SIZE_BYTES 6
@@ -88,6 +89,8 @@ void idt_init(void) {
 
 void idt_dummy_exception_handler(uint32_t exc_num, uint32_t err_code,
                                  isr_stack_frame_t *p_stack_frame) {
+    task_t *p_running_task = taskmgr_running_task();
+
     panic_enter();
 
     char const *p_name;
@@ -163,6 +166,11 @@ void idt_dummy_exception_handler(uint32_t exc_num, uint32_t err_code,
     }
 
     kprintf("Exception: %d (%s)\n", exc_num, p_name);
+    if (p_running_task) {
+        kprintf("Running task ID: %u\n", p_running_task->id);
+    } else {
+        kprintf("Running task ID: none\n");
+    }
     kprintf("Error code: %d\n", err_code);
     print_stack_frame(p_stack_frame);
     panic("no handler defined");
@@ -177,8 +185,15 @@ void idt_dummy_handler(isr_stack_frame_t *p_stack_frame) {
 
 void idt_page_fault_handler(uint32_t addr, uint32_t err_code,
                             isr_stack_frame_t *p_stack_frame) {
+    task_t *p_running_task = taskmgr_running_task();
+
     panic_enter();
     kprintf("Page fault exception\n");
+    if (p_running_task) {
+        kprintf("Running task ID: %u\n", p_running_task->id);
+    } else {
+        kprintf("Running task ID: none\n");
+    }
     kprintf("Virtual address: 0x%08X\n", addr);
     kprintf("Error code: %d\n", err_code);
     print_stack_frame(p_stack_frame);
