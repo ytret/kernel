@@ -110,14 +110,14 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
         }
     }
 
-    __builtin_memset((void *)((uint32_t)p_found + TAG_SIZE), PADDING_BYTE,
-                     num_padding);
-
     if (!p_found) {
         panic_enter();
         kprintf("heap_alloc_aligned: no suitable chunk\n");
         panic("allocation failed");
     }
+
+    __builtin_memset((void *)((uint32_t)p_found + TAG_SIZE), PADDING_BYTE,
+                     num_padding);
 
     // Divide the chunk if appropriate.
     if (p_found->size - num_bytes - num_padding > TAG_SIZE + CHUNK_SIZE_MIN) {
