@@ -75,3 +75,10 @@ set_target_properties(kernel PROPERTIES
 ## Userspace ##
 ###############
 add_subdirectory(user)
+
+
+###################################
+## Copy files to build directory ##
+###################################
+configure_file(gdb/.gdbinit ${CMAKE_BINARY_DIR}/.gdbinit)
+configure_file(gdb/kernel-gdb.scm ${CMAKE_BINARY_DIR}/kernel-gdb.scm)
