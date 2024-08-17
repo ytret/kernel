@@ -21,6 +21,14 @@ void list_init(list_t *p_list, list_node_t *p_init_node) {
 }
 
 /*
+ * Clears the list without deallocating its nodes.
+ */
+void list_clear(list_t *p_list) {
+    p_list->p_first_node = NULL;
+    p_list->p_last_node = NULL;
+}
+
+/*
  * Appends a node to the end of the list.
  */
 void list_append(list_t *p_list, list_node_t *p_node) {

@@ -23,6 +23,7 @@ typedef struct {
 } list_t;
 
 void list_init(list_t *p_list, list_node_t *p_init_node);
+void list_clear(list_t *p_list);
 void list_append(list_t *p_list, list_node_t *p_node);
 list_node_t *list_pop_first(list_t *p_list);
 bool list_is_empty(list_t *p_list);
