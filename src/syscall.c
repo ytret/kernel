@@ -1,14 +1,21 @@
 #include "kprintf.h"
 #include "syscall.h"
+#include "taskmgr.h"
+
+static void syscall_sleep_ms(uint32_t duration_ms);
 
 void syscall_dispatch(isr_regs_t *p_regs) {
-    kprintf("Syscall\n"
-            "p_regs->eax = %u\n"
-            "p_regs->ecx = %u\n"
-            "p_regs->edx = %u\n"
-            "p_regs->ebx = %u\n"
-            "p_regs->esi = %u\n"
-            "p_regs->edi = %u\n",
-            p_regs->eax, p_regs->ecx, p_regs->edx, p_regs->ebx, p_regs->esi,
-            p_regs->edi);
+    uint32_t num = p_regs->eax;
+    uint32_t arg1 = p_regs->ecx;
+
+    if (num == SYSCALL_SLEEP_MS) {
+        syscall_sleep_ms(arg1);
+    } else {
+        kprintf("syscall: unknown num %u\n", num);
+    }
+}
+
+static void syscall_sleep_ms(uint32_t duration_ms) {
+    kprintf("syscall: sleep %u ms\n", duration_ms);
+    taskmgr_sleep_ms(duration_ms);
 }
