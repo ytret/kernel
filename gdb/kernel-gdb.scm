@@ -76,6 +76,14 @@
       (display "No tasks.\n")
       (map task/print-task tasks))))
 
+(define (cmd/y/tasks/running self args from-tty)
+  (let ((running-task
+          (let ((ptr (symbol-value (car (lookup-symbol "gp_running_task")))))
+            (if (equal? ptr null-ptr) #f (value-dereference ptr)))))
+    (if running-task
+      (task/print-task running-task)
+      (display "No running task.\n"))))
+
 (register-command! (make-command "y"
                                  #:invoke cmd/y
                                  #:prefix? #t
@@ -89,3 +97,8 @@
                 #:invoke cmd/y/tasks/all
                 #:command-class COMMAND_DATA
                 #:doc "Print all tasks regardless of their state."))
+(register-command!
+  (make-command "y tasks running"
+                #:invoke cmd/y/tasks/running
+                #:command-class COMMAND_DATA
+                #:doc "Print the running task."))
