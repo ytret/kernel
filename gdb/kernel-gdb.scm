@@ -50,18 +50,34 @@
     (lambda (node) (list/node->struct node type/task "list_node"))
     (task/listify-runnable-task-nodes)))
 
+(define (task/listify-all-tasks)
+  (map
+    (lambda (node) (list/node->struct node type/task "all_tasks_list_node"))
+    (list/listify-nodes
+      (let*
+        ((all-tasks-list (symbol-value (car (lookup-symbol "g_all_tasks"))))
+         (first-node-ptr (value-field all-tasks-list "p_first_node")))
+        (if (equal? first-node-ptr null-ptr)
+          #f
+          (value-dereference first-node-ptr))))))
+
 (define (task/print-task task)
   (format #t "id ~d\n" (value->integer (value-field task "id"))))
 
-(define (cmd/print-tasks self args from-tty)
-  (let ((tasks (task/listify-runnable-tasks)))
+(define (cmd/print-all-tasks self args from-tty)
+  (let ((tasks (task/listify-all-tasks)))
     (if (equal? 0 (length tasks))
       (display "No tasks.\n")
       (map task/print-task tasks))))
 
-(register-command! (make-command "y" #:prefix? #t))
+(register-command! (make-command "y"
+                                 #:prefix? #t
+                                 #:doc "Custom kernel-related commands"))
+(register-command! (make-command "y tasks"
+                                 #:prefix? #t
+                                 #:doc "Task enumeration commands"))
 (register-command!
-  (make-command "y tasks"
-                #:invoke cmd/print-tasks
+  (make-command "y tasks all"
+                #:invoke cmd/print-all-tasks
                 #:command-class COMMAND_DATA
-                #:doc "Print tasks."))
+                #:doc "Print all tasks regardless of their state."))
