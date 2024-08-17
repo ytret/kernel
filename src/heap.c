@@ -96,7 +96,7 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
     // Traverse the tag list and find a suitable chunk.
     tag_t *p_found = NULL;
     uint32_t chunk_aligned;
-    uint32_t num_padding;
+    uint32_t num_padding = 0;
     for (tag_t *p_tag = gp_start; p_tag != NULL; p_tag = p_tag->p_next) {
         if (p_tag->b_used) { continue; }
 
