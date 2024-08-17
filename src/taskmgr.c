@@ -154,6 +154,7 @@ void taskmgr_sleep(uint32_t duration_ms) {
 
     gp_running_task->sleep_until_counter_ms = pit_counter_ms() + duration_ms;
     taskmgr_block_running_task(&g_sleeping_tasks);
+    taskmgr_schedule();
 }
 
 void taskmgr_block_running_task(list_t *p_task_list) {
