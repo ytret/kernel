@@ -206,6 +206,6 @@ static void map_user_stack(uint32_t *p_dir) {
 __attribute__((noreturn)) static void idle_task(void) {
     __asm__ volatile("sti");
     for (;;) {
-        __asm__ volatile("nop");
+        __asm__ volatile("hlt");
     }
 }
