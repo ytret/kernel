@@ -28,6 +28,12 @@
                 (if next-node (list/listify-nodes next-node) '())))
       '()))
 
+(define (list/length list-val)
+  (let ((first-node-ptr (value-field list-val "p_first_node")))
+    (if (equal? first-node-ptr null-ptr)
+      0
+      (length (list/listify-nodes (value-dereference first-node-ptr))))))
+
 (define* (task/listify-tasks-list
            symbol-name
            #:optional (node-name-in-struct "list_node"))
@@ -85,14 +91,29 @@
       (display "No sleeping tasks.\n")
       (map task/print-task tasks))))
 
+(define (cmd/y/list self args from-tty)
+  (execute "help y list" #:from-tty #t))
+
+(define (cmd/y/list/length self args from-tty)
+  (let* ((var-name args)
+         (symbol-f (lookup-symbol var-name)))
+    (if symbol-f
+      (let ((symbol (car symbol-f)))
+        (if (equal? type/list (symbol-type symbol))
+          (format #t "~d\n" (list/length (symbol-value symbol)))
+          (format #t "Symbol ~s does not have type ~s.\n"
+                  (symbol-name symbol) (type-name type/list))))
+      (format #t "Could not find symbol ~s.\n" var-name))))
+
 (register-command! (make-command "y"
                                  #:invoke cmd/y
                                  #:prefix? #t
-                                 #:doc "Custom kernel-related commands"))
+                                 #:doc "Custom kernel-related commands."))
+
 (register-command! (make-command "y tasks"
                                  #:invoke cmd/y/tasks
                                  #:prefix? #t
-                                 #:doc "Task enumeration commands"))
+                                 #:doc "Task enumeration commands."))
 (register-command!
   (make-command "y tasks all"
                 #:invoke cmd/y/tasks/all
@@ -113,3 +134,13 @@
                 #:invoke cmd/y/tasks/sleeping
                 #:command-class COMMAND_DATA
                 #:doc "Print sleeping tasks."))
+
+(register-command! (make-command "y list"
+                                 #:invoke cmd/y/list
+                                 #:prefix? #t
+                                 #:doc "List enumeration commands."))
+(register-command!
+  (make-command "y list length"
+                #:invoke cmd/y/list/length
+                #:command-class COMMAND_DATA
+                #:doc "Print the number of nodes in a list."))
