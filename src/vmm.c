@@ -37,8 +37,8 @@ void vmm_init(void) {
     __builtin_memset(gp_kvas_dir, 0, 4096);
     kprintf("vmm: kernel page dir is at %P\n", gp_kvas_dir);
 
-    // Identity map everything from 0 to heap end.
-    uint32_t map_start = 0;
+    // Identity map everything from the first page to heap end.
+    uint32_t map_start = 0x1000;
     uint32_t map_end = (heap_end() + 0xFFF) & ~0xFFF;
     for (uint32_t page = map_start; page < map_end; page += 4096) {
         vmm_map_kernel_page(page, page);
