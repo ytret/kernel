@@ -57,7 +57,16 @@
   (task/listify-tasks-list "g_sleeping_tasks"))
 
 (define (task/print-task task)
-  (format #t "id ~d\n" (value->integer (value-field task "id"))))
+  (let* ((kernel-stack (value-field task "kernel_stack"))
+         (esp0-max (value->integer (value-field kernel-stack "p_top_max")))
+         (esp0-top (value->integer (value-field kernel-stack "p_top")))
+         (esp0-bot (value->integer (value-field kernel-stack "p_bottom"))))
+    (format #t "id ~3d  esp0: (max 0x~8,'0x, top 0x~8,'0x, bot 0x~8,'0x, used ~d)\n"
+            (value->integer (value-field task "id"))
+            esp0-max
+            esp0-top
+            esp0-bot
+            (- esp0-max esp0-top))))
 
 (define (cmd/y self args from-tty)
   (execute "help y" #:from-tty #t))
