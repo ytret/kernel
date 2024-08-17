@@ -15,6 +15,7 @@
 #define BASE_FREQ_KHZ 1193
 
 static volatile bool gb_initialized;
+static _Atomic uint64_t g_counter_ms;
 
 void pit_init(uint8_t period_ms) {
     // Calculate the reload value.
@@ -42,6 +43,10 @@ void pit_enable_interrupt(void) {
     pic_set_mask(PIT_IRQ, false);
 }
 
+uint64_t pit_counter_ms(void) {
+    return g_counter_ms;
+}
+
 void pit_irq_handler(void) {
     if (!gb_initialized) {
         panic_enter();
@@ -51,5 +56,6 @@ void pit_irq_handler(void) {
 
     pic_send_eoi(0);
 
+    g_counter_ms += PIT_PERIOD_MS;
     taskmgr_schedule();
 }
