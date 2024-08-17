@@ -35,6 +35,6 @@ list_t *taskmgr_runnable_tasks(void);
 void taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry);
 
 void taskmgr_go_usermode(uint32_t entry);
-void taskmgr_sleep(uint32_t duration_ms);
+void taskmgr_sleep_ms(uint32_t duration_ms);
 void taskmgr_block_running_task(list_t *p_task_list);
 void taskmgr_unblock(task_t *p_task);

@@ -145,7 +145,7 @@ void taskmgr_go_usermode(uint32_t entry) {
     taskmgr_go_usermode_impl(0x18, 0x20, 0x28, entry, &gen_regs);
 }
 
-void taskmgr_sleep(uint32_t duration_ms) {
+void taskmgr_sleep_ms(uint32_t duration_ms) {
     if (!gp_running_task) {
         panic_enter();
         kprintf("taskmgr_sleep: no running task\n");
