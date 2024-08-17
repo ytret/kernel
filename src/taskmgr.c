@@ -5,6 +5,7 @@
 #include "heap.h"
 #include "kprintf.h"
 #include "panic.h"
+#include "pit.h"
 #include "pmm.h"
 #include "stack.h"
 #include "taskmgr.h"
@@ -30,11 +31,14 @@ typedef struct __attribute__((packed)) {
 // after the scheduler is initialized.
 static int g_scheduler_lock = 1;
 
-static list_t g_runnable_tasks;
 static task_t *gp_running_task;
+static list_t g_runnable_tasks;
+static list_t g_sleeping_tasks;
 
 // ID for the next new task.
 static uint32_t g_new_task_id;
+
+static void wake_up_sleeping_tasks(void);
 
 static task_t *new_task(uint32_t entry_point);
 static void map_user_stack(uint32_t *p_dir);
@@ -90,6 +94,8 @@ taskmgr_init(__attribute__((noreturn)) void (*p_init_entry)(void)) {
 void taskmgr_schedule(void) {
     if (g_scheduler_lock > 0) { return; }
 
+    wake_up_sleeping_tasks();
+
     list_node_t *p_next_node = list_pop_first(&g_runnable_tasks);
     if (!p_next_node) { return; }
     task_t *p_next_task = LIST_NODE_TO_STRUCT(p_next_node, task_t, list_node);
@@ -139,10 +145,21 @@ void taskmgr_go_usermode(uint32_t entry) {
     taskmgr_go_usermode_impl(0x18, 0x20, 0x28, entry, &gen_regs);
 }
 
-void taskmgr_block_running_task(list_t *p_wait_list) {
+void taskmgr_sleep(uint32_t duration_ms) {
+    if (!gp_running_task) {
+        panic_enter();
+        kprintf("taskmgr_sleep: no running task\n");
+        panic("taskmgr_sleep failed");
+    }
+
+    gp_running_task->sleep_until_counter_ms = pit_counter_ms() + duration_ms;
+    taskmgr_block_running_task(&g_sleeping_tasks);
+}
+
+void taskmgr_block_running_task(list_t *p_task_list) {
     taskmgr_lock_scheduler();
     gp_running_task->b_is_blocked = true;
-    list_append(p_wait_list, &gp_running_task->list_node);
+    list_append(p_task_list, &gp_running_task->list_node);
     taskmgr_unlock_scheduler();
 }
 
@@ -151,6 +168,22 @@ void taskmgr_unblock(task_t *p_task) {
     p_task->b_is_blocked = false;
     list_append(&g_runnable_tasks, &p_task->list_node);
     taskmgr_unlock_scheduler();
+}
+
+static void wake_up_sleeping_tasks(void) {
+    uint64_t counter_ms = pit_counter_ms();
+    list_t sleep_list_copy = g_sleeping_tasks;
+    list_clear(&g_sleeping_tasks);
+
+    for (list_node_t *p_node = sleep_list_copy.p_first_node; p_node != NULL;
+         p_node = p_node->p_next) {
+        task_t *p_task = LIST_NODE_TO_STRUCT(p_node, task_t, list_node);
+        if (p_task->sleep_until_counter_ms <= counter_ms) {
+            taskmgr_unblock(p_task);
+        } else {
+            list_append(&g_sleeping_tasks, &p_task->list_node);
+        }
+    }
 }
 
 static task_t *new_task(uint32_t entry_point) {

@@ -17,7 +17,9 @@ typedef struct task {
     uint32_t id;
     stack_t kernel_stack;
     tcb_t tcb;
+
     bool b_is_blocked;
+    uint64_t sleep_until_counter_ms;
 
     list_node_t list_node;
 } task_t;
@@ -33,5 +35,6 @@ list_t *taskmgr_runnable_tasks(void);
 void taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry);
 
 void taskmgr_go_usermode(uint32_t entry);
-void taskmgr_block_running_task(list_t *p_wait_list);
+void taskmgr_sleep(uint32_t duration_ms);
+void taskmgr_block_running_task(list_t *p_task_list);
 void taskmgr_unblock(task_t *p_task);
