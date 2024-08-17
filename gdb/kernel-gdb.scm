@@ -28,28 +28,6 @@
                 (if next-node (list/listify-nodes next-node) '())))
       '()))
 
-(define (task/get-running-task)
-  (let ((ptr (car (lookup-symbol "gp_running_task"))))
-    (if ptr (value-dereference (symbol-value ptr)) #f)))
-
-(define (task/get-runnable-tasks)
-  (symbol-value (car (lookup-symbol "g_runnable_tasks"))))
-
-(define (task/get-first-runnable-task-node)
-  (let ((first-node-ptr
-          (value-field (task/get-runnable-tasks) "p_first_node")))
-    (if (equal? first-node-ptr (make-value 0))
-      #f
-      (value-dereference first-node-ptr))))
-
-(define (task/listify-runnable-task-nodes)
-  (list/listify-nodes (task/get-first-runnable-task-node)))
-
-(define (task/listify-runnable-tasks)
-  (map
-    (lambda (node) (list/node->struct node type/task "list_node"))
-    (task/listify-runnable-task-nodes)))
-
 (define (task/listify-all-tasks)
   (map
     (lambda (node) (list/node->struct node type/task "all_tasks_list_node"))
@@ -57,6 +35,17 @@
       (let*
         ((all-tasks-list (symbol-value (car (lookup-symbol "g_all_tasks"))))
          (first-node-ptr (value-field all-tasks-list "p_first_node")))
+        (if (equal? first-node-ptr null-ptr)
+          #f
+          (value-dereference first-node-ptr))))))
+
+(define (task/listify-runnable-tasks)
+  (map
+    (lambda (node) (list/node->struct node type/task "list_node"))
+    (list/listify-nodes
+      (let*
+        ((runnable-list (symbol-value (car (lookup-symbol "g_runnable_tasks"))))
+         (first-node-ptr (value-field runnable-list "p_first_node")))
         (if (equal? first-node-ptr null-ptr)
           #f
           (value-dereference first-node-ptr))))))
@@ -84,6 +73,12 @@
       (task/print-task running-task)
       (display "No running task.\n"))))
 
+(define (cmd/y/tasks/runnable self args from-tty)
+  (let ((tasks (task/listify-runnable-tasks)))
+    (if (equal? 0 (length tasks))
+      (display "No runnable tasks.\n")
+      (map task/print-task tasks))))
+
 (register-command! (make-command "y"
                                  #:invoke cmd/y
                                  #:prefix? #t
@@ -102,3 +97,8 @@
                 #:invoke cmd/y/tasks/running
                 #:command-class COMMAND_DATA
                 #:doc "Print the running task."))
+(register-command!
+  (make-command "y tasks runnable"
+                #:invoke cmd/y/tasks/runnable
+                #:command-class COMMAND_DATA
+                #:doc "Print runnable tasks."))
