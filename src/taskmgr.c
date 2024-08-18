@@ -91,6 +91,7 @@ taskmgr_init(__attribute__((noreturn)) void (*p_init_entry)(void)) {
     // Create the deleter task. It is switched to when the running task needs to
     // be terminated.
     gp_deleter_task = new_task((uint32_t)deleter_task);
+    gp_deleter_task->b_is_blocked = true;
 
     // Create the initial task.
     gp_init_task = new_task((uint32_t)p_init_entry);
@@ -118,9 +119,20 @@ void taskmgr_schedule(void) {
         p_caller_task->num_owned_mutexes == 0) {
         p_next_task = gp_deleter_task;
         gp_task_to_delete = p_caller_task;
+
+        // Deleter task must unlock once it's done.
+        taskmgr_lock_scheduler();
     } else {
         list_node_t *p_next_node = list_pop_first(&g_runnable_tasks);
-        if (!p_next_node) { return; }
+        if (!p_next_node) {
+            if (p_caller_task->b_is_blocked) {
+                panic_enter();
+                kprintf("No tasks to preempt the blocked running task.\n");
+                panic("scheduling failed");
+            } else {
+                return;
+            }
+        }
         p_next_task = LIST_NODE_TO_STRUCT(p_next_node, task_t, list_node);
 
         if (!p_caller_task->b_is_blocked && !p_caller_task->b_is_sleeping) {
@@ -295,18 +307,10 @@ __attribute__((noreturn)) static void idle_task(void) {
 
 __attribute__((noreturn)) static void deleter_task(void) {
     for (;;) {
-        taskmgr_lock_scheduler();
         ASSERT(gp_task_to_delete);
         ASSERT(gp_task_to_delete->b_is_terminating);
         ASSERT(!gp_task_to_delete->b_is_blocked);
         ASSERT(gp_task_to_delete->num_owned_mutexes == 0);
-
-        if (gp_task_to_delete == gp_running_task) {
-            panic_enter();
-            kprintf("Deleter task (ID %u) cannot delete itself.\n",
-                    gp_running_task->id);
-            panic("invalid argument");
-        }
 
         heap_free(gp_task_to_delete->kernel_stack.p_bottom);
 
