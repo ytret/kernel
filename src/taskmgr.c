@@ -109,7 +109,7 @@ void taskmgr_schedule(void) {
 
     task_t *p_caller_task = gp_running_task;
     task_t *p_next_task;
-    if (p_caller_task->b_is_terminating &&
+    if (p_caller_task->b_is_terminating && !p_caller_task->b_is_blocked &&
         p_caller_task->num_owned_mutexes == 0) {
         p_next_task = gp_deleter_task;
         gp_task_to_delete = p_caller_task;
@@ -117,11 +117,12 @@ void taskmgr_schedule(void) {
         list_node_t *p_next_node = list_pop_first(&g_runnable_tasks);
         if (!p_next_node) { return; }
         p_next_task = LIST_NODE_TO_STRUCT(p_next_node, task_t, list_node);
+
+        if (!p_caller_task->b_is_blocked && !p_caller_task->b_is_sleeping) {
+            list_append(&g_runnable_tasks, &p_caller_task->list_node);
+        }
     }
 
-    if (!p_caller_task->b_is_blocked) {
-        list_append(&g_runnable_tasks, &p_caller_task->list_node);
-    }
     gp_running_task = p_next_task;
     taskmgr_switch_tasks(&p_caller_task->tcb, &p_next_task->tcb, gdt_get_tss());
 }
@@ -171,11 +172,15 @@ void taskmgr_sleep_ms(uint32_t duration_ms) {
         panic("taskmgr_sleep failed");
     }
 
-    gp_running_task->sleep_until_counter_ms = pit_counter_ms() + duration_ms;
+    if (!gp_running_task->b_is_terminating) {
+        gp_running_task->sleep_until_counter_ms =
+            pit_counter_ms() + duration_ms;
 
-    taskmgr_lock_scheduler();
-    taskmgr_block_running_task(&g_sleeping_tasks);
-    taskmgr_unlock_scheduler();
+        taskmgr_lock_scheduler();
+        gp_running_task->b_is_sleeping = true;
+        list_append(&g_sleeping_tasks, &gp_running_task->list_node);
+        taskmgr_unlock_scheduler();
+    }
 
     taskmgr_schedule();
 }

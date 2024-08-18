@@ -18,8 +18,8 @@ typedef struct task {
     stack_t kernel_stack;
     tcb_t tcb;
 
-    // Task is blocked by a mutex, semaphore or is sleeping, and cannot be run.
     bool b_is_blocked;
+    bool b_is_sleeping;
 
     // Task is to be terminated when it is switched from after being run.
     bool b_is_terminating;
