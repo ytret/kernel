@@ -116,6 +116,10 @@ uint32_t *vmm_clone_kvas(void) {
     return p_dir;
 }
 
+void vmm_free_vas(uint32_t *p_dir) {
+    (void)p_dir;
+}
+
 void vmm_map_user_page(uint32_t *p_dir, uint32_t virt, uint32_t phys) {
     map_page(p_dir, virt, phys, (PAGE_USER | PAGE_RW | PAGE_PRESENT));
 }
