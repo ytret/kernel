@@ -301,6 +301,13 @@ __attribute__((noreturn)) static void deleter_task(void) {
         ASSERT(!gp_task_to_delete->b_is_blocked);
         ASSERT(gp_task_to_delete->num_owned_mutexes == 0);
 
+        if (gp_task_to_delete == gp_running_task) {
+            panic_enter();
+            kprintf("Deleter task (ID %u) cannot delete itself.\n",
+                    gp_running_task->id);
+            panic("invalid argument");
+        }
+
         heap_free(gp_task_to_delete->kernel_stack.p_bottom);
 
         if (gp_task_to_delete->tcb.page_dir_phys != (uint32_t)vmm_kvas_dir()) {
