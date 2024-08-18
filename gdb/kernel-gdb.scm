@@ -145,6 +145,43 @@
         (set! i (+ i 1)))
       (heap/listify-tags))))
 
+(define (cmd/y/heap/stat self args from-tty)
+  (let ((used-bytes 0)
+        (free-bytes 0)
+        (used-tags 0)
+        (free-tags 0))
+    (for-each
+      (lambda (tag)
+        (let ((used? (value->bool (value-field tag "b_used")))
+              (size (value->integer (value-field tag "size"))))
+          (if used?
+            (begin
+              (set! used-bytes (+ used-bytes size))
+              (set! used-tags (+ used-tags 1)))
+            (begin
+              (set! free-bytes (+ free-bytes size))
+              (set! free-tags (+ free-tags 1))))))
+      (heap/listify-tags))
+    (let* ((total-bytes (+ used-bytes free-bytes))
+           (total-tags (+ used-tags free-tags))
+           (max-width
+             (lambda (num-list)
+               (apply max
+                      (map string-length
+                           (map (lambda (n) (format #f "~:d" n)) num-list)))))
+           (bytes-width (max-width (list total-bytes used-bytes free-bytes)))
+           (tags-width (max-width (list total-tags used-tags free-tags))))
+      (format #t "Total bytes: ~v:d\n" bytes-width total-bytes)
+      (format #t " Used bytes: ~v:d (~,1,2f %)\n"
+              bytes-width used-bytes (/ used-bytes total-bytes))
+      (format #t " Free bytes: ~v:d (~,1,2f %)\n"
+              bytes-width free-bytes (/ free-bytes total-bytes))
+      (format #t "Total tags: ~v:d\n" tags-width total-tags)
+      (format #t " Used tags: ~v:d (~,1,2f %)\n"
+              tags-width used-tags (/ used-tags total-tags))
+      (format #t " Free tags: ~v:d (~,1,2f %)\n"
+              tags-width free-tags (/ free-tags total-tags)))))
+
 (register-command! (make-command "y"
                                  #:invoke cmd/y
                                  #:prefix? #t
@@ -195,3 +232,8 @@
                 #:invoke cmd/y/heap/dump
                 #:command-class COMMAND_DATA
                 #:doc "Print the heap tags."))
+(register-command!
+  (make-command "y heap stat"
+                #:invoke cmd/y/heap/stat
+                #:command-class COMMAND_DATA
+                #:doc "Print the heap usage statistics."))
