@@ -18,7 +18,11 @@ typedef struct task {
     stack_t kernel_stack;
     tcb_t tcb;
 
+    // Task is blocked by a mutex, semaphore or is sleeping, and cannot be run.
     bool b_is_blocked;
+
+    // Task is to be terminated when it is switched from after being run.
+    bool b_is_terminating;
 
     size_t num_owned_mutexes;
     uint64_t sleep_until_counter_ms;
@@ -42,5 +46,7 @@ task_t *taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry);
 
 void taskmgr_go_usermode(uint32_t entry);
 void taskmgr_sleep_ms(uint32_t duration_ms);
+void taskmgr_terminate_task(task_t *p_task);
+
 void taskmgr_block_running_task(list_t *p_task_list);
 void taskmgr_unblock(task_t *p_task);

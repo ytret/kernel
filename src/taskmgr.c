@@ -1,6 +1,7 @@
 #include <stdatomic.h>
 #include <stdint.h>
 
+#include "assert.h"
 #include "gdt.h"
 #include "heap.h"
 #include "kprintf.h"
@@ -37,6 +38,9 @@ static list_t g_runnable_tasks;
 static list_t g_sleeping_tasks;
 static list_t g_all_tasks;
 
+static task_t *gp_deleter_task;
+static task_t *gp_task_to_delete;
+
 // ID for the next new task.
 static uint32_t g_new_task_id;
 
@@ -46,6 +50,7 @@ static task_t *new_task(uint32_t entry_point);
 static void map_user_stack(uint32_t *p_dir);
 
 static void idle_task(void) __attribute__((noreturn));
+static void deleter_task(void) __attribute__((noreturn));
 
 // Defined in taskmgr.s.
 extern void taskmgr_switch_tasks(tcb_t *p_from, tcb_t const *p_to,
@@ -79,6 +84,10 @@ taskmgr_init(__attribute__((noreturn)) void (*p_init_entry)(void)) {
     task_t *p_idle_task = new_task((uint32_t)idle_task);
     list_append(&g_runnable_tasks, &p_idle_task->list_node);
 
+    // Create the deleter task. It is switched to when the running task needs to
+    // be terminated.
+    gp_deleter_task = new_task((uint32_t)deleter_task);
+
     // Create the initial task.
     gp_running_task = new_task((uint32_t)p_init_entry);
 
@@ -98,15 +107,21 @@ void taskmgr_schedule(void) {
 
     wake_up_sleeping_tasks();
 
-    list_node_t *p_next_node = list_pop_first(&g_runnable_tasks);
-    if (!p_next_node) { return; }
-    task_t *p_next_task = LIST_NODE_TO_STRUCT(p_next_node, task_t, list_node);
-
     task_t *p_caller_task = gp_running_task;
+    task_t *p_next_task;
+    if (p_caller_task->b_is_terminating &&
+        p_caller_task->num_owned_mutexes == 0) {
+        p_next_task = gp_deleter_task;
+        gp_task_to_delete = p_caller_task;
+    } else {
+        list_node_t *p_next_node = list_pop_first(&g_runnable_tasks);
+        if (!p_next_node) { return; }
+        p_next_task = LIST_NODE_TO_STRUCT(p_next_node, task_t, list_node);
+    }
+
     if (!p_caller_task->b_is_blocked) {
         list_append(&g_runnable_tasks, &p_caller_task->list_node);
     }
-
     gp_running_task = p_next_task;
     taskmgr_switch_tasks(&p_caller_task->tcb, &p_next_task->tcb, gdt_get_tss());
 }
@@ -163,6 +178,10 @@ void taskmgr_sleep_ms(uint32_t duration_ms) {
     taskmgr_unlock_scheduler();
 
     taskmgr_schedule();
+}
+
+void taskmgr_terminate_task(task_t *p_task) {
+    p_task->b_is_terminating = true;
 }
 
 void taskmgr_block_running_task(list_t *p_task_list) {
@@ -254,5 +273,34 @@ __attribute__((noreturn)) static void idle_task(void) {
     __asm__ volatile("sti");
     for (;;) {
         __asm__ volatile("hlt");
+    }
+}
+
+__attribute__((noreturn)) static void deleter_task(void) {
+    for (;;) {
+        taskmgr_lock_scheduler();
+        ASSERT(gp_task_to_delete);
+        ASSERT(gp_task_to_delete->b_is_terminating);
+        ASSERT(!gp_task_to_delete->b_is_blocked);
+        ASSERT(gp_task_to_delete->num_owned_mutexes == 0);
+
+        heap_free(gp_task_to_delete->kernel_stack.p_bottom);
+
+        if (gp_task_to_delete->tcb.page_dir_phys != (uint32_t)vmm_kvas_dir()) {
+            vmm_free_vas((uint32_t *)gp_task_to_delete->tcb.page_dir_phys);
+        }
+
+        ASSERT(
+            list_remove(&g_all_tasks, &gp_task_to_delete->all_tasks_list_node));
+
+        heap_free(gp_task_to_delete);
+        gp_task_to_delete = NULL;
+
+        // Mark the deleter task as 'blocked' so that it is not added to the
+        // list of runnable tasks when it is switched from.
+        gp_deleter_task->b_is_blocked = true;
+
+        taskmgr_unlock_scheduler();
+        taskmgr_schedule();
     }
 }
