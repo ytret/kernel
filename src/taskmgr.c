@@ -38,7 +38,11 @@ static list_t g_runnable_tasks;
 static list_t g_sleeping_tasks;
 static list_t g_all_tasks;
 
+static task_t *gp_idle_task;
 static task_t *gp_deleter_task;
+static task_t *gp_init_task;
+
+// Parameter for the deleter task.
 static task_t *gp_task_to_delete;
 
 // ID for the next new task.
@@ -81,15 +85,16 @@ taskmgr_init(__attribute__((noreturn)) void (*p_init_entry)(void)) {
     __asm__ volatile("cli");
 
     // Create an idle task.
-    task_t *p_idle_task = new_task((uint32_t)idle_task);
-    list_append(&g_runnable_tasks, &p_idle_task->list_node);
+    gp_idle_task = new_task((uint32_t)idle_task);
+    list_append(&g_runnable_tasks, &gp_idle_task->list_node);
 
     // Create the deleter task. It is switched to when the running task needs to
     // be terminated.
     gp_deleter_task = new_task((uint32_t)deleter_task);
 
     // Create the initial task.
-    gp_running_task = new_task((uint32_t)p_init_entry);
+    gp_init_task = new_task((uint32_t)p_init_entry);
+    gp_running_task = gp_init_task;
 
     // If interrupts were enabled and PIT IRQ happened after the following line
     // and before the entry, some bad things would happen to the stack.
