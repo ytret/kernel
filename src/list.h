@@ -11,6 +11,22 @@
     ((struct_type *)(((uint8_t *)(p_node)) -                                   \
                      offsetof(struct_type, node_name_in_struct)))
 
+#define LIST_FIND(p_list, p_found_struct, struct_type, node_name_in_struct,    \
+                  found_expr, var_in_expr)                                     \
+    do {                                                                       \
+        p_found_struct = NULL;                                                 \
+        list_node_t *__p_node = (p_list)->p_first_node;                          \
+        while (__p_node != NULL) {                                             \
+            struct_type *var_in_expr = LIST_NODE_TO_STRUCT(                    \
+                __p_node, struct_type, node_name_in_struct);                   \
+            if (found_expr) {                                                  \
+                p_found_struct = var_in_expr;                                  \
+                break;                                                         \
+            }                                                                  \
+            __p_node = __p_node->p_next;                                       \
+        }                                                                      \
+    } while (0);
+
 struct list_node;
 
 typedef struct list_node {
