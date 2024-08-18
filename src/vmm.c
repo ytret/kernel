@@ -163,9 +163,6 @@ static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
         p_tbl = heap_alloc_aligned(4096, 4096);
         __builtin_memset(p_tbl, 0, 4096);
 
-        kprintf("vmm: map_page: allocated page table %u at %P\n", dir_idx,
-                p_tbl);
-
         // Fill the dir entry.
         p_dir[dir_idx] = (((uint32_t)p_tbl) | flags);
     }

@@ -214,15 +214,12 @@ static void cmd_exec(char **pp_args, size_t num_args) {
     }
 
     uint32_t *p_dir = vmm_clone_kvas();
-    kprintf("kshell: cloned kernel VAS at %P\n", p_dir);
 
     bool ok = elf_load(p_dir, p_mod_user->mod_start, &g_exec_entry);
     if (!ok) { kprintf("kshell: failed to load the executable\n"); }
 
-    kprintf("kshell: successfully loaded\n");
-    kprintf("kshell: entry at 0x%08x\n", g_exec_entry);
-
-    taskmgr_new_user_task(p_dir, ((uint32_t)cmd_exec_entry));
+    task_t *p_task = taskmgr_new_user_task(p_dir, ((uint32_t)cmd_exec_entry));
+    kprintf("kshell: task id %u\n", p_task->id);
 }
 
 static void cmd_exec_entry(void) {
