@@ -33,12 +33,13 @@
 #include "term.h"
 #include "vmm.h"
 
-#define NUM_CMDS 14
+#define NUM_CMDS 15
 #define MAX_ARGS 32
 
 static char const *const gp_cmd_names[NUM_CMDS] = {
-    "clear",   "help",  "mbimap", "mbimod", "elfhdr",  "exec",   "tasks",
-    "vasview", "cpuid", "pci",    "ahci",   "execrep", "kbdlog", "heap"};
+    "clear", "help", "mbimap", "mbimod",  "elfhdr", "exec", "tasks", "vasview",
+    "cpuid", "pci",  "ahci",   "execrep", "kbdlog", "heap", "kill",
+};
 
 static uint32_t g_exec_entry;
 
@@ -57,6 +58,7 @@ static void cmd_ahci(char **pp_args, size_t num_args);
 static void cmd_execrep(char **pp_args, size_t num_args);
 static void cmd_kbdlog(char **pp_args, size_t num_args);
 static void cmd_heap(char **pp_args, size_t num_args);
+static void cmd_kill(char **pp_args, size_t num_args);
 
 void kshell_cmd_parse(char const *p_cmd) {
     char *pp_args[MAX_ARGS];
@@ -73,7 +75,7 @@ void kshell_cmd_parse(char const *p_cmd) {
                                               size_t num_args) = {
         cmd_clear, cmd_help,    cmd_mbimap,  cmd_mbimod, cmd_elfhdr,
         cmd_exec,  cmd_tasks,   cmd_vasview, cmd_cpuid,  cmd_pci,
-        cmd_ahci,  cmd_execrep, cmd_kbdlog,  cmd_heap,
+        cmd_ahci,  cmd_execrep, cmd_kbdlog,  cmd_heap,   cmd_kill,
     };
 
     for (size_t idx = 0; idx < NUM_CMDS; idx++) {
@@ -438,5 +440,29 @@ static void cmd_heap(char **pp_args, size_t num_args) {
     } else {
         kprintf("%s: unknown command: '%s'\n", pp_args[0], pp_args[1]);
         return;
+    }
+}
+
+static void cmd_kill(char **pp_args, size_t num_args) {
+    if (num_args != 2) {
+        kprintf("Usage: %s <task ID>\n", pp_args[0]);
+        kprintf("Schedules the specified task for termination.\n");
+        return;
+    }
+
+    uint32_t task_id;
+    bool ok = string_to_uint32(pp_args[1], &task_id, 10);
+    if (!ok) {
+        kprintf("Invalid argument: '%s'\n", pp_args[1]);
+        kprintf("task ID must be a decimal 32-bit unsigned integer\n");
+        return;
+    }
+
+    task_t *p_task = taskmgr_get_task_by_id(task_id);
+    if (p_task) {
+        taskmgr_terminate_task(p_task);
+        kprintf("Marked task %u for termination\n", task_id);
+    } else {
+        kprintf("No such task: ID %u\n", task_id);
     }
 }
