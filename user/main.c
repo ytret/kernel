@@ -6,10 +6,5 @@ void main(void) {
                          : /* output */
                          : /* input */
                          : "eax" /* clobbers */);
-        __asm__ volatile("mov $1, %%eax\n"
-                         "int $100"
-                         : /* output */
-                         : /* input */
-                         : "eax" /* clobbers */);
     }
 }
