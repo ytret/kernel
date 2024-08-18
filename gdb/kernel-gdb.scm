@@ -11,6 +11,9 @@
          (field (value-field (value-dereference zero-ptr) field-name)))
     (value->integer (value-address field))))
 
+(define (value-is-pointer? value)
+  (eq? TYPE_CODE_PTR (type-code (value-type value))))
+
 (define (list/node->struct node struct-type field-name)
   (value-cast
     (make-value (- (value->integer (value-address node))
@@ -68,6 +71,22 @@
             esp0-bot
             (- esp0-max esp0-top))))
 
+(define (heap/listify-tags)
+  (list/listify-nodes
+    (let ((tag-ptr (symbol-value (car (lookup-symbol "gp_start")))))
+      (if (equal? tag-ptr null-ptr)
+        #f
+        (value-dereference tag-ptr)))))
+
+(define (heap/print-tag tag)
+  (let* ((addr (if (value-is-pointer? tag)
+                 (value->integer tag)
+                 (value->integer (value-address tag))))
+         (used? (value->bool (value-field tag "b_used")))
+         (size (value->integer (value-field tag "size"))))
+    (format #t "at 0x~8,'0x, ~a, ~d bytes\n"
+            addr (if used? "used" "free") size)))
+
 (define (cmd/y self args from-tty)
   (execute "help y" #:from-tty #t))
 
@@ -114,6 +133,18 @@
                   (symbol-name symbol) (type-name type/list))))
       (format #t "Could not find symbol ~s.\n" var-name))))
 
+(define (cmd/y/heap self args from-tty)
+  (execute "help y heap" #:from-tty #t))
+
+(define (cmd/y/heap/dump self args from-tty)
+  (let ((i 0))
+    (map
+      (lambda (tag)
+        (format #t "~3d. " i)
+        (heap/print-tag tag)
+        (set! i (+ i 1)))
+      (heap/listify-tags))))
+
 (register-command! (make-command "y"
                                  #:invoke cmd/y
                                  #:prefix? #t
@@ -153,3 +184,14 @@
                 #:invoke cmd/y/list/length
                 #:command-class COMMAND_DATA
                 #:doc "Print the number of nodes in a list."))
+
+(register-command!
+  (make-command "y heap"
+                #:invoke cmd/y/heap
+                #:prefix? #t
+                #:doc "Heap statistics commands."))
+(register-command!
+  (make-command "y heap dump"
+                #:invoke cmd/y/heap/dump
+                #:command-class COMMAND_DATA
+                #:doc "Print the heap tags."))
