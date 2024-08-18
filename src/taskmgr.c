@@ -210,6 +210,15 @@ void taskmgr_sleep_ms(uint32_t duration_ms) {
 }
 
 void taskmgr_terminate_task(task_t *p_task) {
+    if (p_task == gp_deleter_task) {
+        // Deleter task cannot delete itself because:
+        // 1) it always marks itself as blocked before rescheduling,
+        // 2) it cannot free its own stack.
+        panic_enter();
+        kprintf("Deleter task (ID %u) cannot delete itself.\n", p_task->id);
+        panic("invalid argument");
+    }
+
     p_task->b_is_terminating = true;
 }
 
