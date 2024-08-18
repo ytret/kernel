@@ -56,6 +56,7 @@ bool list_remove(list_t *p_list, list_node_t *p_node) {
             } else {
                 p_list->p_first_node = p_iter->p_next;
             }
+            if (!p_iter->p_next) { p_list->p_last_node = p_prev; }
             return true;
         }
         p_prev = p_iter;
