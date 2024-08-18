@@ -25,6 +25,6 @@ __attribute__((noreturn)) void panic(char const *p_msg) {
 }
 
 __attribute__((noreturn)) void panic_silent(void) {
-    panic_enter();
+    taskmgr_lock_scheduler();
     for (;;) {}
 }
