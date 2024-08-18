@@ -97,7 +97,7 @@
   (let ((tasks (task/listify-all-tasks)))
     (if (equal? 0 (length tasks))
       (display "No tasks.\n")
-      (map task/print-task tasks))))
+      (for-each task/print-task tasks))))
 
 (define (cmd/y/tasks/running self args from-tty)
   (let ((running-task
@@ -111,13 +111,13 @@
   (let ((tasks (task/listify-runnable-tasks)))
     (if (equal? 0 (length tasks))
       (display "No runnable tasks.\n")
-      (map task/print-task tasks))))
+      (for-each task/print-task tasks))))
 
 (define (cmd/y/tasks/sleeping self args from-tty)
   (let ((tasks (task/listify-sleeping-tasks)))
     (if (equal? 0 (length tasks))
       (display "No sleeping tasks.\n")
-      (map task/print-task tasks))))
+      (for-each task/print-task tasks))))
 
 (define (cmd/y/list self args from-tty)
   (execute "help y list" #:from-tty #t))
@@ -138,7 +138,7 @@
 
 (define (cmd/y/heap/dump self args from-tty)
   (let ((i 0))
-    (map
+    (for-each
       (lambda (tag)
         (format #t "~3d. " i)
         (heap/print-tag tag)
