@@ -14,6 +14,7 @@ void mutex_acquire(task_mutex_t *p_mutex) {
     if (__sync_bool_compare_and_swap(&p_mutex->p_locking_task, NULL,
                                      p_caller_task)) {
         // Caller task has successfuly acquired the mutex.
+        p_caller_task->num_owned_mutexes++;
     } else {
         // The mutex is blocked by another task.
         taskmgr_block_running_task(&p_mutex->waiting_tasks);
@@ -25,7 +26,13 @@ void mutex_release(task_mutex_t *p_mutex) {
     task_t *p_caller_task = taskmgr_running_task();
     taskmgr_lock_scheduler();
 
-    if (p_caller_task && !mutex_caller_owns(p_mutex)) { panic_silent(); }
+    if (p_caller_task) {
+        if (mutex_caller_owns(p_mutex)) {
+            p_caller_task->num_owned_mutexes--;
+        } else {
+            panic_silent();
+        }
+    }
 
     list_node_t *p_waiting_task_node = list_pop_first(&p_mutex->waiting_tasks);
     if (p_caller_task && p_waiting_task_node) {

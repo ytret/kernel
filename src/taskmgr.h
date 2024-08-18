@@ -19,6 +19,8 @@ typedef struct task {
     tcb_t tcb;
 
     bool b_is_blocked;
+
+    size_t num_owned_mutexes;
     uint64_t sleep_until_counter_ms;
 
     // Node for the runnable tasks list, mutex waiting list, etc.
