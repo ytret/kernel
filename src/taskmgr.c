@@ -129,7 +129,7 @@ list_t *taskmgr_all_tasks_list(void) {
     return &g_all_tasks;
 }
 
-void taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry) {
+task_t *taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry) {
     map_user_stack(p_dir);
 
     task_t *p_task = new_task(entry);
@@ -138,6 +138,8 @@ void taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry) {
     taskmgr_lock_scheduler();
     list_append(&g_runnable_tasks, &p_task->list_node);
     taskmgr_unlock_scheduler();
+
+    return p_task;
 }
 
 void taskmgr_go_usermode(uint32_t entry) {

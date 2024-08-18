@@ -36,7 +36,7 @@ void taskmgr_unlock_scheduler(void);
 
 task_t *taskmgr_running_task(void);
 list_t *taskmgr_all_tasks_list(void);
-void taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry);
+task_t *taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry);
 
 void taskmgr_go_usermode(uint32_t entry);
 void taskmgr_sleep_ms(uint32_t duration_ms);
