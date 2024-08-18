@@ -145,6 +145,13 @@ list_t *taskmgr_all_tasks_list(void) {
     return &g_all_tasks;
 }
 
+task_t *taskmgr_get_task_by_id(uint32_t task_id) {
+    task_t *p_found_task;
+    LIST_FIND(&g_all_tasks, p_found_task, task_t, all_tasks_list_node,
+              p_task->id == task_id, p_task);
+    return p_found_task;
+}
+
 task_t *taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry) {
     map_user_stack(p_dir);
 
