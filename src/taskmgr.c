@@ -150,8 +150,9 @@ void taskmgr_schedule(void) {
 }
 
 /*
- * Forces a scheduling step outside an ISR context. Can be called in ordinary
- * kernel tasks when a resource is blocked and rescheduling is required.
+ * Forces a scheduling step inside or outside an ISR context. Can be called in
+ * ordinary kernel tasks when a resource is blocked and rescheduling is
+ * required.
  */
 void taskmgr_reschedule(void) {
     bool b_restore_int = false;
