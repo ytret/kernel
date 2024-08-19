@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "assert.h"
+#include "cpu.h"
 #include "gdt.h"
 #include "heap.h"
 #include "kprintf.h"
@@ -153,9 +154,15 @@ void taskmgr_schedule(void) {
  * kernel tasks when a resource is blocked and rescheduling is required.
  */
 void taskmgr_reschedule(void) {
-    __asm__ volatile("cli");
+    bool b_restore_int = false;
+    if (cpu_check_interrupts()) {
+        b_restore_int = true;
+        __asm__ volatile("cli");
+    }
+
     taskmgr_schedule();
-    __asm__ volatile("sti");
+
+    if (b_restore_int) { __asm__ volatile("sti"); }
 }
 
 void taskmgr_lock_scheduler(void) {
