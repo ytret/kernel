@@ -164,7 +164,7 @@ void heap_dump_tags(void) {
 
     for (tag_t const *p_tag = gp_heap_start; p_tag != NULL;
          p_tag = p_tag->p_next) {
-        if (p_tag > gp_heap_start &&
+        if (p_tag >= gp_heap_start &&
             ((uint32_t)p_tag < (uint32_t)gp_heap_start + HEAP_SIZE)) {
             print_tag(p_tag);
         } else {
