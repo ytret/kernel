@@ -203,12 +203,14 @@ static void check_tags(void) {
 
     for (tag_t const *p_tag = gp_start; p_tag != NULL; p_tag = p_tag->p_next) {
         if ((uint32_t)p_tag < (uint32_t)gp_start) {
+            panic_enter();
             kprintf("heap: check_tags: tag %P is below heap\n", p_tag);
             b_panic = true;
             break;
         }
 
         if ((uint32_t)p_tag >= (uint32_t)gp_start + HEAP_SIZE) {
+            panic_enter();
             kprintf("heap: check_tags: tag %P is above heap\n", p_tag);
             b_panic = true;
             break;
@@ -216,6 +218,7 @@ static void check_tags(void) {
 
         if ((uint32_t)p_tag + TAG_SIZE + p_tag->size >
             (uint32_t)gp_start + HEAP_SIZE) {
+            panic_enter();
             kprintf("heap: check_tags: chunk of tag %P ends beyond heap at"
                     " 0x%08X\n",
                     p_tag, (((uint32_t)p_tag) + sizeof(*p_tag) + p_tag->size));
@@ -224,9 +227,5 @@ static void check_tags(void) {
         }
     }
 
-    if (b_panic) {
-        panic_enter();
-        heap_dump_tags();
-        panic("invalid heap state");
-    }
+    if (b_panic) { panic("invalid heap state"); }
 }
