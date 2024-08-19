@@ -215,8 +215,17 @@ static void print_tag(tag_t const *p_tag) {
 static void check_tags(void) {
     bool b_panic = false;
 
+    tag_t const *p_prev = NULL;
     for (tag_t const *p_tag = gp_heap_start; p_tag != NULL;
-         p_tag = p_tag->p_next) {
+         p_prev = p_tag, p_tag = p_tag->p_next) {
+        if (p_prev && p_tag <= p_prev) {
+            panic_enter();
+            kprintf("heap: check_tags: tag %P is below its previous tag %P\n",
+                    p_tag, p_prev);
+            b_panic = true;
+            break;
+        }
+
         if ((uint32_t)p_tag < (uint32_t)gp_heap_start) {
             panic_enter();
             kprintf("heap: check_tags: tag %P is below heap\n", p_tag);
