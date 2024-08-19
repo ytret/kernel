@@ -3,6 +3,7 @@
 #include "heap.h"
 #include "kprintf.h"
 #include "mbi.h"
+#include "mutex.h"
 #include "panic.h"
 
 #define HEAP_SIZE (4 * 1024 * 1024)
@@ -38,6 +39,7 @@ typedef struct tag {
 } tag_t;
 
 static tag_t *gp_heap_start;
+static task_mutex_t g_heap_mutex;
 
 // See link.ld.
 extern uint32_t ld_vmm_kernel_end;
@@ -68,6 +70,8 @@ void *heap_alloc(size_t num_bytes) {
 }
 
 void *heap_alloc_aligned(size_t num_bytes, size_t align) {
+    mutex_acquire(&g_heap_mutex);
+
     if (num_bytes == 0) {
         panic_enter();
         kprintf("heap_alloc_aligned: num_bytes is zero\n");
@@ -136,32 +140,42 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
 
     check_tags();
 
+    mutex_release(&g_heap_mutex);
     return (void *)((uint32_t)p_found + TAG_SIZE + num_padding);
 }
 
 void heap_free(void *p_addr) {
+    mutex_acquire(&g_heap_mutex);
+
     tag_t *p_tag = (tag_t *)((uint32_t)p_addr - TAG_SIZE);
     while ((uint32_t)p_tag->p_next == PADDING_DWORD) {
         p_tag = (tag_t *)((uint32_t)p_tag - 4);
     }
-
     p_tag->b_used = false;
-
     check_tags();
+
+    mutex_release(&g_heap_mutex);
 }
 
 void heap_dump_tags(void) {
+    mutex_acquire(&g_heap_mutex);
+
     if (NULL == gp_heap_start) { kprintf("heap_dump_tags: no tags\n"); }
 
-    for (tag_t const *p_tag = gp_heap_start; p_tag != NULL; p_tag = p_tag->p_next) {
-        if ((uint32_t)p_tag < (uint32_t)gp_heap_start + HEAP_SIZE) {
+    for (tag_t const *p_tag = gp_heap_start; p_tag != NULL;
+         p_tag = p_tag->p_next) {
+        if (p_tag > gp_heap_start &&
+            ((uint32_t)p_tag < (uint32_t)gp_heap_start + HEAP_SIZE)) {
             print_tag(p_tag);
         } else {
             // This tag is outside the heap and invalid. Do not print its
             // "fields" because the memory may be inaccessible.
+            mutex_release(&g_heap_mutex);
             return;
         }
     }
+
+    mutex_release(&g_heap_mutex);
 }
 
 static uint32_t find_heap_start(void) {
@@ -201,7 +215,8 @@ static void print_tag(tag_t const *p_tag) {
 static void check_tags(void) {
     bool b_panic = false;
 
-    for (tag_t const *p_tag = gp_heap_start; p_tag != NULL; p_tag = p_tag->p_next) {
+    for (tag_t const *p_tag = gp_heap_start; p_tag != NULL;
+         p_tag = p_tag->p_next) {
         if ((uint32_t)p_tag < (uint32_t)gp_heap_start) {
             panic_enter();
             kprintf("heap: check_tags: tag %P is below heap\n", p_tag);
