@@ -14,7 +14,9 @@ void mutex_acquire(task_mutex_t *p_mutex) {
     if (__sync_bool_compare_and_swap(&p_mutex->p_locking_task, NULL,
                                      p_caller_task)) {
         // Caller task has successfuly acquired the mutex.
-        p_caller_task->num_owned_mutexes++;
+        if (p_caller_task) {
+            p_caller_task->num_owned_mutexes++;
+        }
     } else {
         // The mutex is blocked by another task.
         taskmgr_block_running_task(&p_mutex->waiting_tasks);
