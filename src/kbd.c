@@ -462,5 +462,5 @@ static void enqueue_event(uint8_t key, bool b_released) {
     p_event->key = key;
     p_event->b_released = b_released;
 
-    queue_write(&g_event_queue, &p_event->queue_item);
+    queue_write(&g_event_queue, &p_event->queue_node);
 }

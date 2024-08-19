@@ -112,7 +112,7 @@
 #define KEY_PAUSEBREAK  0x66
 
 typedef struct {
-    queue_item_t queue_item;
+    queue_node_t queue_node;
 
     uint8_t key;
     bool b_released;
