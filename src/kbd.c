@@ -12,14 +12,19 @@
 #define PORT_CMD    0x0064
 #define PORT_STATUS 0x0064
 
-#define CODE_BUF_SIZE  10
-#define EVENT_BUF_SIZE 10
+#define CODE_BUF_LEN 10
+
+// Event queue length. One node is used as a dummy node, therefore only 31
+// events are stored. The number must be a multiple of 32 because of the queue
+// implementation.
+#define EVENT_QUEUE_LEN 32
+#define EVENT_BUF_LEN   EVENT_QUEUE_LEN
 
 // Buffer to store scancodes before they are parsed.
-static volatile uint8_t gp_code_buf[CODE_BUF_SIZE];
-static volatile size_t g_code_buf_pos;
+static volatile uint8_t gp_kbd_code_buf[CODE_BUF_LEN];
+static volatile size_t g_kbd_code_buf_pos;
 
-static queue_t g_event_queue;
+static queue_t g_kbd_event_queue;
 
 static uint8_t read_code(void);
 static void append_code(uint8_t sc);
@@ -28,7 +33,7 @@ static void enqueue_event(uint8_t key, bool b_released);
 
 void kbd_init(void) {
     pic_set_mask(KBD_IRQ, false);
-    queue_init(&g_event_queue);
+    queue_init(&g_kbd_event_queue, EVENT_QUEUE_LEN, sizeof(kbd_event_t));
 }
 
 void kbd_irq_handler(void) {
@@ -40,7 +45,7 @@ void kbd_irq_handler(void) {
 }
 
 queue_t *kbd_event_queue(void) {
-    return &g_event_queue;
+    return &g_kbd_event_queue;
 }
 
 static uint8_t read_code(void) {
@@ -48,18 +53,18 @@ static uint8_t read_code(void) {
 }
 
 static void append_code(uint8_t sc) {
-    if (g_code_buf_pos >= CODE_BUF_SIZE) {
+    if (g_kbd_code_buf_pos >= CODE_BUF_LEN) {
         panic_enter();
         kprintf("kbd: append_code: scancode buffer is full\n");
         panic("buffer overflow");
     }
 
-    gp_code_buf[g_code_buf_pos] = sc;
-    g_code_buf_pos++;
+    gp_kbd_code_buf[g_kbd_code_buf_pos] = sc;
+    g_kbd_code_buf_pos++;
 }
 
 static void try_parse_codes(void) {
-    size_t num_codes = g_code_buf_pos;
+    size_t num_codes = g_kbd_code_buf_pos;
     bool b_parsed = false;
 
     // Result of parsing.
@@ -71,7 +76,7 @@ static void try_parse_codes(void) {
     } else if (1 == num_codes) {
         b_parsed = true;
 
-        uint8_t key_code = gp_code_buf[0];
+        uint8_t key_code = gp_kbd_code_buf[0];
         b_released = false;
 
         if ((0x81 <= key_code) && (key_code <= 0xD8)) {
@@ -348,10 +353,10 @@ static void try_parse_codes(void) {
         default:
             return;
         }
-    } else if ((2 == num_codes) && (0xE0 == gp_code_buf[0])) {
+    } else if ((2 == num_codes) && (0xE0 == gp_kbd_code_buf[0])) {
         b_parsed = true;
 
-        uint8_t key_code = gp_code_buf[1];
+        uint8_t key_code = gp_kbd_code_buf[1];
         b_released = false;
 
         if ((0x99 <= key_code) && (key_code <= 0xED)) {
@@ -417,21 +422,22 @@ static void try_parse_codes(void) {
             return;
         }
     } else if (4 == num_codes) {
-        if ((0xE0 == gp_code_buf[0]) && (0xE0 == gp_code_buf[2])) {
-            if ((0x2A == gp_code_buf[1]) && (0x37 == gp_code_buf[3])) {
+        if ((0xE0 == gp_kbd_code_buf[0]) && (0xE0 == gp_kbd_code_buf[2])) {
+            if ((0x2A == gp_kbd_code_buf[1]) && (0x37 == gp_kbd_code_buf[3])) {
                 b_parsed = true;
                 key = KEY_PRINTSCREEN;
                 b_released = false;
-            } else if ((0xB7 == gp_code_buf[1]) && (0xAA == gp_code_buf[3])) {
+            } else if ((0xB7 == gp_kbd_code_buf[1]) &&
+                       (0xAA == gp_kbd_code_buf[3])) {
                 b_parsed = true;
                 key = KEY_PRINTSCREEN;
                 b_released = true;
             }
         }
     } else if (6 == num_codes) {
-        if ((0xE1 == gp_code_buf[0]) && (0x1D == gp_code_buf[1]) &&
-            (0x45 == gp_code_buf[2]) && (0xE1 == gp_code_buf[3]) &&
-            (0x9D == gp_code_buf[4]) && (0xC5 == gp_code_buf[5])) {
+        if ((0xE1 == gp_kbd_code_buf[0]) && (0x1D == gp_kbd_code_buf[1]) &&
+            (0x45 == gp_kbd_code_buf[2]) && (0xE1 == gp_kbd_code_buf[3]) &&
+            (0x9D == gp_kbd_code_buf[4]) && (0xC5 == gp_kbd_code_buf[5])) {
             b_parsed = true;
             key = KEY_PAUSEBREAK;
             b_released = false;
@@ -439,28 +445,27 @@ static void try_parse_codes(void) {
     } else if (num_codes > 6) {
         kprintf("kbd: discarding unknown sequence: ");
         for (size_t idx = 0; idx < num_codes; idx++) {
-            kprintf("%x ", gp_code_buf[idx]);
+            kprintf("%x ", gp_kbd_code_buf[idx]);
         }
         kprintf("\n");
 
         // Reset the scancode buffer.
-        g_code_buf_pos = 0;
+        g_kbd_code_buf_pos = 0;
     }
 
     if (b_parsed) {
         // Reset the scancode buffer.
-        g_code_buf_pos = 0;
+        g_kbd_code_buf_pos = 0;
 
         enqueue_event(key, b_released);
     }
 }
 
 static void enqueue_event(uint8_t key, bool b_released) {
-    kbd_event_t *p_event = heap_alloc(sizeof(kbd_event_t));
+    kbd_event_t event = {
+        .key = key,
+        .b_released = b_released,
+    };
 
-    __builtin_memset(p_event, 0, sizeof(*p_event));
-    p_event->key = key;
-    p_event->b_released = b_released;
-
-    queue_write(&g_event_queue, &p_event->queue_node);
+    queue_write(&g_kbd_event_queue, &event);
 }
