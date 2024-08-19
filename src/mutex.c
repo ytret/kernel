@@ -20,7 +20,7 @@ void mutex_acquire(task_mutex_t *p_mutex) {
     } else {
         // The mutex is blocked by another task.
         taskmgr_block_running_task(&p_mutex->waiting_tasks);
-        taskmgr_schedule();
+        taskmgr_reschedule();
     }
 }
 

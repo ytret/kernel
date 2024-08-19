@@ -108,6 +108,10 @@ taskmgr_init(__attribute__((noreturn)) void (*p_init_entry)(void)) {
     panic("unexpected behavior");
 }
 
+/*
+ * Performs a scheduling step inside an ISR context - either in the timer
+ * IRQ ISR, or in the syscall ISR.
+ */
 void taskmgr_schedule(void) {
     if (g_scheduler_lock > 0) { return; }
 
@@ -142,6 +146,16 @@ void taskmgr_schedule(void) {
 
     gp_running_task = p_next_task;
     taskmgr_switch_tasks(&p_caller_task->tcb, &p_next_task->tcb, gdt_get_tss());
+}
+
+/*
+ * Forces a scheduling step outside an ISR context. Can be called in ordinary
+ * kernel tasks when a resource is blocked and rescheduling is required.
+ */
+void taskmgr_reschedule(void) {
+    __asm__ volatile("cli");
+    taskmgr_schedule();
+    __asm__ volatile("sti");
 }
 
 void taskmgr_lock_scheduler(void) {

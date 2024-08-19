@@ -37,6 +37,7 @@ typedef struct task {
 void taskmgr_init(__attribute__((noreturn)) void (*p_init_entry)(void));
 
 void taskmgr_schedule(void);
+void taskmgr_reschedule(void);
 void taskmgr_lock_scheduler(void);
 void taskmgr_unlock_scheduler(void);
 
