@@ -1,7 +1,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "heap.h"
 #include "kbd.h"
 #include "kprintf.h"
 #include "panic.h"
