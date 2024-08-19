@@ -32,7 +32,7 @@ static uint32_t *gp_pgdir;
 static volatile size_t g_dir_idx;
 static volatile size_t g_tbl_idx;
 
-static void update(void);
+static void update_full(void);
 static void update_view(void);
 static void update_info(void);
 static void update_cursor(void);
@@ -55,7 +55,7 @@ void vasview(uint32_t pgdir_virt) {
     g_tbl_idx = 0;
 
     term_acquire_mutex();
-    update();
+    update_full();
     term_release_mutex();
 
     while (!gb_exit) {
@@ -71,7 +71,7 @@ void vasview(uint32_t pgdir_virt) {
     term_release_mutex();
 }
 
-static void update(void) {
+static void update_full(void) {
     update_view();
     update_info();
     update_cursor();
@@ -242,7 +242,7 @@ static void parse_kbd_event(kbd_event_t *p_event) {
         break;
 
     case KEY_SPACE:
-        update();
+        update_full();
         break;
 
     case KEY_ENTER:
@@ -275,7 +275,8 @@ static void move_cursor(int32_t inc_idx) {
     int32_t new_idx = (((int32_t)(*p_idx)) + inc_idx);
     if ((0 <= new_idx) && (new_idx < 1024)) {
         *p_idx += inc_idx;
-        update();
+        update_info();
+        update_cursor();
     }
 }
 
@@ -295,7 +296,7 @@ static void deeper_view(void) {
         panic("unexpected behavior");
     }
 
-    update();
+    update_full();
 }
 
 static void shallower_view(void) {
@@ -313,5 +314,5 @@ static void shallower_view(void) {
         panic("unexpected behavior");
     }
 
-    update();
+    update_full();
 }
