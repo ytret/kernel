@@ -37,7 +37,7 @@ typedef struct tag {
     struct tag *p_next;
 } tag_t;
 
-static tag_t *gp_start;
+static tag_t *gp_heap_start;
 
 // See link.ld.
 extern uint32_t ld_vmm_kernel_end;
@@ -50,17 +50,17 @@ static void check_tags(void);
 void heap_init(void) {
     uint32_t heap_start = find_heap_start();
 
-    gp_start = ((tag_t *)heap_start);
-    __builtin_memset(gp_start, 0, TAG_SIZE);
-    gp_start->b_used = false;
-    gp_start->size = HEAP_SIZE - TAG_SIZE;
-    gp_start->p_next = NULL;
+    gp_heap_start = ((tag_t *)heap_start);
+    __builtin_memset(gp_heap_start, 0, TAG_SIZE);
+    gp_heap_start->b_used = false;
+    gp_heap_start->size = HEAP_SIZE - TAG_SIZE;
+    gp_heap_start->p_next = NULL;
 
-    kprintf("heap: start at %P, size is %u bytes\n", gp_start, HEAP_SIZE);
+    kprintf("heap: start at %P, size is %u bytes\n", gp_heap_start, HEAP_SIZE);
 }
 
 uint32_t heap_end(void) {
-    return (uint32_t)gp_start + HEAP_SIZE;
+    return (uint32_t)gp_heap_start + HEAP_SIZE;
 }
 
 void *heap_alloc(size_t num_bytes) {
@@ -82,7 +82,7 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
         panic("invalid argument");
     }
 
-    if (!gp_start) {
+    if (!gp_heap_start) {
         panic_enter();
         kprintf("heap_alloc_aligned: heap is not initialized\n");
         panic("unexpected behavior");
@@ -97,7 +97,7 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
     tag_t *p_found = NULL;
     uint32_t chunk_aligned;
     uint32_t num_padding = 0;
-    for (tag_t *p_tag = gp_start; p_tag != NULL; p_tag = p_tag->p_next) {
+    for (tag_t *p_tag = gp_heap_start; p_tag != NULL; p_tag = p_tag->p_next) {
         if (p_tag->b_used) { continue; }
 
         uint32_t chunk = (uint32_t)p_tag + TAG_SIZE;
@@ -151,10 +151,10 @@ void heap_free(void *p_addr) {
 }
 
 void heap_dump_tags(void) {
-    if (NULL == gp_start) { kprintf("heap_dump_tags: no tags\n"); }
+    if (NULL == gp_heap_start) { kprintf("heap_dump_tags: no tags\n"); }
 
-    for (tag_t const *p_tag = gp_start; p_tag != NULL; p_tag = p_tag->p_next) {
-        if ((uint32_t)p_tag < (uint32_t)gp_start + HEAP_SIZE) {
+    for (tag_t const *p_tag = gp_heap_start; p_tag != NULL; p_tag = p_tag->p_next) {
+        if ((uint32_t)p_tag < (uint32_t)gp_heap_start + HEAP_SIZE) {
             print_tag(p_tag);
         } else {
             // This tag is outside the heap and invalid. Do not print its
@@ -201,15 +201,15 @@ static void print_tag(tag_t const *p_tag) {
 static void check_tags(void) {
     bool b_panic = false;
 
-    for (tag_t const *p_tag = gp_start; p_tag != NULL; p_tag = p_tag->p_next) {
-        if ((uint32_t)p_tag < (uint32_t)gp_start) {
+    for (tag_t const *p_tag = gp_heap_start; p_tag != NULL; p_tag = p_tag->p_next) {
+        if ((uint32_t)p_tag < (uint32_t)gp_heap_start) {
             panic_enter();
             kprintf("heap: check_tags: tag %P is below heap\n", p_tag);
             b_panic = true;
             break;
         }
 
-        if ((uint32_t)p_tag >= (uint32_t)gp_start + HEAP_SIZE) {
+        if ((uint32_t)p_tag >= (uint32_t)gp_heap_start + HEAP_SIZE) {
             panic_enter();
             kprintf("heap: check_tags: tag %P is above heap\n", p_tag);
             b_panic = true;
@@ -217,7 +217,7 @@ static void check_tags(void) {
         }
 
         if ((uint32_t)p_tag + TAG_SIZE + p_tag->size >
-            (uint32_t)gp_start + HEAP_SIZE) {
+            (uint32_t)gp_heap_start + HEAP_SIZE) {
             panic_enter();
             kprintf("heap: check_tags: chunk of tag %P ends beyond heap at"
                     " 0x%08X\n",

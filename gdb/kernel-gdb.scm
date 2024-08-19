@@ -73,7 +73,7 @@
 
 (define (heap/listify-tags)
   (list/listify-nodes
-    (let ((tag-ptr (symbol-value (car (lookup-symbol "gp_start")))))
+    (let ((tag-ptr (symbol-value (car (lookup-symbol "gp_heap_start")))))
       (if (equal? tag-ptr null-ptr)
         #f
         (value-dereference tag-ptr)))))
