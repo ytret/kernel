@@ -93,7 +93,8 @@ size_t string_split(char const *p_str, char ch, bool b_ignore_empty,
 
 bool string_to_uint32(char const *p_str, uint32_t *p_num, int base) {
     // Construct an uppercase copy of p_str.
-    char *p_strup = heap_alloc(string_len(p_str) + 1);
+    char *const p_strup = heap_alloc(string_len(p_str) + 1);
+    char *p_iter = p_strup;
     __builtin_memcpy(p_strup, p_str, string_len(p_str) + 1);
     string_to_upper(p_strup);
 
@@ -101,12 +102,12 @@ bool string_to_uint32(char const *p_str, uint32_t *p_num, int base) {
     *p_num = 0;
 
     bool b_ok = true;
-    while (*p_strup) {
+    while (*p_iter) {
         int digit;
-        if (('0' <= (*p_strup)) && ((*p_strup) <= '9')) {
-            digit = ((*p_strup) - '0');
-        } else if (('A' <= (*p_strup)) && ((*p_strup) <= 'Z')) {
-            digit = (((*p_strup) - 'A') + 10);
+        if (('0' <= (*p_iter)) && ((*p_iter) <= '9')) {
+            digit = ((*p_iter) - '0');
+        } else if (('A' <= (*p_iter)) && ((*p_iter) <= 'Z')) {
+            digit = (((*p_iter) - 'A') + 10);
         } else {
             // Cannot convert char to a digit.
             *p_num = 0;
@@ -131,7 +132,7 @@ bool string_to_uint32(char const *p_str, uint32_t *p_num, int base) {
         *p_num *= base;
         *p_num += digit;
 
-        p_strup++;
+        p_iter++;
     }
 
     heap_free(p_strup);
