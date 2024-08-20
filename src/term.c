@@ -104,18 +104,27 @@ __attribute__((noreturn)) void term_task(void) {
         if (event.key == KEY_PAGEUP) {
             if (history_pos >= 1) {
                 g_output_impl.p_set_history_pos(history_pos - 1);
-                gb_history_mode = true;
-                vga_disable_cursor();
             }
         } else if (event.key == KEY_PAGEDOWN) {
             if (history_pos <
                 (g_output_impl.p_history_screens() - 1) * g_max_row) {
                 g_output_impl.p_set_history_pos(history_pos + 1);
-            } else {
-                gb_history_mode = false;
-                vga_enable_cursor();
             }
         }
+
+        if (g_output_impl.p_history_pos() ==
+            (g_output_impl.p_history_screens() - 1) * g_max_row) {
+            gb_history_mode = false;
+        } else {
+            gb_history_mode = true;
+        }
+
+        if (gb_history_mode) {
+            vga_disable_cursor();
+        } else {
+            vga_enable_cursor();
+        }
+
         term_release_mutex();
     }
 }
