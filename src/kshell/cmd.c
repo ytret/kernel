@@ -400,14 +400,27 @@ static void cmd_ahci(char **pp_args, size_t num_args) {
 }
 
 static void cmd_execrep(char **pp_args, size_t num_args) {
-    if (num_args != 1) {
-        kprintf("Usage: %s\n", pp_args[0]);
+    if (num_args > 2) {
+        kprintf("Usage: %s [repeats]\n", pp_args[0]);
         return;
     }
 
-    for (;;) {
-        char const *p_cmd = "exec";
-        kshell_cmd_parse(p_cmd);
+    char const *p_cmd = "exec";
+    if (num_args == 1) {
+        for (;;) {
+            kshell_cmd_parse(p_cmd);
+        }
+    } else {
+        uint32_t num_repeats = 0;
+        bool b_ok = string_to_uint32(pp_args[1], &num_repeats, 10);
+        if (!b_ok) {
+            kprintf("repeats must be a decimal 32-bit unsigned integer\n");
+            return;
+        }
+
+        for (uint32_t idx = 0; idx < num_repeats; idx++) {
+            kshell_cmd_parse(p_cmd);
+        }
     }
 }
 
