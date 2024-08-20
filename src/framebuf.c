@@ -122,7 +122,7 @@ void framebuf_clear_rows(size_t start_row, size_t num_rows) {
     memclr_sse2(&gp_framebuf[start_offset], num_bytes);
 }
 
-void framebuf_scroll(void) {
+void framebuf_scroll_new_row(void) {
     if (g_cursor_row > 0) {
         g_cursor_row--;
     } else {
@@ -130,6 +130,25 @@ void framebuf_scroll(void) {
     }
 
     scroll_pixels(g_font.height_px);
+}
+
+size_t framebuf_get_scroll(void) {
+    return 0;
+}
+
+void framebuf_clear_history(void) {
+}
+
+size_t framebuf_history_screens(void) {
+    return 0;
+}
+
+size_t framebuf_history_pos(void) {
+    return 0;
+}
+
+void framebuf_set_history_pos(size_t row_from_start) {
+    (void)row_from_start;
 }
 
 static void draw_glyph_at(size_t y, size_t x, char ch,

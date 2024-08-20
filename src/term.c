@@ -1,4 +1,5 @@
 #include "framebuf.h"
+#include "kbd.h"
 #include "mbi.h"
 #include "mutex.h"
 #include "panic.h"
@@ -10,7 +11,12 @@ typedef struct {
     void (*p_put_char_at)(size_t row, size_t col, char ch);
     void (*p_put_cursor_at)(size_t row, size_t col);
     void (*p_clear_rows)(size_t start_row, size_t num_rows);
-    void (*p_scroll)(void);
+    void (*p_scroll_new_row)(void);
+
+    void (*p_clear_history)(void);
+    size_t (*p_history_screens)(void);
+    size_t (*p_history_pos)(void);
+    void (*p_set_history_pos)(size_t row_from_start);
 } output_impl_t;
 
 static task_mutex_t g_mutex;
@@ -24,6 +30,7 @@ static size_t g_row;
 static size_t g_col;
 
 static void put_char(char ch);
+static void scroll_new_row(void);
 
 __attribute__((artificial)) static inline void assert_owns_mutex(void) {
     if (!mutex_caller_owns(&g_mutex) && !gb_panic_mode) { panic_silent(); }
@@ -49,7 +56,12 @@ void term_init(void) {
         g_output_impl.p_put_char_at = framebuf_put_char_at;
         g_output_impl.p_put_cursor_at = framebuf_put_cursor_at;
         g_output_impl.p_clear_rows = framebuf_clear_rows;
-        g_output_impl.p_scroll = framebuf_scroll;
+        g_output_impl.p_scroll_new_row = framebuf_scroll_new_row;
+
+        g_output_impl.p_clear_history = framebuf_clear_history;
+        g_output_impl.p_history_screens = framebuf_history_screens;
+        g_output_impl.p_history_pos = framebuf_history_pos;
+        g_output_impl.p_set_history_pos = framebuf_set_history_pos;
     } else {
         vga_init();
 
@@ -59,11 +71,37 @@ void term_init(void) {
         g_output_impl.p_put_char_at = vga_put_char_at;
         g_output_impl.p_put_cursor_at = vga_put_cursor_at;
         g_output_impl.p_clear_rows = vga_clear_rows;
-        g_output_impl.p_scroll = vga_scroll;
+        g_output_impl.p_scroll_new_row = vga_scroll_new_row;
+
+        g_output_impl.p_clear_history = vga_clear_history;
+        g_output_impl.p_history_screens = vga_history_screens;
+        g_output_impl.p_history_pos = vga_history_pos;
+        g_output_impl.p_set_history_pos = vga_set_history_pos;
     }
 
     mutex_init(&g_mutex);
     term_clear();
+}
+
+__attribute__((noreturn)) void term_task(void) {
+    kbd_event_t event;
+    size_t history_pos;
+    for (;;) {
+        queue_read(kbd_sysevent_queue(), &event, sizeof(kbd_event_t));
+
+        term_acquire_mutex();
+        history_pos = g_output_impl.p_history_pos();
+        if (event.key == KEY_PAGEUP) {
+            if (history_pos >= 1) {
+                g_output_impl.p_set_history_pos(history_pos - 1);
+            }
+        } else if (event.key == KEY_PAGEDOWN) {
+            if (history_pos < (g_output_impl.p_history_screens() - 1) * g_max_row) {
+                g_output_impl.p_set_history_pos(history_pos + 1);
+            }
+        }
+        term_release_mutex();
+    }
 }
 
 void term_acquire_mutex(void) {
@@ -86,6 +124,8 @@ void term_clear(void) {
     assert_owns_mutex();
     g_output_impl.p_clear_rows(0, g_max_row);
     put_cursor_at(0, 0);
+
+    g_output_impl.p_clear_history();
 }
 
 void term_clear_rows(size_t start_row, size_t num_rows) {
@@ -148,7 +188,7 @@ static void put_char(char ch) {
         g_row++;
         if (g_row >= g_max_row) {
             g_row = (g_max_row - 1);
-            g_output_impl.p_scroll();
+            scroll_new_row();
         }
         break;
 
@@ -161,8 +201,12 @@ static void put_char(char ch) {
             g_row++;
             if (g_row >= g_max_row) {
                 g_row = (g_max_row - 1);
-                g_output_impl.p_scroll();
+                scroll_new_row();
             }
         }
     }
+}
+
+static void scroll_new_row(void) {
+    g_output_impl.p_scroll_new_row();
 }

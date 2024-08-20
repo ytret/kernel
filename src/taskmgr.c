@@ -12,6 +12,7 @@
 #include "pmm.h"
 #include "stack.h"
 #include "taskmgr.h"
+#include "term.h"
 #include "vmm.h"
 
 #define KERNEL_STACK_SIZE 4096
@@ -93,6 +94,10 @@ taskmgr_init(__attribute__((noreturn)) void (*p_init_entry)(void)) {
     // be terminated.
     gp_deleter_task = new_task((uint32_t)deleter_task);
     gp_deleter_task->b_is_blocked = true;
+
+    // Create the term task.
+    task_t *p_term_task = new_task((uint32_t)term_task);
+    list_append(&g_runnable_tasks, &p_term_task->list_node);
 
     // Create the initial task.
     gp_init_task = new_task((uint32_t)p_init_entry);
