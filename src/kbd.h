@@ -121,3 +121,4 @@ typedef struct {
 void kbd_init(void);
 void kbd_irq_handler(void);
 queue_t *kbd_event_queue(void);
+queue_t *kbd_sysevent_queue(void);

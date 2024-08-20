@@ -24,6 +24,7 @@ static volatile uint8_t gp_kbd_code_buf[CODE_BUF_LEN];
 static volatile size_t g_kbd_code_buf_pos;
 
 static queue_t g_kbd_event_queue;
+static queue_t g_kbd_sysevent_queue;
 
 static uint8_t read_code(void);
 static void append_code(uint8_t sc);
@@ -33,6 +34,7 @@ static void enqueue_event(uint8_t key, bool b_released);
 void kbd_init(void) {
     pic_set_mask(KBD_IRQ, false);
     queue_init(&g_kbd_event_queue, EVENT_QUEUE_LEN, sizeof(kbd_event_t));
+    queue_init(&g_kbd_sysevent_queue, EVENT_QUEUE_LEN, sizeof(kbd_event_t));
 }
 
 void kbd_irq_handler(void) {
@@ -45,6 +47,10 @@ void kbd_irq_handler(void) {
 
 queue_t *kbd_event_queue(void) {
     return &g_kbd_event_queue;
+}
+
+queue_t *kbd_sysevent_queue(void) {
+    return &g_kbd_sysevent_queue;
 }
 
 static uint8_t read_code(void) {
@@ -466,5 +472,9 @@ static void enqueue_event(uint8_t key, bool b_released) {
         .b_released = b_released,
     };
 
-    queue_write(&g_kbd_event_queue, &event);
+    if (!b_released && (key == KEY_PAGEUP || key == KEY_PAGEDOWN)) {
+        queue_write(&g_kbd_sysevent_queue, &event);
+    } else {
+        queue_write(&g_kbd_event_queue, &event);
+    }
 }
