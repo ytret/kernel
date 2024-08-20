@@ -21,6 +21,7 @@ typedef struct {
 
 static task_mutex_t g_mutex;
 static bool gb_panic_mode;
+static bool gb_history_mode;
 static output_impl_t g_output_impl;
 
 static size_t g_max_row;
@@ -94,10 +95,14 @@ __attribute__((noreturn)) void term_task(void) {
         if (event.key == KEY_PAGEUP) {
             if (history_pos >= 1) {
                 g_output_impl.p_set_history_pos(history_pos - 1);
+                gb_history_mode = true;
             }
         } else if (event.key == KEY_PAGEDOWN) {
-            if (history_pos < (g_output_impl.p_history_screens() - 1) * g_max_row) {
+            if (history_pos <
+                (g_output_impl.p_history_screens() - 1) * g_max_row) {
                 g_output_impl.p_set_history_pos(history_pos + 1);
+            } else {
+                gb_history_mode = false;
             }
         }
         term_release_mutex();
@@ -178,7 +183,14 @@ size_t term_width(void) {
 }
 
 void term_read_kbd_event(kbd_event_t *p_event) {
-    queue_read(kbd_event_queue(), p_event, sizeof(kbd_event_t));
+    kbd_event_t event;
+    for (;;) {
+        queue_read(kbd_event_queue(), &event, sizeof(kbd_event_t));
+        if (!gb_history_mode) {
+            *p_event = event;
+            break;
+        }
+    }
 }
 
 static void put_char(char ch) {
