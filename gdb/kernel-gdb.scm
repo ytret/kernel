@@ -1,91 +1,13 @@
-(use-modules (gdb))
+(add-to-load-path (dirname (current-filename)))
+
 (use-modules (ice-9 format))
+(use-modules (gdb))
 
-(define type/task (lookup-type "task_t"))
-(define type/list (lookup-type "list_t"))
-(define type/list-node (lookup-type "list_node_t"))
-(define null-ptr (make-value 0))
-
-(define (get-field-offset struct-type field-name)
-  (let* ((zero-ptr (value-cast (make-value 0) (type-pointer struct-type)))
-         (field (value-field (value-dereference zero-ptr) field-name)))
-    (value->integer (value-address field))))
-
-(define (value-is-pointer? value)
-  (eq? TYPE_CODE_PTR (type-code (value-type value))))
-
-(define (list/node->struct node struct-type field-name)
-  (value-cast
-    (make-value (- (value->integer (value-address node))
-                   (get-field-offset struct-type field-name)))
-    (type-pointer struct-type)))
-
-(define (list/get-next-node node)
-  (let ((next-ptr (value-field node "p_next")))
-    (if (equal? next-ptr null-ptr) #f (value-dereference next-ptr))))
-
-(define (list/listify-nodes node)
-  (if node
-      (let ((next-node (list/get-next-node node)))
-        (append (list node)
-                (if next-node (list/listify-nodes next-node) '())))
-      '()))
-
-(define (list/length list-val)
-  (let ((first-node-ptr (value-field list-val "p_first_node")))
-    (if (equal? first-node-ptr null-ptr)
-      0
-      (length (list/listify-nodes (value-dereference first-node-ptr))))))
-
-(define* (task/listify-tasks-list
-           symbol-name
-           #:optional (node-name-in-struct "list_node"))
-  (map
-    (lambda (node) (list/node->struct node type/task node-name-in-struct))
-    (list/listify-nodes
-      (let*
-        ((tasks-list (symbol-value (car (lookup-symbol symbol-name))))
-         (first-node-ptr (value-field tasks-list "p_first_node")))
-        (if (equal? first-node-ptr null-ptr)
-          #f
-          (value-dereference first-node-ptr))))))
-
-(define (task/listify-all-tasks)
-  (task/listify-tasks-list "g_all_tasks" "all_tasks_list_node"))
-
-(define (task/listify-runnable-tasks)
-  (task/listify-tasks-list "g_runnable_tasks"))
-
-(define (task/listify-sleeping-tasks)
-  (task/listify-tasks-list "g_sleeping_tasks"))
-
-(define (task/print-task task)
-  (let* ((kernel-stack (value-field task "kernel_stack"))
-         (esp0-max (value->integer (value-field kernel-stack "p_top_max")))
-         (esp0-top (value->integer (value-field kernel-stack "p_top")))
-         (esp0-bot (value->integer (value-field kernel-stack "p_bottom"))))
-    (format #t "id ~3d  esp0: (max 0x~8,'0x, top 0x~8,'0x, bot 0x~8,'0x, used ~d)\n"
-            (value->integer (value-field task "id"))
-            esp0-max
-            esp0-top
-            esp0-bot
-            (- esp0-max esp0-top))))
-
-(define (heap/listify-tags)
-  (list/listify-nodes
-    (let ((tag-ptr (symbol-value (car (lookup-symbol "gp_heap_start")))))
-      (if (equal? tag-ptr null-ptr)
-        #f
-        (value-dereference tag-ptr)))))
-
-(define (heap/print-tag tag)
-  (let* ((addr (if (value-is-pointer? tag)
-                 (value->integer tag)
-                 (value->integer (value-address tag))))
-         (used? (value->bool (value-field tag "b_used")))
-         (size (value->integer (value-field tag "size"))))
-    (format #t "at 0x~8,'0x, ~a, ~d bytes\n"
-            addr (if used? "used" "free") size)))
+(use-modules
+  (util)
+  ((linked-list) #:prefix ll/)
+  ((task) #:prefix task/)
+  ((heap) #:prefix heap/))
 
 (define (cmd/y self args from-tty)
   (execute "help y" #:from-tty #t))
@@ -128,7 +50,7 @@
     (if symbol-f
       (let ((symbol (car symbol-f)))
         (if (equal? type/list (symbol-type symbol))
-          (format #t "~d\n" (list/length (symbol-value symbol)))
+          (format #t "~d\n" (ll/length (symbol-value symbol)))
           (format #t "Symbol ~s does not have type ~s.\n"
                   (symbol-name symbol) (type-name type/list))))
       (format #t "Could not find symbol ~s.\n" var-name))))

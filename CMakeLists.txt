@@ -82,3 +82,7 @@ add_subdirectory(user)
 ###################################
 configure_file(gdb/.gdbinit ${CMAKE_BINARY_DIR}/.gdbinit)
 configure_file(gdb/kernel-gdb.scm ${CMAKE_BINARY_DIR}/kernel-gdb.scm)
+configure_file(gdb/util.scm ${CMAKE_BINARY_DIR}/util.scm)
+configure_file(gdb/linked-list.scm ${CMAKE_BINARY_DIR}/linked-list.scm)
+configure_file(gdb/task.scm ${CMAKE_BINARY_DIR}/task.scm)
+configure_file(gdb/heap.scm ${CMAKE_BINARY_DIR}/heap.scm)
