@@ -103,13 +103,16 @@ void vga_clear_rows(size_t start_row, size_t num_rows) {
 }
 
 void vga_scroll_new_row(void) {
-    // Bury the first row.
-    __builtin_memmove(gp_vga_memory, &gp_vga_memory[1 * MAX_COLS],
-                      (2 * (MAX_ROWS - 1) * MAX_COLS));
     __builtin_memmove(gp_history_buf, &gp_history_buf[1 * MAX_COLS],
                       (2 * (MAX_ROWS * g_history_screens - 1) * MAX_COLS));
 
-    // Clean the last row.
+    if (gb_history_mode) {
+        draw_from_history();
+    } else {
+        __builtin_memmove(gp_vga_memory, &gp_vga_memory[1 * MAX_COLS],
+                          (2 * (MAX_ROWS - 1) * MAX_COLS));
+    }
+
     for (size_t col = 0; col < MAX_COLS; col++) {
         vga_put_char_at((MAX_ROWS - 1), col, ' ');
     }
