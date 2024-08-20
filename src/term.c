@@ -9,9 +9,12 @@
 
 typedef struct {
     void (*p_put_char_at)(size_t row, size_t col, char ch);
-    void (*p_put_cursor_at)(size_t row, size_t col);
     void (*p_clear_rows)(size_t start_row, size_t num_rows);
     void (*p_scroll_new_row)(void);
+
+    void (*p_put_cursor_at)(size_t row, size_t col);
+    void (*p_enable_cursor)(void);
+    void (*p_disable_cursor)(void);
 
     void (*p_clear_history)(void);
     size_t (*p_history_screens)(void);
@@ -55,9 +58,12 @@ void term_init(void) {
         g_max_col = framebuf_width_chars();
 
         g_output_impl.p_put_char_at = framebuf_put_char_at;
-        g_output_impl.p_put_cursor_at = framebuf_put_cursor_at;
         g_output_impl.p_clear_rows = framebuf_clear_rows;
         g_output_impl.p_scroll_new_row = framebuf_scroll_new_row;
+
+        g_output_impl.p_put_cursor_at = framebuf_put_cursor_at;
+        g_output_impl.p_enable_cursor = framebuf_enable_cursor;
+        g_output_impl.p_disable_cursor = framebuf_disable_cursor;
 
         g_output_impl.p_clear_history = framebuf_clear_history;
         g_output_impl.p_history_screens = framebuf_history_screens;
@@ -70,9 +76,12 @@ void term_init(void) {
         g_max_col = vga_width_chars();
 
         g_output_impl.p_put_char_at = vga_put_char_at;
-        g_output_impl.p_put_cursor_at = vga_put_cursor_at;
         g_output_impl.p_clear_rows = vga_clear_rows;
         g_output_impl.p_scroll_new_row = vga_scroll_new_row;
+
+        g_output_impl.p_put_cursor_at = vga_put_cursor_at;
+        g_output_impl.p_enable_cursor = vga_enable_cursor;
+        g_output_impl.p_disable_cursor = vga_disable_cursor;
 
         g_output_impl.p_clear_history = vga_clear_history;
         g_output_impl.p_history_screens = vga_history_screens;
@@ -96,6 +105,7 @@ __attribute__((noreturn)) void term_task(void) {
             if (history_pos >= 1) {
                 g_output_impl.p_set_history_pos(history_pos - 1);
                 gb_history_mode = true;
+                vga_disable_cursor();
             }
         } else if (event.key == KEY_PAGEDOWN) {
             if (history_pos <
@@ -103,6 +113,7 @@ __attribute__((noreturn)) void term_task(void) {
                 g_output_impl.p_set_history_pos(history_pos + 1);
             } else {
                 gb_history_mode = false;
+                vga_enable_cursor();
             }
         }
         term_release_mutex();

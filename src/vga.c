@@ -22,6 +22,8 @@
 #define REG_CRTC_CURSOR_LOC_HI ((uint8_t)0x0E)
 #define REG_CRTC_CURSOR_LOC_LO ((uint8_t)0x0F)
 
+#define REG_CRTC_CURSOR_START_CD (1 << 5)
+
 #define HISTORY_SCREENS 2
 
 static uint16_t *const gp_vga_memory = (uint16_t *)VGA_MEMORY_ADDR;
@@ -34,17 +36,7 @@ static size_t g_history_pos = (HISTORY_SCREENS - 1) * MAX_ROWS;
 static void draw_from_history(void);
 
 void vga_init(void) {
-    // Set up the cursor.
-    port_outb(PORT_CRTC_ADDR, REG_CRTC_MAX_SCAN_LINE);
-    uint8_t max_scan_line = (port_inb(PORT_CRTC_DATA) & 0x1F);
-
-    uint8_t start = 1;
-    uint8_t end = (max_scan_line - 1);
-
-    port_outb(PORT_CRTC_ADDR, REG_CRTC_CURSOR_START);
-    port_outb(PORT_CRTC_DATA, ((port_inb(PORT_CRTC_DATA) & 0xC0) | start));
-    port_outb(PORT_CRTC_ADDR, REG_CRTC_CURSOR_END);
-    port_outb(PORT_CRTC_DATA, ((port_inb(PORT_CRTC_DATA) & 0xC0) | end));
+    vga_enable_cursor();
 }
 
 size_t vga_height_chars(void) {
@@ -76,6 +68,24 @@ void vga_put_cursor_at(size_t row, size_t col) {
     port_outb(PORT_CRTC_DATA, ((uint8_t)(char_idx >> 8)));
     port_outb(PORT_CRTC_ADDR, REG_CRTC_CURSOR_LOC_LO);
     port_outb(PORT_CRTC_DATA, ((uint8_t)char_idx));
+}
+
+void vga_enable_cursor(void) {
+    port_outb(PORT_CRTC_ADDR, REG_CRTC_MAX_SCAN_LINE);
+    uint8_t max_scan_line = (port_inb(PORT_CRTC_DATA) & 0x1F);
+
+    uint8_t start = 1;
+    uint8_t end = (max_scan_line - 1);
+
+    port_outb(PORT_CRTC_ADDR, REG_CRTC_CURSOR_START);
+    port_outb(PORT_CRTC_DATA, ((port_inb(PORT_CRTC_DATA) & 0xC0) | start));
+    port_outb(PORT_CRTC_ADDR, REG_CRTC_CURSOR_END);
+    port_outb(PORT_CRTC_DATA, ((port_inb(PORT_CRTC_DATA) & 0xC0) | end));
+}
+
+void vga_disable_cursor(void) {
+    port_outb(PORT_CRTC_ADDR, REG_CRTC_CURSOR_START);
+    port_outb(PORT_CRTC_DATA, REG_CRTC_CURSOR_START_CD);
 }
 
 void vga_clear_rows(size_t start_row, size_t num_rows) {

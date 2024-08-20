@@ -14,6 +14,8 @@ size_t framebuf_width_chars(void);
 
 void framebuf_put_char_at(size_t row, size_t col, char ch);
 void framebuf_put_cursor_at(size_t row, size_t col);
+void framebuf_enable_cursor(void);
+void framebuf_disable_cursor(void);
 
 void framebuf_clear_rows(size_t start_row, size_t num_rows);
 void framebuf_scroll_new_row(void);

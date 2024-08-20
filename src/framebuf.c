@@ -116,6 +116,12 @@ void framebuf_put_cursor_at(size_t row, size_t col) {
     g_cursor_col = col;
 }
 
+void framebuf_enable_cursor(void) {
+}
+
+void framebuf_disable_cursor(void) {
+}
+
 void framebuf_clear_rows(size_t start_row, size_t num_rows) {
     size_t start_offset = start_row * g_font.height_px * g_pitch;
     size_t num_bytes = num_rows * g_font.height_px * g_pitch;
