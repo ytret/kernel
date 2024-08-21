@@ -130,7 +130,7 @@ void vga_scroll_new_row(void) {
 
 /*
  * Resets the shadow buffer thus deleting all output history. Also deletes the
- * currently visible part of it.
+ * currently visible part of it WITHOUT updating the VGA framebuffer.
  */
 void vga_clear_history(void) {
     memset_word(gp_shadow_buf, 0x0F << 8, SHADOW_SCREENS * NUM_ROWS * NUM_COLS);
