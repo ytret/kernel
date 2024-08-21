@@ -1,3 +1,16 @@
+/*
+ * Text-mode terminal implementation.
+ *
+ * Uses a sort of double buffering for saving history output and replaying it.
+ * The output is first saved in the 'shadow buffer', and, if it's visible,
+ * replayed to the VGA framebuffer.
+ *
+ * Variable naming conventions:
+ *   sh_  - shadow buffer
+ *   lss_ - last screen of the shadow buffer (LSS - last shadow screen)
+ *   vga_ - VGA framebuffer
+ */
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
