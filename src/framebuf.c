@@ -153,7 +153,7 @@ size_t framebuf_history_pos(void) {
     return 0;
 }
 
-void framebuf_set_history_pos(size_t row_from_start) {
+void framebuf_set_history_mode(size_t row_from_start) {
     (void)row_from_start;
 }
 

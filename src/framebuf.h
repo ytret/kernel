@@ -23,4 +23,4 @@ void framebuf_scroll_new_row(void);
 void framebuf_clear_history(void);
 size_t framebuf_history_screens(void);
 size_t framebuf_history_pos(void);
-void framebuf_set_history_pos(size_t row_from_start);
+void framebuf_set_history_mode(size_t row_from_start);
