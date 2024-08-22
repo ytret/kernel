@@ -234,10 +234,15 @@ static void get_vga_row_range(size_t lss_start_row, size_t lss_num_rows,
     size_t sh_start_row = (SHADOW_SCREENS - 1) * NUM_ROWS + lss_start_row;
     size_t sh_end_row = sh_start_row + lss_num_rows;
 
-    if (sh_start_row >= g_vga_start_at_sh_row &&
-        sh_end_row <= g_vga_start_at_sh_row + NUM_ROWS) {
+    if (sh_start_row >= g_vga_start_at_sh_row) {
         *p_vga_start_row = sh_start_row - g_vga_start_at_sh_row;
-        *p_vga_num_rows = sh_end_row - *p_vga_start_row;
+
+        if (sh_end_row > g_vga_start_at_sh_row + NUM_ROWS) {
+            *p_vga_num_rows = lss_num_rows -
+                              (sh_end_row - (g_vga_start_at_sh_row + NUM_ROWS));
+        } else {
+            *p_vga_num_rows = lss_num_rows;
+        }
     } else {
         *p_vga_start_row = 0;
         *p_vga_num_rows = 0;
