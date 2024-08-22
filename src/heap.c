@@ -6,7 +6,7 @@
 #include "mutex.h"
 #include "panic.h"
 
-#define HEAP_SIZE (4 * 1024 * 1024)
+#define HEAP_SIZE (12 * 1024 * 1024)
 
 #define MIN_ALIGN 4
 
