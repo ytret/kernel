@@ -6,7 +6,7 @@
 #include "kbd.h"
 
 void term_init(void);
-void term_init_history(size_t num_screens);
+void term_init_history(void);
 __attribute__((noreturn)) void term_task(void);
 
 /* Output-related functions */
