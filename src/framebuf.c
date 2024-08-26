@@ -29,6 +29,7 @@ static uint8_t g_bpp;
 static uint8_t *gp_shadow_buf;
 static size_t g_fb_start_at_sh_row;
 
+static bool gb_cursor_enabled = true;
 static size_t g_cursor_lss_row;
 static size_t g_cursor_lss_col;
 
@@ -47,7 +48,7 @@ static void enable_cursor(void);
 static void disable_cursor(void);
 static void draw_cursor_fb(void);
 
-static void copy_shadow_to_fb(void);
+static void copy_shadow_to_fb(size_t fb_start_row, size_t fb_num_rows);
 
 void framebuf_init(void) {
     const mbi_t *p_mbi = mbi_ptr();
@@ -104,15 +105,19 @@ void framebuf_put_char_at(size_t lss_row, size_t lss_col, char ch) {
 }
 
 /*
- * Places a new cursor on the last shadow screen, without deleting the previous
- * one.
+ * Places a new cursor on the last shadow screen, deleting the previous one. If
+ * the cursor is not enabled, does not draw it.
  */
 void framebuf_put_cursor_at(size_t lss_row, size_t lss_col) {
     if (!gp_shadow_buf) { return; }
 
+    // Remove the previous cursor.
+    copy_shadow_to_fb(g_cursor_lss_row, 1);
+
     g_cursor_lss_row = lss_row;
     g_cursor_lss_col = lss_col;
-    draw_cursor_fb();
+
+    if (gb_cursor_enabled) { draw_cursor_fb(); }
 }
 
 /*
@@ -129,7 +134,7 @@ void framebuf_clear_rows(size_t lss_start_row, size_t lss_num_rows) {
     size_t fb_num_rows;
     get_fb_row_range(lss_start_row, lss_num_rows, &fb_start_row, &fb_num_rows);
     memclr_sse2(&gp_framebuf[fb_start_row * g_row_pitch],
-           fb_num_rows * g_row_pitch);
+                fb_num_rows * g_row_pitch);
 }
 
 /*
@@ -146,7 +151,7 @@ void framebuf_scroll_new_row(void) {
     size_t sh_last_row = SHADOW_SCREENS * g_height_chars - 1;
     memclr_sse2(&gp_shadow_buf[sh_last_row * g_row_pitch], g_row_pitch);
 
-    copy_shadow_to_fb();
+    copy_shadow_to_fb(0, g_height_chars);
 }
 
 void framebuf_init_history(void) {
@@ -183,7 +188,7 @@ void framebuf_set_history_mode(size_t start_at_sh_row) {
     ASSERT(start_at_sh_row <= (SHADOW_SCREENS - 1) * g_height_chars);
 
     g_fb_start_at_sh_row = start_at_sh_row;
-    copy_shadow_to_fb();
+    copy_shadow_to_fb(0, g_height_chars);
 
     if (g_fb_start_at_sh_row < (SHADOW_SCREENS - 1) * g_height_chars) {
         disable_cursor();
@@ -284,10 +289,21 @@ static void clear_pixel(uint8_t *p_buf, size_t y, size_t x) {
     memset(&p_buf[offset], 0, g_bpp / 8);
 }
 
+static void invert_pixel(uint8_t *p_buf, size_t y, size_t x) {
+    size_t offset = y * g_px_pitch + x * (g_bpp / 8);
+    p_buf[offset + 0] = ~p_buf[offset + 0];
+    p_buf[offset + 1] = ~p_buf[offset + 1];
+    p_buf[offset + 2] = ~p_buf[offset + 2];
+}
+
 static void enable_cursor(void) {
+    gb_cursor_enabled = true;
+    draw_cursor_fb();
 }
 
 static void disable_cursor(void) {
+    gb_cursor_enabled = false;
+    copy_shadow_to_fb(g_cursor_lss_row, 1);
 }
 
 static void draw_cursor_fb(void) {
@@ -298,13 +314,19 @@ static void draw_cursor_fb(void) {
     size_t fb_col;
     bool b_visible = get_fb_idx(sh_row, sh_col, &fb_row, &fb_col);
     if (b_visible) {
-        // TODO:
+        size_t fb_y = fb_row * g_font.height_px;
+        size_t fb_x = fb_col * g_font.width_px;
+        for (size_t it_y = 0; it_y < g_font.height_px; it_y++) {
+            for (size_t it_x = 0; it_x < g_font.width_px; it_x++) {
+                invert_pixel(gp_framebuf, fb_y + it_y, fb_x + it_x);
+            }
+        }
     }
 }
 
-static void copy_shadow_to_fb(void) {
-    memmove_sse2(gp_framebuf,
-                 &gp_shadow_buf[g_fb_start_at_sh_row * g_row_pitch],
-                 g_height_px * g_px_pitch);
-    draw_cursor_fb();
+static void copy_shadow_to_fb(size_t fb_start_row, size_t fb_num_rows) {
+    memmove_sse2(
+        &gp_framebuf[fb_start_row * g_row_pitch],
+        &gp_shadow_buf[(g_fb_start_at_sh_row + fb_start_row) * g_row_pitch],
+        fb_num_rows * g_row_pitch);
 }
