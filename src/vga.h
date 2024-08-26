@@ -14,6 +14,7 @@ void vga_put_cursor_at(size_t row, size_t col);
 void vga_clear_rows(size_t start_row, size_t num_rows);
 void vga_scroll_new_row(void);
 
+void vga_init_history(void);
 void vga_clear_history(void);
 size_t vga_history_screens(void);
 size_t vga_history_pos(void);

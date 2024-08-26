@@ -79,7 +79,7 @@ void term_init(void) {
         g_output_impl.p_clear_rows = vga_clear_rows;
         g_output_impl.p_scroll_new_row = vga_scroll_new_row;
 
-        g_output_impl.p_init_history = NULL;
+        g_output_impl.p_init_history = vga_init_history;
         g_output_impl.p_clear_history = vga_clear_history;
         g_output_impl.p_history_screens = vga_history_screens;
         g_output_impl.p_history_pos = vga_history_pos;
@@ -88,7 +88,6 @@ void term_init(void) {
     }
 
     mutex_init(&g_mutex);
-    term_clear();
 }
 
 void term_init_history(void) {

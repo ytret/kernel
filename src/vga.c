@@ -18,6 +18,7 @@
 #include "assert.h"
 #include "memfun.h"
 #include "port.h"
+#include "vga.h"
 
 #define NUM_ROWS 25
 #define NUM_COLS 80
@@ -126,6 +127,10 @@ void vga_scroll_new_row(void) {
     memset_word(&gp_shadow_buf[sh_last_row * NUM_COLS], 0x0F << 8, NUM_COLS);
 
     copy_shadow_to_vga();
+}
+
+void vga_init_history(void) {
+    g_vga_start_at_sh_row = (SHADOW_SCREENS - 1) * NUM_ROWS;
 }
 
 /*

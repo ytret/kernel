@@ -42,7 +42,9 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     heap_init();
     mbi_save_on_heap();
+
     term_init_history();
+    term_clear();
 
     kbd_init();
 
