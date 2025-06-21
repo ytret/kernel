@@ -30,7 +30,7 @@ Arch Linux packages are specified in parentheses.
 
 3. Creating a virtual disk:
 
-  * QEMU disk image manipulating tools (qemu-img)
+  * QEMU disk image manipulation tools (qemu-img)
   * mkfs.ext4 (e2fsprogs)
 
 4. Running in an emulator:
