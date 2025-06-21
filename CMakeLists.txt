@@ -60,8 +60,8 @@ add_executable(kernel
 
     src/list.c
     src/mutex.c
-    src/semaphore.c
     src/queue.c
+    src/semaphore.c
 )
 target_compile_options(kernel PRIVATE
     -Wall -Wextra
