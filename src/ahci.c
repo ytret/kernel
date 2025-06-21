@@ -1,3 +1,10 @@
+/**
+ * @file ahci.c
+ * SATA AHCI driver implementation.
+ *
+ * Refer to Serial ATA Advanced Host Controller Interface (AHCI) 1.3.1.
+ */
+
 #include <stddef.h>
 
 #include "ahci.h"
@@ -7,126 +14,211 @@
 #include "sata.h"
 #include "vmm.h"
 
-// Number of PRDT entries in each command table.
+/// Number of PRDT entries in each command table.
 #define CMD_TABLE_NUM_PRDS 8
 
-// Although AHCI 1.3.1 specifies 12..04 as reserved (section 2.1.11), QEMU uses
-// the 12th bit.  Maybe the whole reserved field is meant to be used as an
-// address, but that may take away its page alignment, which the code relies on.
+/**
+ * ABAR register, base address mask.
+ *
+ * Although AHCI 1.3.1, section 2.1.11 (Offset 24h: ABAR - AHCI Base Address)
+ * specifies bits 12..04 as reserved, QEMU uses the 12th bit. Maybe the whole
+ * reserved field is meant to be used as an address, but that may take away its
+ * page alignment property, which the code relies on.
+ */
 #define ABAR_ADDR_MASK (~0xFFF)
 
-// HBA memory reigsters defines.
-#define HBA_MEM_SIZE           0x1100
-#define HBA_REG_GHC_OFFSET     0
+/// Size of the HBA memory register map (bytes).
+#define HBA_MEM_SIZE 0x1100
+
+/// Global HBA Control (GHC) register offset.
+#define HBA_REG_GHC_OFFSET 0x04
+
+/**
+ * Port @a P control register offset.
+ * @param P Port number.
+ */
 #define HBA_REG_PORT_OFFSET(P) (0x100 + (0x80 * (P)))
+
+/**
+ * Pointer to the port @a P control register.
+ * @param HBA Start address of the HBA register map.
+ * @param P   Port number.
+ */
 #define HBA_REG_PORT(HBA, P)                                                   \
     (((uint8_t const *)(HBA)) + (HBA_REG_PORT_OFFSET(P)))
 
-// Bits of GHC register fields.
-#define GHC_GHC_AE  (1 << 31) // AHCI enable
-#define GHC_CAP_SAM (1 << 18) // supports AHCI mode only
+/**
+ * @{
+ * @name Generic HBA Control (GHC) register bits
+ */
+/// GHC register bit AE: AHCI enable.
+#define GHC_GHC_AE  (1 << 31)
+/// HBA capabilities register bit SAM: supports AHCI mode only.
+#define GHC_CAP_SAM (1 << 18)
 
-// Bits of port register.
-#define PORT_IS_TFES       (1 << 30)   // task file error status
-#define PORT_IS_PSS        (1 << 1)    // PIO setup FIS interrupt
-#define PORT_IS_DHRS       (1 << 0)    // device to host register FIS int.
-#define PORT_CMD_CR        (1 << 15)   // command list running
-#define PORT_CMD_FR        (1 << 14)   // FIS receive running
-#define PORT_CMD_FRE       (1 << 4)    // FIS receive enable
-#define PORT_CMD_ST        (1 << 0)    // start command list processing
-#define PORT_TFD_BSY       (1 << 7)    // interface is busy
-#define PORT_TFD_DRQ       (1 << 3)    // data tranfser is requested
-#define PORT_SSTS_IPM_MASK (0x1F << 8) // interface power management
-#define PORT_SSTS_DET_MASK (0x0F << 0) // device detection
+#define PORT_IS_TFES       (1 << 30) //!< Task file error status.
+#define PORT_IS_PSS        (1 << 1)  //!< PIO setup FIS interrupt.
+#define PORT_IS_DHRS       (1 << 0)  //!< Device to host register FIS interrupt.
+#define PORT_CMD_CR        (1 << 15) //!< Command list running.
+#define PORT_CMD_FR        (1 << 14) //!< FIS receive running.
+#define PORT_CMD_FRE       (1 << 4)  //!< FIS receive enable.
+#define PORT_CMD_ST        (1 << 0)  //!< Start command list processing.
+#define PORT_TFD_BSY       (1 << 7)  //!< Interface is busy.
+#define PORT_TFD_DRQ       (1 << 3)  //!< Data tranfser is requested.
+#define PORT_SSTS_IPM_MASK (0x1F << 8) //!< Interface power management.
+#define PORT_SSTS_DET_MASK (0x0F << 0) //!< Device detection.
+/**
+ * @}
+ */
 
+/**
+ * Generic HBA Control registers.
+ * Refer to section 3.1.
+ */
 typedef volatile struct __attribute__((packed)) {
-    uint32_t cap;       // host capabilities
-    uint32_t ghc;       // global host control
-    uint32_t is;        // interrupt status
-    uint32_t pi;        // ports implemented
-    uint32_t vs;        // version
-    uint32_t ccc_ctl;   // command completion coalescing control
-    uint32_t ccc_ports; // command completion coalescing ports
-    uint32_t em_loc;    // enclosure management location
-    uint32_t em_ctl;    // enclosure management control
-    uint32_t cap2;      // host capabilities extended
-    uint32_t bohc;      // BIOS/OS handoff control and status
+    uint32_t cap;       //!< Host Capabilities register.
+    uint32_t ghc;       //!< Global HBA Control register.
+    uint32_t is;        //!< Interrupt Status register.
+    uint32_t pi;        //!< Ports Implemented register.
+    uint32_t vs;        //!< Version register.
+    uint32_t ccc_ctl;   //!< Command Completion Coalescing Control register.
+    uint32_t ccc_ports; //!< Command Completion Coalescing Ports register.
+    uint32_t em_loc;    //!< Enclosure Management Location register.
+    uint32_t em_ctl;    //!< Enclosure Management Control register.
+    uint32_t cap2;      //!< Host Capabilities Extended register.
+    uint32_t bohc;      //!< BIOS/OS Handoff Control and status register.
 } reg_ghc_t;
 
+/**
+ * Port registers.
+ * Refer to section 3.3.
+ */
 typedef volatile struct __attribute__((packed)) {
-    uint32_t clb;             // command list base address
-    uint32_t clbu;            // upper 32 bits of clb
-    uint32_t fb;              // FIS base address
-    uint32_t fbu;             // upper 32 bits of fb
-    uint32_t is;              // interrupt status
-    uint32_t ie;              // interrupt enable
-    uint32_t cmd;             // command and status
-    uint32_t _reserved_1;     // reserved
-    uint32_t tfd;             // task file data
-    uint32_t sig;             // signature
-    uint32_t ssts;            // SATA status
-    uint32_t sctl;            // SATA control
-    uint32_t serr;            // SATA error
-    uint32_t sact;            // SATA active
-    uint32_t ci;              // command issue
-    uint32_t sntf;            // SATA notification
-    uint32_t fbs;             // FIS-based switching control
-    uint32_t devslp;          // device sleep
-    uint32_t _reserved_2[10]; // reserved
-    uint32_t p_vs[4];         // vendor specific
+    uint32_t clb;             //!< Command List Base Address register.
+    uint32_t clbu;            //!< Upper 32 Bits of the CLB register.
+    uint32_t fb;              //!< FIS Base Address register.
+    uint32_t fbu;             //!< Upper 32 Bits of the FB register.
+    uint32_t is;              //!< Interrupt Status register.
+    uint32_t ie;              //!< Interrupt Enable register.
+    uint32_t cmd;             //!< Command and Status register.
+    uint32_t _reserved_1;     //!< Reserved.
+    uint32_t tfd;             //!< Task File Data register.
+    uint32_t sig;             //!< Signature register.
+    uint32_t ssts;            //!< SATA Status register.
+    uint32_t sctl;            //!< SATA Control register.
+    uint32_t serr;            //!< SATA Error register.
+    uint32_t sact;            //!< SATA Active register.
+    uint32_t ci;              //!< Command Issue register.
+    uint32_t sntf;            //!< SATA Notification register.
+    uint32_t fbs;             //!< FIS-based Switching Control register.
+    uint32_t devslp;          //!< Device Sleep register.
+    uint32_t _reserved_2[10]; //!< Reserved.
+    uint32_t p_vs[4];         //!< Vendor Specific registers.
 } reg_port_t;
 
+/**
+ * Received Frame Information Structure (FIS).
+ *
+ * Frames that are received from the host are copied to the appropriate field of
+ * this structure by the HBA.
+ *
+ * Refer to section 4.2.1.
+ */
 typedef volatile struct __attribute__((packed)) {
+    /// DMA Setup FIS.
     sata_fis_dma_setup_t dsfis __attribute__((aligned(0x20)));
+    /// Port IO Setup FIS.
     sata_fis_pio_setup_t psfis __attribute__((aligned(0x20)));
+    /// Device-to-HBA FIS.
     sata_fis_reg_d2h_t rfis __attribute__((aligned(0x20)));
+    /// Set-Device-Bits FIS.
     sata_fis_dev_bits_t sdbfis __attribute__((aligned(0x08)));
 
+    /// Unknown FIS.
     uint8_t p_ufis[64];
     uint8_t _reserved[96];
 } rfis_t;
 
+/**
+ * Command Header.
+ * Refer to section 4.2.2.
+ */
 typedef volatile struct __attribute__((packed)) {
-    // 0x00
-    uint8_t cfl : 5; // command FIS length
+    // DW 0 - Description Information.
+    /// Command FIS Length.
+    uint8_t cfl : 5;
+    /// ATAPI bit: PIO Setup FIS shall be sent (1) or not (0).
     bool b_atapi : 1;
+    /// Data direction bit: write to the device (1) or read from it (0).
     bool b_write : 1;
+    /// Prefetchable bit.
     bool b_prefetch : 1;
+    /// Reset bit.
     bool b_reset : 1;
+    /// BIST bit: the command is for sending a BIST FIS (1) or not (0).
     bool b_bist : 1;
+    /// Clear BSY upon R_OK (1) or not (0).
     bool b_clear_bsy : 1;
     uint8_t _reserved_1 : 1;
-    uint8_t pmp : 4; // port multiplier port
-    uint16_t prdtl;  // physical region descriptor table length
+    /// Port Multiplier Port.
+    uint8_t pmp : 4;
+    /// Physical Region Descriptor Table Length.
+    uint16_t prdtl;
 
-    uint32_t prdbc; // 0x08 - physical region descriptor byte count
-    uint32_t ctba;  // 0x0C - command table descriptor base address
-    uint32_t ctbau; // 0x10
+    // DW 1 - Command Status.
+    uint32_t prdbc; //!< Physical Region Descriptor Byte Count.
+
+    // DW 2.
+    uint32_t ctba; //!< Command Table Descriptor Base Address.
+
+    // DW 3.
+    uint32_t ctbau; //!< Upper 32 Bits of CTBA.
 
     uint32_t _reserved_2[4];
 } cmd_hdr_t;
 
+/**
+ * Physical Region Descriptor Table (PRDT).
+ * Refer to section 4.2.3.3.
+ */
 typedef volatile struct __attribute__((packed)) {
-    uint32_t dba;         // 0x00 - data base address
-    uint32_t dbau;        // 0x04
-    uint32_t _reserved_1; // 0x08
+    // DW 0.
+    uint32_t dba; //!< Data Base Address.
+    // DW 1.
+    uint32_t dbau; //!< Upper 32 Bits of DBA.
+    // DW 2.
+    uint32_t _reserved_1;
 
-    // 0x0C
-    uint32_t dbc : 22;
+    // DW 3.
+    uint32_t dbc : 22; //!< Data Byte Count.
     uint16_t _reserved_2 : 9;
-    bool b_int : 1;
+    bool b_int : 1; //!< Interrupt On Completion.
 } prd_t;
 
+/**
+ * Command Table.
+ * Refer to section 4.2.3.
+ */
 typedef volatile struct __attribute__((packed)) {
-    uint8_t p_cfis[64];
-    uint8_t p_acmd[16];
+    uint8_t p_cfis[64]; //!< Command FIS.
+    uint8_t p_acmd[16]; //!< ATAPI Command.
     uint8_t _reserved[48];
 
+    /**
+     * Physical Region Descriptor Table (PRDT).
+     * The number of items in this table is set by the #cmd_hdr_t.prdtl field in
+     * the Command Header.
+     */
     prd_t p_prd_table[CMD_TABLE_NUM_PRDS];
 } cmd_table_t;
 
+/**
+ * Internal representation of an ATA command.
+ * The meaning of these fields depends on the specific ATA command that is used,
+ * refer to the ATA/ATAPI Command Set specification.
+ */
 typedef struct {
-    uint16_t feature;
+    uint16_t features;
     uint16_t count;
     uint64_t lba;
     uint8_t device;
@@ -139,18 +231,26 @@ _Static_assert(0x100 == sizeof(rfis_t), "");
 _Static_assert(0x20 == sizeof(cmd_hdr_t), "");
 _Static_assert(0x10 == sizeof(prd_t), "");
 
-// Driver state.
+/// Driver state.
 static bool gb_initialized;
 
-// Root disk.
+/**
+ * @{
+ * @name Root disk
+ */
 static void *gp_hba;
 static reg_port_t *gp_port;
 static uint32_t g_max_sectors;
+/// @}
 
-// FIS buffers.
+/**
+ * @{
+ * @name FIS buffers
+ */
 static rfis_t g_rfis __attribute__((aligned(256)));
 static cmd_hdr_t gp_cmd_list[32] __attribute__((aligned(1024)));
 static cmd_table_t gp_cmd_tables[1] __attribute__((aligned(128)));
+/// @}
 
 static bool ensure_ahci_mode(void);
 static bool find_root_port(void);
@@ -231,8 +331,10 @@ bool ahci_is_init(void) {
     return gb_initialized;
 }
 
-/*
- * Returns true when the device is in AHCI mode, otherwise false.
+/**
+ * Enables AHCI mode on the @ref gp_hba "root HBA".
+ * @returns `true` if the controller is in or has been placed in AHCI mode,
+ * otherwise returns `false`.
  */
 static bool ensure_ahci_mode(void) {
     reg_ghc_t *p_ghc = gp_hba;
@@ -400,18 +502,18 @@ static bool read_sectors(reg_port_t *p_port, uint64_t start_sector,
     return true;
 }
 
-/*
- * Sends an ATA command to read from device using AHCI.
+/**
+ * Sends an ATA command to read from a device.
  *
- * Arguments:
- *   p_port   - port to issue the command to,
- *   cmd      - the ATA command itself,
- *   p_buf    - destination buffer of size read_len or bigger,
- *   read_len - number of bytes to be transferred.
+ * @param p_port   Port Register of the port that will handle the command.
+ * @param cmd      ATA command details.
+ * @param p_buf    Output buffer to copy the data read from the device.
+ * @param read_len Number of bytes to be received into @a p_buf.
  *
- * Returns command slot of the issued command on success, otherwise -1.
+ * @returns Command slot of the issued command on success, otherwise -1.
  *
- * NOTE: does not check if the command was aborted, or for any other ATA error.
+ * @warning
+ * Does not check if the command was aborted, or for any other ATA error.
  */
 static int send_read_cmd(reg_port_t *p_port, cmd_t cmd, void *p_buf,
                          size_t read_len) {
@@ -459,8 +561,8 @@ static int send_read_cmd(reg_port_t *p_port, cmd_t cmd, void *p_buf,
     p_cfis->b_cmd = true;
     p_cfis->command = cmd.command;
     p_cfis->device = cmd.device;
-    p_cfis->features_7_0 = cmd.feature & 0xFF;
-    p_cfis->features_15_8 = (cmd.feature >> 8) & 0xFF;
+    p_cfis->features_7_0 = cmd.features & 0xFF;
+    p_cfis->features_15_8 = (cmd.features >> 8) & 0xFF;
     p_cfis->lba0 = (cmd.lba >> 0) & 0xFF;
     p_cfis->lba1 = (cmd.lba >> 8) & 0xFF;
     p_cfis->lba2 = (cmd.lba >> 16) & 0xFF;
@@ -487,14 +589,18 @@ static int send_read_cmd(reg_port_t *p_port, cmd_t cmd, void *p_buf,
     return cmd_slot;
 }
 
-/*
- * Waits for the command in slot cmd_slot to finish.
+/**
+ * Waits for the command in slot @a cmd_slot to finish.
  *
- * Returns false if Error bit is set in the received FIS, or if the FIS is not
- * received at all.  Otherwise returns true.
+ * @returns
+ * - `true` if the command has finished successfully.
+ * - `false` if the @ref PORT_IS_TFES "error bit" is set in the port register,
+ *   or if no FIS has been received at all.
  *
- * NOTE: use this right after e.g. send_read_cmd(), so that IS.DHRS is not reset
- * between the calls.
+ * @note
+ * Use this function right after issuing a command, e.g., using
+ * #send_read_cmd(), so that @ref PORT_IS_DHRS "IS.DHRS" is not reset between
+ * the calls.
  */
 static bool wait_for_cmd(reg_port_t *p_port, int cmd_slot) {
     bool b_has_err = false;
