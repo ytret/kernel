@@ -20,7 +20,8 @@ set(CMAKE_C_FLAGS_RELEASE "-O3")
 ############
 add_executable(kernel
     src/main.c
-    src/ahci.c
+
+    src/disk/ahci.c
     src/elf.c
     src/framebuf.c
     src/gdt.c

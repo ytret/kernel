@@ -17,7 +17,7 @@
 
 #include <cpuid.h>
 
-#include "ahci.h"
+#include "disk/ahci.h"
 #include "elf.h"
 #include "heap.h"
 #include "kprintf.h"

@@ -7,11 +7,11 @@
 
 #include <stddef.h>
 
-#include "ahci.h"
+#include "disk/ahci.h"
+#include "disk/sata.h"
 #include "heap.h"
 #include "kprintf.h"
 #include "pci.h"
-#include "sata.h"
 #include "vmm.h"
 
 /// Number of PRDT entries in each command table.

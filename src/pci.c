@@ -1,7 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ahci.h"
+#include "disk/ahci.h"
 #include "kprintf.h"
 #include "pci.h"
 #include "port.h"
