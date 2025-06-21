@@ -1,3 +1,8 @@
+/**
+ * @file pci.h
+ * PCI driver API.
+ */
+
 #pragma once
 
 #include <stddef.h>
@@ -156,10 +161,12 @@ typedef struct {
     pci_header_00h_t header;
 } pci_dev_t;
 
+/// Enumerate PCI devices.
 void pci_init(void);
 
 /// Returns the number of devices connected to the host PCI bus.
 size_t pci_num_devs(void);
+
 /**
  * Get the PCI device at index @a idx.
  * @param idx Device index, must be less than #pci_num_devs().
@@ -171,5 +178,6 @@ const pci_dev_t *pci_get_dev_const(size_t idx);
 
 /// Prints the device bus, device, function numbers, vendor ID, device ID.
 void pci_dump_dev_short(const pci_dev_t *dev);
+
 /// Prints the full header of the device.
 void pci_dump_dev_header(const pci_dev_t *dev);
