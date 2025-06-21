@@ -1,30 +1,57 @@
+/**
+ * @file sata.h
+ * SATA data structure definitions.
+ *
+ * Refer to Serial ATA Revision 3.1.
+ */
+
 #pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
 
+/**
+ * SATA device signature.
+ * This value is read from the @ref reg_port_t.sig "Port Signature register"
+ * after device reset.
+ */
 #define SATA_SIG_ATA 0x00000101
 
-#define SATA_FIS_REG_H2D   0x27 // register - host to device
-#define SATA_FIS_REG_D2H   0x34 // register - device to host
-#define SATA_FIS_DMA_ACT   0x39 // DMA activate - device to host
-#define SATA_FIS_DMA_SETUP 0x41 // DMA setup - bi-directional
-#define SATA_FIS_DATA      0x46 // data - bi-directionial
-#define SATA_FIS_BIST_ACT  0x58 // BIST activate - bi-directional
-#define SATA_FIS_PIO_SETUP 0x5F // PIO setup - device to host
-#define SATA_FIS_DEV_BITS  0xA1 // set device bits - device to host
+/**
+ * @{
+ * @name FIS Types
+ */
+#define SATA_FIS_REG_H2D   0x27 //!< Register - host to device.
+#define SATA_FIS_REG_D2H   0x34 //!< Register - device to host.
+#define SATA_FIS_DMA_ACT   0x39 //!< DMA Activate - device to host.
+#define SATA_FIS_DMA_SETUP 0x41 //!< DMA Setup - bi-directional.
+#define SATA_FIS_DATA      0x46 //!< Data - bi-directionial.
+#define SATA_FIS_BIST_ACT  0x58 //!< BIST Activate - bi-directional.
+#define SATA_FIS_PIO_SETUP 0x5F //!< Port IO Setup - device to host.
+#define SATA_FIS_DEV_BITS  0xA1 //!< Set-Device-Bits - device to host.
+/// @}
 
+/**
+ * @{
+ * @name ATA Commands
+ */
 #define SATA_CMD_IDENTIFY_DEVICE 0xEC
 #define SATA_CMD_READ_DMA_EXT    0x25
+/// @}
 
 #define SATA_ERROR_ABORT (1 << 2)
 
+/// Register FIS -- host to device.
 typedef volatile struct __attribute__((packed)) {
     // 0x00
+    /// Set to #SATA_FIS_REG_H2D.
     uint8_t fis_type;
+    /// Endpoint address of the target device connected to a Port Multiplier.
     uint8_t pm_port : 4;
     uint8_t _reserved_1 : 3;
+    /// Register FIS cause: Command register (1) or Device Control register (0).
     bool b_cmd : 1;
+    /// Command register value.
     uint8_t command;
     uint8_t features_7_0;
 
@@ -43,6 +70,7 @@ typedef volatile struct __attribute__((packed)) {
     // 0x0C
     uint16_t count;
     uint8_t icc;
+    /// Device control register value.
     uint8_t control;
 
     // 0x10
@@ -180,5 +208,5 @@ _Static_assert(4 == sizeof(sata_fis_dma_act_t), "");
 _Static_assert(28 == sizeof(sata_fis_dma_setup_t), "");
 _Static_assert(4 == sizeof(sata_fis_data_t), "");
 _Static_assert(12 == sizeof(sata_fis_bist_act_t), "");
-_Static_assert(20 == sizeof(sata_fis_pio_setup_t));
-_Static_assert(8 == sizeof(sata_fis_dev_bits_t));
+_Static_assert(20 == sizeof(sata_fis_pio_setup_t), "");
+_Static_assert(8 == sizeof(sata_fis_dev_bits_t), "");
