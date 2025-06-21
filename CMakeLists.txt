@@ -1,4 +1,9 @@
 cmake_minimum_required(VERSION 3.18)
+if(CMAKE_VERSION VERSION_GREATER 3.19)
+    # CMP0115: Source file extensions must be explicit.
+    # 3.20+
+    cmake_policy(SET CMP0115 NEW)
+endif()
 
 project(kernel C ASM)
 
@@ -72,10 +77,11 @@ set_target_properties(kernel PROPERTIES
 )
 
 
-###############
-## Userspace ##
-###############
+####################
+## Subdirectories ##
+####################
 add_subdirectory(user)
+add_subdirectory(docs)
 
 
 ###################################
