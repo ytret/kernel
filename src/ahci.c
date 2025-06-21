@@ -459,12 +459,14 @@ static int send_read_cmd(reg_port_t *p_port, cmd_t cmd, void *p_buf,
     p_cfis->b_cmd = true;
     p_cfis->command = cmd.command;
     p_cfis->device = cmd.device;
-    p_cfis->lba0 = ((cmd.lba >> 0) & 0xFF);
-    p_cfis->lba1 = ((cmd.lba >> 8) & 0xFF);
-    p_cfis->lba2 = ((cmd.lba >> 16) & 0xFF);
-    p_cfis->lba3 = ((cmd.lba >> 24) & 0xFF);
-    p_cfis->lba4 = ((cmd.lba >> 32) & 0xFF);
-    p_cfis->lba5 = ((cmd.lba >> 40) & 0xFF);
+    p_cfis->features_7_0 = cmd.feature & 0xFF;
+    p_cfis->features_15_8 = (cmd.feature >> 8) & 0xFF;
+    p_cfis->lba0 = (cmd.lba >> 0) & 0xFF;
+    p_cfis->lba1 = (cmd.lba >> 8) & 0xFF;
+    p_cfis->lba2 = (cmd.lba >> 16) & 0xFF;
+    p_cfis->lba3 = (cmd.lba >> 24) & 0xFF;
+    p_cfis->lba4 = (cmd.lba >> 32) & 0xFF;
+    p_cfis->lba5 = (cmd.lba >> 40) & 0xFF;
     p_cfis->count = cmd.count;
 
     // Wait until the port is no longer busy.
