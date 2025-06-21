@@ -15,7 +15,10 @@
 #include "pci.h"
 #include "vmm.h"
 
-/// Number of PRDT entries in each command table.
+/**
+ * Number of PRDT entries in each command table.
+ * See #ahci_cmd_table_t.
+ */
 #define CMD_TABLE_NUM_PRDS 8
 
 /**
@@ -49,7 +52,7 @@ typedef volatile struct __attribute__((packed)) {
     /// Unknown FIS.
     uint8_t p_ufis[64];
     uint8_t _reserved[96];
-} rfis_t;
+} ahci_rfis_t;
 
 /**
  * Command Header.
@@ -87,7 +90,7 @@ typedef volatile struct __attribute__((packed)) {
     uint32_t ctbau; //!< Upper 32 Bits of CTBA.
 
     uint32_t _reserved_2[4];
-} cmd_hdr_t;
+} ahci_cmd_hdr_t;
 
 /**
  * Physical Region Descriptor Table (PRDT).
@@ -105,7 +108,7 @@ typedef volatile struct __attribute__((packed)) {
     uint32_t dbc : 22; //!< Data Byte Count.
     uint16_t _reserved_2 : 9;
     bool b_int : 1; //!< Interrupt On Completion.
-} prd_t;
+} ahci_prd_t;
 
 /**
  * Command Table.
@@ -118,11 +121,11 @@ typedef volatile struct __attribute__((packed)) {
 
     /**
      * Physical Region Descriptor Table (PRDT).
-     * The number of items in this table is set by the #cmd_hdr_t.prdtl field in
-     * the Command Header.
+     * The number of items in this table is set by the #ahci_cmd_hdr_t.prdtl
+     * field in the Command Header.
      */
-    prd_t p_prd_table[CMD_TABLE_NUM_PRDS];
-} cmd_table_t;
+    ahci_prd_t p_prd_table[CMD_TABLE_NUM_PRDS];
+} ahci_cmd_table_t;
 
 /**
  * Internal representation of an ATA command.
@@ -135,13 +138,13 @@ typedef struct {
     uint64_t lba;
     uint8_t device;
     uint8_t command;
-} cmd_t;
+} ata_cmd_t;
 
 _Static_assert(0x2C == sizeof(reg_ghc_t), "");
 _Static_assert(0x80 == sizeof(reg_port_t), "");
-_Static_assert(0x100 == sizeof(rfis_t), "");
-_Static_assert(0x20 == sizeof(cmd_hdr_t), "");
-_Static_assert(0x10 == sizeof(prd_t), "");
+_Static_assert(0x100 == sizeof(ahci_rfis_t), "");
+_Static_assert(0x20 == sizeof(ahci_cmd_hdr_t), "");
+_Static_assert(0x10 == sizeof(ahci_prd_t), "");
 
 /// Driver state.
 static bool gb_initialized;
@@ -159,9 +162,9 @@ static uint32_t g_max_sectors;
  * @{
  * @name FIS buffers
  */
-static rfis_t g_rfis __attribute__((aligned(256)));
-static cmd_hdr_t gp_cmd_list[32] __attribute__((aligned(1024)));
-static cmd_table_t gp_cmd_tables[1] __attribute__((aligned(128)));
+static ahci_rfis_t g_rfis __attribute__((aligned(256)));
+static ahci_cmd_hdr_t gp_cmd_list[32] __attribute__((aligned(1024)));
+static ahci_cmd_table_t gp_cmd_tables[1] __attribute__((aligned(128)));
 /// @}
 
 static bool ensure_ahci_mode(void);
@@ -171,7 +174,7 @@ static bool identify_device(void);
 static bool read_sectors(reg_port_t *p_port, uint64_t start_sector,
                          uint32_t num_sectors, void *p_buf);
 
-static int send_read_cmd(reg_port_t *p_port, cmd_t cmd, void *p_buf,
+static int send_read_cmd(reg_port_t *p_port, ata_cmd_t cmd, void *p_buf,
                          size_t read_len);
 static bool wait_for_cmd(reg_port_t *p_port, int cmd_slot);
 static int find_cmd_slot(reg_port_t *p_port);
@@ -215,7 +218,7 @@ bool ahci_init(uint8_t bus, uint8_t dev) {
     gp_port->fb = ((uint32_t)&g_rfis);
     gp_port->fbu = 0;
 
-    cmd_hdr_t *p_cmd_hdr = &gp_cmd_list[0];
+    ahci_cmd_hdr_t *p_cmd_hdr = &gp_cmd_list[0];
     p_cmd_hdr->ctba = ((uint32_t)&gp_cmd_tables[0]);
     p_cmd_hdr->ctbau = 0;
 
@@ -320,7 +323,7 @@ static bool find_root_port(void) {
 }
 
 static bool identify_device(void) {
-    cmd_t cmd = {0};
+    ata_cmd_t cmd = {0};
     cmd.command = SATA_CMD_IDENTIFY_DEVICE;
 
     uint16_t *p_ident = heap_alloc_aligned(512, 2);
@@ -390,7 +393,7 @@ static bool read_sectors(reg_port_t *p_port, uint64_t start_sector,
     }
 
     // Set up a command.
-    cmd_t cmd = {0};
+    ata_cmd_t cmd = {0};
     cmd.count = num_sectors;
     cmd.lba = start_sector;
     cmd.device = (1 << 6);
@@ -426,7 +429,7 @@ static bool read_sectors(reg_port_t *p_port, uint64_t start_sector,
  * @warning
  * Does not check if the command was aborted, or for any other ATA error.
  */
-static int send_read_cmd(reg_port_t *p_port, cmd_t cmd, void *p_buf,
+static int send_read_cmd(reg_port_t *p_port, ata_cmd_t cmd, void *p_buf,
                          size_t read_len) {
     // One PRD can describe a 4 MiB block of data.
     uint16_t prdtl = ((read_len + ((4 * 1024 * 1024) - 1)) / (4 * 1024 * 1024));
@@ -443,7 +446,7 @@ static int send_read_cmd(reg_port_t *p_port, cmd_t cmd, void *p_buf,
     }
 
     // Set up the command header.
-    cmd_hdr_t *p_cmd_hdr = &gp_cmd_list[cmd_slot];
+    ahci_cmd_hdr_t *p_cmd_hdr = &gp_cmd_list[cmd_slot];
     p_cmd_hdr->cfl = (sizeof(sata_fis_reg_h2d_t) / 4);
     p_cmd_hdr->b_atapi = false;
     p_cmd_hdr->b_write = false;
@@ -457,7 +460,7 @@ static int send_read_cmd(reg_port_t *p_port, cmd_t cmd, void *p_buf,
     // Fill the command table.  Start with the PRD table.  We have N PRDs, each
     // can describe 4 MiBs.
     for (size_t prd_idx = 0; prd_idx < prdtl; prd_idx++) {
-        prd_t *p_prd = &gp_cmd_tables[0].p_prd_table[prd_idx];
+        ahci_prd_t *p_prd = &gp_cmd_tables[0].p_prd_table[prd_idx];
         p_prd->dba = (((uint32_t)p_buf) + (4 * 1024 * 1024 * prd_idx));
         p_prd->dbau = 0;
         p_prd->dbc = ((read_len - (4 * 1024 * 1024 * prd_idx)) - 1);
