@@ -8,6 +8,7 @@
 #include <stddef.h>
 
 #include "disk/ahci.h"
+#include "disk/ahci_regs.h"
 #include "disk/sata.h"
 #include "heap.h"
 #include "kprintf.h"
@@ -26,95 +27,6 @@
  * page alignment property, which the code relies on.
  */
 #define ABAR_ADDR_MASK (~0xFFF)
-
-/// Size of the HBA memory register map (bytes).
-#define HBA_MEM_SIZE 0x1100
-
-/// Global HBA Control (GHC) register offset.
-#define HBA_REG_GHC_OFFSET 0x04
-
-/**
- * Port @a P control register offset.
- * @param P Port number.
- */
-#define HBA_REG_PORT_OFFSET(P) (0x100 + (0x80 * (P)))
-
-/**
- * Pointer to the port @a P control register.
- * @param HBA Start address of the HBA register map.
- * @param P   Port number.
- */
-#define HBA_REG_PORT(HBA, P)                                                   \
-    (((uint8_t const *)(HBA)) + (HBA_REG_PORT_OFFSET(P)))
-
-/**
- * @{
- * @name Generic HBA Control (GHC) register bits
- */
-/// GHC register bit AE: AHCI enable.
-#define GHC_GHC_AE  (1 << 31)
-/// HBA capabilities register bit SAM: supports AHCI mode only.
-#define GHC_CAP_SAM (1 << 18)
-
-#define PORT_IS_TFES       (1 << 30) //!< Task file error status.
-#define PORT_IS_PSS        (1 << 1)  //!< PIO setup FIS interrupt.
-#define PORT_IS_DHRS       (1 << 0)  //!< Device to host register FIS interrupt.
-#define PORT_CMD_CR        (1 << 15) //!< Command list running.
-#define PORT_CMD_FR        (1 << 14) //!< FIS receive running.
-#define PORT_CMD_FRE       (1 << 4)  //!< FIS receive enable.
-#define PORT_CMD_ST        (1 << 0)  //!< Start command list processing.
-#define PORT_TFD_BSY       (1 << 7)  //!< Interface is busy.
-#define PORT_TFD_DRQ       (1 << 3)  //!< Data tranfser is requested.
-#define PORT_SSTS_IPM_MASK (0x1F << 8) //!< Interface power management.
-#define PORT_SSTS_DET_MASK (0x0F << 0) //!< Device detection.
-/**
- * @}
- */
-
-/**
- * Generic HBA Control registers.
- * Refer to section 3.1.
- */
-typedef volatile struct __attribute__((packed)) {
-    uint32_t cap;       //!< Host Capabilities register.
-    uint32_t ghc;       //!< Global HBA Control register.
-    uint32_t is;        //!< Interrupt Status register.
-    uint32_t pi;        //!< Ports Implemented register.
-    uint32_t vs;        //!< Version register.
-    uint32_t ccc_ctl;   //!< Command Completion Coalescing Control register.
-    uint32_t ccc_ports; //!< Command Completion Coalescing Ports register.
-    uint32_t em_loc;    //!< Enclosure Management Location register.
-    uint32_t em_ctl;    //!< Enclosure Management Control register.
-    uint32_t cap2;      //!< Host Capabilities Extended register.
-    uint32_t bohc;      //!< BIOS/OS Handoff Control and status register.
-} reg_ghc_t;
-
-/**
- * Port registers.
- * Refer to section 3.3.
- */
-typedef volatile struct __attribute__((packed)) {
-    uint32_t clb;             //!< Command List Base Address register.
-    uint32_t clbu;            //!< Upper 32 Bits of the CLB register.
-    uint32_t fb;              //!< FIS Base Address register.
-    uint32_t fbu;             //!< Upper 32 Bits of the FB register.
-    uint32_t is;              //!< Interrupt Status register.
-    uint32_t ie;              //!< Interrupt Enable register.
-    uint32_t cmd;             //!< Command and Status register.
-    uint32_t _reserved_1;     //!< Reserved.
-    uint32_t tfd;             //!< Task File Data register.
-    uint32_t sig;             //!< Signature register.
-    uint32_t ssts;            //!< SATA Status register.
-    uint32_t sctl;            //!< SATA Control register.
-    uint32_t serr;            //!< SATA Error register.
-    uint32_t sact;            //!< SATA Active register.
-    uint32_t ci;              //!< Command Issue register.
-    uint32_t sntf;            //!< SATA Notification register.
-    uint32_t fbs;             //!< FIS-based Switching Control register.
-    uint32_t devslp;          //!< Device Sleep register.
-    uint32_t _reserved_2[10]; //!< Reserved.
-    uint32_t p_vs[4];         //!< Vendor Specific registers.
-} reg_port_t;
 
 /**
  * Received Frame Information Structure (FIS).
@@ -277,8 +189,8 @@ bool ahci_init(uint8_t bus, uint8_t dev) {
 
     // Map the HBA memory registers.
     size_t page_count = 0;
-    for (uint32_t page = hba_mem_addr; page < (hba_mem_addr + HBA_MEM_SIZE);
-         page += 4096) {
+    for (uint32_t page = hba_mem_addr;
+         page < (hba_mem_addr + AHCI_HBA_REGS_SIZE); page += 4096) {
         vmm_map_kernel_page(page, page);
         page_count++;
     }
@@ -293,9 +205,9 @@ bool ahci_init(uint8_t bus, uint8_t dev) {
     if (!b_port) { return false; }
 
     // Stop FIS receive and command list DMA engines.
-    gp_port->cmd &= ~PORT_CMD_ST;
-    gp_port->cmd &= ~PORT_CMD_FRE;
-    while ((gp_port->cmd & PORT_CMD_FR) || (gp_port->cmd & PORT_CMD_CR)) {}
+    gp_port->cmd_bit.st = 0;
+    gp_port->cmd_bit.fre = 0;
+    while (gp_port->cmd_bit.fr || gp_port->cmd_bit.cr) {}
 
     // Initialzie the buffer pointers.
     gp_port->clb = ((uint32_t)gp_cmd_list);
@@ -308,12 +220,11 @@ bool ahci_init(uint8_t bus, uint8_t dev) {
     p_cmd_hdr->ctbau = 0;
 
     // Start the command list DMA engine.
-    gp_port->cmd |= PORT_CMD_FRE;
-    gp_port->cmd |= PORT_CMD_ST;
+    gp_port->cmd_bit.fre = 1;
+    gp_port->cmd_bit.st = 1;
 
     // Wait for them to start.
-    while ((!(gp_port->cmd & PORT_CMD_CR)) || (!(gp_port->cmd & PORT_CMD_FR))) {
-    }
+    while (!gp_port->cmd_bit.cr || !gp_port->cmd_bit.fr) {}
 
     bool b_id = identify_device();
     if (!b_id) { return false; }
@@ -339,18 +250,18 @@ bool ahci_is_init(void) {
 static bool ensure_ahci_mode(void) {
     reg_ghc_t *p_ghc = gp_hba;
 
-    if (p_ghc->ghc & GHC_GHC_AE) {
+    if (p_ghc->ghc_bit.ae) {
         // AE set means AHCI mode is enabled.
         return true;
     }
 
-    if (p_ghc->cap & GHC_CAP_SAM) {
+    if (p_ghc->cap_bit.sam) {
         // SAM set means the SATA controller supports both AHCI and legacy
-        // interfaces.  Enable AHCI.
-        p_ghc->ghc = GHC_GHC_AE; // not ORed, see section 3.1.2, bit 31
+        // interfaces. Enable AHCI.
+        p_ghc->ghc_bit.ae = 1;
 
         // Ensure that AE was set.
-        if (p_ghc->ghc & GHC_GHC_AE) {
+        if (p_ghc->ghc_bit.ae) {
             return true;
         } else {
             kprintf("ahci: cannot set GHC.AE bit, when it must be R/W"
@@ -358,11 +269,11 @@ static bool ensure_ahci_mode(void) {
             return false;
         }
     } else {
-        // SAM is zero, so the controller supports only AHCI mode.  However,
-        // AE is zero, meaning that AHCI mode is disabled.
-        kprintf("ahci: CAP.SAM is zero, meaning that SATA controller"
-                " supports only AHCI mode; but GHC.AE is zero, meaning that"
-                " AHCI mode is disabled\n");
+        // SAM is reset, so the controller supports only AHCI mode.  However,
+        // AE is reset, meaning that AHCI mode is disabled.
+        kprintf("ahci: CAP.SAM is reset, meaning that SATA controller supports "
+                "only AHCI mode; but GHC.AE is reset, meaning that AHCI mode "
+                "is disabled\n");
         return false;
     }
 }
@@ -379,14 +290,14 @@ static bool find_root_port(void) {
 
         // Check the device detection bits.
         reg_port_t *p_port = ((reg_port_t *)HBA_REG_PORT(gp_hba, port));
-        switch (p_port->ssts & PORT_SSTS_DET_MASK) {
-        case 1:
+        switch (p_port->ssts_bit.det) {
+        case AHCI_SSTS_DET_DEV_NPHY:
             kprintf("ahci: port %u: device detected, but there is no"
                     " communication\n",
                     port);
             break;
 
-        case 3:
+        case AHCI_SSTS_DET_DEV_PHY:
             kprintf("ahci: port %u: signature = %08x ", port, p_port->sig);
             switch (p_port->sig) {
             case SATA_SIG_ATA:
@@ -399,7 +310,7 @@ static bool find_root_port(void) {
             }
             break;
 
-        case 4:
+        case AHCI_SSTS_DET_PHY_OFF:
             kprintf("ahci: port %u: phy in offline mode\n", port);
             break;
         }
@@ -573,15 +484,15 @@ static int send_read_cmd(reg_port_t *p_port, cmd_t cmd, void *p_buf,
 
     // Wait until the port is no longer busy.
     size_t spin = 0;
-    while ((p_port->tfd & (PORT_TFD_BSY | PORT_TFD_DRQ)) && (spin++ < 100000)) {
-    }
+    while ((p_port->tfd_bit.sts & (AHCI_TFD_STS_BSY | AHCI_TFD_STS_DRQ)) &&
+           (spin++ < 100000)) {}
     if (spin >= 100000) {
         kprintf("ahci: port is busy\n");
         return -1;
     }
 
-    // Clear RFIS interrupt flag.
-    p_port->is |= PORT_IS_DHRS;
+    // Clear the D2H Register FIS interrupt flag.
+    p_port->is_bit.dhrs = 0;
 
     // Issue the command.
     p_port->ci = (1 << cmd_slot);
@@ -594,20 +505,20 @@ static int send_read_cmd(reg_port_t *p_port, cmd_t cmd, void *p_buf,
  *
  * @returns
  * - `true` if the command has finished successfully.
- * - `false` if the @ref PORT_IS_TFES "error bit" is set in the port register,
- *   or if no FIS has been received at all.
+ * - `false` if the Task File Error bit is set in the Port Interrupt Status
+ *   register (IS.TFES), or if no FIS has been received at all.
  *
  * @note
  * Use this function right after issuing a command, e.g., using
- * #send_read_cmd(), so that @ref PORT_IS_DHRS "IS.DHRS" is not reset between
- * the calls.
+ * #send_read_cmd(), so that the D2H RFIS Interrupt (IS.DHRS) is not reset
+ * between the calls.
  */
 static bool wait_for_cmd(reg_port_t *p_port, int cmd_slot) {
     bool b_has_err = false;
     while (true) {
-        if (p_port->is & PORT_IS_TFES) {
+        if (p_port->is_bit.tfes) {
             b_has_err = true;
-            p_port->is = PORT_IS_TFES;
+            p_port->is_bit.tfes = 1; // write 1 to clear
             kprintf("ahci: task file error\n");
             break;
         }
@@ -615,15 +526,15 @@ static bool wait_for_cmd(reg_port_t *p_port, int cmd_slot) {
         if (!(p_port->ci & (1 << cmd_slot))) { break; }
     }
 
-    // We expect RFIS to arrive.
-    if (!(p_port->is & PORT_IS_DHRS)) {
+    // We expect a D2H RFIS to arrive.
+    if (!p_port->is_bit.dhrs) {
         // RFIS did not arrive.
         kprintf("ahci: command completed, but RFIS was not received\n");
         return false;
     }
 
     // Clear RFIS interrupt flag.
-    p_port->is = PORT_IS_DHRS;
+    p_port->is_bit.dhrs = 1;
 
     // Check the error.
     if (b_has_err) {
