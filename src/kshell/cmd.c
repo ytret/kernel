@@ -390,13 +390,13 @@ static void cmd_ahci(char **pp_args, size_t num_args) {
     }
 
     // Print the bytes.
-    size_t num_bytes = (512 * num_sectors);
-    for (size_t row = 0; row < (num_bytes / 24); row++) {
+    size_t num_bytes = 512 * num_sectors;
+    for (size_t row = 0; row < (num_bytes + 23) / 24; row++) {
         kprintf("%02x  ", row);
         for (size_t byte = 0; byte < 24; byte++) {
             if ((byte > 0) && ((byte % 8) == 0)) { kprintf(" "); }
             size_t idx = ((row * 24) + byte);
-            kprintf("%02x ", p_buf[idx]);
+            if (idx < num_bytes) { kprintf("%02x ", p_buf[idx]); }
         }
         kprintf("\n");
     }
