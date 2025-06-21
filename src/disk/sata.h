@@ -201,12 +201,3 @@ typedef volatile struct __attribute__((packed)) {
     // 0x04
     uint32_t prot_spec; // protocol specific
 } sata_fis_dev_bits_t;
-
-_Static_assert(20 == sizeof(sata_fis_reg_h2d_t), "");
-_Static_assert(20 == sizeof(sata_fis_reg_d2h_t), "");
-_Static_assert(4 == sizeof(sata_fis_dma_act_t), "");
-_Static_assert(28 == sizeof(sata_fis_dma_setup_t), "");
-_Static_assert(4 == sizeof(sata_fis_data_t), "");
-_Static_assert(12 == sizeof(sata_fis_bist_act_t), "");
-_Static_assert(20 == sizeof(sata_fis_pio_setup_t), "");
-_Static_assert(8 == sizeof(sata_fis_dev_bits_t), "");

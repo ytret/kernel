@@ -19,18 +19,18 @@
 #define PADDING_DWORD                                                          \
     ((uint32_t)((PADDING_BYTE << 24) | (PADDING_BYTE << 16) |                  \
                 (PADDING_BYTE << 8) | PADDING_BYTE))
-_Static_assert(PADDING_BYTE != 0x00, "padding byte must not be a zero");
+static_assert(PADDING_BYTE != 0x00, "padding byte must not be a zero");
 
 /*
  * Both MIN_ALIGN and CHUNK_SIZE_ALIGN must be powers of two and not less than
  * 4, so that each tag address is aligned at 4 bytes, too.
  */
-_Static_assert((MIN_ALIGN & (MIN_ALIGN - 1)) == 0,
-               "MIN_ALIGN must be a power of two");
-_Static_assert((CHUNK_SIZE_ALIGN & (CHUNK_SIZE_ALIGN - 1)) == 0,
-               "CHUNK_SIZE_ALIGN must be a power of two");
-_Static_assert(MIN_ALIGN >= 4, "MIN_ALIGN must be more than 4");
-_Static_assert(CHUNK_SIZE_ALIGN >= 4, "CHUNK_SIZE_ALIGN must be more than 4");
+static_assert((MIN_ALIGN & (MIN_ALIGN - 1)) == 0,
+              "MIN_ALIGN must be a power of two");
+static_assert((CHUNK_SIZE_ALIGN & (CHUNK_SIZE_ALIGN - 1)) == 0,
+              "CHUNK_SIZE_ALIGN must be a power of two");
+static_assert(MIN_ALIGN >= 4, "MIN_ALIGN must be more than 4");
+static_assert(CHUNK_SIZE_ALIGN >= 4, "CHUNK_SIZE_ALIGN must be more than 4");
 
 typedef struct tag {
     bool b_used;

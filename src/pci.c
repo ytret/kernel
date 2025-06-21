@@ -14,7 +14,7 @@
 
 /// Number of PCI buses to enumerate in #pci_init().
 #define PCI_ENUM_BUSES 1
-_Static_assert(PCI_ENUM_BUSES <= 256, "there cannot be more than 256 buses");
+static_assert(PCI_ENUM_BUSES <= 256, "there cannot be more than 256 buses");
 
 /**
  * Maximum number of devices that can be connected to a single PCI bus.
@@ -148,7 +148,7 @@ static void prv_pci_enumerate_bus(uint8_t bus_num) {
 
             // First, we read the common part of the header, to see if a device
             // is connected.
-            _Static_assert(sizeof(header) % 4 == 0, "invalid header structure");
+            static_assert(sizeof(header) % 4 == 0, "invalid header structure");
             prv_pci_cas_read(addr.val, &header, sizeof(header) / 4);
 
             if (header.vendor_id == 0xFFFF) { continue; }
@@ -165,7 +165,7 @@ static void prv_pci_enumerate_bus(uint8_t bus_num) {
 
             // Second, we read the rest of the type 00h header.
             addr.bit.reg_num = sizeof(pci_header_common_t) / 4;
-            _Static_assert(
+            static_assert(
                 (sizeof(pci_header_00h_t) - sizeof(pci_header_common_t)) % 4 ==
                     0,
                 "invalid header 00h structure");
