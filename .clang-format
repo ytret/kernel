@@ -1,7 +1,7 @@
 BasedOnStyle: LLVM
 IndentWidth: 4
 
-AlignConsecutiveMacros: Consecutive
+AlignConsecutiveMacros: AcrossComments
 AllowShortBlocksOnASingleLine: Always
 AllowShortFunctionsOnASingleLine: None
 AllowShortIfStatementsOnASingleLine: WithoutElse
@@ -9,8 +9,3 @@ BreakBeforeBraces: Custom
 BraceWrapping:
   SplitEmptyFunction: true
 IncludeIsMainRegex: "^$"
-
-# AlwaysBreakAfterDefinitionReturnType: All
-# SpaceBeforeParens: Custom
-# SpaceBeforeParensOptions:
-#   AfterFunctionDefinitionName: true
