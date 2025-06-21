@@ -1,5 +1,6 @@
-KERNEL FEATURES
-===============
+# ytret's kernel
+
+## Kernel features
 
 * Text-mode or framebuffer terminal
 * PCI device enumeration
@@ -8,11 +9,9 @@ KERNEL FEATURES
 * Usermode programs with syscalls
 
 
-BUILDING AND RUNNING
-====================
+## Building and running
 
-Requirements
-------------
+### Requirements
 
 Arch Linux packages are specified in parentheses.
 
@@ -37,38 +36,34 @@ Arch Linux packages are specified in parentheses.
 
   * QEMU for x86 (qemu-desktop, qemu-system-x86)
 
+### Building
 
-Building
---------
+    $ mkdir build
+    $ cd build
+    $ cmake .. -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake -DCMAKE_BUILD_TYPE=Debug
+    $ make  # or ninja
 
-$ mkdir build
-$ cd build
-$ cmake .. -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake -DCMAKE_BUILD_TYPE=Debug
-$ make  # or ninja
+Optionally, pass `-GNinja` to `cmake` to use Ninja instead of GNU make.
 
-Optionally, pass `-GNinja' to `cmake' to use Ninja instead of GNU make.
-
-
-Running
--------
+### Running
 
 1. Create an ISO with GRUB and the kernel:
 
-  $ ./create_iso.sh
+    $ ./create_iso.sh
 
 2. Create and partition a virtual disk image:
 
-  $ qemu-img create hd.img 4M
-  $ fdisk hd.img
-  > g  # new GUID partition table (GPT)
-  > n  # new partition, accept the default values
-  > t  # change the partition type
-  >> F0516EBC-2D9E-4206-ABFC-B14EC7A626CE
-  > w  # write changes and exit
-  $ sudo losetup -P loop0 hd.img
-  $ sudo mkfs.ext4 /dev/loop0p1
-  $ sudo losetup -d loop0
+    $ qemu-img create hd.img 4M
+    $ fdisk hd.img
+    > g  # new GUID partition table (GPT)
+    > n  # new partition, accept the default values
+    > t  # change the partition type
+    >> F0516EBC-2D9E-4206-ABFC-B14EC7A626CE
+    > w  # write changes and exit
+    $ sudo losetup -P loop0 hd.img
+    $ sudo mkfs.ext4 /dev/loop0p1
+    $ sudo losetup -d loop0
 
 3. Run QEMU:
 
-  $ ./run_qemu.sh
+    $ ./run_qemu.sh
