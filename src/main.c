@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#include "devdrv.h"
 #include "gdt.h"
 #include "gpt.h"
 #include "heap.h"
@@ -9,7 +10,6 @@
 #include "kshell/kshell.h"
 #include "mbi.h"
 #include "panic.h"
-#include "pci.h"
 #include "pic.h"
 #include "pit.h"
 #include "pmm.h"
@@ -51,7 +51,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     vmm_init();
     pmm_init();
 
-    pci_init();
+    devdrv_init();
 
     uint64_t root_start_sector;
     uint64_t root_num_sectors;
