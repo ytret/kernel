@@ -18,7 +18,7 @@ typedef struct {
 
     union {
         uint16_t command;
-        struct __attribute__((packed)) {
+        struct [[gnu::packed]] {
             uint32_t io_space : 1;
             uint32_t mem_space : 1;
             uint32_t bus_master : 1;
@@ -36,7 +36,7 @@ typedef struct {
 
     union {
         uint16_t status;
-        struct __attribute__((packed)) {
+        struct [[gnu::packed]] {
             uint32_t reserved1 : 3;
             uint32_t interrupt_status : 1;
             uint32_t cap_list : 1;
@@ -66,7 +66,7 @@ typedef struct {
     /// Built-in Self Test.
     union {
         uint8_t bist;
-        struct __attribute__((packed)) {
+        struct [[gnu::packed]] {
             uint32_t completion_code : 4;
             uint32_t reserved1 : 2;
             uint32_t start_bist : 1;

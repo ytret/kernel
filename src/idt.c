@@ -17,7 +17,7 @@
 
 #define ENTRY_TYPE_INT_32BIT (0xE << 0)
 
-typedef struct __attribute__((packed)) {
+typedef struct [[gnu::packed]] {
     uint16_t offset_15_0;
     uint16_t selector;
     uint8_t reserved;
@@ -32,9 +32,8 @@ static void fill_desc(uint8_t *p_desc, void const *p_idt, uint16_t idt_size);
 static void fill_entry(entry_t *p_entry, void (*p_handler)(void));
 static void fill_user_entry(entry_t *p_entry, void (*p_handler)(void));
 
-static void print_entry(entry_t const *p_entry) __attribute__((unused));
-static void print_stack_frame(isr_stack_frame_t const *p_stack_frame)
-    __attribute__((unused));
+static void print_entry(entry_t const *p_entry);
+static void print_stack_frame(isr_stack_frame_t const *p_stack_frame);
 
 void idt_init(void) {
     fill_entry(&gp_idt[0], isr_0);
@@ -231,6 +230,7 @@ static void fill_user_entry(entry_t *p_entry, void (*p_handler)(void)) {
         (ENTRY_PRESENT | ENTRY_DPL_USER | ENTRY_TYPE_INT_32BIT);
 }
 
+[[maybe_unused]]
 static void print_entry(entry_t const *p_entry) {
     kprintf("offset=%P, P=%d, DPL=%d, type=0x%X, selector=0x%X (%X %X)\n",
             ((p_entry->offset_31_16 << 16) | p_entry->offset_15_0),
@@ -240,6 +240,7 @@ static void print_entry(entry_t const *p_entry) {
             ((uint32_t const *)p_entry)[0], ((uint32_t const *)p_entry)[1]);
 }
 
+[[maybe_unused]]
 static void print_stack_frame(isr_stack_frame_t const *p_stack_frame) {
     kprintf("Stack frame is at %P:\n", p_stack_frame);
     kprintf("   eip = 0x%X\n", p_stack_frame->eip);

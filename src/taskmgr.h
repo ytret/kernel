@@ -5,7 +5,7 @@
 #include "list.h"
 #include "stack.h"
 
-typedef struct __attribute__((packed)) {
+typedef struct [[gnu::packed]] {
     // This field order is relied upon by taskmgr_switch_tasks() assembly
     // function (see taskmgr.s).
 
@@ -34,7 +34,8 @@ typedef struct task {
     list_node_t all_tasks_list_node;
 } task_t;
 
-void taskmgr_init(__attribute__((noreturn)) void (*p_init_entry)(void));
+[[gnu::noreturn]]
+void taskmgr_init([[gnu::noreturn]] void (*p_init_entry)(void));
 
 void taskmgr_schedule(void);
 void taskmgr_reschedule(void);

@@ -20,7 +20,7 @@
 #define MULTIBOOT_MAGIC_NUM 0x2BADB002
 
 static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr);
-static void init_entry(void) __attribute__((noreturn));
+[[gnu::noreturn]] static void init_entry(void);
 
 void main(uint32_t magic_num, uint32_t mbi_addr) {
     mbi_init(mbi_addr);
@@ -76,7 +76,8 @@ static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr) {
     }
 }
 
-__attribute__((noreturn)) static void init_entry(void) {
+[[gnu::noreturn]]
+static void init_entry(void) {
     // taskmgr_switch_tasks() requires that task entries enable interrupts.
     __asm__("sti");
 

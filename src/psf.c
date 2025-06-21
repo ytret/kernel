@@ -3,7 +3,7 @@
 
 #define HEADER_MAGIC 0x864AB572
 
-typedef struct __attribute__((packed)) {
+typedef struct [[gnu::packed]] {
     uint32_t magic;
     uint32_t version;
     uint32_t hdr_size;

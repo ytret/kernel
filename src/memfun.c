@@ -1,6 +1,6 @@
 #include "memfun.h"
 
-typedef int si128_t __attribute__((vector_size(16), aligned(16)));
+typedef int si128_t [[gnu::vector_size(16), gnu::aligned(16)]];
 
 static void memmove_si128(si128_t *p_dest, const si128_t *p_src,
                           size_t num_si128);

@@ -35,12 +35,13 @@ static size_t g_col;
 static void put_char(char ch);
 static void scroll_new_row(void);
 
-__attribute__((artificial)) static inline void assert_owns_mutex(void) {
+[[gnu::artificial]]
+static inline void assert_owns_mutex(void) {
     if (!mutex_caller_owns(&g_mutex) && !gb_panic_mode) { panic_silent(); }
 }
 
-__attribute__((artificial)) static inline void put_cursor_at(size_t row,
-                                                             size_t col) {
+[[gnu::artificial]]
+static inline void put_cursor_at(size_t row, size_t col) {
     g_output_impl.p_put_cursor_at(row, col);
     g_row = row;
     g_col = col;
@@ -94,7 +95,8 @@ void term_init_history(void) {
     if (g_output_impl.p_init_history) { g_output_impl.p_init_history(); }
 }
 
-__attribute__((noreturn)) void term_task(void) {
+[[gnu::noreturn]]
+void term_task(void) {
     kbd_event_t event;
     size_t history_pos;
     for (;;) {

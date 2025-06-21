@@ -38,7 +38,7 @@
 #define SHDR_FLAG_WRITE    ((uint32_t)1)
 #define SHDR_FLAG_ALLOC    ((uint32_t)2)
 
-typedef struct __attribute__((packed)) {
+typedef struct [[gnu::packed]] {
     uint32_t magic_num;
     uint8_t bits;
     uint8_t byte_order;
@@ -61,7 +61,7 @@ typedef struct __attribute__((packed)) {
     uint16_t shstrndx;
 } elf_hdr_t;
 
-typedef struct __attribute__((packed)) {
+typedef struct [[gnu::packed]] {
     uint32_t type;
     uint32_t offset;
     uint32_t vaddr;
@@ -72,7 +72,7 @@ typedef struct __attribute__((packed)) {
     uint32_t align;
 } prog_hdr_t;
 
-typedef struct __attribute__((packed)) {
+typedef struct [[gnu::packed]] {
     uint32_t name;
     uint32_t type;
     uint32_t flags;

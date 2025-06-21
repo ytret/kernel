@@ -28,7 +28,7 @@
  * Generic HBA Control registers.
  * Refer to section 3.1.
  */
-typedef volatile struct __attribute__((packed)) {
+typedef volatile struct [[gnu::packed]] {
     /// Host Capabilities register.
     union {
         IO32 cap;
@@ -174,7 +174,7 @@ typedef enum {
  * Port registers.
  * Refer to section 3.3.
  */
-typedef struct __attribute__((packed)) {
+typedef struct [[gnu::packed]] {
     IO32 clb;  //!< Command List Base Address register.
     IO32 clbu; //!< Upper 32 Bits of the CLB register.
     IO32 fb;   //!< FIS Base Address register.

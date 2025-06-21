@@ -39,15 +39,15 @@
  *
  * Refer to section 4.2.1.
  */
-typedef volatile struct __attribute__((packed)) {
+typedef volatile struct [[gnu::packed]] {
     /// DMA Setup FIS.
-    sata_fis_dma_setup_t dsfis __attribute__((aligned(0x20)));
+    sata_fis_dma_setup_t dsfis [[gnu::aligned(0x20)]];
     /// Port IO Setup FIS.
-    sata_fis_pio_setup_t psfis __attribute__((aligned(0x20)));
+    sata_fis_pio_setup_t psfis [[gnu::aligned(0x20)]];
     /// Device-to-HBA FIS.
-    sata_fis_reg_d2h_t rfis __attribute__((aligned(0x20)));
+    sata_fis_reg_d2h_t rfis [[gnu::aligned(0x20)]];
     /// Set-Device-Bits FIS.
-    sata_fis_dev_bits_t sdbfis __attribute__((aligned(0x08)));
+    sata_fis_dev_bits_t sdbfis [[gnu::aligned(0x08)]];
 
     /// Unknown FIS.
     uint8_t p_ufis[64];
@@ -58,7 +58,7 @@ typedef volatile struct __attribute__((packed)) {
  * Command Header.
  * Refer to section 4.2.2.
  */
-typedef volatile struct __attribute__((packed)) {
+typedef volatile struct [[gnu::packed]] {
     // DW 0 - Description Information.
     /// Command FIS Length.
     uint8_t cfl : 5;
@@ -96,7 +96,7 @@ typedef volatile struct __attribute__((packed)) {
  * Physical Region Descriptor Table (PRDT).
  * Refer to section 4.2.3.3.
  */
-typedef volatile struct __attribute__((packed)) {
+typedef volatile struct [[gnu::packed]] {
     // DW 0.
     uint32_t dba; //!< Data Base Address.
     // DW 1.
@@ -114,7 +114,7 @@ typedef volatile struct __attribute__((packed)) {
  * Command Table.
  * Refer to section 4.2.3.
  */
-typedef volatile struct __attribute__((packed)) {
+typedef volatile struct [[gnu::packed]] {
     uint8_t p_cfis[64]; //!< Command FIS.
     uint8_t p_acmd[16]; //!< ATAPI Command.
     uint8_t _reserved[48];
@@ -156,9 +156,9 @@ static uint32_t g_max_sectors;
  * @{
  * @name FIS buffers
  */
-static ahci_rfis_t g_rfis __attribute__((aligned(256)));
-static ahci_cmd_hdr_t gp_cmd_list[32] __attribute__((aligned(1024)));
-static ahci_cmd_table_t gp_cmd_tables[1] __attribute__((aligned(128)));
+[[gnu::aligned(256)]] static ahci_rfis_t g_rfis;
+[[gnu::aligned(1024)]] static ahci_cmd_hdr_t gp_cmd_list[32];
+[[gnu::aligned(128)]] static ahci_cmd_table_t gp_cmd_tables[1];
 /// @}
 
 static bool ensure_ahci_mode(void);
@@ -173,7 +173,7 @@ static int send_read_cmd(reg_port_t *p_port, ata_cmd_t cmd, void *p_buf,
 static bool wait_for_cmd(reg_port_t *p_port, int cmd_slot);
 static int find_cmd_slot(reg_port_t *p_port);
 
-static void dump_port_reg(reg_port_t *p_port) __attribute__((unused));
+static void dump_port_reg(reg_port_t *p_port);
 
 bool ahci_init(const pci_dev_t *pci_dev) {
     // Get the HBA memory registers address.
@@ -551,6 +551,7 @@ static int find_cmd_slot(reg_port_t *p_port) {
     return -1;
 }
 
+[[maybe_unused]]
 static void dump_port_reg(reg_port_t *p_port) {
     kprintf("Port register at %P:\n", p_port);
     kprintf("    clb = %08x\n", p_port->clb);

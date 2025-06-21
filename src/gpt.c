@@ -3,7 +3,7 @@
 #include "heap.h"
 #include "kprintf.h"
 
-typedef struct __attribute__((packed)) {
+typedef struct [[gnu::packed]] {
     uint64_t sig;
     uint32_t gpt_rev;
     uint32_t hdr_size;
@@ -24,7 +24,7 @@ typedef struct __attribute__((packed)) {
     uint32_t ptes_cksum;
 } pt_hdr_t;
 
-typedef struct __attribute__((packed)) {
+typedef struct [[gnu::packed]] {
     uint8_t p_type_guid[16];
     uint8_t p_part_guid[16];
 

@@ -15,7 +15,8 @@ void panic_enter(void) {
     kprintf("==== KERNEL PANIC ====\n");
 }
 
-__attribute__((noreturn)) void panic(char const *p_msg) {
+[[gnu::noreturn]]
+void panic(char const *p_msg) {
     if (b_in_panic) { panic_silent(); }
 
     b_in_panic = true;
@@ -24,7 +25,8 @@ __attribute__((noreturn)) void panic(char const *p_msg) {
     for (;;) {}
 }
 
-__attribute__((noreturn)) void panic_silent(void) {
+[[gnu::noreturn]]
+void panic_silent(void) {
     taskmgr_lock_scheduler();
     for (;;) {}
 }

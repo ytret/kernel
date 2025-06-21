@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-typedef struct __attribute__((packed)) {
+typedef struct [[gnu::packed]] {
     uint16_t prev;
     uint16_t reserved_prev;
     uint32_t esp0;

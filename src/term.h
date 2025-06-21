@@ -7,7 +7,7 @@
 
 void term_init(void);
 void term_init_history(void);
-__attribute__((noreturn)) void term_task(void);
+[[gnu::noreturn]] void term_task(void);
 
 /* Output-related functions */
 void term_acquire_mutex(void);

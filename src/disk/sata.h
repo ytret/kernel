@@ -42,7 +42,7 @@
 #define SATA_ERROR_ABORT (1 << 2)
 
 /// Register FIS -- host to device.
-typedef volatile struct __attribute__((packed)) {
+typedef volatile struct [[gnu::packed]] {
     // 0x00
     /// Set to #SATA_FIS_REG_H2D.
     uint8_t fis_type;
@@ -78,7 +78,7 @@ typedef volatile struct __attribute__((packed)) {
     uint16_t _reserved_2;
 } sata_fis_reg_h2d_t;
 
-typedef volatile struct __attribute__((packed)) {
+typedef volatile struct [[gnu::packed]] {
     // 0x00
     uint8_t fis_type;
     uint8_t pm_port : 4;
@@ -108,13 +108,13 @@ typedef volatile struct __attribute__((packed)) {
     uint32_t _reserved;
 } sata_fis_reg_d2h_t;
 
-typedef volatile struct __attribute__((packed)) {
+typedef volatile struct [[gnu::packed]] {
     uint8_t fis_type;
     uint8_t pm_port : 4;
     uint32_t _reserved_1 : 20;
 } sata_fis_dma_act_t;
 
-typedef volatile struct __attribute__((packed)) {
+typedef volatile struct [[gnu::packed]] {
     // 0x00
     uint8_t fis_type;
     uint8_t pm_port : 4;
@@ -132,7 +132,7 @@ typedef volatile struct __attribute__((packed)) {
     uint32_t _reserved_4;        // 0x18
 } sata_fis_dma_setup_t;
 
-typedef volatile struct __attribute__((packed)) {
+typedef volatile struct [[gnu::packed]] {
     uint8_t fis_type;
     uint8_t pm_port : 4;
     uint32_t _reserved : 20;
@@ -140,7 +140,7 @@ typedef volatile struct __attribute__((packed)) {
     uint32_t data[];
 } sata_fis_data_t;
 
-typedef volatile struct __attribute__((packed)) {
+typedef volatile struct [[gnu::packed]] {
     // 0x00
     uint8_t fis_type;
     uint8_t pm_port : 4;
@@ -152,7 +152,7 @@ typedef volatile struct __attribute__((packed)) {
     uint32_t data_2; // 0x08
 } sata_fis_bist_act_t;
 
-typedef volatile struct __attribute__((packed)) {
+typedef volatile struct [[gnu::packed]] {
     // 0x00
     uint8_t fis_type;
     uint8_t pm_port : 4;
@@ -185,7 +185,7 @@ typedef volatile struct __attribute__((packed)) {
     uint16_t _reserved_5;
 } sata_fis_pio_setup_t;
 
-typedef volatile struct __attribute__((packed)) {
+typedef volatile struct [[gnu::packed]] {
     // 0x00
     uint8_t fis_type;
     uint8_t pm_port : 4;

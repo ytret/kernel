@@ -20,7 +20,7 @@
 #define USER_STACK_TOP   0x7FFFF000 // must be page-aligned, not checked
 #define USER_STACK_PAGES 1
 
-typedef struct __attribute__((packed)) {
+typedef struct [[gnu::packed]] {
     uint32_t edi;
     uint32_t esi;
     uint32_t ebp;
@@ -55,8 +55,8 @@ static void wake_up_sleeping_tasks(void);
 static task_t *new_task(uint32_t entry_point);
 static void map_user_stack(uint32_t *p_dir);
 
-static void idle_task(void) __attribute__((noreturn));
-static void deleter_task(void) __attribute__((noreturn));
+[[gnu::noreturn]] static void idle_task(void);
+[[gnu::noreturn]] static void deleter_task(void);
 
 // Defined in taskmgr.s.
 extern void taskmgr_switch_tasks(tcb_t *p_from, tcb_t const *p_to,
@@ -75,8 +75,8 @@ extern void taskmgr_go_usermode_impl(uint32_t user_code_seg,
  * NOTE: p_init_entry() must enable interrupts, otherwise no task switches
  * will happen.
  */
-__attribute__((noreturn)) void
-taskmgr_init(__attribute__((noreturn)) void (*p_init_entry)(void)) {
+[[gnu::noreturn]]
+void taskmgr_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
     // Load the TSS.
     __asm__ volatile("ltr %%ax"
                      :           /* no outputs */
@@ -334,14 +334,16 @@ static void map_user_stack(uint32_t *p_dir) {
     vmm_unmap_kernel_page(USER_STACK_TOP - 4096);
 }
 
-__attribute__((noreturn)) static void idle_task(void) {
+[[gnu::noreturn]]
+static void idle_task(void) {
     __asm__ volatile("sti");
     for (;;) {
         __asm__ volatile("hlt");
     }
 }
 
-__attribute__((noreturn)) static void deleter_task(void) {
+[[gnu::noreturn]]
+static void deleter_task(void) {
     for (;;) {
         ASSERT(gp_task_to_delete);
         ASSERT(gp_task_to_delete->b_is_terminating);
