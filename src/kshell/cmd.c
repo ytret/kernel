@@ -330,23 +330,28 @@ static void cmd_pci(char **pp_args, size_t num_args) {
             return;
         }
 
-        pci_list_devices();
+        for (size_t dev_idx = 0; dev_idx < pci_num_devs(); dev_idx++) {
+            const pci_dev_t *dev = pci_get_dev_const(dev_idx);
+            pci_dump_dev_short(dev);
+        }
     } else if (string_equals(pp_args[1], "dump")) {
         if (num_args != 3) {
             kprintf("Usage: pci dump <device number>\n");
             return;
         }
 
-        uint32_t dev;
-        bool b_ok = string_to_uint32(pp_args[2], &dev, 10);
-        if ((!b_ok) || (dev >= 32)) {
+        uint32_t dev_idx;
+        bool b_ok = string_to_uint32(pp_args[2], &dev_idx, 10);
+        if (!b_ok || dev_idx >= pci_num_devs()) {
             kprintf("Invalid argument: '%s'\n", pp_args[2]);
             kprintf("device number must be an unsigned decimal number less than"
-                    " 32\n");
+                    " %u\n",
+                    pci_num_devs());
             return;
         }
 
-        pci_dump_config(0, dev);
+        const pci_dev_t *dev = pci_get_dev_const(dev_idx);
+        pci_dump_dev_header(dev);
     } else {
         kprintf("pci: unknown command: '%s'\n", pp_args[1]);
         return;

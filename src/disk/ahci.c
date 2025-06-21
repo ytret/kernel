@@ -181,13 +181,9 @@ static int find_cmd_slot(reg_port_t *p_port);
 
 static void dump_port_reg(reg_port_t *p_port) __attribute__((unused));
 
-bool ahci_init(uint8_t bus, uint8_t dev) {
+bool ahci_init(const pci_dev_t *pci_dev) {
     // Get the HBA memory registers address.
-    uint8_t p_config_u8[PCI_CONFIG_SIZE];
-    pci_read_config(bus, dev, p_config_u8);
-
-    pci_config_t *p_config = ((pci_config_t *)p_config_u8);
-    uint32_t abar = p_config->bar5;
+    uint32_t abar = pci_dev->header.bar5;
     uint32_t hba_mem_addr = (abar & ABAR_ADDR_MASK);
 
     // Map the HBA memory registers.

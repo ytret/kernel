@@ -1,134 +1,197 @@
+/**
+ * @file pci.c
+ * PCI bus driver implementation.
+ * Refer to PCI Local Bus Specification, rev 3.0.
+ */
+
 #include <stddef.h>
 #include <stdint.h>
 
-#include "disk/ahci.h"
 #include "kprintf.h"
+#include "panic.h"
 #include "pci.h"
 #include "port.h"
 
-#define PORT_CONFIG_ADDR 0x0CF8
-#define PORT_CONFIG_DATA 0x0CFC
+/// Number of PCI buses to enumerate in #pci_init().
+#define PCI_ENUM_BUSES 1
+_Static_assert(PCI_ENUM_BUSES <= 256, "there cannot be more than 256 buses");
 
-#define CONFIG_ADDR_ENABLE      (1 << 31)
-#define CONFIG_ADDR_BUS_POS     16
-#define CONFIG_ADDR_BUS_MASK    (0xFF << CONFIG_ADDR_BUS_POS)
-#define CONFIG_ADDR_DEV_POS     11
-#define CONFIG_ADDR_DEV_MASK    (0x1F << CONFIG_ADDR_DEV_POS)
-#define CONFIG_ADDR_FUN_POS     8
-#define CONFIG_ADDR_FUN_MASK    (0x03 << CONFIG_ADDR_FUN_POS)
-#define CONFIG_ADDR_OFFSET_POS  0
-#define CONFIG_ADDR_OFFSET_MASK (0xFF << CONFIG_ADDR_OFFSET_POS)
+/**
+ * Maximum number of devices that can be connected to a single PCI bus.
+ * This value (32) is determined by the number of bits (5) provided for device
+ * selection in CAS addresses.
+ */
+#define PCI_DEVS_PER_BUS 32
 
-#define CLASS_MASS_STORAGE 0x01
-#define SUBCLASS_SATA      0x06
+/**
+ * Maximum number of functions per PCI device.
+ * This value (8) is determined by the nubmer of bits (3) provided for function
+ * selection in CAS addresses.
+ */
+#define PCI_FUNS_PER_DEV 8
 
-static uint32_t read_config_u32(uint8_t bus, uint8_t dev, uint8_t fun,
-                                uint8_t offset);
-static uint16_t read_config_u16(uint8_t bus, uint8_t dev, uint8_t fun,
-                                uint8_t offset);
-static uint8_t read_config_u8(uint8_t bus, uint8_t dev, uint8_t fun,
-                              uint8_t offset);
+/**
+ * Maximum number of _connected_ devices supported by the driver.
+ * This value may be chosen arbitrarily, but it needs to be large enough to
+ * cover the most PC configurations.
+ */
+#define PCI_MAX_DEVS 32
+
+#define PCI_PORT_CAS_ADDR 0x0CF8
+#define PCI_PORT_CAS_DATA 0x0CFC
+
+/**
+ * Configuration Address Space (CAS) Address register.
+ * Refer to section 3.2.2.3.2 Software Generation of Configuration Transactions.
+ */
+typedef union {
+    uint32_t val;
+    struct {
+        uint32_t reserved1 : 2;
+        uint32_t reg_num : 6;
+        uint32_t fun_num : 3;
+        uint32_t dev_num : 5;
+        uint32_t bus_num : 8;
+        uint32_t reserved2 : 7;
+        uint32_t enable : 1;
+    } bit;
+} pci_addr_t;
+
+static pci_dev_t g_pci_devs[PCI_MAX_DEVS];
+static size_t g_pci_num_devs;
+
+static void prv_pci_enumerate_bus(uint8_t bus_num);
+static void prv_pci_cas_read(uint32_t start_addr, void *v_buf,
+                             size_t num_dwords);
 
 void pci_init(void) {
-    for (uint8_t dev = 0; dev < 32; dev++) {
-        uint16_t vendor_id = read_config_u16(0, dev, 0, 0x00);
-        if (0xFFFF != vendor_id) { pci_init_device(0, dev); }
+    for (size_t bus_num = 0; bus_num < PCI_ENUM_BUSES; bus_num++) {
+        prv_pci_enumerate_bus(bus_num);
     }
 }
 
-bool pci_init_device(uint8_t bus, uint8_t dev) {
-    uint8_t p_config_u8[PCI_CONFIG_SIZE];
-    pci_read_config(bus, dev, p_config_u8);
+size_t pci_num_devs(void) {
+    return g_pci_num_devs;
+}
 
-    pci_config_t *p_config = ((pci_config_t *)p_config_u8);
-
-    // Check the header type.
-    if (p_config->header_type != 0x00) {
-        kprintf("pci: unknown header type %u\n", p_config->header_type);
-        return false;
-    }
-
-    // AHCI.
-    if ((CLASS_MASS_STORAGE == p_config->base_class) &&
-        (SUBCLASS_SATA == p_config->subclass)) {
-        kprintf("pci: bus %u device %u: mass storage device, SATA,", bus, dev);
-
-        if (0x01 == p_config->prog_intf) {
-            kprintf(" AHCI HBA (major rev. 1)\n");
-            bool b_ok = ahci_init(bus, dev);
-            if (!b_ok) {
-                kprintf("pci: failed to initialize bus %u device %u\n", bus,
-                        dev);
-            }
-            return b_ok;
-        } else {
-            kprintf(" unknown programming interface\n");
-        }
+const pci_dev_t *pci_get_dev_const(size_t idx) {
+    if (idx < g_pci_num_devs) {
+        return &g_pci_devs[idx];
     } else {
-        kprintf("pci: ignoring unknown bus %u device %u\n", bus, dev);
-    }
-
-    return false;
-}
-
-void pci_read_config(uint8_t bus, uint8_t dev, void *p_config) {
-    __builtin_memset(p_config, 0, sizeof(*p_config));
-
-    uint32_t *p_config_u32 = ((uint32_t *)p_config);
-    for (size_t idx = 0; idx < (PCI_CONFIG_SIZE / 4); idx++) {
-        p_config_u32[idx] = read_config_u32(bus, dev, 0, (4 * idx));
+        return NULL;
     }
 }
 
-void pci_list_devices(void) {
-    for (uint8_t dev = 0; dev < 32; dev++) {
-        uint16_t vendor_id = read_config_u16(0, dev, 0, 0x00);
-        uint16_t device_id = read_config_u16(0, dev, 0, 0x02);
-
-        if (0xFFFF == vendor_id) { continue; }
-
-        kprintf("dev %u vendor id %02x device id %02x\n", dev, vendor_id,
-                device_id);
-    }
+void pci_dump_dev_short(const pci_dev_t *dev) {
+    if (!dev) { panic("pci_dump_dev_short: dev = NULL"); }
+    kprintf("pci: %u-%u-%u: %04x:%04x class %02x.%02x.%02x\n", dev->bus_num,
+            dev->dev_num, dev->fun_num, dev->header.common.vendor_id,
+            dev->header.common.device_id, dev->header.common.base_class,
+            dev->header.common.sub_class, dev->header.common.interface);
 }
 
-void pci_dump_config(uint8_t bus, uint8_t dev) {
-    size_t const row_bytes = 24;
+void pci_dump_dev_header(const pci_dev_t *dev) {
+    if (!dev) { panic("pci_dump_dev_short: dev = NULL"); }
 
-    for (size_t row = 0; row < (256 / row_bytes); row++) {
-        kprintf("%02x  ", (row * row_bytes));
+    kprintf("vendor_id = 0x%04X\n", dev->header.common.vendor_id);
+    kprintf("device_id = 0x%04X\n", dev->header.common.device_id);
+    kprintf("command = 0x%04X\n", dev->header.common.command);
+    kprintf("status = 0x%04X\n", dev->header.common.status);
+    kprintf("revision_id = 0x%02X\n", dev->header.common.revision_id);
+    kprintf("base_class = 0x%02X\n", dev->header.common.base_class);
+    kprintf("sub_class = 0x%02X\n", dev->header.common.sub_class);
+    kprintf("interface = 0x%02X\n", dev->header.common.interface);
+    kprintf("cacheline_size = 0x%02X\n", dev->header.common.cacheline_size);
+    kprintf("latency_timer = 0x%02X\n", dev->header.common.latency_timer);
+    kprintf("header_type = 0x%02X\n", dev->header.common.header_type);
+    kprintf("bist = 0x%02X\n", dev->header.common.bist);
+    kprintf("bar0 = 0x%08X\n", dev->header.bar0);
+    kprintf("bar1 = 0x%08X\n", dev->header.bar1);
+    kprintf("bar2 = 0x%08X\n", dev->header.bar2);
+    kprintf("bar3 = 0x%08X\n", dev->header.bar3);
+    kprintf("bar4 = 0x%08X\n", dev->header.bar4);
+    kprintf("bar5 = 0x%08X\n", dev->header.bar5);
+    kprintf("cardbus_cis_ptr = 0x%08X\n", dev->header.cardbus_cis_ptr);
+    kprintf("subsys_vendor_id = 0x%04X\n", dev->header.subsys_vendor_id);
+    kprintf("subsys_id = 0x%04X\n", dev->header.subsys_id);
+    kprintf("expansion_rom_base_addr = 0x%08X\n",
+            dev->header.expansion_rom_base_addr);
+    kprintf("cap_ptr = 0x%02X\n", dev->header.cap_ptr);
+    kprintf("int_line = 0x%02X\n", dev->header.int_line);
+    kprintf("int_pin = 0x%02X\n", dev->header.int_pin);
+    kprintf("min_gnt = 0x%02X\n", dev->header.min_gnt);
+    kprintf("max_lat = 0x%02X\n", dev->header.max_lat);
+}
 
-        for (size_t col = 0; col < row_bytes; col++) {
-            if ((col > 0) && ((col % 8) == 0)) { kprintf(" "); }
+/**
+ * Enumerates bus number @a bus_num and adds connected devices to #g_pci_devs.
+ * @param bus_num PCI bus to enumerate (0..255).
+ */
+static void prv_pci_enumerate_bus(uint8_t bus_num) {
+    pci_header_common_t header;
+    for (uint8_t dev_num = 0; dev_num < PCI_DEVS_PER_BUS; dev_num++) {
+        for (uint8_t fun_num = 0; fun_num < PCI_FUNS_PER_DEV; fun_num++) {
+            if (g_pci_num_devs == PCI_MAX_DEVS) {
+                kprintf(
+                    "pci: maximum number of devices (%u) has been reached\n",
+                    PCI_MAX_DEVS);
+                break;
+            }
+            pci_dev_t *const dev = &g_pci_devs[g_pci_num_devs];
 
-            uint8_t idx = ((row * row_bytes) + col);
-            kprintf("%02x ", read_config_u8(bus, dev, 0, idx));
+            pci_addr_t addr = {0};
+            addr.bit.enable = 1;
+            addr.bit.bus_num = bus_num;
+            addr.bit.dev_num = dev_num;
+            addr.bit.fun_num = fun_num;
+            addr.bit.reg_num = 0;
+
+            // First, we read the common part of the header, to see if a device
+            // is connected.
+            _Static_assert(sizeof(header) % 4 == 0, "invalid header structure");
+            prv_pci_cas_read(addr.val, &header, sizeof(header) / 4);
+
+            if (header.vendor_id == 0xFFFF) { continue; }
+            if (header.header_type != 0x00) {
+                kprintf("pci: %u-%u-%u: unknown header type 0x%02x\n", bus_num,
+                        dev_num, fun_num, header.header_type);
+                continue;
+            }
+
+            dev->bus_num = bus_num;
+            dev->dev_num = dev_num;
+            dev->fun_num = fun_num;
+            dev->header.common = header;
+
+            // Second, we read the rest of the type 00h header.
+            addr.bit.reg_num = sizeof(pci_header_common_t) / 4;
+            _Static_assert(
+                (sizeof(pci_header_00h_t) - sizeof(pci_header_common_t)) % 4 ==
+                    0,
+                "invalid header 00h structure");
+            prv_pci_cas_read(
+                addr.val,
+                (void *)((uint32_t)&dev->header + sizeof(pci_header_common_t)),
+                (sizeof(pci_header_00h_t) - sizeof(pci_header_common_t)) / 4);
+
+            g_pci_num_devs++;
         }
 
-        kprintf("\n");
+        if (g_pci_num_devs == PCI_MAX_DEVS) { break; }
     }
 }
 
-static uint32_t read_config_u32(uint8_t bus, uint8_t dev, uint8_t fun,
-                                uint8_t offset) {
-    uint32_t addr =
-        (CONFIG_ADDR_ENABLE | (bus << CONFIG_ADDR_BUS_POS) |
-         (dev << CONFIG_ADDR_DEV_POS) | (fun << CONFIG_ADDR_FUN_POS) |
-         (offset << CONFIG_ADDR_OFFSET_POS));
-    port_outl(PORT_CONFIG_ADDR, addr);
-
-    uint32_t reg = port_inl(PORT_CONFIG_DATA);
-    return reg;
-}
-
-static uint16_t read_config_u16(uint8_t bus, uint8_t dev, uint8_t fun,
-                                uint8_t offset) {
-    uint32_t reg = read_config_u32(bus, dev, fun, (offset & (~0x3)));
-    return (uint16_t)(reg >> (8 * (offset & 0x3)));
-}
-
-static uint8_t read_config_u8(uint8_t bus, uint8_t dev, uint8_t fun,
-                              uint8_t offset) {
-    uint32_t reg = read_config_u32(bus, dev, fun, (offset & (~0x3)));
-    return (uint8_t)(reg >> (8 * (offset & 0x3)));
+/**
+ * Reads dwords from the CAS starting at address @a addr into @a buf.
+ * @param start_addr Start address.
+ * @param v_buf      Buffer to copy bytes into.
+ * @param num_dwords Number of dwords to read.
+ */
+static void prv_pci_cas_read(uint32_t start_addr, void *v_buf,
+                             size_t num_dwords) {
+    uint32_t *const buf_u32 = v_buf;
+    for (size_t cnt_dword = 0; cnt_dword < num_dwords; cnt_dword++) {
+        port_outl(PCI_PORT_CAS_ADDR, start_addr + 4 * cnt_dword);
+        buf_u32[cnt_dword] = port_inl(PCI_PORT_CAS_DATA);
+    }
 }
