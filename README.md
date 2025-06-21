@@ -18,30 +18,32 @@ Arch Linux packages are specified in parentheses.
 1. Building:
 
   * binutils and GCC targeting i686-elf
-  * CMake (cmake)
-  * Optionally, Ninja (ninja)
+  * CMake (`cmake`)
+  * Optionally, Ninja (`ninja`)
 
 2. Creating a bootable ISO:
 
-  * grub-mkrescue or grub2-mkrescue (grub)
-  * xorriso (libisoburn)
-  * GNU mtools (mtools)
+  * grub-mkrescue or grub2-mkrescue (`grub`)
+  * xorriso (`libisoburn`)
+  * GNU mtools (`mtools`)
 
 3. Creating a virtual disk:
 
-  * QEMU disk image manipulation tools (qemu-img)
-  * mkfs.ext4 (e2fsprogs)
+  * QEMU disk image manipulation tools (`qemu-img`)
+  * mkfs.ext4 (`e2fsprogs`)
 
 4. Running in an emulator:
 
-  * QEMU for x86 (qemu-desktop, qemu-system-x86)
+  * QEMU desktop for x86 (`qemu-desktop`, `qemu-system-x86`)
 
 ### Building
 
-    $ mkdir build
-    $ cd build
-    $ cmake .. -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake -DCMAKE_BUILD_TYPE=Debug
-    $ make  # or ninja
+```
+$ mkdir build
+$ cd build
+$ cmake .. -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake -DCMAKE_BUILD_TYPE=Debug
+$ make  # or ninja
+```
 
 Optionally, pass `-GNinja` to `cmake` to use Ninja instead of GNU make.
 
@@ -49,7 +51,9 @@ Optionally, pass `-GNinja` to `cmake` to use Ninja instead of GNU make.
 
 1. Create an ISO with GRUB and the kernel:
 
+    ```
     $ ./create_iso.sh
+    ```
 
 2. Create and partition a virtual disk image:
 
@@ -68,4 +72,6 @@ Optionally, pass `-GNinja` to `cmake` to use Ninja instead of GNU make.
 
 3. Run QEMU:
 
+    ```
     $ ./run_qemu.sh
+    ```
