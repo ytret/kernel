@@ -128,13 +128,13 @@ void framebuf_clear_rows(size_t lss_start_row, size_t lss_num_rows) {
 
     size_t sh_start_row = (SHADOW_SCREENS - 1) * g_height_chars + lss_start_row;
     size_t sh_num_bytes = lss_num_rows * g_row_pitch;
-    memclr_sse2(&gp_shadow_buf[sh_start_row * g_row_pitch], sh_num_bytes);
+    kmemclr_sse2(&gp_shadow_buf[sh_start_row * g_row_pitch], sh_num_bytes);
 
     size_t fb_start_row;
     size_t fb_num_rows;
     get_fb_row_range(lss_start_row, lss_num_rows, &fb_start_row, &fb_num_rows);
-    memclr_sse2(&gp_framebuf[fb_start_row * g_row_pitch],
-                fb_num_rows * g_row_pitch);
+    kmemclr_sse2(&gp_framebuf[fb_start_row * g_row_pitch],
+                 fb_num_rows * g_row_pitch);
 }
 
 /*
@@ -144,12 +144,12 @@ void framebuf_scroll_new_row(void) {
     if (!gp_shadow_buf) { return; }
 
     // Move every shadow row except the first one up.
-    memmove_sse2(gp_shadow_buf, &gp_shadow_buf[1 * g_row_pitch],
-                 (SHADOW_SCREENS * g_height_chars - 1) * g_row_pitch);
+    kmemmove_sse2(gp_shadow_buf, &gp_shadow_buf[1 * g_row_pitch],
+                  (SHADOW_SCREENS * g_height_chars - 1) * g_row_pitch);
 
     // Clear the last shadow row.
     size_t sh_last_row = SHADOW_SCREENS * g_height_chars - 1;
-    memclr_sse2(&gp_shadow_buf[sh_last_row * g_row_pitch], g_row_pitch);
+    kmemclr_sse2(&gp_shadow_buf[sh_last_row * g_row_pitch], g_row_pitch);
 
     copy_shadow_to_fb(0, g_height_chars);
 }
@@ -167,7 +167,7 @@ void framebuf_init_history(void) {
 void framebuf_clear_history(void) {
     if (!gp_shadow_buf) { return; }
 
-    memclr_sse2(gp_shadow_buf, g_height_px * g_px_pitch * SHADOW_SCREENS);
+    kmemclr_sse2(gp_shadow_buf, g_height_px * g_px_pitch * SHADOW_SCREENS);
     g_fb_start_at_sh_row = (SHADOW_SCREENS - 1) * g_height_chars;
 }
 
@@ -286,7 +286,7 @@ static void draw_pixel(uint8_t *p_buf, size_t y, size_t x) {
 
 static void clear_pixel(uint8_t *p_buf, size_t y, size_t x) {
     size_t offset = y * g_px_pitch + x * (g_bpp / 8);
-    memset(&p_buf[offset], 0, g_bpp / 8);
+    kmemset(&p_buf[offset], 0, g_bpp / 8);
 }
 
 static void invert_pixel(uint8_t *p_buf, size_t y, size_t x) {
@@ -325,7 +325,7 @@ static void draw_cursor_fb(void) {
 }
 
 static void copy_shadow_to_fb(size_t fb_start_row, size_t fb_num_rows) {
-    memmove_sse2(
+    kmemmove_sse2(
         &gp_framebuf[fb_start_row * g_row_pitch],
         &gp_shadow_buf[(g_fb_start_at_sh_row + fb_start_row) * g_row_pitch],
         fb_num_rows * g_row_pitch);

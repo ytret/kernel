@@ -6,7 +6,7 @@ static void memmove_si128(si128_t *p_dest, const si128_t *p_src,
                           size_t num_si128);
 static void memclr_si128(si128_t *p_dest, size_t num_si128);
 
-void *memcpy(void *p_dest, const void *p_src, size_t num_bytes) {
+void *kmemcpy(void *p_dest, const void *p_src, size_t num_bytes) {
     __asm__ volatile("rep movsb"
                      : "=D"(p_dest), "=S"(p_src), "=c"(num_bytes)
                      : "0"(p_dest), "1"(p_src), "2"(num_bytes)
@@ -14,7 +14,7 @@ void *memcpy(void *p_dest, const void *p_src, size_t num_bytes) {
     return p_dest;
 }
 
-void *memmove(void *p_dest, const void *p_src, size_t num_bytes) {
+void *kmemmove(void *p_dest, const void *p_src, size_t num_bytes) {
     if (p_dest < p_src) {
         __asm__ volatile("rep movsb"
                          : "=D"(p_dest), "=S"(p_src), "=c"(num_bytes)
@@ -35,7 +35,7 @@ void *memmove(void *p_dest, const void *p_src, size_t num_bytes) {
     return p_dest;
 }
 
-void *memset(void *p_dest, int ch, size_t num_bytes) {
+void *kmemset(void *p_dest, int ch, size_t num_bytes) {
     __asm__ volatile("rep stosb"
                      : "=D"(p_dest), "=a"(ch), "=c"(num_bytes)
                      : "0"(p_dest), "1"(ch), "2"(num_bytes)
@@ -43,7 +43,7 @@ void *memset(void *p_dest, int ch, size_t num_bytes) {
     return p_dest;
 }
 
-void *memset_word(void *p_dest, uint16_t word, size_t num_bytes) {
+void *kmemset_word(void *p_dest, uint16_t word, size_t num_bytes) {
     __asm__ volatile("rep stosw"
                      : "=D"(p_dest), "=a"(word), "=c"(num_bytes)
                      : "0"(p_dest), "1"(word), "2"(num_bytes)
@@ -57,13 +57,13 @@ void *memset_word(void *p_dest, uint16_t word, size_t num_bytes) {
  * NOTE: `p_dest` and `p_src` must have the same alignment, otherwise a GP#
  * exception is generated.
  */
-void *memmove_sse2(void *p_dest, const void *p_src, size_t num_bytes) {
+void *kmemmove_sse2(void *p_dest, const void *p_src, size_t num_bytes) {
     void *const p_orig_dest = p_dest;
 
     // 1. Move the first non-16-byte-addresable part.
     size_t num_non_aligned = (16 - ((uintptr_t)p_dest & 15)) % 16;
     if (num_non_aligned > 0) {
-        memmove(p_dest, p_src, num_non_aligned);
+        kmemmove(p_dest, p_src, num_non_aligned);
         p_dest += num_non_aligned;
         p_src += num_non_aligned;
         num_bytes -= num_non_aligned;
@@ -79,7 +79,7 @@ void *memmove_sse2(void *p_dest, const void *p_src, size_t num_bytes) {
     }
 
     // 3. Move the remaining non-16-byte-addressable part.
-    memmove(p_dest, p_src, num_bytes);
+    kmemmove(p_dest, p_src, num_bytes);
 
     return p_orig_dest;
 }
@@ -87,13 +87,13 @@ void *memmove_sse2(void *p_dest, const void *p_src, size_t num_bytes) {
 /*
  * Zeroes `num_bytes` bytes starting at `p_dest` using SIMD instructions.
  */
-void *memclr_sse2(void *p_dest, size_t num_bytes) {
+void *kmemclr_sse2(void *p_dest, size_t num_bytes) {
     void *const p_orig_dest = p_dest;
 
     // 1. Set the first non-16-byte-addresable part.
     size_t num_non_aligned = (16 - ((uintptr_t)p_dest & 15)) % 16;
     if (num_non_aligned > 0) {
-        memset(p_dest, 0, num_non_aligned);
+        kmemset(p_dest, 0, num_non_aligned);
         p_dest += num_non_aligned;
         num_bytes -= num_non_aligned;
     }
@@ -107,7 +107,7 @@ void *memclr_sse2(void *p_dest, size_t num_bytes) {
     }
 
     // 3. Set the remaining non-16-byte-addressable part.
-    memset(p_dest, 0, num_bytes);
+    kmemset(p_dest, 0, num_bytes);
 
     return p_orig_dest;
 }

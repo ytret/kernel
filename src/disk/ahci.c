@@ -142,7 +142,7 @@ ahci_ctrl_ctx_t *ahci_ctrl_new(const pci_dev_t *pci_dev) {
 
     ahci_ctrl_ctx_t *ctrl_ctx =
         heap_alloc_aligned(sizeof(ahci_ctrl_ctx_t), alignof(ahci_ctrl_ctx_t));
-    memset(ctrl_ctx, 0, sizeof(*ctrl_ctx));
+    kmemset(ctrl_ctx, 0, sizeof(*ctrl_ctx));
     ctrl_ctx->pci_dev = pci_dev;
     ctrl_ctx->reg_ghc = (reg_ghc_t *)hba_regs_addr;
 
@@ -200,12 +200,12 @@ static void prv_ahci_set_ctrl_name(ahci_ctrl_ctx_t *ctrl_ctx) {
 
     // Name prefix.
     ASSERT(pos + sizeof(prefix) <= AHCI_CTRL_NAME_SIZE);
-    memcpy(&ctrl_ctx->name[pos], prefix, sizeof(prefix));
+    kmemcpy(&ctrl_ctx->name[pos], prefix, sizeof(prefix));
     pos += sizeof(prefix) - 1; // do not count the NUL byte
 
     // Bus prefix.
     ASSERT(pos + sizeof(prefix_bus) <= AHCI_CTRL_NAME_SIZE);
-    memcpy(&ctrl_ctx->name[pos], prefix_bus, sizeof(prefix_bus));
+    kmemcpy(&ctrl_ctx->name[pos], prefix_bus, sizeof(prefix_bus));
     pos += sizeof(prefix_bus) - 1;
 
     // Bus number.
@@ -213,12 +213,12 @@ static void prv_ahci_set_ctrl_name(ahci_ctrl_ctx_t *ctrl_ctx) {
         string_itoa(ctrl_ctx->pci_dev->bus_num, false, max_u32_str, 10);
     ASSERT(bus_len > 0);
     ASSERT(pos + bus_len <= AHCI_CTRL_NAME_SIZE);
-    memcpy(&ctrl_ctx->name[pos], max_u32_str, bus_len);
+    kmemcpy(&ctrl_ctx->name[pos], max_u32_str, bus_len);
     pos += bus_len - 1;
 
     // Device prefix.
     ASSERT(pos + sizeof(prefix_dev) <= AHCI_CTRL_NAME_SIZE);
-    memcpy(&ctrl_ctx->name[pos], prefix_dev, sizeof(prefix_dev));
+    kmemcpy(&ctrl_ctx->name[pos], prefix_dev, sizeof(prefix_dev));
     pos += sizeof(prefix_dev) - 1;
 
     // Device number.
@@ -226,12 +226,12 @@ static void prv_ahci_set_ctrl_name(ahci_ctrl_ctx_t *ctrl_ctx) {
         string_itoa(ctrl_ctx->pci_dev->dev_num, false, max_u32_str, 10);
     ASSERT(dev_len > 0);
     ASSERT(pos + dev_len <= AHCI_CTRL_NAME_SIZE);
-    memcpy(&ctrl_ctx->name[pos], max_u32_str, dev_len);
+    kmemcpy(&ctrl_ctx->name[pos], max_u32_str, dev_len);
     pos += dev_len - 1; // do not count the NUL byte
 
     // Function prefix.
     ASSERT(pos + sizeof(prefix_fun) <= AHCI_CTRL_NAME_SIZE);
-    memcpy(&ctrl_ctx->name[pos], prefix_fun, sizeof(prefix_fun));
+    kmemcpy(&ctrl_ctx->name[pos], prefix_fun, sizeof(prefix_fun));
     pos += sizeof(prefix_fun) - 1;
 
     // Function number.
@@ -239,7 +239,7 @@ static void prv_ahci_set_ctrl_name(ahci_ctrl_ctx_t *ctrl_ctx) {
         string_itoa(ctrl_ctx->pci_dev->fun_num, false, max_u32_str, 10);
     ASSERT(fun_len > 0);
     ASSERT(pos + fun_len <= AHCI_CTRL_NAME_SIZE);
-    memcpy(&ctrl_ctx->name[pos], max_u32_str, fun_len);
+    kmemcpy(&ctrl_ctx->name[pos], max_u32_str, fun_len);
     pos += fun_len - 1; // do not count the NUL byte
 
     ASSERT(pos < AHCI_CTRL_NAME_SIZE);
@@ -293,7 +293,7 @@ static void prv_ahci_enumerate_ports(ahci_ctrl_ctx_t *ctrl_ctx) {
 
     for (size_t port_idx = 0; port_idx < AHCI_PORTS_PER_CTRL; port_idx++) {
         ahci_port_ctx_t *const port_ctx = &ctrl_ctx->ports[port_idx];
-        memset(port_ctx, 0, sizeof(*port_ctx));
+        kmemset(port_ctx, 0, sizeof(*port_ctx));
 
         port_ctx->port_num = port_idx;
         port_ctx->online_sata = false;
@@ -338,11 +338,11 @@ static void prv_ahci_set_port_name(ahci_port_ctx_t *port_ctx) {
     char max_u32_str[11] = {0};
 
     static_assert(AHCI_PORT_NAME_SIZE >= AHCI_CTRL_NAME_SIZE + 3);
-    memcpy(port_ctx->name, port_ctx->ctrl_ctx->name, ctrl_name_len);
+    kmemcpy(port_ctx->name, port_ctx->ctrl_ctx->name, ctrl_name_len);
 
     // Port prefix.
     ASSERT(pos + sizeof(prefix_port) <= AHCI_CTRL_NAME_SIZE);
-    memcpy(&port_ctx->name[pos], prefix_port, sizeof(prefix_port));
+    kmemcpy(&port_ctx->name[pos], prefix_port, sizeof(prefix_port));
     pos += sizeof(prefix_port) - 1;
 
     // Port number.
@@ -350,7 +350,7 @@ static void prv_ahci_set_port_name(ahci_port_ctx_t *port_ctx) {
         string_itoa(port_ctx->port_num, false, max_u32_str, 10);
     ASSERT(port_len > 0);
     ASSERT(pos + port_len <= AHCI_CTRL_NAME_SIZE);
-    memcpy(&port_ctx->name[pos], max_u32_str, port_len);
+    kmemcpy(&port_ctx->name[pos], max_u32_str, port_len);
     pos += port_len - 1;
 
     ASSERT(pos < AHCI_CTRL_NAME_SIZE);
@@ -426,7 +426,7 @@ static bool prv_ahci_identify_port(ahci_port_ctx_t *port_ctx) {
         return false;
     }
 
-    memcpy(port_ctx->serial_str, p_ident + 10, SATA_SERIAL_STR_LEN);
+    kmemcpy(port_ctx->serial_str, p_ident + 10, SATA_SERIAL_STR_LEN);
     port_ctx->num_sectors = *((uint32_t *)&p_ident[60]);
 
     kprintf("ahci: %s: serial is '%s'\n", port_ctx->name, port_ctx->serial_str);

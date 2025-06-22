@@ -102,16 +102,16 @@ void vga_put_cursor_at(size_t lss_row, size_t lss_col) {
 void vga_clear_rows(size_t lss_start_row, size_t lss_num_rows) {
     size_t sh_start_row = (SHADOW_SCREENS - 1) * NUM_ROWS + lss_start_row;
     size_t sh_num_words = lss_num_rows * NUM_COLS;
-    memset_word(&gp_shadow_buf[sh_start_row * NUM_COLS], 0x0F << 8,
-                sh_num_words);
+    kmemset_word(&gp_shadow_buf[sh_start_row * NUM_COLS], 0x0F << 8,
+                 sh_num_words);
 
     size_t vga_start_row;
     size_t vga_num_rows;
     get_vga_row_range(lss_start_row, lss_num_rows, &vga_start_row,
                       &vga_num_rows);
     size_t vga_num_words = vga_num_rows * NUM_COLS;
-    memset_word(&gp_vga_buf[vga_start_row * NUM_COLS], 0x0F << 8,
-                vga_num_words);
+    kmemset_word(&gp_vga_buf[vga_start_row * NUM_COLS], 0x0F << 8,
+                 vga_num_words);
 }
 
 /*
@@ -119,12 +119,12 @@ void vga_clear_rows(size_t lss_start_row, size_t lss_num_rows) {
  */
 void vga_scroll_new_row(void) {
     // Move every shadow row except the first one up.
-    memmove(gp_shadow_buf, &gp_shadow_buf[1 * NUM_COLS],
-            (SHADOW_SCREENS * NUM_ROWS - 1) * PITCH);
+    kmemmove(gp_shadow_buf, &gp_shadow_buf[1 * NUM_COLS],
+             (SHADOW_SCREENS * NUM_ROWS - 1) * PITCH);
 
     // Clear the last shadow row.
     size_t sh_last_row = SHADOW_SCREENS * NUM_ROWS - 1;
-    memset_word(&gp_shadow_buf[sh_last_row * NUM_COLS], 0x0F << 8, NUM_COLS);
+    kmemset_word(&gp_shadow_buf[sh_last_row * NUM_COLS], 0x0F << 8, NUM_COLS);
 
     copy_shadow_to_vga();
 }
@@ -138,7 +138,8 @@ void vga_init_history(void) {
  * currently visible part of it WITHOUT updating the VGA framebuffer.
  */
 void vga_clear_history(void) {
-    memset_word(gp_shadow_buf, 0x0F << 8, SHADOW_SCREENS * NUM_ROWS * NUM_COLS);
+    kmemset_word(gp_shadow_buf, 0x0F << 8,
+                 SHADOW_SCREENS * NUM_ROWS * NUM_COLS);
     g_vga_start_at_sh_row = (SHADOW_SCREENS - 1) * NUM_ROWS;
 }
 
@@ -255,6 +256,6 @@ static void get_vga_row_range(size_t lss_start_row, size_t lss_num_rows,
 }
 
 static void copy_shadow_to_vga(void) {
-    memcpy(gp_vga_buf, &gp_shadow_buf[g_vga_start_at_sh_row * NUM_COLS],
-           NUM_ROWS * PITCH);
+    kmemcpy(gp_vga_buf, &gp_shadow_buf[g_vga_start_at_sh_row * NUM_COLS],
+            NUM_ROWS * PITCH);
 }
