@@ -388,12 +388,13 @@ static void cmd_ahci(char **pp_args, size_t num_args) {
     }
 
     uint8_t *const p_buf = heap_alloc_aligned(512 * num_sectors, 2);
-    const bool b_ok = disk_read_sectors(dev, sector, num_sectors, p_buf);
+    const bool b_ok = disk_start_read(dev, sector, num_sectors, p_buf);
     if (!b_ok) {
         kprintf("ahci: dump command failed\n");
         heap_free(p_buf);
         return;
     }
+    while (!disk_is_idle(dev)) {}
 
     // Print the bytes.
     const size_t num_bytes = 512 * num_sectors;

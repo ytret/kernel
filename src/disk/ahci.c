@@ -60,21 +60,59 @@ static_assert(AHCI_PORTS_PER_CTRL <= 99, "increase AHCI_PORT_NAME_SIZE");
  * AHCI Port context.
  */
 struct ahci_port_ctx {
+    /**
+     * Unique kernel name for the device.
+     * See #prv_ahci_set_port_name().
+     */
     char name[AHCI_PORT_NAME_SIZE];
+
+    /**
+     * Device serial string.
+     * It is available after the device has been identified, see
+     * #ahci_port_ctx.identified.
+     */
     char serial_str[SATA_SERIAL_STR_LEN + 1];
-    /// Port index in the controller.
+
+    /// Port index in the controller #ahci_port_ctx.ctrl_ctx.
     size_t port_num;
     /// Port is online and is a SATA device.
     bool online_sata;
+    /// Port parameters have been identified using #SATA_CMD_IDENTIFY_DEVICE.
     bool identified;
 
+    /// Disk state.
+    ahci_port_state_t state;
+
+    /// Context pointer of the controller this port is a part of.
     ahci_ctrl_ctx_t *ctrl_ctx;
+    /// Pointer to the Port register.
     reg_port_t *reg_port;
+    /**
+     * Number of sectors in the device.
+     * This value is available only after the device has been identified, see
+     * #ahci_port_ctx.identified.
+     */
     uint32_t num_sectors;
 
-    /// Received FIS buffer.
+    /**
+     * Received FIS buffer.
+     * It is allocated on the heap during the port setup process, see
+     * #prv_ahci_setup_port(). Refer to section 4.2.1, Received FIS Structure.
+     */
     ahci_rfis_t *p_rfis;
+    /**
+     * Command List.
+     * It is allocated on the heap during the port setup process, see
+     * #prv_ahci_setup_port().
+     * Refer to section 4.2.2, Command List Structure.
+     */
     ahci_cmd_hdr_t *p_cmd_list;
+    /**
+     * Command Table array.
+     * It is allocated on the heap during the port setup process, see
+     * #prv_ahci_setup_port().
+     * Refer to section 4.2.3, Command Table.
+     */
     ahci_cmd_table_t *p_cmd_tables;
 };
 
@@ -82,7 +120,10 @@ struct ahci_port_ctx {
  * AHCI Controller context.
  */
 struct ahci_ctrl_ctx {
-    /// Unique device name.
+    /**
+     * Unique kernel name for the device.
+     * See #prv_ahci_set_ctrl_name().
+     */
     char name[AHCI_CTRL_NAME_SIZE];
 
     /// PCI device context.
@@ -92,12 +133,15 @@ struct ahci_ctrl_ctx {
     reg_ghc_t *reg_ghc;
 
     /**
-     * Implemented port contexts.
+     * Port contexts.
      *
      * The controller manifests its number of ports in its HBA Capability
      * register, field NP (Number of Ports). However, the number of ports it
      * implements may be less than that and is specified in the PI (Ports
      * Implemented) register.
+     *
+     * Use #ahci_port_ctx.online_sata to distinguish online (with established
+     * Phy communication) ports.
      */
     struct ahci_port_ctx ports[AHCI_PORTS_PER_CTRL];
 };
@@ -121,10 +165,7 @@ static void prv_ahci_enumerate_ports(ahci_ctrl_ctx_t *ctrl_ctx);
 
 static void prv_ahci_set_port_name(ahci_port_ctx_t *port_ctx);
 static void prv_ahci_setup_port(ahci_port_ctx_t *port_ctx);
-static bool prv_ahci_identify_port(ahci_port_ctx_t *port_ctx);
-
-static bool prv_ahci_read_port(ahci_port_ctx_t *port_ctx, uint64_t start_sector,
-                               uint32_t num_sectors, void *p_buf);
+static void prv_ahci_identify_port(ahci_port_ctx_t *port_ctx);
 
 static bool send_read_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd, void *p_buf,
                           size_t read_len, size_t *p_cmd_slot);
@@ -158,7 +199,8 @@ ahci_ctrl_ctx_t *ahci_ctrl_new(const pci_dev_t *pci_dev) {
         ahci_port_ctx_t *const port_ctx = &ctrl_ctx->ports[port_idx];
         if (port_ctx->online_sata) {
             prv_ahci_setup_port(port_ctx);
-            port_ctx->identified = prv_ahci_identify_port(port_ctx);
+            prv_ahci_identify_port(port_ctx);
+            port_ctx->state = AHCI_PORT_IDLE;
         }
     }
 
@@ -182,9 +224,71 @@ const char *ahci_port_name(const ahci_port_ctx_t *port_ctx) {
     return port_ctx->name;
 }
 
-bool ahci_port_read(ahci_port_ctx_t *port_ctx, uint64_t start_sector,
-                    uint32_t num_sectors, void *p_buf) {
-    return prv_ahci_read_port(port_ctx, start_sector, num_sectors, p_buf);
+bool ahci_port_is_idle(ahci_port_ctx_t *port_ctx) {
+    // FIXME: use an interrupt to change the state.
+    bool has_error = true;
+    if (port_ctx->reg_port->is_bit.tfes) {
+        port_ctx->reg_port->is_bit.tfes = 1; // write 1 to clear
+        has_error = true;
+    }
+    if (port_ctx->p_rfis->rfis.error) { has_error = true; }
+    if (has_error || port_ctx->reg_port->ci == 0) {
+        port_ctx->state = AHCI_PORT_IDLE;
+    }
+
+    return port_ctx->state == AHCI_PORT_IDLE;
+}
+
+bool ahci_port_start_read(ahci_port_ctx_t *port_ctx, uint64_t start_sector,
+                          uint32_t num_sectors, void *p_buf) {
+    if (port_ctx->state != AHCI_PORT_IDLE) { return false; }
+
+    // Check start_sector.
+    if (start_sector >> 48) {
+        kprintf("ahci: %s: start sector number cannot be wider than 48 bits\n",
+                port_ctx->name);
+        return false;
+    }
+    if (start_sector >= port_ctx->num_sectors) {
+        kprintf("ahci: %s: start sector is past disk end by %u sectors\n",
+                port_ctx->name, start_sector - port_ctx->num_sectors);
+        return false;
+    }
+
+    // Check num_sectors.
+    if (0 == num_sectors) { return true; }
+    if (start_sector + num_sectors > port_ctx->num_sectors) {
+        kprintf("ahci: %s: cannot read past disk end by %u sectors\n",
+                port_ctx->name,
+                (start_sector + num_sectors) - port_ctx->num_sectors);
+        return false;
+    }
+
+    // We have a finite amount of PRDs. Each can describe a 4 MiB data block,
+    // or 8192 512-byte sectors.
+    if (num_sectors > 8192 * AHCI_CMD_TABLE_NUM_PRDS) {
+        kprintf(
+            "ahci: %s: number of sectors to read cannot be greater than %u\n",
+            port_ctx->name, 8192 * AHCI_CMD_TABLE_NUM_PRDS);
+        return false;
+    }
+
+    // Set up an ATA command.
+    ata_cmd_t cmd = {0};
+    cmd.count = num_sectors;
+    cmd.lba = start_sector;
+    cmd.device = (1 << 6);
+    cmd.command = SATA_CMD_READ_DMA_EXT;
+
+    // Issue the command.
+    size_t cmd_slot;
+    if (!send_read_cmd(port_ctx, cmd, p_buf, 512 * num_sectors, &cmd_slot)) {
+        kprintf("ahci: %s: failed to issue read command\n", port_ctx->name);
+        return false;
+    }
+
+    port_ctx->state = AHCI_PORT_READING;
+    return true;
 }
 
 static void prv_ahci_set_ctrl_name(ahci_ctrl_ctx_t *ctrl_ctx) {
@@ -283,6 +387,17 @@ static bool prv_ahci_enter_ahci_mode(ahci_ctrl_ctx_t *ctrl_ctx) {
     }
 }
 
+/**
+ * Enumerates ports of the @a ctrl_ctx controller.
+ *
+ * Initializes the following fields of each port context:
+ * - #ahci_port_ctx_t.name
+ * - #ahci_port_ctx_t.port_num
+ * - #ahci_port_ctx_t.online_sata
+ * - #ahci_port_ctx_t.state
+ * - #ahci_port_ctx_t.ctrl_ctx
+ * - #ahci_port_ctx_t.reg_port
+ */
 static void prv_ahci_enumerate_ports(ahci_ctrl_ctx_t *ctrl_ctx) {
     reg_ghc_t *const reg_ghc = ctrl_ctx->reg_ghc;
 
@@ -297,6 +412,7 @@ static void prv_ahci_enumerate_ports(ahci_ctrl_ctx_t *ctrl_ctx) {
 
         port_ctx->port_num = port_idx;
         port_ctx->online_sata = false;
+        port_ctx->state = AHCI_PORT_UNINIT;
         port_ctx->ctrl_ctx = ctrl_ctx;
         port_ctx->reg_port = AHCI_REG_PORT(reg_ghc, port_idx);
         prv_ahci_set_port_name(port_ctx);
@@ -403,8 +519,15 @@ static void prv_ahci_setup_port(ahci_port_ctx_t *port_ctx) {
     while (!reg_port->cmd_bit.cr || !reg_port->cmd_bit.fr) {}
 }
 
-/// Sends an
-static bool prv_ahci_identify_port(ahci_port_ctx_t *port_ctx) {
+/**
+ * Sends a #SATA_CMD_IDENTIFY_DEVICE command on @a port_ctx.
+ *
+ * Fills in the following fields of @a port_ctx:
+ * - #ahci_port_ctx_t.serial_str
+ * - #ahci_port_ctx_t.identified
+ * - #ahci_port_ctx_t.num_sectors
+ */
+static void prv_ahci_identify_port(ahci_port_ctx_t *port_ctx) {
     ASSERT(port_ctx);
     ASSERT(port_ctx->reg_port);
 
@@ -416,14 +539,16 @@ static bool prv_ahci_identify_port(ahci_port_ctx_t *port_ctx) {
     if (!send_read_cmd(port_ctx, cmd, p_ident, 512, &cmd_slot)) {
         kprintf("ahci: %s: could not issue IDENTIFY_DEVICE\n", port_ctx->name);
         heap_free(p_ident);
-        return false;
+        port_ctx->identified = false;
+        return;
     }
 
     bool b_ok = wait_for_cmd(port_ctx, cmd_slot);
     if (!b_ok) {
         kprintf("ahci: %s: command IDENTIFY_DEVICE failed\n", port_ctx->name);
         heap_free(p_ident);
-        return false;
+        port_ctx->identified = false;
+        return;
     }
 
     kmemcpy(port_ctx->serial_str, p_ident + 10, SATA_SERIAL_STR_LEN);
@@ -434,63 +559,7 @@ static bool prv_ahci_identify_port(ahci_port_ctx_t *port_ctx) {
             port_ctx->num_sectors);
 
     heap_free(p_ident);
-    return true;
-}
-
-static bool prv_ahci_read_port(ahci_port_ctx_t *port_ctx, uint64_t start_sector,
-                               uint32_t num_sectors, void *p_buf) {
-    // Check start_sector.
-    if (start_sector >> 48) {
-        kprintf("ahci: %s: start sector number cannot be wider than 48 bits\n",
-                port_ctx->name);
-        return false;
-    }
-    if (start_sector >= port_ctx->num_sectors) {
-        kprintf("ahci: %s: start sector is past disk end by %u sectors\n",
-                port_ctx->name, start_sector - port_ctx->num_sectors);
-        return false;
-    }
-
-    // Check num_sectors.
-    if (0 == num_sectors) { return true; }
-    if (start_sector + num_sectors > port_ctx->num_sectors) {
-        kprintf("ahci: %s: cannot read past disk end by %u sectors\n",
-                port_ctx->name,
-                (start_sector + num_sectors) - port_ctx->num_sectors);
-        return false;
-    }
-
-    // We have a finite amount of PRDs. Each can describe a 4 MiB data block,
-    // or 8192 512-byte sectors.
-    if (num_sectors > 8192 * AHCI_CMD_TABLE_NUM_PRDS) {
-        kprintf(
-            "ahci: %s: number of sectors to read cannot be greater than %u\n",
-            port_ctx->name, 8192 * AHCI_CMD_TABLE_NUM_PRDS);
-        return false;
-    }
-
-    // Set up an ATA command.
-    ata_cmd_t cmd = {0};
-    cmd.count = num_sectors;
-    cmd.lba = start_sector;
-    cmd.device = (1 << 6);
-    cmd.command = SATA_CMD_READ_DMA_EXT;
-
-    // Issue the command.
-    size_t cmd_slot;
-    if (!send_read_cmd(port_ctx, cmd, p_buf, 512 * num_sectors, &cmd_slot)) {
-        kprintf("ahci: %s: failed to issue read command\n", port_ctx->name);
-        return false;
-    }
-
-    // Wait for its completion.
-    bool b_ok = wait_for_cmd(port_ctx, cmd_slot);
-    if (!b_ok) {
-        kprintf("ahci: command failed\n");
-        return false;
-    }
-
-    return true;
+    port_ctx->identified = true;
 }
 
 /**
