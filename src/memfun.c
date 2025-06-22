@@ -2,6 +2,23 @@
 
 typedef int si128_t [[gnu::vector_size(16), gnu::aligned(16)]];
 
+/**
+ * @{
+ * @name Aliases for libgcc
+ */
+/// Alias for #kmemcpy().
+[[gnu::alias("kmemcpy")]]
+void *memcpy(void *p_dest, const void *p_src, size_t num_bytes);
+
+/// Alias for #kmemmove().
+[[gnu::alias("kmemmove")]]
+void *memmove(void *p_dest, const void *p_src, size_t num_bytes);
+
+/// Alias for #kmemset().
+[[gnu::alias("kmemset")]]
+void *memset(void *p_dest, int ch, size_t num_bytes);
+/// @}
+
 static void memmove_si128(si128_t *p_dest, const si128_t *p_src,
                           size_t num_si128);
 static void memclr_si128(si128_t *p_dest, size_t num_si128);
