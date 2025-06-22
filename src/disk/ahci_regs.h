@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "disk/sata.h"
 #include "types.h"
 
 /// Size of the HBA memory register map (bytes).
@@ -14,15 +15,21 @@
  * Port @a P control register offset.
  * @param P Port number.
  */
-#define HBA_REG_PORT_OFFSET(P) (0x100 + (0x80 * (P)))
+#define AHCI_REG_PORT_OFFSET(P) (0x100 + (0x80 * (P)))
 
 /**
  * Pointer to the port @a P control register.
  * @param HBA Start address of the HBA register map.
  * @param P   Port number.
  */
-#define HBA_REG_PORT(HBA, P)                                                   \
-    ((reg_port_t *)((uint32_t)(HBA) + (HBA_REG_PORT_OFFSET(P))))
+#define AHCI_REG_PORT(HBA, P)                                                  \
+    ((reg_port_t *)((uint32_t)(HBA) + (AHCI_REG_PORT_OFFSET(P))))
+
+/**
+ * Number of PRDT entries in each command table.
+ * See #ahci_cmd_table_t.
+ */
+#define AHCI_CMD_TABLE_NUM_PRDS 8
 
 /**
  * Generic HBA Control registers.
@@ -447,3 +454,99 @@ typedef enum {
     /// Host Bus Adapter internal error.
     AHCI_SERR_ERR_INTERNAL = 0x0800,
 } ahci_port_serr_err_t;
+
+/**
+ * Received Frame Information Structure (FIS).
+ *
+ * Frames that are received from the host are copied to the appropriate field of
+ * this structure by the HBA.
+ *
+ * Refer to section 4.2.1.
+ */
+typedef volatile struct [[gnu::packed]] {
+    /// DMA Setup FIS.
+    sata_fis_dma_setup_t dsfis [[gnu::aligned(0x20)]];
+    /// Port IO Setup FIS.
+    sata_fis_pio_setup_t psfis [[gnu::aligned(0x20)]];
+    /// Device-to-HBA FIS.
+    sata_fis_reg_d2h_t rfis [[gnu::aligned(0x20)]];
+    /// Set-Device-Bits FIS.
+    sata_fis_dev_bits_t sdbfis [[gnu::aligned(0x08)]];
+
+    /// Unknown FIS.
+    uint8_t p_ufis[64];
+    uint8_t _reserved[96];
+} ahci_rfis_t;
+
+/**
+ * Command Header.
+ * Refer to section 4.2.2.
+ */
+typedef volatile struct [[gnu::packed]] {
+    // DW 0 - Description Information.
+    /// Command FIS Length.
+    uint8_t cfl : 5;
+    /// ATAPI bit: PIO Setup FIS shall be sent (1) or not (0).
+    bool b_atapi : 1;
+    /// Data direction bit: write to the device (1) or read from it (0).
+    bool b_write : 1;
+    /// Prefetchable bit.
+    bool b_prefetch : 1;
+    /// Reset bit.
+    bool b_reset : 1;
+    /// BIST bit: the command is for sending a BIST FIS (1) or not (0).
+    bool b_bist : 1;
+    /// Clear BSY upon R_OK (1) or not (0).
+    bool b_clear_bsy : 1;
+    uint8_t _reserved_1 : 1;
+    /// Port Multiplier Port.
+    uint8_t pmp : 4;
+    /// Physical Region Descriptor Table Length.
+    uint16_t prdtl;
+
+    // DW 1 - Command Status.
+    uint32_t prdbc; //!< Physical Region Descriptor Byte Count.
+
+    // DW 2.
+    uint32_t ctba; //!< Command Table Descriptor Base Address.
+
+    // DW 3.
+    uint32_t ctbau; //!< Upper 32 Bits of CTBA.
+
+    uint32_t _reserved_2[4];
+} ahci_cmd_hdr_t;
+
+/**
+ * Physical Region Descriptor Table (PRDT).
+ * Refer to section 4.2.3.3.
+ */
+typedef volatile struct [[gnu::packed]] {
+    // DW 0.
+    uint32_t dba; //!< Data Base Address.
+    // DW 1.
+    uint32_t dbau; //!< Upper 32 Bits of DBA.
+    // DW 2.
+    uint32_t _reserved_1;
+
+    // DW 3.
+    uint32_t dbc : 22; //!< Data Byte Count.
+    uint16_t _reserved_2 : 9;
+    bool b_int : 1; //!< Interrupt On Completion.
+} ahci_prd_t;
+
+/**
+ * Command Table.
+ * Refer to section 4.2.3.
+ */
+typedef volatile struct [[gnu::packed]] {
+    uint8_t p_cfis[64]; //!< Command FIS.
+    uint8_t p_acmd[16]; //!< ATAPI Command.
+    uint8_t _reserved[48];
+
+    /**
+     * Physical Region Descriptor Table (PRDT).
+     * The number of items in this table is set by the #ahci_cmd_hdr_t.prdtl
+     * field in the Command Header.
+     */
+    ahci_prd_t p_prd_table[AHCI_CMD_TABLE_NUM_PRDS];
+} ahci_cmd_table_t;
