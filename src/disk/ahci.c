@@ -131,8 +131,6 @@ static bool send_read_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd, void *p_buf,
 static bool wait_for_cmd(ahci_port_ctx_t *port_ctx, size_t cmd_slot);
 static bool find_cmd_slot(reg_port_t *reg_port, size_t *out_slot);
 
-static void dump_port_reg(reg_port_t *p_port);
-
 ahci_ctrl_ctx_t *ahci_ctrl_new(const pci_dev_t *pci_dev) {
     const uint32_t abar = pci_dev->header.bar5;
     const uint32_t hba_regs_addr = abar & AHCI_ABAR_ADDR_MASK;
@@ -659,26 +657,4 @@ static bool find_cmd_slot(reg_port_t *reg_port, size_t *out_slot) {
         }
     }
     return false;
-}
-
-[[maybe_unused]]
-static void dump_port_reg(reg_port_t *p_port) {
-    kprintf("Port register at %P:\n", p_port);
-    kprintf("    clb = %08x\n", p_port->clb);
-    kprintf("   clbu = %08x\n", p_port->clbu);
-    kprintf("     fb = %08x\n", p_port->fb);
-    kprintf("    fbu = %08x\n", p_port->fbu);
-    kprintf("     is = %08x\n", p_port->is);
-    kprintf("     ie = %08x\n", p_port->ie);
-    kprintf("    cmd = %08x\n", p_port->cmd);
-    kprintf("    tfd = %08x\n", p_port->tfd);
-    kprintf("    sig = %08x\n", p_port->sig);
-    kprintf("   ssts = %08x\n", p_port->ssts);
-    kprintf("   sctl = %08x\n", p_port->sctl);
-    kprintf("   serr = %08x\n", p_port->serr);
-    kprintf("   sact = %08x\n", p_port->sact);
-    kprintf("     ci = %08x\n", p_port->ci);
-    kprintf("   sntf = %08x\n", p_port->sntf);
-    kprintf("    fbs = %08x\n", p_port->fbs);
-    kprintf(" devslp = %08x\n", p_port->devslp);
 }
