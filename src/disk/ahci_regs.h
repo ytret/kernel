@@ -26,6 +26,33 @@
     ((reg_port_t *)((uint32_t)(HBA) + (AHCI_REG_PORT_OFFSET(P))))
 
 /**
+ * FIS Base Address alignment.
+ * Refer to section 3.3.3, register PxFB (FIS Base Address) must be 256 byte
+ * aligned.
+ */
+#define AHCI_FIS_BASE_ALIGN 256
+
+/**
+ * Command List alignment.
+ * Refer to section 3.3.1, register PxCLB (Command List Base Address) must be
+ * 1024 byte aligned.
+ */
+#define AHCI_CMD_LIST_ALIGN 1024
+
+/**
+ * Command List length.
+ * Refer to section 4.2.2.
+ */
+#define AHCI_CMD_LIST_LEN 32
+
+/**
+ * Command Table alignment.
+ * Refer to section 4.2.2, field CTBA0 has bits 0..6 reserved, so the address
+ * must be 128 byte aligned.
+ */
+#define AHCI_CMD_TABLE_ALIGN 128
+
+/**
  * Number of PRDT entries in each command table.
  * See #ahci_cmd_table_t.
  */
@@ -538,7 +565,7 @@ typedef volatile struct [[gnu::packed]] {
  * Command Table.
  * Refer to section 4.2.3.
  */
-typedef volatile struct [[gnu::packed]] {
+typedef volatile struct [[gnu::packed, gnu::aligned(128)]] {
     uint8_t p_cfis[64]; //!< Command FIS.
     uint8_t p_acmd[16]; //!< ATAPI Command.
     uint8_t _reserved[48];

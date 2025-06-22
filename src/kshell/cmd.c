@@ -17,7 +17,8 @@
 
 #include <cpuid.h>
 
-#include "disk/ahci.h"
+#include "devdrv.h"
+#include "disk/disk.h"
 #include "elf.h"
 #include "heap.h"
 #include "kprintf.h"
@@ -367,30 +368,35 @@ static void cmd_ahci(char **pp_args, size_t num_args) {
 
     uint32_t sector;
     uint32_t num_sectors;
-
-    bool b_sector_ok = string_to_uint32(pp_args[2], &sector, 10);
+    const bool b_sector_ok = string_to_uint32(pp_args[2], &sector, 10);
     if (!b_sector_ok) {
         kprintf("Invalid argument: '%s'\n", pp_args[2]);
         kprintf("sector must be a 32-bit unsigned integer\n");
         return;
     }
-
-    bool b_num_ok = string_to_uint32(pp_args[3], &num_sectors, 10);
+    const bool b_num_ok = string_to_uint32(pp_args[3], &num_sectors, 10);
     if ((!b_num_ok) || (0 == num_sectors)) {
         kprintf("Invalid argument: '%s'\n", pp_args[3]);
         kprintf("num sectors must be a non-zero 32-bit unsigned integer\n");
         return;
     }
 
-    uint8_t *p_buf = heap_alloc_aligned((512 * num_sectors), 2);
-    bool b_ok = ahci_read_sectors(sector, num_sectors, p_buf);
+    devdrv_dev_t *const dev = devdrv_find_by_class(DEVDRV_CLASS_DISK);
+    if (!dev) {
+        kprintf("ahci: no disk device\n");
+        return;
+    }
+
+    uint8_t *const p_buf = heap_alloc_aligned(512 * num_sectors, 2);
+    const bool b_ok = disk_read_sectors(dev, sector, num_sectors, p_buf);
     if (!b_ok) {
         kprintf("ahci: dump command failed\n");
+        heap_free(p_buf);
         return;
     }
 
     // Print the bytes.
-    size_t num_bytes = 512 * num_sectors;
+    const size_t num_bytes = 512 * num_sectors;
     for (size_t row = 0; row < (num_bytes + 23) / 24; row++) {
         kprintf("%02x  ", row);
         for (size_t byte = 0; byte < 24; byte++) {

@@ -58,7 +58,7 @@ bool gpt_find_root_part(uint64_t *p_lba_start, uint64_t *p_lba_end) {
 
     // Read the partition table header.
     pt_hdr_t *p_hdr = heap_alloc(512);
-    ahci_read_sectors(1, 1, p_hdr);
+    ahci_port_read(1, 1, p_hdr);
 
     char p_sig[9] = {0};
     __builtin_memcpy(p_sig, p_hdr, 8);
@@ -85,7 +85,7 @@ bool gpt_find_root_part(uint64_t *p_lba_start, uint64_t *p_lba_end) {
     // Read all the partition entries.
     size_t ptes_sectors = (((p_hdr->ptes_num * p_hdr->pte_size) + 511) / 512);
     uint8_t *p_ptes_u8 = heap_alloc(512 * ptes_sectors);
-    bool b_read = ahci_read_sectors(p_hdr->ptes_lba, ptes_sectors, p_ptes_u8);
+    bool b_read = ahci_port_read(p_hdr->ptes_lba, ptes_sectors, p_ptes_u8);
     if (!b_read) {
         kprintf("gpt: AHCI read failed\n");
         return false;

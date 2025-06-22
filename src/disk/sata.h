@@ -39,6 +39,8 @@
 #define SATA_CMD_READ_DMA_EXT    0x25
 /// @}
 
+#define SATA_SERIAL_STR_LEN 20
+
 #define SATA_ERROR_ABORT (1 << 2)
 
 /// Register FIS -- host to device.

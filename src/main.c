@@ -53,11 +53,13 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     devdrv_init();
 
+    /*
     uint64_t root_start_sector;
     uint64_t root_num_sectors;
     bool b_root_found =
         gpt_find_root_part(&root_start_sector, &root_num_sectors);
     if (!b_root_found) { kprintf("Could not find root partition\n"); }
+    */
 
     taskmgr_init(init_entry);
 

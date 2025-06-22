@@ -23,10 +23,11 @@ add_executable(kernel
 
     src/devdrv.c
     src/disk/ahci.c
+    src/disk/disk.c
     src/elf.c
     src/framebuf.c
     src/gdt.c
-    src/gpt.c
+    # src/gpt.c
     src/heap.c
     src/idt.c
     src/kbd.c

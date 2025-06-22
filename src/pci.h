@@ -8,6 +8,24 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/// Number of PCI buses to enumerate in #pci_init().
+#define PCI_ENUM_BUSES 1
+static_assert(PCI_ENUM_BUSES <= 256, "there cannot be more than 256 buses");
+
+/**
+ * Maximum number of devices that can be connected to a single PCI bus.
+ * This value (32) is determined by the number of bits (5) provided for device
+ * selection in CAS addresses.
+ */
+#define PCI_DEVS_PER_BUS 32
+
+/**
+ * Maximum number of functions per PCI device.
+ * This value (8) is determined by the nubmer of bits (3) provided for function
+ * selection in CAS addresses.
+ */
+#define PCI_FUNS_PER_DEV 8
+
 /**
  * Common fields of the various types of PCI configuration headers.
  * Refer to section 6.1 Configuration Space Organization.
