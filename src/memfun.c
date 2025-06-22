@@ -68,12 +68,6 @@ void *kmemset_word(void *p_dest, uint16_t word, size_t num_bytes) {
     return p_dest;
 }
 
-/*
- * Move `num_bytes` bytes from `p_src` to `p_dest` using SIMD instructions.
- *
- * NOTE: `p_dest` and `p_src` must have the same alignment, otherwise a GP#
- * exception is generated.
- */
 void *kmemmove_sse2(void *p_dest, const void *p_src, size_t num_bytes) {
     void *const p_orig_dest = p_dest;
 
@@ -101,9 +95,6 @@ void *kmemmove_sse2(void *p_dest, const void *p_src, size_t num_bytes) {
     return p_orig_dest;
 }
 
-/*
- * Zeroes `num_bytes` bytes starting at `p_dest` using SIMD instructions.
- */
 void *kmemclr_sse2(void *p_dest, size_t num_bytes) {
     void *const p_orig_dest = p_dest;
 
@@ -129,11 +120,16 @@ void *kmemclr_sse2(void *p_dest, size_t num_bytes) {
     return p_orig_dest;
 }
 
-/*
- * Moves `num_si128` 128-bit SIMD integers from `p_src` to `p_dest` using SSE2
- * instructions.
+/**
+ * Moves a memory region using SSE2 instructions.
  *
- * NOTE: `p_dest` and `p_src` must be 16-byte aligned.
+ * @param p_dest    Destination address (16-byte aligned).
+ * @param p_src     Source address (16-byte aligned).
+ * @param num_si128 Number of 128-bit SIMD integers to copy.
+ *
+ * @warning
+ * If @a p_dest and @a p_src are not 16-byte aligned, the CPU raises a GP#
+ * exception.
  */
 static void memmove_si128(si128_t *p_dest, const si128_t *p_src,
                           size_t num_si128) {
@@ -172,12 +168,14 @@ static void memmove_si128(si128_t *p_dest, const si128_t *p_src,
     }
 }
 
-/*
- * Zeroes `num_si128` 128-bit SIMD integers starting at `p_dest` using SSE2
- * instructions.
+/**
+ * Zeroes out a region using SSE2 instructions.
  *
- * NOTE: `p_dest` must be 16-byte aligned, otherwise a GP# exception is
- * generated.
+ * @param p_dest    Start address (16-byte aligned).
+ * @param num_si128 Number of SIMD integers to zero out.
+ *
+ * @warning
+ * If @a p_dest is not 16-byte aligned, the CPU raises a GP# exception.
  */
 static void memclr_si128(si128_t *p_dest, size_t num_si128) {
     __asm__ volatile(
