@@ -6,8 +6,8 @@
 #include <stdbool.h>
 
 #include "assert.h"
-#include "panic.h"
 #include "heap.h"
+#include "panic.h"
 #include "queue.h"
 
 static queue_node_t *new_node(queue_t *p_queue, void *p_data);
@@ -18,8 +18,7 @@ void queue_init(queue_t *p_queue, size_t max_items, size_t item_size) {
 
     queue_node_t *p_node_storage = heap_alloc(max_items * sizeof(queue_node_t));
     void *p_item_storage = heap_alloc(max_items * item_size);
-    uint32_t *p_storage_usage_map =
-        heap_alloc(max_items * sizeof(uint32_t));
+    uint32_t *p_storage_usage_map = heap_alloc(max_items * sizeof(uint32_t));
 
     __builtin_memset(p_queue, 0, sizeof(*p_queue));
     __builtin_memset(p_node_storage, 0, max_items);
