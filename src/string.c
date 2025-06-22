@@ -138,3 +138,42 @@ bool string_to_uint32(char const *p_str, uint32_t *p_num, int base) {
     heap_free(p_strup);
     return b_ok;
 }
+
+size_t string_itoa(unsigned int num, bool b_signed, char *p_buf,
+                   unsigned int base) {
+    size_t buf_pos = 0;
+    bool b_negative = false;
+
+    if (0 == num) {
+        p_buf[buf_pos++] = '0';
+    } else if (b_signed && (((int)num) < 0)) {
+        b_negative = true;
+        num *= (-1);
+    }
+
+    while (num > 0) {
+        int rem = (num % base);
+        char ch;
+        if (rem < 10) {
+            ch = (48 + rem);
+        } else {
+            ch = ('a' + (rem - 10));
+        }
+
+        p_buf[buf_pos++] = ch;
+        num /= base;
+    }
+
+    if (b_negative) { p_buf[buf_pos++] = '-'; }
+
+    // Reverse the string.
+    for (size_t idx = 0; idx < (buf_pos / 2); idx++) {
+        char tmp;
+        tmp = p_buf[(buf_pos - 1) - idx];
+        p_buf[(buf_pos - 1) - idx] = p_buf[idx];
+        p_buf[idx] = tmp;
+    }
+
+    p_buf[buf_pos++] = 0;
+    return buf_pos;
+}

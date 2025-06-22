@@ -12,8 +12,6 @@
 #define MAX_UINT_LEN_10 10
 #define MAX_UINT_LEN_16 8
 
-static void itoa(unsigned int num, bool b_signed, char *p_buf,
-                 unsigned int base);
 static void print_field(char const *p_field, size_t field_width,
                         bool b_zero_pad, bool b_left_just);
 
@@ -62,17 +60,17 @@ void kprintf(char const *restrict p_format, ...) {
             } else if ('d' == (*p_format)) {
                 int arg_num = va_arg(args, int);
                 char p_itoa_str[MAX_INT_LEN_10 + 1];
-                itoa(arg_num, true, p_itoa_str, 10);
+                string_itoa(arg_num, true, p_itoa_str, 10);
                 print_field(p_itoa_str, field_width, b_zero_pad, b_left_just);
             } else if ('u' == (*p_format)) {
                 unsigned int arg_num = va_arg(args, unsigned int);
                 char p_itoa_str[MAX_UINT_LEN_10 + 1];
-                itoa(arg_num, false, p_itoa_str, 10);
+                string_itoa(arg_num, false, p_itoa_str, 10);
                 print_field(p_itoa_str, field_width, b_zero_pad, b_left_just);
             } else if (('x' == (*p_format)) || ('X' == (*p_format))) {
                 unsigned int arg_num = va_arg(args, unsigned int);
                 char p_itoa_str[MAX_UINT_LEN_16 + 1];
-                itoa(arg_num, false, p_itoa_str, 16);
+                string_itoa(arg_num, false, p_itoa_str, 16);
 
                 if ('X' == (*p_format)) { string_to_upper(p_itoa_str); }
 
@@ -82,7 +80,7 @@ void kprintf(char const *restrict p_format, ...) {
 
                 void const *p_ptr = va_arg(args, void const *);
                 char p_itoa_str[MAX_UINT_LEN_16 + 1];
-                itoa((unsigned int)p_ptr, false, p_itoa_str, 16);
+                string_itoa((unsigned int)p_ptr, false, p_itoa_str, 16);
 
                 if ('P' == (*p_format)) { string_to_upper(p_itoa_str); }
 
@@ -140,44 +138,6 @@ void kprintf(char const *restrict p_format, ...) {
     if (b_release_mutex) { term_release_mutex(); }
 
     va_end(args);
-}
-
-static void itoa(unsigned int num, bool b_signed, char *p_buf,
-                 unsigned int base) {
-    size_t buf_pos = 0;
-    bool b_negative = false;
-
-    if (0 == num) {
-        p_buf[buf_pos++] = '0';
-    } else if (b_signed && (((int)num) < 0)) {
-        b_negative = true;
-        num *= (-1);
-    }
-
-    while (num > 0) {
-        int rem = (num % base);
-        char ch;
-        if (rem < 10) {
-            ch = (48 + rem);
-        } else {
-            ch = ('a' + (rem - 10));
-        }
-
-        p_buf[buf_pos++] = ch;
-        num /= base;
-    }
-
-    if (b_negative) { p_buf[buf_pos++] = '-'; }
-
-    // Reverse the string.
-    for (size_t idx = 0; idx < (buf_pos / 2); idx++) {
-        char tmp;
-        tmp = p_buf[(buf_pos - 1) - idx];
-        p_buf[(buf_pos - 1) - idx] = p_buf[idx];
-        p_buf[idx] = tmp;
-    }
-
-    p_buf[buf_pos++] = 0;
 }
 
 static void print_field(char const *p_field, size_t field_width,
