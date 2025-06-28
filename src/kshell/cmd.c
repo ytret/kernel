@@ -250,20 +250,21 @@ static void cmd_tasks(char **pp_args, size_t num_args) {
 
     taskmgr_lock_scheduler();
 
-    kprintf(" ID     PAGEDIR         ESP     MAX ESP   USED  BLOCKED\n");
+    kprintf(" ID     PAGEDIR         ESP     MAX ESP   USED  BLOCK  TERM\n");
 
     list_t *p_all_tasks = taskmgr_all_tasks_list();
     for (list_node_t *p_node = p_all_tasks->p_first_node; p_node != NULL;
          p_node = p_node->p_next) {
         task_t *p_task =
             LIST_NODE_TO_STRUCT(p_node, task_t, all_tasks_list_node);
-        kprintf("%3u  0x%08x  0x%08x  0x%08x  %5d  %7s\n", p_task->id,
+        kprintf("%3u  0x%08x  0x%08x  0x%08x  %5d  %5s  %4s\n", p_task->id,
                 p_task->tcb.page_dir_phys,
                 (uint32_t)p_task->tcb.p_kernel_stack->p_top,
                 (uint32_t)p_task->tcb.p_kernel_stack->p_top_max,
                 (int32_t)p_task->tcb.p_kernel_stack->p_top_max -
                     (int32_t)p_task->tcb.p_kernel_stack->p_top,
-                p_task->b_is_blocked ? "YES" : "NO");
+                p_task->is_blocked ? "YES" : "NO",
+                p_task->is_terminating ? "YES" : "NO");
     }
 
     taskmgr_unlock_scheduler();
