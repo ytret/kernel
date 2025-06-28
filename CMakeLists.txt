@@ -67,7 +67,7 @@ add_executable(kernel
     src/semaphore.c
 )
 target_compile_options(kernel PRIVATE
-    -Wall -Wextra
+    -Wall -Wextra -Wmissing-prototypes
     ${OPTIMIZATION_FLAGS}
 )
 target_include_directories(kernel PRIVATE src)
