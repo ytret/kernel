@@ -328,7 +328,7 @@ static void cmd_devmgr(char **pp_args, size_t num_args) {
     uint32_t idx = 0;
     devmgr_dev_t *dev;
     while ((dev = devmgr_iter_next(&dev_iter))) {
-        kprintf("%u: class %s, driver %s\n", idx,
+        kprintf("%u: id %u, class %s, driver %s\n", idx, dev->id,
                 devmgr_class_name(dev->dev_class),
                 devmgr_driver_name(dev->driver_id));
         idx++;
