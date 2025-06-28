@@ -17,7 +17,6 @@
 #include "devmgr.h"
 #include "disk/ahci.h"
 #include "disk/blkdev.h"
-#include "disk/disk.h"
 #include "elf.h"
 #include "heap.h"
 #include "kprintf.h"
