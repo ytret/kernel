@@ -24,6 +24,11 @@ typedef struct {
     void *driver_ctx;
 } devmgr_dev_t;
 
+/// Device iterator.
+typedef struct {
+    uint32_t next_pos;
+} devmgr_iter_t;
+
 /// Enumerates devices and loads appropriate drivers.
 void devmgr_init(void);
 
@@ -44,3 +49,18 @@ devmgr_dev_t *devmgr_get_by_id(uint32_t id);
  * - `NULL` if no device with such class has been found.
  */
 devmgr_dev_t *devmgr_find_by_class(devmgr_class_t dev_class);
+
+/// Initializes a device iterator.
+void devmgr_iter_init(devmgr_iter_t *iter);
+
+/**
+ * Gets the next device from an iterator.
+ * @param iter Device iterator initialized with #devmgr_iter_init().
+ * @returns
+ * - Pointer to #devmgr_dev_t if there are devices left to iterate through.
+ * - `NULL` otherwise.
+ */
+devmgr_dev_t *devmgr_iter_next(devmgr_iter_t *iter);
+
+const char *devmgr_class_name(devmgr_class_t dev_class);
+const char *devmgr_driver_name(devmgr_driver_t driver);

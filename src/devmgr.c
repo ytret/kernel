@@ -64,6 +64,41 @@ devmgr_dev_t *devmgr_find_by_class(devmgr_class_t dev_class) {
     return NULL;
 }
 
+void devmgr_iter_init(devmgr_iter_t *iter) {
+    iter->next_pos = 0;
+}
+
+devmgr_dev_t *devmgr_iter_next(devmgr_iter_t *iter) {
+    devmgr_dev_t *dev = NULL;
+    if (iter->next_pos < g_devmgr_num_devs) {
+        dev = &g_devmgr_devs[iter->next_pos];
+        iter->next_pos++;
+    }
+    return dev;
+}
+
+const char *devmgr_class_name(devmgr_class_t dev_class) {
+    switch (dev_class) {
+    case DEVMGR_CLASS_NONE:
+        return "none";
+    case DEVMGR_CLASS_DISK:
+        return "disk";
+    default:
+        return "unknown";
+    }
+}
+
+const char *devmgr_driver_name(devmgr_driver_t driver) {
+    switch (driver) {
+    case DEVMGR_DRVIER_NONE:
+        return "none";
+    case DEVMGR_DRIVER_AHCI_PORT:
+        return "ahci port";
+    default:
+        return "unknown";
+    }
+}
+
 /**
  * Initializes a PCI device @a pci_dev if there is a driver for it.
  * @param pci_dev PCI device to load the driver(s) for.
