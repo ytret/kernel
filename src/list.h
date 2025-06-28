@@ -41,13 +41,6 @@
 /**
  * Finds the first node in @a p_list that satisfies @a found_expr.
  *
- * @param p_list              List pointer to search through.
- * @param p_found_struct      Pointer that will store the found container.
- * @param struct_type         Type of container struct.
- * @param node_name_in_struct Name of the node field in @a struct_type.
- * @param found_expr          Test expression.
- * @param var_in_expr         Container identifier in @a found_expr.
- *
  * Iterates through every node of @a p_list, from start to end, until it finds a
  * container that satisfies @a found_expr.
  *
@@ -72,6 +65,17 @@
  * // At this point, if some_list had a struct with foo equal to 2, p_container
  * // will point to that struct. Otherwise, it will be NULL.
  * ```
+ *
+ * @param p_list              List pointer to search through.
+ * @param p_found_struct      Pointer that will store the found container.
+ * @param struct_type         Type of container struct.
+ * @param node_name_in_struct Name of the node field in @a struct_type.
+ * @param found_expr          Test expression.
+ * @param var_in_expr         Container identifier in @a found_expr.
+ *
+ * @returns
+ * - Pointer to the container that satisfies the expression @a found_expr.
+ * - `NULL` if no such container has been found.
  */
 #define LIST_FIND(p_list, p_found_struct, struct_type, node_name_in_struct,    \
                   found_expr, var_in_expr)                                     \
