@@ -3,32 +3,31 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "semaphore.h"
-
 typedef struct blkdev_if blkdev_if_t;
+typedef struct blkdev_req blkdev_req_t;
+
+struct blkdev_if {
+    bool (*f_is_busy)(void *ctx);
+    void (*f_submit_req)(blkdev_req_t *req);
+};
 
 typedef enum {
     BLKDEV_OP_READ,
 } blkdev_op_t;
 
-typedef struct {
+struct blkdev_req {
     blkdev_op_t op;
-    uint64_t lba;
+    uint64_t start_sector;
 
-    const void *read_buf;
-    size_t read_size;
-    void *write_buf;
-    size_t write_size;
+    void *read_buf;
+    size_t read_sectors;
+    const void *write_buf;
+    size_t write_sectors;
 
-    void *dev_ctx;            //!< Device driver context for the interface.
-    struct blkdev_if *dev_if; //!< Device driver interface for blkdev.
+    void *dev_ctx;      //!< Device driver context for the interface.
+    blkdev_if_t dev_if; //!< Device driver interface for blkdev.
 
-    void (*cb_done)(semaphore_t *sem_done);
-} blkdev_req_t;
-
-struct blkdev_if {
-    bool (*f_is_busy)(void *ctx);
-    void (*f_submit)(const blkdev_req_t *req);
+    void (*cb_done)(bool success);
 };
 
 bool blkdev_enqueue_req(blkdev_req_t *req);

@@ -38,8 +38,6 @@ void blkdev_task_entry(void) {
     // taskmgr_switch_tasks() requires that task entries enable interrupts.
     __asm__ volatile("sti");
 
-    kprintf("blkdev init\n");
-
     prv_blkdev_init();
 
     for (;;) {
@@ -51,18 +49,14 @@ void blkdev_task_entry(void) {
             kprintf("blkdev: bad request: dev_ctx = NULL\n");
             continue;
         }
-        if (!req.dev_if) {
-            kprintf("blkdev: bad request: dev_if = NULL\n");
-            continue;
-        }
 
         // Wait for the driver to be ready.
         // FIXME: currently the AHCI driver busy flag is updated in the idle
         // check function. Once it uses interrupts, we should use a semaphore
         // that is increased in the IRQ handler and decreased here.
-        while (req.dev_if->f_is_busy) {}
+        while (req.dev_if.f_is_busy(req.dev_ctx)) {}
 
-        req.dev_if->f_submit(&req);
+        req.dev_if.f_submit_req(&req);
     }
 
     kprintf("blkdev_task_entry: reached end\n");
