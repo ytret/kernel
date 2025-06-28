@@ -31,12 +31,13 @@
 #include "term.h"
 #include "vmm.h"
 
-#define NUM_CMDS 15
+#define NUM_CMDS 16
 #define MAX_ARGS 32
 
 static char const *const gp_cmd_names[NUM_CMDS] = {
-    "clear", "help", "mbimap", "mbimod",  "elfhdr", "exec", "tasks", "vasview",
-    "cpuid", "pci",  "ahci",   "execrep", "kbdlog", "heap", "kill",
+    "clear",   "help",    "mbimap", "mbimod", "elfhdr", "exec",
+    "tasks",   "vasview", "cpuid",  "devmgr", "pci",    "ahci",
+    "execrep", "kbdlog",  "heap",   "kill",
 };
 
 static uint32_t g_exec_entry;
@@ -51,6 +52,7 @@ static void cmd_exec_entry(void);
 static void cmd_tasks(char **pp_args, size_t num_args);
 static void cmd_vasview(char **pp_args, size_t num_args);
 static void cmd_cpuid(char **pp_args, size_t num_args);
+static void cmd_devmgr(char **pp_args, size_t num_args);
 static void cmd_pci(char **pp_args, size_t num_args);
 static void cmd_ahci(char **pp_args, size_t num_args);
 static void cmd_execrep(char **pp_args, size_t num_args);
@@ -71,9 +73,9 @@ void kshell_cmd_parse(char const *p_cmd) {
 
     static void (*const p_cmd_funs[NUM_CMDS])(char **pp_args,
                                               size_t num_args) = {
-        cmd_clear, cmd_help,    cmd_mbimap,  cmd_mbimod, cmd_elfhdr,
-        cmd_exec,  cmd_tasks,   cmd_vasview, cmd_cpuid,  cmd_pci,
-        cmd_ahci,  cmd_execrep, cmd_kbdlog,  cmd_heap,   cmd_kill,
+        cmd_clear,   cmd_help,    cmd_mbimap, cmd_mbimod, cmd_elfhdr, cmd_exec,
+        cmd_tasks,   cmd_vasview, cmd_cpuid,  cmd_devmgr, cmd_pci,    cmd_ahci,
+        cmd_execrep, cmd_kbdlog,  cmd_heap,   cmd_kill,
     };
 
     for (size_t idx = 0; idx < NUM_CMDS; idx++) {
@@ -312,6 +314,27 @@ static void cmd_cpuid(char **pp_args, size_t num_args) {
     kprintf("EBX = %08x\n", ebx);
     kprintf("ECX = %08x\n", ecx);
     kprintf("EDX = %08x\n", edx);
+}
+
+static void cmd_devmgr(char **pp_args, size_t num_args) {
+    if (num_args != 1) {
+        kprintf("Usage: %s\n", pp_args[0]);
+        return;
+    }
+
+    devmgr_iter_t dev_iter;
+    devmgr_iter_init(&dev_iter);
+
+    uint32_t idx = 0;
+    devmgr_dev_t *dev;
+    while ((dev = devmgr_iter_next(&dev_iter))) {
+        kprintf("%u: class %s, driver %s\n", idx,
+                devmgr_class_name(dev->dev_class),
+                devmgr_driver_name(dev->driver_id));
+        idx++;
+    }
+
+    kprintf("%u device(s)\n", idx);
 }
 
 static void cmd_pci(char **pp_args, size_t num_args) {
