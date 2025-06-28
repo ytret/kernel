@@ -6,10 +6,19 @@
 #include "pci.h"
 
 /**
- * Theoretical maximum number of ports per controller.
+ * Maximum number of supported ports per controller.
+ *
+ * Theoretically the maximum is 32 ports. However, (1) all 32 are rarely used,
+ * and (2) QEMU maps two controllers 4096 bytes apart, meaning that not all 32
+ * ports can be used anyway.
+ *
+ * One port-specific registers take 128 bytes. Per spec HBA memory size is
+ * 0x1100 bytes, that's 0x100 (256 bytes or two ports) bytes larger than what is
+ * used by QEMU.
+ *
  * Refer to section 3.1.1, register CAP, field NP.
  */
-#define AHCI_PORTS_PER_CTRL 32
+#define AHCI_PORTS_PER_CTRL 30
 
 typedef struct ahci_ctrl_ctx ahci_ctrl_ctx_t;
 typedef struct ahci_port_ctx ahci_port_ctx_t;

@@ -8,8 +8,13 @@
 #include "disk/sata.h"
 #include "types.h"
 
-/// Size of the HBA memory register map (bytes).
-#define AHCI_HBA_REGS_SIZE 0x1100
+/**
+ * Size of the HBA memory register map (bytes).
+ * The spec (AHCI 1.3.1, section 3) says that the size is 0x1100, and that's for
+ * 32 ports. However, QEMU implements only 6 ports and its memory map size is
+ * 0x1000 bytes.
+ */
+#define AHCI_HBA_MAP_SIZE 0x1000
 
 /**
  * Port @a P control register offset.

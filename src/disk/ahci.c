@@ -177,7 +177,7 @@ ahci_ctrl_ctx_t *ahci_ctrl_new(const pci_dev_t *pci_dev) {
     const uint32_t hba_regs_addr = abar & AHCI_ABAR_ADDR_MASK;
 
     for (uint32_t page = hba_regs_addr;
-         page < hba_regs_addr + AHCI_HBA_REGS_SIZE; page += 4096) {
+         page < hba_regs_addr + AHCI_HBA_MAP_SIZE; page += 4096) {
         vmm_map_kernel_page(page, page);
     }
 
