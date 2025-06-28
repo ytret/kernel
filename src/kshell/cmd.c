@@ -323,7 +323,7 @@ static void cmd_devmgr(char **pp_args, size_t num_args) {
     }
 
     devmgr_iter_t dev_iter;
-    devmgr_iter_init(&dev_iter);
+    devmgr_iter_init(&dev_iter, DEVMGR_CLASS_NONE);
 
     uint32_t idx = 0;
     devmgr_dev_t *dev;

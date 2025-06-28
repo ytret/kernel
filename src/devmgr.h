@@ -26,6 +26,7 @@ typedef struct {
 
 /// Device iterator.
 typedef struct {
+    devmgr_class_t class_filter;
     uint32_t next_pos;
 } devmgr_iter_t;
 
@@ -50,8 +51,18 @@ devmgr_dev_t *devmgr_get_by_id(uint32_t id);
  */
 devmgr_dev_t *devmgr_find_by_class(devmgr_class_t dev_class);
 
-/// Initializes a device iterator.
-void devmgr_iter_init(devmgr_iter_t *iter);
+/**
+ * Initializes a device iterator.
+ *
+ * @param iter         Pointer to an (unitialized) iterator.
+ * @param class_filter Device class to iterate through.
+ *
+ * Use #devmgr_iter_next() to get the next device from the iterator.
+ *
+ * If @a class_filter is not #DEVMGR_CLASS_NONE, then #devmgr_iter_next() will
+ * return only those devices that have the class @a class_filter.
+ */
+void devmgr_iter_init(devmgr_iter_t *iter, devmgr_class_t class_filter);
 
 /**
  * Gets the next device from an iterator.

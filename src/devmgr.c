@@ -64,14 +64,20 @@ devmgr_dev_t *devmgr_find_by_class(devmgr_class_t dev_class) {
     return NULL;
 }
 
-void devmgr_iter_init(devmgr_iter_t *iter) {
+void devmgr_iter_init(devmgr_iter_t *iter, devmgr_class_t class_filter) {
+    iter->class_filter = class_filter;
     iter->next_pos = 0;
 }
 
 devmgr_dev_t *devmgr_iter_next(devmgr_iter_t *iter) {
     devmgr_dev_t *dev = NULL;
-    if (iter->next_pos < g_devmgr_num_devs) {
-        dev = &g_devmgr_devs[iter->next_pos];
+    while (dev == NULL && iter->next_pos < g_devmgr_num_devs) {
+        devmgr_dev_t *const it_dev = &g_devmgr_devs[iter->next_pos];
+        if (iter->class_filter == DEVMGR_CLASS_NONE ||
+            (iter->class_filter != DEVMGR_CLASS_NONE &&
+             it_dev->dev_class == iter->class_filter)) {
+            dev = it_dev;
+        }
         iter->next_pos++;
     }
     return dev;
