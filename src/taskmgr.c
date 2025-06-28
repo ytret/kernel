@@ -1,3 +1,8 @@
+/**
+ * @file taskmgr.c
+ * Task manager implementation.
+ */
+
 #include <stdatomic.h>
 #include <stdint.h>
 
@@ -17,7 +22,13 @@
 
 #define KERNEL_STACK_SIZE 4096
 
-#define USER_STACK_TOP   0x7FFFF000 // must be page-aligned, not checked
+/**
+ * Userspace stack address (top).
+ * @warning
+ * The address must be page-aligned.
+ */
+#define USER_STACK_TOP   0x7FFFF000
+/// Size of userspace stacks (pages).
 #define USER_STACK_PAGES 1
 
 typedef struct [[gnu::packed]] {
@@ -31,23 +42,69 @@ typedef struct [[gnu::packed]] {
     uint32_t eax;
 } gen_regs_t;
 
-// Nested locks preventing task switching. Initial value of 1 is decremented
-// after the scheduler is initialized.
+/**
+ * Nested locks preventing @ref taskmgr_schedule "task scheduling".
+ * @note
+ * Initial value of 1 is decremented after the scheduler is initialized in
+ * #taskmgr_init().
+ */
 static int g_scheduler_lock = 1;
 
+/**
+ * Running task.
+ * This value can be used to get the current running task in an IRQ handler.
+ */
 static task_t *gp_running_task;
+
+/**
+ * List of tasks that the running task can switch to (node: #task_t.list_node).
+ * The tasks in this list are not sleeping and are not blocked.
+ */
 static list_t g_runnable_tasks;
+
+/**
+ * List of sleeping tasks (node: #task_t.list_node).
+ * See #taskmgr_sleep_ms().
+ */
 static list_t g_sleeping_tasks;
+
+/**
+ * List of all tasks (node: #task_t.all_tasks_list_node).
+ * - Tasks are added to this list upon creation in #new_task().
+ * - Tasks are removed from this list only by the #deleter_task().
+ */
 static list_t g_all_tasks;
 
+/**
+ * Idle task.
+ * The idle task is always present in the runnable tasks list and provides the
+ * scheduler a task to switch to, when there are no other runnable tasks.
+ */
 static task_t *gp_idle_task;
+/**
+ * Deleter task.
+ * The deleter task is responsible for deletion of tasks that are marked for
+ * termination (see #task_t.is_terminating). It is switched to only when the
+ * running task is being terminated and has no locks.
+ */
 static task_t *gp_deleter_task;
+/**
+ * Initial task.
+ * This is the first kernel-mode task that is responsible for initializing the
+ * system. Cf. _init_ on Unix-based systems.
+ */
 static task_t *gp_init_task;
 
-// Parameter for the deleter task.
+/**
+ * Parameter for the deleter task provided by the scheduler.
+ * It holds a pointer to the task to be deleted.
+ */
 static task_t *gp_task_to_delete;
 
-// ID for the next new task.
+/**
+ * ID for the next new task.
+ * See #task_t.id.
+ */
 static uint32_t g_new_task_id;
 
 static void wake_up_sleeping_tasks(void);
@@ -66,15 +123,6 @@ extern void taskmgr_go_usermode_impl(uint32_t user_code_seg,
                                      uint32_t entry_point,
                                      gen_regs_t *p_user_regs);
 
-/*
- * Starts the scheduler and causes the initial task to start executing.
- *
- * NOTE: this function does not return, for the initial task entry must not
- * and does not return.
- *
- * NOTE: p_init_entry() must enable interrupts, otherwise no task switches
- * will happen.
- */
 [[gnu::noreturn]]
 void taskmgr_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
     // Load the TSS.
@@ -93,7 +141,7 @@ void taskmgr_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
     // Create the deleter task. It is switched to when the running task needs to
     // be terminated.
     gp_deleter_task = new_task((uint32_t)deleter_task);
-    gp_deleter_task->b_is_blocked = true;
+    gp_deleter_task->is_blocked = true;
 
     // Create the term task.
     task_t *p_term_task = new_task((uint32_t)term_task);
@@ -114,10 +162,6 @@ void taskmgr_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
     panic("unexpected behavior");
 }
 
-/*
- * Performs a scheduling step inside an ISR context - either in the timer
- * IRQ ISR, or in the syscall ISR.
- */
 void taskmgr_schedule(void) {
     if (g_scheduler_lock > 0) { return; }
 
@@ -125,7 +169,7 @@ void taskmgr_schedule(void) {
 
     task_t *p_caller_task = gp_running_task;
     task_t *p_next_task;
-    if (p_caller_task->b_is_terminating && !p_caller_task->b_is_blocked &&
+    if (p_caller_task->is_terminating && !p_caller_task->is_blocked &&
         p_caller_task->num_owned_mutexes == 0) {
         p_next_task = gp_deleter_task;
         gp_task_to_delete = p_caller_task;
@@ -135,7 +179,7 @@ void taskmgr_schedule(void) {
     } else {
         list_node_t *p_next_node = list_pop_first(&g_runnable_tasks);
         if (!p_next_node) {
-            if (p_caller_task->b_is_blocked) {
+            if (p_caller_task->is_blocked) {
                 panic_enter();
                 kprintf("No tasks to preempt the blocked running task.\n");
                 panic("scheduling failed");
@@ -145,7 +189,7 @@ void taskmgr_schedule(void) {
         }
         p_next_task = LIST_NODE_TO_STRUCT(p_next_node, task_t, list_node);
 
-        if (!p_caller_task->b_is_blocked && !p_caller_task->b_is_sleeping) {
+        if (!p_caller_task->is_blocked && !p_caller_task->is_sleeping) {
             list_append(&g_runnable_tasks, &p_caller_task->list_node);
         }
     }
@@ -154,11 +198,6 @@ void taskmgr_schedule(void) {
     taskmgr_switch_tasks(&p_caller_task->tcb, &p_next_task->tcb, gdt_get_tss());
 }
 
-/*
- * Forces a scheduling step inside or outside an ISR context. Can be called in
- * ordinary kernel tasks when a resource is blocked and rescheduling is
- * required.
- */
 void taskmgr_reschedule(void) {
     bool b_restore_int = false;
     if (cpu_check_interrupts()) {
@@ -231,12 +270,12 @@ void taskmgr_sleep_ms(uint32_t duration_ms) {
         panic("taskmgr_sleep failed");
     }
 
-    if (!gp_running_task->b_is_terminating) {
+    if (!gp_running_task->is_terminating) {
         gp_running_task->sleep_until_counter_ms =
             pit_counter_ms() + duration_ms;
 
         taskmgr_lock_scheduler();
-        gp_running_task->b_is_sleeping = true;
+        gp_running_task->is_sleeping = true;
         list_append(&g_sleeping_tasks, &gp_running_task->list_node);
         taskmgr_unlock_scheduler();
     }
@@ -254,23 +293,27 @@ void taskmgr_terminate_task(task_t *p_task) {
         panic("invalid argument");
     }
 
-    p_task->b_is_terminating = true;
+    p_task->is_terminating = true;
 }
 
 void taskmgr_block_running_task(list_t *p_task_list) {
     taskmgr_lock_scheduler();
-    gp_running_task->b_is_blocked = true;
+    gp_running_task->is_blocked = true;
     list_append(p_task_list, &gp_running_task->list_node);
     taskmgr_unlock_scheduler();
 }
 
 void taskmgr_unblock(task_t *p_task) {
     taskmgr_lock_scheduler();
-    p_task->b_is_blocked = false;
+    p_task->is_blocked = false;
     list_append(&g_runnable_tasks, &p_task->list_node);
     taskmgr_unlock_scheduler();
 }
 
+/**
+ * Wakes up sleeping tasks that have slept for the needed amount of time.
+ * See #task_t.sleep_until_counter_ms.
+ */
 static void wake_up_sleeping_tasks(void) {
     uint64_t counter_ms = pit_counter_ms();
     list_t sleep_list_copy = g_sleeping_tasks;
@@ -292,6 +335,11 @@ static void wake_up_sleeping_tasks(void) {
     }
 }
 
+/**
+ * Creates a new kernel-mode task with a kernel stack.
+ * @param entry_point Kernel-mode entry point.
+ * @returns Task context pointer.
+ */
 static task_t *new_task(uint32_t entry_point) {
     task_t *p_task = heap_alloc(sizeof(*p_task));
     __builtin_memset(p_task, 0, sizeof(*p_task));
@@ -320,6 +368,10 @@ static task_t *new_task(uint32_t entry_point) {
     return p_task;
 }
 
+/**
+ * Allocates physical memory for a user stack and maps it.
+ * @param p_dir Page directory of the task to create the userspace stack for.
+ */
 static void map_user_stack(uint32_t *p_dir) {
     if (USER_STACK_PAGES != 1) {
         panic_enter();
@@ -330,6 +382,8 @@ static void map_user_stack(uint32_t *p_dir) {
 
     uint32_t phys_page = pmm_pop_page();
     vmm_map_user_page(p_dir, (USER_STACK_TOP - 4096), phys_page);
+    static_assert(USER_STACK_TOP > 4096);
+    static_assert(USER_STACK_TOP % 4096 == 0);
 
     // Map a view onto the page for the kernel.
     vmm_map_kernel_page((USER_STACK_TOP - 4096), phys_page);
@@ -342,6 +396,10 @@ static void map_user_stack(uint32_t *p_dir) {
     vmm_unmap_kernel_page(USER_STACK_TOP - 4096);
 }
 
+/**
+ * Idle task entry point.
+ * See #gp_idle_task.
+ */
 [[gnu::noreturn]]
 static void idle_task(void) {
     __asm__ volatile("sti");
@@ -350,12 +408,16 @@ static void idle_task(void) {
     }
 }
 
+/**
+ * Deleter task entry point.
+ * See #gp_deleter_task.
+ */
 [[gnu::noreturn]]
 static void deleter_task(void) {
     for (;;) {
         ASSERT(gp_task_to_delete);
-        ASSERT(gp_task_to_delete->b_is_terminating);
-        ASSERT(!gp_task_to_delete->b_is_blocked);
+        ASSERT(gp_task_to_delete->is_terminating);
+        ASSERT(!gp_task_to_delete->is_blocked);
         ASSERT(gp_task_to_delete->num_owned_mutexes == 0);
 
         heap_free(gp_task_to_delete->kernel_stack.p_bottom);
@@ -372,7 +434,7 @@ static void deleter_task(void) {
 
         // Mark the deleter task as 'blocked' so that it is not added to the
         // list of runnable tasks when it is switched from.
-        gp_deleter_task->b_is_blocked = true;
+        gp_deleter_task->is_blocked = true;
 
         taskmgr_unlock_scheduler();
         taskmgr_schedule();
