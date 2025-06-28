@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#include "acpi/acpi.h"
 #include "blkdev/blkdev.h"
 #include "devmgr.h"
 #include "gdt.h"
@@ -45,7 +46,9 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     mbi_save_on_heap();
 
     term_init_history();
-    term_clear();
+    // term_clear();
+
+    acpi_init();
 
     kbd_init();
 
