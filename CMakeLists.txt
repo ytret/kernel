@@ -23,6 +23,7 @@ add_executable(kernel
 
     src/devmgr.c
     src/disk/ahci.c
+    src/disk/blkdev.c
     src/disk/disk.c
     src/elf.c
     src/framebuf.c
