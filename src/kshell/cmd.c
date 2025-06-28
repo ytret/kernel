@@ -33,13 +33,13 @@
 #include "term.h"
 #include "vmm.h"
 
-#define NUM_CMDS 17
+#define NUM_CMDS 16
 #define MAX_ARGS 32
 
 static char const *const gp_cmd_names[NUM_CMDS] = {
-    "clear",  "help",    "mbimap", "mbimod", "elfhdr", "exec",
-    "tasks",  "vasview", "cpuid",  "devmgr", "pci",    "ahci",
-    "blkdev", "execrep", "kbdlog", "heap",   "kill",
+    "clear",   "help",    "mbimap", "mbimod", "elfhdr", "exec",
+    "tasks",   "vasview", "cpuid",  "devmgr", "pci",    "blkdev",
+    "execrep", "kbdlog",  "heap",   "kill",
 };
 
 static uint32_t g_exec_entry;
@@ -58,7 +58,6 @@ static void cmd_vasview(char **pp_args, size_t num_args);
 static void cmd_cpuid(char **pp_args, size_t num_args);
 static void cmd_devmgr(char **pp_args, size_t num_args);
 static void cmd_pci(char **pp_args, size_t num_args);
-static void cmd_ahci(char **pp_args, size_t num_args);
 static void cmd_blkdev(char **pp_args, size_t num_args);
 static void cmd_execrep(char **pp_args, size_t num_args);
 static void cmd_kbdlog(char **pp_args, size_t num_args);
@@ -80,9 +79,10 @@ void kshell_cmd_parse(char const *p_cmd) {
 
     static void (*const p_cmd_funs[NUM_CMDS])(char **pp_args,
                                               size_t num_args) = {
-        cmd_clear,  cmd_help,    cmd_mbimap, cmd_mbimod, cmd_elfhdr, cmd_exec,
-        cmd_tasks,  cmd_vasview, cmd_cpuid,  cmd_devmgr, cmd_pci,    cmd_ahci,
-        cmd_blkdev, cmd_execrep, cmd_kbdlog, cmd_heap,   cmd_kill,
+        cmd_clear,   cmd_help,   cmd_mbimap, cmd_mbimod,
+        cmd_elfhdr,  cmd_exec,   cmd_tasks,  cmd_vasview,
+        cmd_cpuid,   cmd_devmgr, cmd_pci,    cmd_blkdev,
+        cmd_execrep, cmd_kbdlog, cmd_heap,   cmd_kill,
     };
 
     for (size_t idx = 0; idx < NUM_CMDS; idx++) {
@@ -384,58 +384,6 @@ static void cmd_pci(char **pp_args, size_t num_args) {
         kprintf("pci: unknown command: '%s'\n", pp_args[1]);
         return;
     }
-}
-
-static void cmd_ahci(char **pp_args, size_t num_args) {
-    if ((num_args != 4) ||
-        ((num_args > 1) && (!string_equals(pp_args[1], "dump")))) {
-        kprintf("Usage: ahci dump <sector> <num sectors>\n");
-        return;
-    }
-
-    uint32_t sector;
-    uint32_t num_sectors;
-    const bool b_sector_ok = string_to_uint32(pp_args[2], &sector, 10);
-    if (!b_sector_ok) {
-        kprintf("Invalid argument: '%s'\n", pp_args[2]);
-        kprintf("sector must be a 32-bit unsigned integer\n");
-        return;
-    }
-    const bool b_num_ok = string_to_uint32(pp_args[3], &num_sectors, 10);
-    if ((!b_num_ok) || (0 == num_sectors)) {
-        kprintf("Invalid argument: '%s'\n", pp_args[3]);
-        kprintf("num sectors must be a non-zero 32-bit unsigned integer\n");
-        return;
-    }
-
-    devmgr_dev_t *const dev = devmgr_find_by_class(DEVMGR_CLASS_DISK);
-    if (!dev) {
-        kprintf("ahci: no disk device\n");
-        return;
-    }
-
-    uint8_t *const p_buf = heap_alloc_aligned(512 * num_sectors, 2);
-    const bool b_ok = disk_start_read(dev, sector, num_sectors, p_buf);
-    if (!b_ok) {
-        kprintf("ahci: dump command failed\n");
-        heap_free(p_buf);
-        return;
-    }
-    while (!disk_is_idle(dev)) {}
-
-    // Print the bytes.
-    const size_t num_bytes = 512 * num_sectors;
-    for (size_t row = 0; row < (num_bytes + 23) / 24; row++) {
-        kprintf("%02x  ", row);
-        for (size_t byte = 0; byte < 24; byte++) {
-            if ((byte > 0) && ((byte % 8) == 0)) { kprintf(" "); }
-            size_t idx = ((row * 24) + byte);
-            if (idx < num_bytes) { kprintf("%02x ", p_buf[idx]); }
-        }
-        kprintf("\n");
-    }
-
-    heap_free(p_buf);
 }
 
 static void cmd_blkdev(char **pp_args, size_t num_args) {
