@@ -1,18 +1,15 @@
-/*
+/**
+ * @file cmd.c
  * Command handling functions of kshell.
  *
  * To add a new command:
  *
- *      1. Increment NUM_CMDS.
- *
- *      2. Add the command name string to gp_cmd_names[] at index N.
- *
- *      3. Add the static function declaration near the other command handlers.
- *
- *      4. Add the handler function pointer to p_cmd_funs[] at the same index N
- *         in kshell_cmd_parse().
- *
- *      5. Add the function definition near the other command handlers.
+ * 1. Increment #NUM_CMDS.
+ * 2. Add the command name to #gp_cmd_names at index _N_.
+ * 3. Add a handler function declaration near the other command handlers.
+ * 4. Add the handler function pointer to p_cmd_funs **at the same index** (_N_)
+ *    in #kshell_cmd_parse().
+ * 5. Add the function definition near the other command handlers.
  */
 
 #include <cpuid.h>
