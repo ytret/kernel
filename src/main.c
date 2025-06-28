@@ -81,7 +81,7 @@ static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr) {
 [[gnu::noreturn]]
 static void init_entry(void) {
     // taskmgr_switch_tasks() requires that task entries enable interrupts.
-    __asm__("sti");
+    __asm__ volatile("sti");
 
     kshell();
 
