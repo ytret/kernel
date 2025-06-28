@@ -80,8 +80,9 @@ struct ahci_port_ctx {
     /// Port parameters have been identified using #SATA_CMD_IDENTIFY_DEVICE.
     bool identified;
 
-    /// Disk state.
     ahci_port_state_t state;
+    blkdev_req_t blkdev_req;
+    bool has_blkdev_req;
 
     /// Context pointer of the controller this port is a part of.
     ahci_ctrl_ctx_t *ctrl_ctx;
@@ -226,7 +227,7 @@ const char *ahci_port_name(const ahci_port_ctx_t *port_ctx) {
 
 bool ahci_port_is_idle(ahci_port_ctx_t *port_ctx) {
     // FIXME: use an interrupt to change the state.
-    bool has_error = true;
+    bool has_error = false;
     if (port_ctx->reg_port->is_bit.tfes) {
         port_ctx->reg_port->is_bit.tfes = 1; // write 1 to clear
         has_error = true;
@@ -234,6 +235,11 @@ bool ahci_port_is_idle(ahci_port_ctx_t *port_ctx) {
     if (port_ctx->p_rfis->rfis.error) { has_error = true; }
     if (has_error || port_ctx->reg_port->ci == 0) {
         port_ctx->state = AHCI_PORT_IDLE;
+
+        if (port_ctx->has_blkdev_req) {
+            port_ctx->blkdev_req.cb_done(!has_error);
+            port_ctx->has_blkdev_req = false;
+        }
     }
 
     return port_ctx->state == AHCI_PORT_IDLE;
@@ -289,6 +295,34 @@ bool ahci_port_start_read(ahci_port_ctx_t *port_ctx, uint64_t start_sector,
 
     port_ctx->state = AHCI_PORT_READING;
     return true;
+}
+
+void ahci_port_fill_blkdev_if(blkdev_if_t *blkdev_if) {
+    blkdev_if->f_is_busy = ahci_port_if_is_busy;
+    blkdev_if->f_submit_req = ahci_port_if_submit_req;
+}
+
+bool ahci_port_if_is_busy(void *v_port_ctx) {
+    ahci_port_ctx_t *port_ctx = v_port_ctx;
+    return !ahci_port_is_idle(port_ctx);
+}
+
+void ahci_port_if_submit_req(blkdev_req_t *req) {
+    // NOTE: lifetime of 'req' ends when this function returns.
+
+    ahci_port_ctx_t *port_ctx = req->dev_ctx;
+
+    switch (req->op) {
+    case BLKDEV_OP_READ:
+        if (ahci_port_start_read(req->dev_ctx, req->start_sector,
+                                 req->read_sectors, req->read_buf)) {
+            kmemcpy(&port_ctx->blkdev_req, req, sizeof(*req));
+            port_ctx->has_blkdev_req = true;
+        } else {
+            req->cb_done(false);
+        }
+        break;
+    }
 }
 
 static void prv_ahci_set_ctrl_name(ahci_ctrl_ctx_t *ctrl_ctx) {

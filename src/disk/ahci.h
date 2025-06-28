@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "disk/blkdev.h"
 #include "pci.h"
 
 /**
@@ -35,9 +36,7 @@ ahci_port_ctx_t *ahci_ctrl_get_port(ahci_ctrl_ctx_t *ctrl_ctx, size_t port_idx);
 bool ahci_port_is_online(const ahci_port_ctx_t *port_ctx);
 const char *ahci_port_name(const ahci_port_ctx_t *port_ctx);
 
-/**
- * Returns `true` if port @a port_ctx is ready for a new command.
- */
+/// Returns `true` if port @a port_ctx is ready for a new request.
 bool ahci_port_is_idle(ahci_port_ctx_t *port_ctx);
 
 /**
@@ -55,3 +54,21 @@ bool ahci_port_is_idle(ahci_port_ctx_t *port_ctx);
  */
 bool ahci_port_start_read(ahci_port_ctx_t *port_ctx, uint64_t start_sector,
                           uint32_t num_sectors, void *out_buf);
+
+/**
+ * Fills the fields of the blkdev interface struct.
+ * See #blkdev_if_t.
+ */
+void ahci_port_fill_blkdev_if(blkdev_if_t *blkdev_if);
+
+/**
+ * Returns `true` if port @a v_port_ctx is busy and cannot accept new requests.
+ * This is a part of the @ref blkdev_if_t "blkdev interface".
+ */
+bool ahci_port_if_is_busy(void *v_port_ctx);
+
+/**
+ * Starts the processing of a blkdev request.
+ * This is a part of the @ref blkdev_if_t "blkdev interface".
+ */
+void ahci_port_if_submit_req(blkdev_req_t *req);
