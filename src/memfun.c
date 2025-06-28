@@ -17,6 +17,10 @@ void *memmove(void *p_dest, const void *p_src, size_t num_bytes);
 /// Alias for #kmemset().
 [[gnu::alias("kmemset")]]
 void *memset(void *p_dest, int ch, size_t num_bytes);
+
+/// Alias for #kmemcmp().
+[[gnu::alias("kmemcmp")]]
+int memcmp(const void *buf1, const void *buf2, size_t num_bytes);
 /// @}
 
 static void memmove_si128(si128_t *p_dest, const si128_t *p_src,
@@ -66,6 +70,28 @@ void *kmemset_word(void *p_dest, uint16_t word, size_t num_bytes) {
                      : "0"(p_dest), "1"(word), "2"(num_bytes)
                      : "memory");
     return p_dest;
+}
+
+int kmemcmp(const void *buf1, const void *buf2, size_t num_bytes) {
+    // NOTE: the assembly below changes the value of 'buf1' and 'buf2', so this
+    // (1) casts them to uint8_t *, (2) saves their original values.
+    const uint8_t *buf1_u8 = buf1;
+    const uint8_t *buf2_u8 = buf2;
+
+    size_t cnt;
+    bool eq;
+    __asm__ volatile("cmp %%ecx, %%ecx\n"
+                     "repe cmpsb"
+                     : "=D"(buf1), "=S"(buf2), "=c"(cnt), "=@ccz"(eq)
+                     : "0"(buf1), "1"(buf2), "2"(num_bytes)
+                     : "memory", "cc");
+
+    if (eq) {
+        return 0;
+    } else {
+        const size_t first_neq = num_bytes - cnt - 1;
+        return buf1_u8[first_neq] - buf2_u8[first_neq];
+    }
 }
 
 void *kmemmove_sse2(void *p_dest, const void *p_src, size_t num_bytes) {
