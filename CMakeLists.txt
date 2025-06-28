@@ -21,9 +21,9 @@ set(CMAKE_C_FLAGS_RELEASE "-O3 -g")
 add_executable(kernel
     src/main.c
 
+    src/blkdev/ahci.c
+    src/blkdev/blkdev.c
     src/devmgr.c
-    src/disk/ahci.c
-    src/disk/blkdev.c
     src/elf.c
     src/framebuf.c
     src/gdt.c

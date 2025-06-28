@@ -4,8 +4,8 @@
  */
 
 #include "assert.h"
+#include "blkdev/ahci.h"
 #include "devmgr.h"
-#include "disk/ahci.h"
 #include "kprintf.h"
 #include "panic.h"
 #include "pci.h"

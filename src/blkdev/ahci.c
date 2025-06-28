@@ -8,8 +8,8 @@
 #include <stddef.h>
 
 #include "assert.h"
-#include "disk/ahci.h"
-#include "disk/ahci_regs.h"
+#include "blkdev/ahci.h"
+#include "blkdev/ahci_regs.h"
 #include "heap.h"
 #include "kprintf.h"
 #include "memfun.h"

@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "disk/blkdev.h"
+#include "blkdev/blkdev.h"
 #include "pci.h"
 
 /**

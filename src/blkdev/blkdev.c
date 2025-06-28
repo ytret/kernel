@@ -3,7 +3,7 @@
  * Block device worker process.
  */
 
-#include "disk/blkdev.h"
+#include "blkdev/blkdev.h"
 #include "kprintf.h"
 #include "mutex.h"
 #include "panic.h"

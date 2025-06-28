@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "disk/sata.h"
+#include "blkdev/sata.h"
 #include "types.h"
 
 /**

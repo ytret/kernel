@@ -14,9 +14,9 @@
 
 #include <cpuid.h>
 
+#include "blkdev/ahci.h"
+#include "blkdev/blkdev.h"
 #include "devmgr.h"
-#include "disk/ahci.h"
-#include "disk/blkdev.h"
 #include "elf.h"
 #include "heap.h"
 #include "kprintf.h"

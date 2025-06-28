@@ -1,7 +1,7 @@
 #include <stdint.h>
 
+#include "blkdev/blkdev.h"
 #include "devmgr.h"
-#include "disk/blkdev.h"
 #include "gdt.h"
 #include "gpt.h"
 #include "heap.h"
