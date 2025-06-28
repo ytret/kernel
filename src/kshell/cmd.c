@@ -15,6 +15,8 @@
 #include <cpuid.h>
 
 #include "devmgr.h"
+#include "disk/ahci.h"
+#include "disk/blkdev.h"
 #include "disk/disk.h"
 #include "elf.h"
 #include "heap.h"
@@ -31,16 +33,18 @@
 #include "term.h"
 #include "vmm.h"
 
-#define NUM_CMDS 16
+#define NUM_CMDS 17
 #define MAX_ARGS 32
 
 static char const *const gp_cmd_names[NUM_CMDS] = {
-    "clear",   "help",    "mbimap", "mbimod", "elfhdr", "exec",
-    "tasks",   "vasview", "cpuid",  "devmgr", "pci",    "ahci",
-    "execrep", "kbdlog",  "heap",   "kill",
+    "clear",  "help",    "mbimap", "mbimod", "elfhdr", "exec",
+    "tasks",  "vasview", "cpuid",  "devmgr", "pci",    "ahci",
+    "blkdev", "execrep", "kbdlog", "heap",   "kill",
 };
 
 static uint32_t g_exec_entry;
+static bool g_ksh_blkdev_busy;
+static bool g_ksh_blkdev_success;
 
 static void cmd_clear(char **pp_args, size_t num_args);
 static void cmd_help(char **pp_args, size_t num_args);
@@ -55,10 +59,13 @@ static void cmd_cpuid(char **pp_args, size_t num_args);
 static void cmd_devmgr(char **pp_args, size_t num_args);
 static void cmd_pci(char **pp_args, size_t num_args);
 static void cmd_ahci(char **pp_args, size_t num_args);
+static void cmd_blkdev(char **pp_args, size_t num_args);
 static void cmd_execrep(char **pp_args, size_t num_args);
 static void cmd_kbdlog(char **pp_args, size_t num_args);
 static void cmd_heap(char **pp_args, size_t num_args);
 static void cmd_kill(char **pp_args, size_t num_args);
+
+static void ksh_blkdev_callback(bool success);
 
 void kshell_cmd_parse(char const *p_cmd) {
     char *pp_args[MAX_ARGS];
@@ -73,9 +80,9 @@ void kshell_cmd_parse(char const *p_cmd) {
 
     static void (*const p_cmd_funs[NUM_CMDS])(char **pp_args,
                                               size_t num_args) = {
-        cmd_clear,   cmd_help,    cmd_mbimap, cmd_mbimod, cmd_elfhdr, cmd_exec,
-        cmd_tasks,   cmd_vasview, cmd_cpuid,  cmd_devmgr, cmd_pci,    cmd_ahci,
-        cmd_execrep, cmd_kbdlog,  cmd_heap,   cmd_kill,
+        cmd_clear,  cmd_help,    cmd_mbimap, cmd_mbimod, cmd_elfhdr, cmd_exec,
+        cmd_tasks,  cmd_vasview, cmd_cpuid,  cmd_devmgr, cmd_pci,    cmd_ahci,
+        cmd_blkdev, cmd_execrep, cmd_kbdlog, cmd_heap,   cmd_kill,
     };
 
     for (size_t idx = 0; idx < NUM_CMDS; idx++) {
@@ -431,6 +438,103 @@ static void cmd_ahci(char **pp_args, size_t num_args) {
     heap_free(p_buf);
 }
 
+static void cmd_blkdev(char **pp_args, size_t num_args) {
+    if (num_args != 4) {
+        kprintf("Usage: %s <device ID> <start sector> <num sectors>\n",
+                pp_args[0]);
+        return;
+    }
+
+    bool ok;
+    uint32_t dev_id;
+    uint32_t start_sector;
+    uint32_t num_sectors;
+
+    ok = string_to_uint32(pp_args[1], &dev_id, 10);
+    if (!ok) {
+        kprintf("Invalid argument: '%s'\n", pp_args[1]);
+        kprintf("device ID must be a decimal 32-bit unsigned integer\n");
+        return;
+    }
+    ok = string_to_uint32(pp_args[2], &start_sector, 10);
+    if (!ok) {
+        kprintf("Invalid argument: '%s'\n", pp_args[2]);
+        kprintf("start sector must be a decimal 32-bit unsigned integer\n");
+        return;
+    }
+    ok = string_to_uint32(pp_args[3], &num_sectors, 10);
+    if (!ok) {
+        kprintf("Invalid argument: '%s'\n", pp_args[3]);
+        kprintf("num sectors must be a decimal 32-bit unsigned integer\n");
+        return;
+    }
+
+    if (num_sectors == 0) { return; }
+
+    devmgr_dev_t *const dev = devmgr_get_by_id(dev_id);
+    if (!dev) {
+        kprintf("blkdev: no device with ID %u\n", dev_id);
+        return;
+    }
+    if (dev->dev_class != DEVMGR_CLASS_DISK) {
+        kprintf("blkdev: device ID %u is %s, not a block device\n", dev_id,
+                devmgr_class_name(dev->dev_class));
+        return;
+    }
+
+    uint8_t *const p_buf = heap_alloc_aligned(512 * num_sectors, 2);
+
+    blkdev_req_t blkdev_req = {
+        .op = BLKDEV_OP_READ,
+        .start_sector = start_sector,
+        .read_sectors = num_sectors,
+        .read_buf = p_buf,
+        .dev_ctx = dev->driver_ctx,
+        .cb_done = ksh_blkdev_callback,
+    };
+
+    if (dev->driver_id == DEVMGR_DRIVER_AHCI_PORT) {
+        ahci_port_fill_blkdev_if(&blkdev_req.dev_if);
+    } else {
+        kprintf("blkdev: handling of driver ID %u not implemented\n",
+                dev->driver_id);
+        heap_free(p_buf);
+        return;
+    }
+
+    g_ksh_blkdev_busy = true;
+    ok = blkdev_enqueue_req(&blkdev_req);
+    if (!ok) {
+        g_ksh_blkdev_busy = false;
+        kprintf("blkdev: request queue of blkdev is full\n");
+        heap_free(p_buf);
+        return;
+    }
+
+    while (g_ksh_blkdev_busy) {
+        // FIXME: implement AHCI interrupts so that this HACK is not needed
+        volatile bool idle = ahci_port_is_idle(dev->driver_ctx);
+        (void)idle;
+    }
+
+    if (g_ksh_blkdev_success) {
+        const size_t num_bytes = 512 * num_sectors;
+        for (size_t row = 0; row < (num_bytes + 23) / 24; row++) {
+            kprintf("%02x  ", row);
+            for (size_t byte = 0; byte < 24; byte++) {
+                if ((byte > 0) && ((byte % 8) == 0)) { kprintf(" "); }
+                size_t idx = ((row * 24) + byte);
+                if (idx < num_bytes) { kprintf("%02x ", p_buf[idx]); }
+            }
+            kprintf("\n");
+        }
+    } else {
+        kprintf("blkdev: I/O error\n");
+    }
+
+    heap_free(p_buf);
+}
+
 static void cmd_execrep(char **pp_args, size_t num_args) {
     if (num_args > 2) {
         kprintf("Usage: %s [repeats]\n", pp_args[0]);
@@ -510,4 +614,13 @@ static void cmd_kill(char **pp_args, size_t num_args) {
     } else {
         kprintf("No such task: ID %u\n", task_id);
     }
+}
+
+static void ksh_blkdev_callback(bool success) {
+    if (!g_ksh_blkdev_busy) {
+        kprintf("kshell: ksh_blkdev_callback called unexpectedly\n");
+        return;
+    }
+    g_ksh_blkdev_busy = false;
+    g_ksh_blkdev_success = success;
 }
