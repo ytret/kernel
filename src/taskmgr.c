@@ -209,6 +209,12 @@ task_t *taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry) {
     return p_task;
 }
 
+task_t *taskmgr_new_kernel_task(uint32_t entry) {
+    task_t *task = new_task(entry);
+    list_append(&g_runnable_tasks, &task->list_node);
+    return task;
+}
+
 void taskmgr_go_usermode(uint32_t entry) {
     gen_regs_t gen_regs = {0};
     gen_regs.esp = USER_STACK_TOP;
