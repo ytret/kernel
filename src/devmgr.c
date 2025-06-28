@@ -16,13 +16,22 @@
  */
 #define DEVMGR_MAX_DEVS 32
 
+/**
+ * First ID to assign to the first identified device.
+ * It cannot be 0 because ID 0 is indistinguishable from a free slot in
+ * #g_devmgr_devs.
+ */
+#define DEVMGR_FIRST_ID 1
+static_assert(DEVMGR_FIRST_ID > 0, "first ID cannot be NULL");
+
 static devmgr_dev_t g_devmgr_devs[DEVMGR_MAX_DEVS];
 static size_t g_devmgr_num_devs;
+static uint32_t g_devmgr_next_id = DEVMGR_FIRST_ID;
 
 static void prv_devmgr_init_dev(const pci_dev_t *pci_dev);
 static void prv_devmgr_init_ahci(const pci_dev_t *pci_dev);
 
-static devmgr_dev_t *prv_devmgr_next_dev(void);
+static devmgr_dev_t *prv_devmgr_init_next_dev(void);
 
 void devmgr_init(void) {
     pci_init();
@@ -37,6 +46,14 @@ void devmgr_init(void) {
         const pci_dev_t *pci_dev = pci_get_dev_const(idx_dev);
         prv_devmgr_init_dev(pci_dev);
     }
+}
+
+devmgr_dev_t *devmgr_get_by_id(uint32_t id) {
+    for (size_t idx = 0; idx < g_devmgr_num_devs; idx++) {
+        devmgr_dev_t *const dev = &g_devmgr_devs[idx];
+        if (dev->id == id) { return dev; }
+    }
+    return NULL;
 }
 
 devmgr_dev_t *devmgr_find_by_class(devmgr_class_t dev_class) {
@@ -99,7 +116,7 @@ static void prv_devmgr_init_ahci(const pci_dev_t *pci_dev) {
             ahci_ctrl_get_port(ahci_ctrl, port_idx);
         if (!ahci_port_is_online(ahci_port)) { continue; }
 
-        devmgr_dev_t *const dev = prv_devmgr_next_dev();
+        devmgr_dev_t *const dev = prv_devmgr_init_next_dev();
         if (!dev) { return; }
 
         dev->dev_class = DEVMGR_CLASS_DISK;
@@ -111,10 +128,15 @@ static void prv_devmgr_init_ahci(const pci_dev_t *pci_dev) {
     }
 }
 
-static devmgr_dev_t *prv_devmgr_next_dev(void) {
+/**
+ * Acquires a slot with a unique ID in #g_devmgr_devs.
+ */
+static devmgr_dev_t *prv_devmgr_init_next_dev(void) {
     if (g_devmgr_num_devs < DEVMGR_MAX_DEVS) {
         devmgr_dev_t *const dev = &g_devmgr_devs[g_devmgr_num_devs];
+        dev->id = g_devmgr_next_id;
         g_devmgr_num_devs++;
+        g_devmgr_next_id++;
         return dev;
     } else {
         return NULL;
