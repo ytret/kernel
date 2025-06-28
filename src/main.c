@@ -1,6 +1,7 @@
 #include <stdint.h>
 
 #include "devmgr.h"
+#include "disk/blkdev.h"
 #include "gdt.h"
 #include "gpt.h"
 #include "heap.h"
@@ -82,6 +83,8 @@ static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr) {
 static void init_entry(void) {
     // taskmgr_switch_tasks() requires that task entries enable interrupts.
     __asm__ volatile("sti");
+
+    taskmgr_new_kernel_task((uint32_t)blkdev_task_entry);
 
     kshell();
 

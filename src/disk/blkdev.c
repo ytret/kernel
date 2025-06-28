@@ -3,7 +3,6 @@
  * Block device worker process.
  */
 
-#include "assert.h"
 #include "disk/blkdev.h"
 #include "kprintf.h"
 #include "mutex.h"
@@ -25,10 +24,7 @@ typedef struct {
 
 static blkdev_ctx_t g_blkdev_ctx;
 
-void blkdev_init(void) {
-    mutex_init(&g_blkdev_ctx.lock);
-    queue_init(&g_blkdev_ctx.req_queue, blkdevMAX_REQS, sizeof(blkdev_req_t));
-}
+static void prv_blkdev_init(void);
 
 bool blkdev_enqueue_req(blkdev_req_t *req) {
     // FIXME: ideally 'req' is const, but it cannot be const because
@@ -41,6 +37,10 @@ bool blkdev_enqueue_req(blkdev_req_t *req) {
 void blkdev_task_entry(void) {
     // taskmgr_switch_tasks() requires that task entries enable interrupts.
     __asm__ volatile("sti");
+
+    kprintf("blkdev init\n");
+
+    prv_blkdev_init();
 
     for (;;) {
         blkdev_req_t req;
@@ -67,4 +67,9 @@ void blkdev_task_entry(void) {
 
     kprintf("blkdev_task_entry: reached end\n");
     panic("unexpected behavior");
+}
+
+static void prv_blkdev_init(void) {
+    mutex_init(&g_blkdev_ctx.lock);
+    queue_init(&g_blkdev_ctx.req_queue, blkdevMAX_REQS, sizeof(blkdev_req_t));
 }

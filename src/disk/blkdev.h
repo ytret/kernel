@@ -31,7 +31,6 @@ struct blkdev_if {
     void (*f_submit)(const blkdev_req_t *req);
 };
 
-void blkdev_init(void);
 bool blkdev_enqueue_req(blkdev_req_t *req);
 
 [[gnu::noreturn]]
