@@ -17,7 +17,7 @@
 
 #include <cpuid.h>
 
-#include "devdrv.h"
+#include "devmgr.h"
 #include "disk/disk.h"
 #include "elf.h"
 #include "heap.h"
@@ -381,7 +381,7 @@ static void cmd_ahci(char **pp_args, size_t num_args) {
         return;
     }
 
-    devdrv_dev_t *const dev = devdrv_find_by_class(DEVDRV_CLASS_DISK);
+    devmgr_dev_t *const dev = devmgr_find_by_class(DEVMGR_CLASS_DISK);
     if (!dev) {
         kprintf("ahci: no disk device\n");
         return;

@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-#include "devdrv.h"
+#include "devmgr.h"
 #include "gdt.h"
 #include "gpt.h"
 #include "heap.h"
@@ -51,7 +51,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     vmm_init();
     pmm_init();
 
-    devdrv_init();
+    devmgr_init();
 
     /*
     uint64_t root_start_sector;
