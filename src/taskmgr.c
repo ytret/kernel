@@ -211,7 +211,9 @@ task_t *taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry) {
 
 task_t *taskmgr_new_kernel_task(uint32_t entry) {
     task_t *task = new_task(entry);
+    taskmgr_lock_scheduler();
     list_append(&g_runnable_tasks, &task->list_node);
+    taskmgr_unlock_scheduler();
     return task;
 }
 
