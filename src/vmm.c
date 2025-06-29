@@ -136,12 +136,16 @@ void vmm_unmap_kernel_page(uint32_t virt) {
 
 static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
                      uint32_t flags) {
+    if (!p_dir) {
+        panic_enter();
+        kprintf("vmm: map_page: p_dir = NULL\n");
+        panic("invalid argument");
+    }
     if (virt & 0xFFF) {
         panic_enter();
         kprintf("vmm: map_page: virt is not page-aligned\n");
         panic("invalid argument");
     }
-
     if (phys & 0xFFF) {
         panic_enter();
         kprintf("vmm: map_page: phys is not page-aligned\n");
