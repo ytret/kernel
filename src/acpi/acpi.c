@@ -6,12 +6,15 @@
 #include "heap.h"
 #include "kprintf.h"
 #include "memfun.h"
+#include "panic.h"
 
 static acpi_rsdp1_t *g_acpi_rsdp1;
 static acpi_rsdt_t *g_acpi_rsdt;
 static acpi_madt_t *g_acpi_madt;
 
 static acpi_ic_ioapic_t *g_acpi_ioapic;
+
+static acpi_irq_remap_t *g_acpi_irq_remaps;
 
 static bool prv_acpi_copy_rsdp1(void);
 static bool prv_acpi_copy_rsdt(const acpi_rsdt_t *sys_rsdt);
@@ -112,6 +115,10 @@ static bool prv_acpi_copy_madt(const acpi_madt_t *sys_madt) {
     g_acpi_madt = heap_alloc(sys_madt->header.length);
     kmemcpy(g_acpi_madt, sys_madt, sys_madt->header.length);
 
+    // We dynamically allocate g_acpi_irq_remaps based on the number of INT SRC
+    // override entries.
+    uint8_t num_irq_remaps = 0;
+
     // Iterate through the interrupt controller structures.
     uint32_t addr_ics = (uint32_t)g_acpi_madt->ics;
     const uint32_t madt_end =
@@ -127,12 +134,17 @@ static bool prv_acpi_copy_madt(const acpi_madt_t *sys_madt) {
             s_type_str = "Processor Local APIC";
             break;
         case ACPI_MADT_ICS_IOAPIC:
+            if (g_acpi_ioapic) {
+                kprintf("acpi: ignoring second I/O APIC\n");
+                break;
+            }
             s_type_str = "I/O APIC";
             g_acpi_ioapic = heap_alloc(s_size);
             kmemcpy(g_acpi_ioapic, (void *)addr_ics, s_size);
             break;
         case ACPI_MADT_ICS_INT_SRC_OVR:
             s_type_str = "Interrupt Source Override";
+            num_irq_remaps++;
             break;
         case ACPI_MADT_ICS_NMI_SRC:
             s_type_str = "NMI source";
@@ -148,6 +160,30 @@ static bool prv_acpi_copy_madt(const acpi_madt_t *sys_madt) {
         }
         kprintf("acpi: MADT: ICS at %p: type 0x%02X %s\n", (void *)addr_ics,
                 s_type, s_type_str);
+
+        addr_ics += s_size;
+    }
+
+    // Iterate again, this time filling in the g_acpi_irq_remaps array.
+    g_acpi_irq_remaps = heap_alloc(num_irq_remaps * sizeof(acpi_irq_remap_t));
+    uint8_t idx_irq_remap = 0;
+    kmemset(g_acpi_irq_remaps, 0, num_irq_remaps * sizeof(acpi_irq_remap_t));
+    addr_ics = (uint32_t)g_acpi_madt->ics;
+    while (addr_ics < madt_end) {
+        // First byte is the structure type. Second byte is its length.
+        const acpi_madt_ics_t s_type = *(uint8_t *)addr_ics;
+        const uint8_t s_size = *((uint8_t *)addr_ics + 1);
+        const acpi_ic_int_src_ovr_t *const ics_ovr =
+            (const acpi_ic_int_src_ovr_t *)addr_ics;
+
+        if (s_type == ACPI_MADT_ICS_INT_SRC_OVR) {
+            kprintf("acpi: IRQ %u -> GSI %u\n", ics_ovr->source, ics_ovr->gsi);
+            g_acpi_irq_remaps[idx_irq_remap].irq = ics_ovr->source;
+            g_acpi_irq_remaps[idx_irq_remap].gsi = ics_ovr->gsi;
+
+            idx_irq_remap++;
+            if (idx_irq_remap == num_irq_remaps) { break; }
+        }
 
         addr_ics += s_size;
     }

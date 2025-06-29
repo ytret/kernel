@@ -4,6 +4,11 @@
 
 #include "acpi_defs.h"
 
+typedef struct {
+    uint8_t irq;  //!< Legacy IRQ number.
+    uint32_t gsi; //!< Global System Interrupt (APIC redirection table index).
+} acpi_irq_remap_t;
+
 void acpi_init(void);
 
 /**
