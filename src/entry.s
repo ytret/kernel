@@ -41,6 +41,7 @@ entry:          mov     $stack_top, %esp
                 push    %ebx
                 push    %eax
                 call    enable_sse
+                cld
                 call    main
                 add     $8, %esp
                 cli
