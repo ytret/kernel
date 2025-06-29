@@ -29,3 +29,10 @@ bool acpi_get_lapic_base(uint32_t *out_addr);
  * - `NULL` if no I/O APIC structure has been found.
  */
 const acpi_ic_ioapic_t *acpi_get_ioapic_ics(void);
+
+/**
+ * Finds the override GSI of an IRQ @a irq.
+ * @param irq Legacy IRQ number.
+ * @returns IRQ remap information, if there is any, otherwise `NULL`.
+ */
+const acpi_irq_remap_t *acpi_find_irq_remap(uint8_t irq);
