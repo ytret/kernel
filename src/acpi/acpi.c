@@ -119,7 +119,7 @@ static bool prv_acpi_copy_madt(const acpi_madt_t *sys_madt) {
     while (addr_ics < madt_end) {
         // First byte is the structure type. Second byte is its length.
         const acpi_madt_ics_t s_type = *(uint8_t *)addr_ics;
-        const uint8_t s_size = *(uint8_t *)addr_ics + 1;
+        const uint8_t s_size = *((uint8_t *)addr_ics + 1);
 
         const char *s_type_str = "<unrecognized>";
         switch (s_type) {
