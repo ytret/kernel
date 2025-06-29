@@ -200,7 +200,7 @@ void taskmgr_schedule(void) {
 
 void taskmgr_reschedule(void) {
     bool b_restore_int = false;
-    if (cpu_check_interrupts()) {
+    if (cpu_get_int_flag()) {
         b_restore_int = true;
         __asm__ volatile("cli");
     }

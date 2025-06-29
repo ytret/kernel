@@ -24,6 +24,7 @@ add_executable(kernel
     src/acpi/acpi.c
     src/blkdev/ahci.c
     src/blkdev/blkdev.c
+    src/cpu.c
     src/devmgr.c
     src/elf.c
     src/framebuf.c
