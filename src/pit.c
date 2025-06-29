@@ -1,6 +1,6 @@
+#include "acpi/apic.h"
 #include "kprintf.h"
 #include "panic.h"
-#include "pic.h"
 #include "pit.h"
 #include "port.h"
 #include "taskmgr.h"
@@ -44,14 +44,13 @@ uint64_t pit_counter_ms(void) {
 }
 
 void pit_irq_handler(void) {
-    kprintf("PIT IRQ\n");
     if (!gb_initialized) {
         panic_enter();
         kprintf("PIT: IRQ0 handler was called before initialization\n");
         panic("unexpected behavior");
     }
 
-    pic_send_eoi(0);
+    apic_send_eoi();
 
     g_counter_ms += PIT_PERIOD_MS;
     taskmgr_schedule();

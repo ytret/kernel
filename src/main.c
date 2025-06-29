@@ -13,7 +13,6 @@
 #include "kshell/kshell.h"
 #include "mbi.h"
 #include "panic.h"
-#include "pic.h"
 #include "pit.h"
 #include "pmm.h"
 #include "taskmgr.h"
@@ -35,7 +34,6 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     gdt_init();
     idt_init();
-    pic_init();
 
     heap_init();
     mbi_save_on_heap();
@@ -45,20 +43,17 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     acpi_init();
     apic_init();
-
+    pit_init(PIT_PERIOD_MS);
+    apic_map_irq(PIT_IRQ, 32 + PIT_IRQ);
     __asm__ volatile("sti");
     kprintf("Interrupts enabled\n");
 
-    pit_init(PIT_PERIOD_MS);
-
-    for (;;) {
-        __asm__ volatile("hlt");
-    }
-
     kbd_init();
+    apic_map_irq(KBD_IRQ, 32 + KBD_IRQ);
 
     vmm_init();
     pmm_init();
+    apic_map_pages();
 
     devmgr_init();
 

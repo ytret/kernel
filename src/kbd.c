@@ -1,10 +1,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "acpi/apic.h"
 #include "kbd.h"
 #include "kprintf.h"
 #include "panic.h"
-#include "pic.h"
 #include "port.h"
 
 #define PORT_DATA   0x0060
@@ -32,7 +32,6 @@ static void try_parse_codes(void);
 static void enqueue_event(uint8_t key, bool b_released);
 
 void kbd_init(void) {
-    pic_set_mask(KBD_IRQ, false);
     queue_init(&g_kbd_event_queue, EVENT_QUEUE_LEN, sizeof(kbd_event_t));
     queue_init(&g_kbd_sysevent_queue, EVENT_QUEUE_LEN, sizeof(kbd_event_t));
 }
@@ -41,8 +40,7 @@ void kbd_irq_handler(void) {
     uint8_t sc = read_code();
     append_code(sc);
     try_parse_codes();
-
-    pic_send_eoi(1);
+    apic_send_eoi();
 }
 
 queue_t *kbd_event_queue(void) {
