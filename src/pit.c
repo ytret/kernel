@@ -39,15 +39,12 @@ void pit_init(uint8_t period_ms) {
     gb_initialized = true;
 }
 
-void pit_enable_interrupt(void) {
-    pic_set_mask(PIT_IRQ, false);
-}
-
 uint64_t pit_counter_ms(void) {
     return g_counter_ms;
 }
 
 void pit_irq_handler(void) {
+    kprintf("PIT IRQ\n");
     if (!gb_initialized) {
         panic_enter();
         kprintf("PIT: IRQ0 handler was called before initialization\n");
