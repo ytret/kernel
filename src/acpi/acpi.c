@@ -8,24 +8,52 @@
 #include "memfun.h"
 
 static acpi_rsdp1_t *g_rsdp1;
+static acpi_rsdt_t *g_rsdt;
 
 static bool prv_acpi_find_rsdp_bios(uint32_t *out_addr);
-static void prv_acpi_dump_rsdp1(acpi_rsdp1_t *rsdp1);
+static bool prv_acpi_check_sum(const void *p_table, size_t table_size);
+static void prv_acpi_dump_rsdp1(const acpi_rsdp1_t *rsdp1);
+static void prv_acpi_dump_sdt(const acpi_sdt_hdr_t *sdt_hdr);
 
 void acpi_init(void) {
+    // Find the RSDP, copy it into the heap, and check its sum.
     uint32_t rsdp_addr;
     const bool found_rsdp = prv_acpi_find_rsdp_bios(&rsdp_addr);
-    if (found_rsdp) {
-        kprintf("acpi: found RSD PTR at 0x%08X\n", rsdp_addr);
-    } else {
+    if (!found_rsdp) {
         kprintf("acpi: could not find RSD PTR\n");
         return;
     }
+    kprintf("acpi: found RSD PTR at 0x%08X\n", rsdp_addr);
+    prv_acpi_dump_rsdp1((void *)rsdp_addr);
 
     g_rsdp1 = heap_alloc(sizeof(*g_rsdp1));
     kmemcpy(g_rsdp1, (void *)rsdp_addr, sizeof(*g_rsdp1));
-    prv_acpi_dump_rsdp1(g_rsdp1);
-    for (;;) {}
+    if (!prv_acpi_check_sum(g_rsdp1, sizeof(*g_rsdp1))) {
+        kprintf("acpi: bad checksum of RSDT at 0x%08x\n", rsdp_addr);
+        return;
+    }
+
+    // Check the RSDT's sum and copy it into the heap.
+    const acpi_rsdt_t *const sys_rsdt = (void *)g_rsdp1->rsdt_addr;
+    prv_acpi_dump_sdt(&sys_rsdt->header);
+    if (!prv_acpi_check_sum(sys_rsdt, sys_rsdt->header.length)) {
+        kprintf("acpi: bad checksum of RSDT at 0x%08X\n", g_rsdp1->rsdt_addr);
+        return;
+    }
+
+    g_rsdt = heap_alloc(sys_rsdt->header.length);
+    kmemcpy(g_rsdt, (void *)g_rsdp1->rsdt_addr, sys_rsdt->header.length);
+
+    // Dump the RSDT entry tables, but copy only some of them.
+    const uint32_t num_rsdt_entries =
+        (g_rsdt->header.length - sizeof(g_rsdt->header)) / 4;
+    kprintf("acpi: number of RSDT entries: %u\n", num_rsdt_entries);
+    for (uint32_t idx = 0; idx < num_rsdt_entries; idx++) {
+        const uint32_t tbl_addr = g_rsdt->entries[idx];
+        const acpi_sdt_hdr_t *const sdt = (void *)tbl_addr;
+        kprintf("acpi: dump of RSDT entry %u\n", idx);
+        prv_acpi_dump_sdt(sdt);
+    }
 }
 
 /**
@@ -57,17 +85,42 @@ static bool prv_acpi_find_rsdp_bios(uint32_t *out_addr) {
     return found;
 }
 
-static void prv_acpi_dump_rsdp1(acpi_rsdp1_t *rsdp1) {
-    kprintf("acpi: dump of RSDP 1.0 at %p\n", rsdp1);
+static bool prv_acpi_check_sum(const void *p_table, size_t table_size) {
+    const uint8_t *const table_u8 = p_table;
+    uint8_t sum = 0;
+    for (size_t idx = 0; idx < table_size; idx++) {
+        sum += table_u8[idx];
+    }
+    return sum == 0;
+}
 
+static void prv_acpi_dump_rsdp1(const acpi_rsdp1_t *rsdp1) {
     char signature_str[9] = {0};
     char oemid_str[7] = {0};
-
     kmemcpy(signature_str, rsdp1->signature, sizeof(rsdp1->signature));
-    kmemcpy(oemid_str, rsdp1->oemid, sizeof(rsdp1->oemid));
-    kprintf("acpi: RSDT 1.0: signature: %s\n", signature_str);
-    kprintf("acpi: RSDT 1.0: checksum: 0x%02X\n", rsdp1->checksum);
-    kprintf("acpi: RSDT 1.0: oemid: %s\n", oemid_str);
-    kprintf("acpi: RSDT 1.0: revision: %u\n", rsdp1->revision);
-    kprintf("acpi: RSDT 1.0: rsdt_addr: 0x%08X\n", rsdp1->rsdt_addr);
+    kmemcpy(oemid_str, rsdp1->oem_id, sizeof(rsdp1->oem_id));
+
+    kprintf("acpi: RSDP 1.0 at %p: \"%s\", sum 0x%02X, OEM \"%s\" rev. %u, "
+            "RSDT at 0x%08X\n",
+            rsdp1, signature_str, rsdp1->checksum, oemid_str, rsdp1->revision,
+            rsdp1->rsdt_addr);
+}
+
+static void prv_acpi_dump_sdt(const acpi_sdt_hdr_t *sdt_hdr) {
+    char signature_str[5] = {0};
+    char oem_id_str[7] = {0};
+    char oem_table_id_str[9] = {0};
+    char creator_id_str[5] = {0};
+    kmemcpy(signature_str, sdt_hdr->signature, sizeof(sdt_hdr->signature));
+    kmemcpy(oem_id_str, sdt_hdr->oem_id, sizeof(sdt_hdr->oem_id));
+    kmemcpy(oem_table_id_str, sdt_hdr->oem_table_id,
+            sizeof(sdt_hdr->oem_table_id));
+    kmemcpy(creator_id_str, sdt_hdr->creator_id, sizeof(sdt_hdr->creator_id));
+
+    kprintf("acpi: SDT at %p: \"%s\", %u bytes, rev. %u, sum 0x%02X, OEM "
+            "\"%s\" table "
+            "\"%s\" rev. %u, creator \"%s\" rev. %u\n",
+            sdt_hdr, signature_str, sdt_hdr->length, sdt_hdr->revision,
+            sdt_hdr->checksum, oem_id_str, oem_table_id_str,
+            sdt_hdr->oem_revision, creator_id_str, sdt_hdr->creator_revision);
 }

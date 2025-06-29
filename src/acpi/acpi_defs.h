@@ -16,7 +16,7 @@
 typedef struct [[gnu::packed]] {
     uint8_t signature[8];
     uint8_t checksum;
-    uint8_t oemid[6];
+    uint8_t oem_id[6];
     uint8_t revision;
     uint32_t rsdt_addr;
 } acpi_rsdp1_t;
@@ -28,7 +28,7 @@ typedef struct [[gnu::packed]] {
 typedef struct [[gnu::packed]] {
     uint8_t signature[8];
     uint8_t checksum;
-    uint8_t oemid[6];
+    uint8_t oem_id[6];
     uint8_t revision;
     uint32_t rsdt_addr;
     uint32_t length;
@@ -38,8 +38,8 @@ typedef struct [[gnu::packed]] {
 } acpi_rsdp2_t;
 
 /**
- * Root System Description Table (RSDT).
- * Refer to section 5.2.7.
+ * System Description Table Header.
+ * Refer to section 5.2.6.
  */
 typedef struct [[gnu::packed]] {
     uint8_t signature[4];
@@ -48,9 +48,17 @@ typedef struct [[gnu::packed]] {
     uint8_t checksum;
     uint8_t oem_id[6];
     uint8_t oem_table_id[8];
-    uint8_t oem_revision[4];
+    uint32_t oem_revision;
     uint8_t creator_id[4];
-    uint8_t creator_revision[4];
+    uint32_t creator_revision;
+} acpi_sdt_hdr_t;
+
+/**
+ * Root System Description Table (RSDT).
+ * Refer to section 5.2.7.
+ */
+typedef struct [[gnu::packed]] {
+    acpi_sdt_hdr_t header;
     uint32_t entries[];
 } acpi_rsdt_t;
 
@@ -59,14 +67,6 @@ typedef struct [[gnu::packed]] {
  * Refer to section 5.2.8.
  */
 typedef struct [[gnu::packed]] {
-    uint8_t signature[4];
-    uint32_t length;
-    uint8_t revision;
-    uint8_t checksum;
-    uint8_t oem_id[6];
-    uint8_t oem_table_id[8];
-    uint8_t oem_revision[4];
-    uint8_t creator_id[4];
-    uint8_t creator_revision[4];
+    acpi_sdt_hdr_t header;
     uint64_t entries[];
 } acpi_xsdt_t;
