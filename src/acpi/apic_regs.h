@@ -127,7 +127,7 @@ typedef volatile struct [[gnu::packed]] {
 
 /**
  * I/O APIC Register I/O interface.
- * Refer to sections 3.1.
+ * Refer to section 3.1.
  */
 typedef volatile struct [[gnu::packed]] {
     ALIGN(16) IO32 regsel;
@@ -137,15 +137,37 @@ typedef volatile struct [[gnu::packed]] {
 /**
  * Some I/O APIC registers.
  * See #IOAPIC_REG_REDIR().
+ * Refer to section 3.2.
  */
 typedef enum {
-    IOAPIC_REG_ID = 0x00,        //!< I/O APIC ID.
-    IOAPIC_REG_VER_REDIR = 0x01, //!< Version and redirection capacity.
-    IOAPIC_REG_ARB_PRI = 0x02,   //!< Arbitration priority.
+    IOAPIC_REG_ID = 0x00,      //!< IOAPIC Identification register.
+    IOAPIC_REG_VERSION = 0x01, //!< IOAPIC Version Register.
+    IOAPIC_REG_ARBITR = 0x02, //!< IOAPIC Arbitration Register.
 } ioapic_reg_sel_t;
 
 /**
- * I/O APIC Redirecton Table Entry.
+ * I/O APIC Identification Register structure.
+ * Refer to section 3.2.1.
+ */
+typedef struct [[gnu::packed]] {
+    uint32_t reserved1 : 24;
+    uint32_t ioapic_id : 4;
+    uint32_t reserved2 : 4;
+} ioapic_reg_id_t;
+
+/**
+ * I/O APIC Version Register structure.
+ * Refer to section 3.2.2.
+ */
+typedef struct [[gnu::packed]] {
+    uint32_t version : 8;
+    uint32_t reserved : 8;
+    uint32_t max_redir_entry : 8;
+    uint32_t reserved2 : 8;
+} ioapic_reg_ver_t;
+
+/**
+ * I/O APIC Redirecton Table Entry structure.
  * Refer to section 3.2.4.
  * See #IOAPIC_REG_REDIR().
  */
