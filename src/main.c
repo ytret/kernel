@@ -1,6 +1,7 @@
 #include <stdint.h>
 
 #include "acpi/acpi.h"
+#include "acpi/apic.h"
 #include "blkdev/blkdev.h"
 #include "devmgr.h"
 #include "gdt.h"
@@ -36,12 +37,6 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     idt_init();
     pic_init();
 
-    pit_init(PIT_PERIOD_MS);
-    pit_enable_interrupt();
-
-    __asm__ volatile("sti");
-    kprintf("Interrupts enabled\n");
-
     heap_init();
     mbi_save_on_heap();
 
@@ -49,6 +44,16 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     // term_clear();
 
     acpi_init();
+    apic_init();
+
+    __asm__ volatile("sti");
+    kprintf("Interrupts enabled\n");
+
+    pit_init(PIT_PERIOD_MS);
+
+    for (;;) {
+        __asm__ volatile("hlt");
+    }
 
     kbd_init();
 

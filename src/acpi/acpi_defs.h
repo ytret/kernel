@@ -10,6 +10,13 @@
 #include <stdint.h>
 
 /**
+ * Fallback I/O APIC Register interface address.
+ * It can be used when there is no I/O APIC Interrupt Controller Structure
+ * present in the MADT table (see #acpi_madt_t.ics).
+ */
+#define acpiIOAPIC_FALLBACK_ADDR 0xFEC00000
+
+/**
  * Root System Description Pointer (RSDP) for ACPI 1.0.
  * Refer to section 5.2.5.3.
  */

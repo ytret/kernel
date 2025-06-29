@@ -11,6 +11,8 @@ static acpi_rsdp1_t *g_acpi_rsdp1;
 static acpi_rsdt_t *g_acpi_rsdt;
 static acpi_madt_t *g_acpi_madt;
 
+static acpi_ic_ioapic_t *g_acpi_ioapic;
+
 static bool prv_acpi_copy_rsdp1(void);
 static bool prv_acpi_copy_rsdt(const acpi_rsdt_t *sys_rsdt);
 static bool prv_acpi_copy_madt(const acpi_madt_t *sys_madt);
@@ -27,7 +29,7 @@ void acpi_init(void) {
     }
 }
 
-bool acpi_get_lapic_addr(uint32_t *out_addr) {
+bool acpi_get_lapic_base(uint32_t *out_addr) {
     if (g_acpi_madt) {
         if (out_addr) { *out_addr = g_acpi_madt->lapic_addr; }
         return true;
@@ -36,8 +38,12 @@ bool acpi_get_lapic_addr(uint32_t *out_addr) {
     }
 }
 
+const acpi_ic_ioapic_t *acpi_get_ioapic_ics(void) {
+    return g_acpi_ioapic;
+}
+
 static bool prv_acpi_copy_rsdp1(void) {
-    // Find the RSDP, copy it into the heap, and check its sum.
+    // Find the RSDP, copy it to the heap, and check its sum.
     uint32_t rsdp_addr;
     const bool found_rsdp = prv_acpi_find_rsdp_bios(&rsdp_addr);
     if (!found_rsdp) {
@@ -58,7 +64,7 @@ static bool prv_acpi_copy_rsdp1(void) {
 }
 
 static bool prv_acpi_copy_rsdt(const acpi_rsdt_t *sys_rsdt) {
-    // Check the RSDT's sum and copy it into the heap.
+    // Check the RSDT's sum and copy the table to the heap.
     prv_acpi_dump_sdt(&sys_rsdt->header);
     if (!prv_acpi_check_sum(sys_rsdt, sys_rsdt->header.length)) {
         kprintf("acpi: bad checksum of RSDT at 0x%08X\n",
@@ -122,6 +128,8 @@ static bool prv_acpi_copy_madt(const acpi_madt_t *sys_madt) {
             break;
         case ACPI_MADT_ICS_IOAPIC:
             s_type_str = "I/O APIC";
+            g_acpi_ioapic = heap_alloc(s_size);
+            kmemcpy(g_acpi_ioapic, (void *)addr_ics, s_size);
             break;
         case ACPI_MADT_ICS_INT_SRC_OVR:
             s_type_str = "Interrupt Source Override";
