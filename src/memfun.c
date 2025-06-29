@@ -31,7 +31,7 @@ void *kmemcpy(void *p_dest, const void *p_src, size_t num_bytes) {
     __asm__ volatile("rep movsb"
                      : "=D"(p_dest), "=S"(p_src), "=c"(num_bytes)
                      : "0"(p_dest), "1"(p_src), "2"(num_bytes)
-                     : "memory");
+                     : "memory", "cc");
     return p_dest;
 }
 
@@ -40,7 +40,7 @@ void *kmemmove(void *p_dest, const void *p_src, size_t num_bytes) {
         __asm__ volatile("rep movsb"
                          : "=D"(p_dest), "=S"(p_src), "=c"(num_bytes)
                          : "0"(p_dest), "1"(p_src), "2"(num_bytes)
-                         : "memory");
+                         : "memory", "cc");
     } else if (p_src < p_dest) {
         // NOTE: void pointer arithmetic is a GNU extension.
         void *p_dest_end = p_dest + num_bytes;
@@ -51,7 +51,7 @@ void *kmemmove(void *p_dest, const void *p_src, size_t num_bytes) {
                          : "=D"(p_dest), "=S"(p_src), "=c"(num_bytes)
                          : "0"(p_dest_end - 1), "1"(p_src_end - 1),
                            "2"(num_bytes)
-                         : "memory");
+                         : "memory", "cc");
     }
     return p_dest;
 }
@@ -60,7 +60,7 @@ void *kmemset(void *p_dest, int ch, size_t num_bytes) {
     __asm__ volatile("rep stosb"
                      : "=D"(p_dest), "=a"(ch), "=c"(num_bytes)
                      : "0"(p_dest), "1"(ch), "2"(num_bytes)
-                     : "memory");
+                     : "memory", "cc");
     return p_dest;
 }
 
@@ -68,7 +68,7 @@ void *kmemset_word(void *p_dest, uint16_t word, size_t num_bytes) {
     __asm__ volatile("rep stosw"
                      : "=D"(p_dest), "=a"(word), "=c"(num_bytes)
                      : "0"(p_dest), "1"(word), "2"(num_bytes)
-                     : "memory");
+                     : "memory", "cc");
     return p_dest;
 }
 
