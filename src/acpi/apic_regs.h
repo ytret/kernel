@@ -126,6 +126,58 @@ typedef volatile struct [[gnu::packed]] {
 } lapic_regs_t;
 
 /**
+ * Local APIC Interrupt Command Register structure.
+ * Refer to section 10.6.1.
+ */
+typedef struct [[gnu::packed]] {
+    uint64_t vector : 8;  //!< Interrupt vector number (r/w).
+    uint64_t delmod : 3;  //!< Delivery Mode (r/w).
+    uint64_t destmod : 1; //!< Destination Mode (r/w).
+    uint64_t delivs : 1;  //!< Delivery Status (r/o).
+    uint64_t reserved1 : 1;
+    uint64_t level : 1;   //!< Level (r/w).
+    uint64_t trigmod : 1; //!< Trigger Mode (r/w).
+    uint64_t reserved2 : 2;
+    uint64_t destsh : 2; //!< Destination Shorthand (r/w).
+    uint64_t reserved3 : 12;
+
+    uint64_t reserved4 : 24;
+    uint64_t dest : 8; //!< Destination (r/w).
+} lapic_icr_t;
+
+/**
+ * Local APIC Interrupt Command Register, field Delivery Mode.
+ * See #lapic_icr_t.
+ */
+typedef enum {
+    LAPIC_ICR_DELMOD_LOW_PRI = 0b001,
+    LAPIC_ICR_DELMOD_SMI = 0b010,
+    LAPIC_ICR_DELMOD_NMI = 0b100,
+    LAPIC_ICR_DELMOD_INIT = 0b101,
+    LAPIC_ICR_DELMOD_START_UP = 0b110,
+} lapic_icr_delmod_t;
+
+/**
+ * Local APIC Interrupt Command Register, field Level.
+ * See #lapic_icr_t.
+ */
+typedef enum {
+    LAPIC_ICR_DEASSERT,
+    LAPIC_ICR_ASSERT,
+} lapic_icr_level_t;
+
+/**
+ * Local APIC Interrupt Command Register, field Destination Shorthand.
+ * See #lapic_icr_t.
+ */
+typedef enum {
+    LAPIC_ICR_DEST_NO_SHORTHAND = 0b00,
+    LAPIC_ICR_DEST_SELF = 0b01,
+    LAPIC_ICR_DEST_ALL_INC_SELF = 0b10,
+    LAPIC_ICR_DEST_ALL_BUT_SELF = 0b11,
+} lapic_icr_destsh_t;
+
+/**
  * I/O APIC Register I/O interface.
  * Refer to section 3.1.
  */
@@ -142,7 +194,7 @@ typedef volatile struct [[gnu::packed]] {
 typedef enum {
     IOAPIC_REG_ID = 0x00,      //!< IOAPIC Identification register.
     IOAPIC_REG_VERSION = 0x01, //!< IOAPIC Version Register.
-    IOAPIC_REG_ARBITR = 0x02, //!< IOAPIC Arbitration Register.
+    IOAPIC_REG_ARBITR = 0x02,  //!< IOAPIC Arbitration Register.
 } ioapic_reg_sel_t;
 
 /**
@@ -193,12 +245,8 @@ typedef struct [[gnu::packed]] {
 } ioapic_redir_t;
 
 /**
- * @{
- * @anchor DapicREDIR
- * @name APIC redirection entry field enums.
- */
-/**
  * I/O APIC Redirection Entry Delivery Mode.
+ * Do not confuse with LAPIC Interrupt Delivery Mode (#lapic_icr_t.delmod).
  * See #ioapic_redir_t.delmod.
  */
 typedef enum {
@@ -236,39 +284,39 @@ typedef enum {
 } ioapic_delmod_t;
 
 /**
- * I/O APIC Redirection Entry Destination Mode.
- * See #ioapic_redir_t.destmod.
+ * I/O APIC Redirection Entry Destination Mode, LAPIC ICR Destination Mode.
+ * See #ioapic_redir_t.destmod, #lapic_icr_t.destmod.
  */
 typedef enum {
     /**
      * Physical Mode.
      * Destination Field is interpreted as an APIC ID.
      */
-    IOAPIC_DESTMOD_PHYSICAL = 0,
+    APIC_DESTMOD_PHYSICAL = 0,
     /**
      * Logical Mode.
      * Destination Field is interpreted as a logical APIC ID.
      */
-    IOAPIC_DESTMOD_LOGICAL = 1,
-} ioapic_destmod_t;
+    APIC_DESTMOD_LOGICAL = 1,
+} apic_destmod_t;
 
 /**
- * I/O APIC Redirection Entry Delivery Status.
- * See #ioapic_redir_t.delivs.
+ * I/O APIC Redirection Entry Delivery Status, LAPIC ICR Delivery Status.
+ * See #ioapic_redir_t.delivs, #lapic_icr_t.delivs.
  */
 typedef enum {
     /**
      * Idle.
      * There is currently no activity for this interrupt.
      */
-    IOAPIC_DELIVS_IDLE,
+    APIC_DELIVS_IDLE,
     /**
      * Send pending.
      * The interrupt has been injected, but its delivery is held up due to the
      * bus being busy or the inability of the APIC to receive it.
      */
-    IOAPIC_DELIVS_SEND_PENDING,
-} ioapic_delivs_t;
+    APIC_DELIVS_SEND_PENDING,
+} apic_delivs_t;
 
 /**
  * I/O APIC Redirection Entry Interrupt Polarity.
@@ -292,13 +340,10 @@ typedef enum {
 } ioapic_remirr_t;
 
 /**
- * I/O APIC Redirection Entry Trigger Mode.
- * See #ioapic_redir_t.trigmod.
+ * I/O APIC Redirection Entry Trigger Mode, LAPIC ICR Trigger Mode.
+ * See #ioapic_redir_t.trigmod, #lapic_icr_t.trigmod.
  */
 typedef enum {
-    IOAPIC_TRIGMOD_EDGE = 0,
-    IOAPIC_TRIGMOD_LEVEL = 1,
-} ioapic_trigmod_t;
-/**
- * @}
- */
+    APIC_TRIGMOD_EDGE = 0,
+    APIC_TRIGMOD_LEVEL = 1,
+} apic_trigmod_t;

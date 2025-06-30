@@ -71,9 +71,9 @@ bool apic_map_irq(uint8_t irq_num, uint8_t vec_num) {
     const ioapic_redir_t redir = {
         .intvec = vec_num,
         .delmod = IOAPIC_DELMOD_FIXED,
-        .destmod = IOAPIC_DESTMOD_PHYSICAL,
+        .destmod = APIC_DESTMOD_PHYSICAL,
         .intpol = IOAPIC_INTPOL_ACTIVE_HIGH,
-        .trigmod = IOAPIC_TRIGMOD_EDGE,
+        .trigmod = APIC_TRIGMOD_EDGE,
         .intmask = 0,
         .apicid = g_lapic_regs->lapic_id_bit.apic_id,
     };
