@@ -45,8 +45,6 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     apic_init();
     pit_init(PIT_PERIOD_MS);
     apic_map_irq(PIT_IRQ, 32 + PIT_IRQ);
-    __asm__ volatile("sti");
-    kprintf("Interrupts enabled\n");
 
     kbd_init();
     apic_map_irq(KBD_IRQ, 32 + KBD_IRQ);
@@ -54,6 +52,9 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     vmm_init();
     pmm_init();
     apic_map_pages();
+
+    __asm__ volatile("sti");
+    kprintf("Interrupts enabled\n");
 
     devmgr_init();
 
