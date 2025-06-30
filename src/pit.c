@@ -15,7 +15,7 @@
 #define BASE_FREQ_KHZ 1193
 
 static volatile bool gb_initialized;
-static _Atomic uint64_t g_counter_ms;
+static volatile _Atomic uint64_t g_counter_ms;
 
 void pit_init(uint8_t period_ms) {
     // Calculate the reload value.
@@ -41,6 +41,13 @@ void pit_init(uint8_t period_ms) {
 
 uint64_t pit_counter_ms(void) {
     return g_counter_ms;
+}
+
+void pit_delay_ms(uint32_t delay_ms) {
+    const uint64_t stop_at = g_counter_ms + delay_ms;
+    while (g_counter_ms < stop_at) {
+        __asm__ volatile("hlt");
+    }
 }
 
 void pit_irq_handler(void) {
