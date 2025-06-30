@@ -15,6 +15,7 @@
 #include "panic.h"
 #include "pit.h"
 #include "pmm.h"
+#include "smp.h"
 #include "taskmgr.h"
 #include "term.h"
 #include "vmm.h"
@@ -55,6 +56,8 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     __asm__ volatile("sti");
     kprintf("Interrupts enabled\n");
+
+    smp_init();
 
     devmgr_init();
 

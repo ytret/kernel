@@ -43,6 +43,7 @@ add_executable(kernel
     src/pit.c
     src/pmm.c
     src/psf.c
+    src/smp.c
     src/stack.c
     src/string.c
     src/syscall.c
@@ -55,6 +56,7 @@ add_executable(kernel
     src/gdt.s
     src/idt.s
     src/isrs.s
+    src/smp.s
     src/taskmgr.s
     src/vmm.s
 
