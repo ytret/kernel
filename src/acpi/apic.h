@@ -45,3 +45,22 @@ bool apic_set_redirect(uint32_t gsi, const ioapic_redir_t *redir);
  * This function does not check if the LAPIC register pointer is initialized.
  */
 void apic_send_eoi(void);
+
+/**
+ * Clears the Local APIC Error Status register.
+ * See #lapic_regs_t.esr.
+ */
+void lapic_clear_ers(void);
+
+/**
+ * Issues an Interrupt Command (an Inter-Processor Interrupt).
+ * @param icr Interrupt Command Register value to copy to the ICR register.
+ * See #lapic_icr_t, #lapic_regs_t.icr_63_32, #lapic_regs_t.icr_31_0.
+ */
+void lapic_send_ipi(const lapic_icr_t *icr);
+
+/**
+ * Waits for the IPI to be delivered.
+ * See #lapic_icr_t.delivs.
+ */
+void lapic_wait_ipi_delivered(void);

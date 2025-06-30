@@ -107,6 +107,31 @@ void apic_send_eoi(void) {
     g_lapic_regs->eoi = 0;
 }
 
+void lapic_clear_ers(void) {
+    if (!g_lapic_regs) { panic("LAPIC register pointer is uninitialized"); }
+    g_lapic_regs->esr = 0;
+}
+
+void lapic_send_ipi(const lapic_icr_t *icr) {
+    if (!g_lapic_regs) { panic("LAPIC register pointer is uninitialized"); }
+
+    uint64_t icr_buf;
+    kmemcpy(&icr_buf, icr, sizeof(*icr));
+
+    // Section 10.6.1 says that writing to the low dword of the ICR causes the
+    // IPI to be sent.
+    g_lapic_regs->icr_63_32 = icr_buf >> 32;
+    g_lapic_regs->icr_31_0 = (uint32_t)icr_buf;
+}
+
+void lapic_wait_ipi_delivered(void) {
+    const volatile lapic_icr_t *icr =
+        (const volatile lapic_icr_t *)(&g_lapic_regs->icr_63_32);
+    do {
+        __asm__ volatile("pause" ::: "memory");
+    } while (icr->delivs == APIC_DELIVS_SEND_PENDING);
+}
+
 static bool prv_lapic_init(void) {
     // Set the global APIC enable bit in the IA32_APIC_BASE MSR.
     cpu_msr_apic_base_t msr_apic_base;
