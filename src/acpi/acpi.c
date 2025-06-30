@@ -6,7 +6,6 @@
 #include "heap.h"
 #include "kprintf.h"
 #include "memfun.h"
-#include "panic.h"
 
 static acpi_rsdp1_t *g_acpi_rsdp1;
 static acpi_rsdt_t *g_acpi_rsdt;
@@ -14,9 +13,16 @@ static acpi_madt_t *g_acpi_madt;
 
 static acpi_ic_ioapic_t *g_acpi_ioapic;
 
+static acpi_proc_t *g_acpi_procs;
+/**
+ * Number of elements in the dynamically allocated #g_acpi_procs.
+ * It is equal to the number of #acpi_ic_lapic_t entries in the MADT.
+ */
+static uint8_t g_acpi_num_procs;
+
 static acpi_irq_remap_t *g_acpi_irq_remaps;
 /**
- * Size of the dynamically allocated #g_acpi_irq_remaps.
+ * Number of elements in the dynamically allocated #g_acpi_irq_remaps.
  * It is equal to the number of #acpi_ic_int_src_ovr_t entries in the MADT.
  */
 static uint8_t g_acpi_num_irq_remaps;
@@ -56,6 +62,18 @@ const acpi_irq_remap_t *acpi_find_irq_remap(uint8_t irq) {
         if (irq_remap->irq == irq) { return irq_remap; }
     }
     return NULL;
+}
+
+uint8_t acpi_num_procs(void) {
+    return g_acpi_num_procs;
+}
+
+const acpi_proc_t *acpi_get_proc(uint8_t proc_num) {
+    if (proc_num < g_acpi_num_procs) {
+        return &g_acpi_procs[proc_num];
+    } else {
+        return NULL;
+    }
 }
 
 static bool prv_acpi_copy_rsdp1(void) {
@@ -141,6 +159,7 @@ static bool prv_acpi_copy_madt(const acpi_madt_t *sys_madt) {
         switch (s_type) {
         case ACPI_MADT_ICS_LAPIC:
             s_type_str = "Processor Local APIC";
+            g_acpi_num_procs++;
             break;
         case ACPI_MADT_ICS_IOAPIC:
             if (g_acpi_ioapic) {
@@ -173,27 +192,47 @@ static bool prv_acpi_copy_madt(const acpi_madt_t *sys_madt) {
         addr_ics += s_size;
     }
 
-    // Iterate again, this time filling in the g_acpi_irq_remaps array.
+    // Iterate again, this time filling in the g_acpi_procs and
+    // g_acpi_irq_remaps arrays.
+    g_acpi_procs = heap_alloc(g_acpi_num_procs * sizeof(acpi_proc_t));
     g_acpi_irq_remaps =
         heap_alloc(g_acpi_num_irq_remaps * sizeof(acpi_irq_remap_t));
+    uint8_t idx_proc = 0;
     uint8_t idx_irq_remap = 0;
-    kmemset(g_acpi_irq_remaps, 0,
-            g_acpi_num_irq_remaps * sizeof(acpi_irq_remap_t));
     addr_ics = (uint32_t)g_acpi_madt->ics;
     while (addr_ics < madt_end) {
         // First byte is the structure type. Second byte is its length.
         const acpi_madt_ics_t s_type = *(uint8_t *)addr_ics;
         const uint8_t s_size = *((uint8_t *)addr_ics + 1);
-        const acpi_ic_int_src_ovr_t *const ics_ovr =
-            (const acpi_ic_int_src_ovr_t *)addr_ics;
 
-        if (s_type == ACPI_MADT_ICS_INT_SRC_OVR) {
-            kprintf("acpi: IRQ %u -> GSI %u\n", ics_ovr->source, ics_ovr->gsi);
-            g_acpi_irq_remaps[idx_irq_remap].irq = ics_ovr->source;
-            g_acpi_irq_remaps[idx_irq_remap].gsi = ics_ovr->gsi;
+        const acpi_ic_lapic_t *ics_lapic;
+        const acpi_ic_int_src_ovr_t *ics_ovr;
 
-            idx_irq_remap++;
-            if (idx_irq_remap == g_acpi_num_irq_remaps) { break; }
+        switch (s_type) {
+        case ACPI_MADT_ICS_LAPIC:
+            ics_lapic = (const acpi_ic_lapic_t *)addr_ics;
+            if (idx_proc < g_acpi_num_procs) {
+                kprintf("acpi: processor UID %u, LAPIC ID %u, %s\n",
+                        ics_lapic->proc_uid, ics_lapic->lapic_id,
+                        ics_lapic->flags_bit.enabled ? "enabled" : "disabled");
+                g_acpi_procs[idx_proc].proc_uid = ics_lapic->proc_uid;
+                g_acpi_procs[idx_proc].lapic_id = ics_lapic->lapic_id;
+                g_acpi_procs[idx_proc].enabled = ics_lapic->flags_bit.enabled;
+                idx_proc++;
+            }
+            break;
+        case ACPI_MADT_ICS_INT_SRC_OVR:
+            ics_ovr = (const acpi_ic_int_src_ovr_t *)addr_ics;
+            if (idx_irq_remap < g_acpi_num_irq_remaps) {
+                kprintf("acpi: interrupt source override IRQ %u -> GSI %u\n",
+                        ics_ovr->source, ics_ovr->gsi);
+                g_acpi_irq_remaps[idx_irq_remap].irq = ics_ovr->source;
+                g_acpi_irq_remaps[idx_irq_remap].gsi = ics_ovr->gsi;
+                idx_irq_remap++;
+            }
+            break;
+        default:
+            break;
         }
 
         addr_ics += s_size;

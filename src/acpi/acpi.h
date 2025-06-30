@@ -9,6 +9,12 @@ typedef struct {
     uint32_t gsi; //!< Global System Interrupt (APIC redirection table index).
 } acpi_irq_remap_t;
 
+typedef struct {
+    uint8_t proc_uid;
+    uint8_t lapic_id;
+    bool enabled;
+} acpi_proc_t;
+
 void acpi_init(void);
 
 /**
@@ -36,3 +42,17 @@ const acpi_ic_ioapic_t *acpi_get_ioapic_ics(void);
  * @returns IRQ remap information, if there is any, otherwise `NULL`.
  */
 const acpi_irq_remap_t *acpi_find_irq_remap(uint8_t irq);
+
+/**
+ * Returns the number of processors in the system.
+ * See #acpi_get_proc().
+ */
+uint8_t acpi_num_procs(void);
+
+/**
+ * Returns a kernel descriptor for the processor @a proc_num.
+ * See #acpi_get_proc().
+ * @param proc_num Processor index, **not** CPU UID or LAPIC ID.
+ * @returns CPU descriptor, if @a cpu_num is valid, otherwise `NULL`.
+ */
+const acpi_proc_t *acpi_get_proc(uint8_t proc_num);
