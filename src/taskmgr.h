@@ -172,23 +172,9 @@ void taskmgr_local_schedule(void);
  */
 void taskmgr_local_reschedule(void);
 
-void taskmgr_lock_scheduler(taskmgr_t *taskmgr);
-void taskmgr_unlock_scheduler(taskmgr_t *taskmgr);
-
-task_t *taskmgr_running_task(taskmgr_t *taskmgr);
-
 void taskmgr_local_lock_scheduler(void);
 void taskmgr_local_unlock_scheduler(void);
 task_t *taskmgr_local_running_task(void);
-
-/**
- * Returns the context of the task with ID @a task_id.
- * @param task_id Task ID to search for.
- * @returns
- * - Pointer to the task with ID @a task_id, if found.
- * - `NULL` otherwise.
- */
-task_t *taskmgr_get_task_by_id(taskmgr_t *taskmgr, uint32_t task_id);
 
 /**
  * Creates a new runnable kernel-mode task with a mapped userspace stack.
@@ -215,7 +201,7 @@ task_t *taskmgr_local_new_kernel_task(uint32_t entry);
  * @param entry Userspace entry point.
  * @note Code at address @a entry is executed in usermode.
  */
-void taskmgr_go_usermode(uint32_t entry);
+void taskmgr_local_go_usermode(uint32_t entry);
 
 /**
  * Blocks the execution of the running task for @a duration_ms milliseconds.
@@ -234,6 +220,30 @@ void taskmgr_local_sleep_ms(uint32_t duration_ms);
 void taskmgr_local_terminate_task(task_t *p_task);
 
 /**
+ * Unblocks the task @a p_task and appends it to the runnable tasks list.
+ * @param p_task Task to unblock (must be blocked, see
+ *               #taskmgr_block_running_task()).
+ * @warning
+ * Do not call this function on a non-blocked task.
+ */
+void taskmgr_unblock(task_t *task);
+
+void taskmgr_lock_scheduler(taskmgr_t *taskmgr);
+
+void taskmgr_unlock_scheduler(taskmgr_t *taskmgr);
+
+task_t *taskmgr_running_task(taskmgr_t *taskmgr);
+
+/**
+ * Returns the context of the task with ID @a task_id.
+ * @param task_id Task ID to search for.
+ * @returns
+ * - Pointer to the task with ID @a task_id, if found.
+ * - `NULL` otherwise.
+ */
+task_t *taskmgr_get_task_by_id(taskmgr_t *taskmgr, uint32_t task_id);
+
+/**
  * Blocks the running task and appends it to the @a task_list list.
  * See #task_t.is_blocked.
  * @param task_list Task list to append the running task to.
@@ -242,12 +252,3 @@ void taskmgr_local_terminate_task(task_t *p_task);
  * scheduling step.
  */
 void taskmgr_block_running_task(list_t *task_list);
-
-/**
- * Unblocks the task @a p_task and appends it to the runnable tasks list.
- * @param p_task Task to unblock (must be blocked, see
- *               #taskmgr_block_running_task()).
- * @warning
- * Do not call this function on a non-blocked task.
- */
-void taskmgr_unblock(task_t *task);

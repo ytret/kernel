@@ -169,19 +169,6 @@ void taskmgr_local_reschedule(void) {
     if (b_restore_int) { __asm__ volatile("sti"); }
 }
 
-void taskmgr_lock_scheduler(taskmgr_t *taskmgr) {
-    atomic_fetch_add_explicit(&taskmgr->scheduler_lock, 1,
-                              memory_order_acquire);
-}
-
-void taskmgr_unlock_scheduler(taskmgr_t *taskmgr) {
-    atomic_fetch_sub_explicit(&taskmgr->scheduler_lock, 1,
-                              memory_order_release);
-}
-
-task_t *taskmgr_running_task(taskmgr_t *taskmgr) {
-    return taskmgr->running_task;
-}
 
 void taskmgr_local_lock_scheduler(void) {
     taskmgr_t *const taskmgr = smp_get_running_taskmgr();
@@ -202,13 +189,6 @@ task_t *taskmgr_local_running_task(void) {
     } else {
         return NULL;
     }
-}
-
-task_t *taskmgr_get_task_by_id(taskmgr_t *taskmgr, uint32_t task_id) {
-    task_t *p_found_task;
-    LIST_FIND(&taskmgr->all_tasks, p_found_task, task_t, all_tasks_list_node,
-              p_task->id == task_id, p_task);
-    return p_found_task;
 }
 
 task_t *taskmgr_local_new_user_task(uint32_t *p_dir, uint32_t entry) {
@@ -238,7 +218,7 @@ task_t *taskmgr_local_new_kernel_task(uint32_t entry) {
     return task;
 }
 
-void taskmgr_go_usermode(uint32_t entry) {
+void taskmgr_local_go_usermode(uint32_t entry) {
     gen_regs_t gen_regs = {0};
     gen_regs.esp = USER_STACK_TOP;
 
@@ -295,6 +275,27 @@ void taskmgr_block_running_task(list_t *task_list) {
     taskmgr->running_task->is_blocked = true;
     list_append(task_list, &taskmgr->running_task->list_node);
     taskmgr_unlock_scheduler(taskmgr);
+}
+
+void taskmgr_lock_scheduler(taskmgr_t *taskmgr) {
+    atomic_fetch_add_explicit(&taskmgr->scheduler_lock, 1,
+                              memory_order_acquire);
+}
+
+void taskmgr_unlock_scheduler(taskmgr_t *taskmgr) {
+    atomic_fetch_sub_explicit(&taskmgr->scheduler_lock, 1,
+                              memory_order_release);
+}
+
+task_t *taskmgr_running_task(taskmgr_t *taskmgr) {
+    return taskmgr->running_task;
+}
+
+task_t *taskmgr_get_task_by_id(taskmgr_t *taskmgr, uint32_t task_id) {
+    task_t *p_found_task;
+    LIST_FIND(&taskmgr->all_tasks, p_found_task, task_t, all_tasks_list_node,
+              p_task->id == task_id, p_task);
+    return p_found_task;
 }
 
 void taskmgr_unblock(task_t *task) {
