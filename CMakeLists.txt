@@ -70,6 +70,7 @@ add_executable(kernel
     src/mutex.c
     src/queue.c
     src/semaphore.c
+    src/spinlock.c
 )
 target_compile_options(kernel PRIVATE
     -Wall -Wextra -Wmissing-prototypes
