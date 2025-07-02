@@ -45,6 +45,7 @@ typedef struct [[gnu::packed]] {
 } tss_t;
 
 void gdt_init(void);
+uint8_t *gdt_get_desc(void);
 tss_t *gdt_get_tss(void);
 
 // Defined in gdt.s.

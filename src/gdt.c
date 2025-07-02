@@ -63,6 +63,10 @@ void gdt_init(void) {
     gdt_load(gp_desc);
 }
 
+uint8_t *gdt_get_desc(void) {
+    return gp_desc;
+}
+
 tss_t *gdt_get_tss(void) {
     return &g_tss;
 }
