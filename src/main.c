@@ -67,8 +67,8 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     // everything below is also executed only by the BSP.
 
     devmgr_init();
-    taskmgr_init(init_entry);
 
+    taskmgr_init(init_entry);
     kprintf("End of main\n");
 }
 

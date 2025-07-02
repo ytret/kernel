@@ -13,7 +13,7 @@ static void prv_panic_send_ipi(void);
 
 void panic_enter(void) {
     prv_panic_send_ipi();
-    taskmgr_lock_scheduler();
+    if (smp_get_running_taskmgr()) { taskmgr_local_lock_scheduler(); }
     term_enter_panic_mode();
 
     term_print_str("\n");
@@ -32,7 +32,7 @@ void panic(char const *p_msg) {
 
 [[gnu::noreturn]]
 void panic_silent(void) {
-    taskmgr_lock_scheduler();
+    __asm__ volatile("cli");
     for (;;) {}
 }
 

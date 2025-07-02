@@ -96,7 +96,7 @@ uint8_t *idt_get_desc(void) {
 
 void idt_dummy_exception_handler(uint32_t exc_num, uint32_t err_code,
                                  isr_stack_frame_t *p_stack_frame) {
-    task_t *p_running_task = taskmgr_running_task();
+    task_t *const p_running_task = taskmgr_local_running_task();
 
     panic_enter();
 
@@ -192,7 +192,7 @@ void idt_dummy_handler(isr_stack_frame_t *p_stack_frame) {
 
 void idt_page_fault_handler(uint32_t addr, uint32_t err_code,
                             isr_stack_frame_t *p_stack_frame) {
-    task_t *p_running_task = taskmgr_running_task();
+    task_t *const p_running_task = taskmgr_local_running_task();
 
     panic_enter();
     kprintf("Page fault exception\n");

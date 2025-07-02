@@ -10,6 +10,8 @@
 #include "list.h"
 #include "stack.h"
 
+typedef struct taskmgr taskmgr_t;
+
 /**
  * Thread control block.
  * @warning
@@ -26,6 +28,7 @@ typedef struct [[gnu::packed]] {
  */
 typedef struct {
     uint32_t id;
+    taskmgr_t *taskmgr;
     stack_t kernel_stack;
     tcb_t tcb;
 
@@ -74,6 +77,69 @@ typedef struct {
     list_node_t all_tasks_list_node;
 } task_t;
 
+struct taskmgr {
+    /**
+     * Nested locks preventing @ref taskmgr_schedule "task scheduling".
+     * @note
+     * Initial value must be 1 and it is decremented after the scheduler is
+     * initialized in #taskmgr_init().
+     */
+    int scheduler_lock;
+
+    /**
+     * Running task.
+     * This value can be used to get the current running task in an IRQ handler.
+     */
+    task_t *running_task;
+
+    /**
+     * List of tasks that the running task can switch to (node:
+     * #task_t.list_node). The tasks in this list are not sleeping and are not
+     * blocked.
+     */
+    list_t runnable_tasks;
+
+    /**
+     * List of sleeping tasks (node: #task_t.list_node).
+     * See #taskmgr_sleep_ms().
+     */
+    list_t sleeping_tasks;
+
+    /**
+     * List of all tasks (node: #task_t.all_tasks_list_node).
+     * - Tasks are added to this list upon creation in #new_task().
+     * - Tasks are removed from this list only by the #deleter_task().
+     */
+    list_t all_tasks;
+
+    /**
+     * Idle task.
+     * The idle task is always present in the runnable tasks list and provides
+     * the scheduler a task to switch to, when there are no other runnable
+     * tasks.
+     */
+    task_t *idle_task;
+    /**
+     * Deleter task.
+     * The deleter task is responsible for deletion of tasks that are marked for
+     * termination (see #task_t.is_terminating). It is switched to only when the
+     * running task is being terminated and has no locks.
+     */
+    task_t *deleter_task;
+    /**
+     * Initial task.
+     * This is the first kernel-mode task that is responsible for initializing
+     * the system. Cf. _init_ on Unix-based systems.
+     */
+    task_t *init_task;
+
+    /**
+     * Parameter for the deleter task provided by the scheduler.
+     * It holds a pointer to the task to be deleted.
+     */
+    task_t *task_to_delete;
+};
+
 /**
  * Starts the scheduler and runs @ref gp_init_task "the initial task".
  *
@@ -93,19 +159,24 @@ void taskmgr_init([[gnu::noreturn]] void (*p_init_entry)(void));
  * -- either in the timer IRQ ISR, or in the syscall ISR.
  */
 void taskmgr_schedule(void);
+
 /**
  * Forces a scheduling step inside or outside of an ISR context.
  * Can be called in ordinary kernel tasks when a resource is blocked and
  * rescheduling is required.
  */
 void taskmgr_reschedule(void);
-/// Locks the scheduler. See #g_scheduler_lock.
-void taskmgr_lock_scheduler(void);
-/// Decreases the nested scheduler lock. See #g_scheduler_lock.
-void taskmgr_unlock_scheduler(void);
 
-task_t *taskmgr_running_task(void);
-list_t *taskmgr_all_tasks_list(void);
+void taskmgr_lock_scheduler(taskmgr_t *taskmgr);
+void taskmgr_unlock_scheduler(taskmgr_t *taskmgr);
+
+task_t *taskmgr_running_task(taskmgr_t *taskmgr);
+list_t *taskmgr_all_tasks_list(taskmgr_t *taskmgr);
+
+void taskmgr_local_lock_scheduler(void);
+void taskmgr_local_unlock_scheduler(void);
+task_t *taskmgr_local_running_task(void);
+
 /**
  * Returns the context of the task with ID @a task_id.
  * @param task_id Task ID to search for.
@@ -113,7 +184,7 @@ list_t *taskmgr_all_tasks_list(void);
  * - Pointer to the task with ID @a task_id, if found.
  * - `NULL` otherwise.
  */
-task_t *taskmgr_get_task_by_id(uint32_t task_id);
+task_t *taskmgr_get_task_by_id(taskmgr_t *taskmgr, uint32_t task_id);
 
 /**
  * Creates a new runnable kernel-mode task with a mapped userspace stack.
@@ -127,6 +198,7 @@ task_t *taskmgr_get_task_by_id(uint32_t task_id);
  * @returns Task context pointer. The task is in the runnable tasks list.
  */
 task_t *taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry);
+
 /**
  * Creates a new runnable kernel-mode task.
  * @param entry Task entry point.
@@ -140,6 +212,7 @@ task_t *taskmgr_new_kernel_task(uint32_t entry);
  * @note Code at address @a entry is executed in usermode.
  */
 void taskmgr_go_usermode(uint32_t entry);
+
 /**
  * Blocks the execution of the running task for @a duration_ms milliseconds.
  * From the caller task point of view, this function returns after @a
@@ -157,14 +230,15 @@ void taskmgr_sleep_ms(uint32_t duration_ms);
 void taskmgr_terminate_task(task_t *p_task);
 
 /**
- * Blocks the running task and appends it to the @a p_task_list list.
+ * Blocks the running task and appends it to the @a task_list list.
  * See #task_t.is_blocked.
- * @param p_task_list Task list to append the running task to.
+ * @param task_list Task list to append the running task to.
  * @warning
  * This function returns immediately. Call #taskmgr_reschedule() to force a
  * scheduling step.
  */
-void taskmgr_block_running_task(list_t *p_task_list);
+void taskmgr_block_running_task(list_t *task_list);
+
 /**
  * Unblocks the task @a p_task and appends it to the runnable tasks list.
  * @param p_task Task to unblock (must be blocked, see
@@ -172,4 +246,4 @@ void taskmgr_block_running_task(list_t *p_task_list);
  * @warning
  * Do not call this function on a non-blocked task.
  */
-void taskmgr_unblock(task_t *p_task);
+void taskmgr_unblock(task_t *task);

@@ -12,9 +12,11 @@
 #include "heap.h"
 #include "kprintf.h"
 #include "list.h"
+#include "memfun.h"
 #include "panic.h"
 #include "pit.h"
 #include "pmm.h"
+#include "smp.h"
 #include "stack.h"
 #include "taskmgr.h"
 #include "term.h"
@@ -43,73 +45,14 @@ typedef struct [[gnu::packed]] {
 } gen_regs_t;
 
 /**
- * Nested locks preventing @ref taskmgr_schedule "task scheduling".
- * @note
- * Initial value of 1 is decremented after the scheduler is initialized in
- * #taskmgr_init().
- */
-static int g_scheduler_lock = 1;
-
-/**
- * Running task.
- * This value can be used to get the current running task in an IRQ handler.
- */
-static task_t *gp_running_task;
-
-/**
- * List of tasks that the running task can switch to (node: #task_t.list_node).
- * The tasks in this list are not sleeping and are not blocked.
- */
-static list_t g_runnable_tasks;
-
-/**
- * List of sleeping tasks (node: #task_t.list_node).
- * See #taskmgr_sleep_ms().
- */
-static list_t g_sleeping_tasks;
-
-/**
- * List of all tasks (node: #task_t.all_tasks_list_node).
- * - Tasks are added to this list upon creation in #new_task().
- * - Tasks are removed from this list only by the #deleter_task().
- */
-static list_t g_all_tasks;
-
-/**
- * Idle task.
- * The idle task is always present in the runnable tasks list and provides the
- * scheduler a task to switch to, when there are no other runnable tasks.
- */
-static task_t *gp_idle_task;
-/**
- * Deleter task.
- * The deleter task is responsible for deletion of tasks that are marked for
- * termination (see #task_t.is_terminating). It is switched to only when the
- * running task is being terminated and has no locks.
- */
-static task_t *gp_deleter_task;
-/**
- * Initial task.
- * This is the first kernel-mode task that is responsible for initializing the
- * system. Cf. _init_ on Unix-based systems.
- */
-static task_t *gp_init_task;
-
-/**
- * Parameter for the deleter task provided by the scheduler.
- * It holds a pointer to the task to be deleted.
- */
-static task_t *gp_task_to_delete;
-
-/**
- * ID for the next new task.
+ * Global ID for the next new task.
  * See #task_t.id.
  */
-static uint32_t g_new_task_id;
+static _Atomic uint32_t g_new_task_id;
 
 static void wake_up_sleeping_tasks(void);
 
-static task_t *new_task(uint32_t entry_point);
+static task_t *new_task(taskmgr_t *taskmgr, uint32_t entry_point);
 static void map_user_stack(uint32_t *p_dir);
 
 [[gnu::noreturn]] static void idle_task(void);
@@ -131,55 +74,63 @@ void taskmgr_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
                      : "a"(0x28) /* TSS segment */
                      : /* no clobber */);
 
-    // Critical section.  It ends when the entry is reached.
+    // Critical section. The initial entry must enable interrupts.
     __asm__ volatile("cli");
 
+    smp_proc_t *const proc = smp_get_running_proc();
+    proc->taskmgr = heap_alloc(sizeof(taskmgr_t));
+    kmemset(proc->taskmgr, 0, sizeof(taskmgr_t));
+    taskmgr_t *const taskmgr = proc->taskmgr;
+
     // Create an idle task.
-    gp_idle_task = new_task((uint32_t)idle_task);
-    list_append(&g_runnable_tasks, &gp_idle_task->list_node);
+    taskmgr->idle_task = new_task(taskmgr, (uint32_t)idle_task);
+    list_append(&taskmgr->runnable_tasks, &taskmgr->idle_task->list_node);
 
     // Create the deleter task. It is switched to when the running task needs to
     // be terminated.
-    gp_deleter_task = new_task((uint32_t)deleter_task);
-    gp_deleter_task->is_blocked = true;
+    taskmgr->deleter_task = new_task(taskmgr, (uint32_t)deleter_task);
+    taskmgr->deleter_task->is_blocked = true;
 
     // Create the term task.
-    task_t *p_term_task = new_task((uint32_t)term_task);
-    list_append(&g_runnable_tasks, &p_term_task->list_node);
+    task_t *p_term_task = new_task(taskmgr, (uint32_t)term_task);
+    list_append(&taskmgr->runnable_tasks, &p_term_task->list_node);
 
     // Create the initial task.
-    gp_init_task = new_task((uint32_t)p_init_entry);
-    gp_running_task = gp_init_task;
+    taskmgr->init_task = new_task(taskmgr, (uint32_t)p_init_entry);
+    taskmgr->running_task = taskmgr->init_task;
 
     // If interrupts were enabled and PIT IRQ happened after the following line
     // and before the entry, some bad things would happen to the stack.
-    g_scheduler_lock = 0;
+    taskmgr->scheduler_lock = 0;
 
-    taskmgr_switch_tasks(NULL, &gp_running_task->tcb, gdt_get_tss());
+    taskmgr_switch_tasks(NULL, &taskmgr->running_task->tcb, gdt_get_tss());
 
     panic_enter();
-    kprintf("initial task entry has returned\n");
+    kprintf("taskmgr: initial task entry has returned\n");
     panic("unexpected behavior");
 }
 
 void taskmgr_schedule(void) {
-    if (g_scheduler_lock > 0) { return; }
+    taskmgr_t *const taskmgr = smp_get_running_taskmgr();
+    if (!taskmgr) { return; }
+
+    if (taskmgr->scheduler_lock > 0) { return; }
 
     wake_up_sleeping_tasks();
 
-    task_t *p_caller_task = gp_running_task;
-    task_t *p_next_task;
-    if (p_caller_task->is_terminating && !p_caller_task->is_blocked &&
-        p_caller_task->num_owned_mutexes == 0) {
-        p_next_task = gp_deleter_task;
-        gp_task_to_delete = p_caller_task;
+    task_t *const caller_task = taskmgr->running_task;
+    task_t *next_task;
+    if (caller_task->is_terminating && !caller_task->is_blocked &&
+        caller_task->num_owned_mutexes == 0) {
+        next_task = taskmgr->deleter_task;
+        taskmgr->task_to_delete = caller_task;
 
-        // Deleter task must unlock once it's done.
-        taskmgr_lock_scheduler();
+        // NOTE: the deleter task must unlock the scheduler once it's done.
+        taskmgr_local_lock_scheduler();
     } else {
-        list_node_t *p_next_node = list_pop_first(&g_runnable_tasks);
-        if (!p_next_node) {
-            if (p_caller_task->is_blocked) {
+        list_node_t *const next_node = list_pop_first(&taskmgr->runnable_tasks);
+        if (!next_node) {
+            if (caller_task->is_blocked) {
                 panic_enter();
                 kprintf("No tasks to preempt the blocked running task.\n");
                 panic("scheduling failed");
@@ -187,15 +138,15 @@ void taskmgr_schedule(void) {
                 return;
             }
         }
-        p_next_task = LIST_NODE_TO_STRUCT(p_next_node, task_t, list_node);
+        next_task = LIST_NODE_TO_STRUCT(next_node, task_t, list_node);
 
-        if (!p_caller_task->is_blocked && !p_caller_task->is_sleeping) {
-            list_append(&g_runnable_tasks, &p_caller_task->list_node);
+        if (!caller_task->is_blocked && !caller_task->is_sleeping) {
+            list_append(&taskmgr->runnable_tasks, &caller_task->list_node);
         }
     }
 
-    gp_running_task = p_next_task;
-    taskmgr_switch_tasks(&p_caller_task->tcb, &p_next_task->tcb, gdt_get_tss());
+    taskmgr->running_task = next_task;
+    taskmgr_switch_tasks(&caller_task->tcb, &next_task->tcb, gdt_get_tss());
 }
 
 void taskmgr_reschedule(void) {
@@ -210,47 +161,76 @@ void taskmgr_reschedule(void) {
     if (b_restore_int) { __asm__ volatile("sti"); }
 }
 
-void taskmgr_lock_scheduler(void) {
-    atomic_fetch_add_explicit(&g_scheduler_lock, 1, memory_order_acquire);
+void taskmgr_lock_scheduler(taskmgr_t *taskmgr) {
+    atomic_fetch_add_explicit(&taskmgr->scheduler_lock, 1,
+                              memory_order_acquire);
 }
 
-void taskmgr_unlock_scheduler(void) {
-    atomic_fetch_sub_explicit(&g_scheduler_lock, 1, memory_order_release);
+void taskmgr_unlock_scheduler(taskmgr_t *taskmgr) {
+    atomic_fetch_sub_explicit(&taskmgr->scheduler_lock, 1,
+                              memory_order_release);
 }
 
-task_t *taskmgr_running_task(void) {
-    return gp_running_task;
+task_t *taskmgr_running_task(taskmgr_t *taskmgr) {
+    return taskmgr->running_task;
 }
 
-list_t *taskmgr_all_tasks_list(void) {
-    return &g_all_tasks;
+list_t *taskmgr_all_tasks_list(taskmgr_t *taskmgr) {
+    return &taskmgr->all_tasks;
 }
 
-task_t *taskmgr_get_task_by_id(uint32_t task_id) {
+void taskmgr_local_lock_scheduler(void) {
+    taskmgr_t *const taskmgr = smp_get_running_taskmgr();
+    if (!taskmgr) { panic("running processor has no task manager"); }
+    taskmgr_lock_scheduler(taskmgr);
+}
+
+void taskmgr_local_unlock_scheduler(void) {
+    taskmgr_t *const taskmgr = smp_get_running_taskmgr();
+    if (!taskmgr) { panic("running processor has no task manager"); }
+    taskmgr_unlock_scheduler(taskmgr);
+}
+
+task_t *taskmgr_local_running_task(void) {
+    taskmgr_t *const taskmgr = smp_get_running_taskmgr();
+    if (taskmgr) {
+        return taskmgr->running_task;
+    } else {
+        return NULL;
+    }
+}
+
+task_t *taskmgr_get_task_by_id(taskmgr_t *taskmgr, uint32_t task_id) {
     task_t *p_found_task;
-    LIST_FIND(&g_all_tasks, p_found_task, task_t, all_tasks_list_node,
+    LIST_FIND(&taskmgr->all_tasks, p_found_task, task_t, all_tasks_list_node,
               p_task->id == task_id, p_task);
     return p_found_task;
 }
 
 task_t *taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry) {
+    taskmgr_t *const taskmgr = smp_get_running_taskmgr();
+    if (!taskmgr) { panic("running processor has no task manager"); }
+
     map_user_stack(p_dir);
 
-    task_t *p_task = new_task(entry);
+    task_t *p_task = new_task(taskmgr, entry);
     p_task->tcb.page_dir_phys = ((uint32_t)p_dir);
 
-    taskmgr_lock_scheduler();
-    list_append(&g_runnable_tasks, &p_task->list_node);
-    taskmgr_unlock_scheduler();
+    taskmgr_local_lock_scheduler();
+    list_append(&taskmgr->runnable_tasks, &p_task->list_node);
+    taskmgr_local_unlock_scheduler();
 
     return p_task;
 }
 
 task_t *taskmgr_new_kernel_task(uint32_t entry) {
-    task_t *task = new_task(entry);
-    taskmgr_lock_scheduler();
-    list_append(&g_runnable_tasks, &task->list_node);
-    taskmgr_unlock_scheduler();
+    taskmgr_t *const taskmgr = smp_get_running_taskmgr();
+    if (!taskmgr) { panic("running processor has no task manager"); }
+
+    task_t *task = new_task(taskmgr, entry);
+    taskmgr_local_lock_scheduler();
+    list_append(&taskmgr->runnable_tasks, &task->list_node);
+    taskmgr_local_unlock_scheduler();
     return task;
 }
 
@@ -262,27 +242,36 @@ void taskmgr_go_usermode(uint32_t entry) {
 }
 
 void taskmgr_sleep_ms(uint32_t duration_ms) {
-    if (!gp_running_task) {
+    taskmgr_t *const taskmgr = smp_get_running_proc()->taskmgr;
+    if (!taskmgr) { panic("running processor has no task manager"); }
+
+    if (!taskmgr->running_task) {
         panic_enter();
         kprintf("taskmgr_sleep: no running task\n");
         panic("taskmgr_sleep failed");
     }
 
-    if (!gp_running_task->is_terminating) {
-        gp_running_task->sleep_until_counter_ms =
+    if (!taskmgr->running_task->is_terminating) {
+        taskmgr->running_task->sleep_until_counter_ms =
             pit_counter_ms() + duration_ms;
 
-        taskmgr_lock_scheduler();
-        gp_running_task->is_sleeping = true;
-        list_append(&g_sleeping_tasks, &gp_running_task->list_node);
-        taskmgr_unlock_scheduler();
+        taskmgr_local_lock_scheduler();
+        taskmgr->running_task->is_sleeping = true;
+        list_append(&taskmgr->sleeping_tasks,
+                    &taskmgr->running_task->list_node);
+        taskmgr_local_unlock_scheduler();
     }
 
     taskmgr_schedule();
 }
 
 void taskmgr_terminate_task(task_t *p_task) {
-    if (p_task == gp_deleter_task) {
+    // FIXME: check if 'p_task' belongs to the running processor.
+
+    taskmgr_t *const taskmgr = smp_get_running_taskmgr();
+    if (!taskmgr) { panic("running processor has no task manager"); }
+
+    if (p_task == taskmgr->deleter_task) {
         // Deleter task cannot delete itself because:
         // 1) it always marks itself as blocked before rescheduling,
         // 2) it cannot free its own stack.
@@ -294,18 +283,23 @@ void taskmgr_terminate_task(task_t *p_task) {
     p_task->is_terminating = true;
 }
 
-void taskmgr_block_running_task(list_t *p_task_list) {
-    taskmgr_lock_scheduler();
-    gp_running_task->is_blocked = true;
-    list_append(p_task_list, &gp_running_task->list_node);
-    taskmgr_unlock_scheduler();
+void taskmgr_block_running_task(list_t *task_list) {
+    taskmgr_t *const taskmgr = smp_get_running_taskmgr();
+    if (!taskmgr) { panic("running processor has no task manager"); }
+
+    taskmgr_lock_scheduler(taskmgr);
+    taskmgr->running_task->is_blocked = true;
+    list_append(task_list, &taskmgr->running_task->list_node);
+    taskmgr_unlock_scheduler(taskmgr);
 }
 
-void taskmgr_unblock(task_t *p_task) {
-    taskmgr_lock_scheduler();
-    p_task->is_blocked = false;
-    list_append(&g_runnable_tasks, &p_task->list_node);
-    taskmgr_unlock_scheduler();
+void taskmgr_unblock(task_t *task) {
+    taskmgr_t *const taskmgr = task->taskmgr;
+
+    taskmgr_lock_scheduler(taskmgr);
+    task->is_blocked = false;
+    list_append(&taskmgr->runnable_tasks, &task->list_node);
+    taskmgr_unlock_scheduler(taskmgr);
 }
 
 /**
@@ -313,9 +307,12 @@ void taskmgr_unblock(task_t *p_task) {
  * See #task_t.sleep_until_counter_ms.
  */
 static void wake_up_sleeping_tasks(void) {
+    taskmgr_t *const taskmgr = smp_get_running_taskmgr();
+    if (!taskmgr) { panic("running processor has no task manager"); }
+
     uint64_t counter_ms = pit_counter_ms();
-    list_t sleep_list_copy = g_sleeping_tasks;
-    list_clear(&g_sleeping_tasks);
+    list_t sleep_list_copy = taskmgr->sleeping_tasks;
+    list_clear(&taskmgr->sleeping_tasks);
 
     list_node_t *p_node = sleep_list_copy.p_first_node;
     while (p_node != NULL) {
@@ -326,7 +323,7 @@ static void wake_up_sleeping_tasks(void) {
         if (p_task->sleep_until_counter_ms <= counter_ms) {
             taskmgr_unblock(p_task);
         } else {
-            list_append(&g_sleeping_tasks, &p_task->list_node);
+            list_append(&taskmgr->sleeping_tasks, &p_task->list_node);
         }
 
         p_node = p_next;
@@ -338,10 +335,11 @@ static void wake_up_sleeping_tasks(void) {
  * @param entry_point Kernel-mode entry point.
  * @returns Task context pointer.
  */
-static task_t *new_task(uint32_t entry_point) {
+static task_t *new_task(taskmgr_t *taskmgr, uint32_t entry_point) {
     task_t *p_task = heap_alloc(sizeof(*p_task));
     __builtin_memset(p_task, 0, sizeof(*p_task));
     p_task->id = (g_new_task_id++);
+    p_task->taskmgr = taskmgr;
 
     // Allocate the kernel stack.
     void *p_stack = heap_alloc(KERNEL_STACK_SIZE);
@@ -361,7 +359,7 @@ static task_t *new_task(uint32_t entry_point) {
     stack_push(&p_task->kernel_stack, 6);           // esi
     stack_push(&p_task->kernel_stack, 7);           // edi
 
-    list_append(&g_all_tasks, &p_task->all_tasks_list_node);
+    list_append(&taskmgr->all_tasks, &p_task->all_tasks_list_node);
 
     return p_task;
 }
@@ -412,29 +410,34 @@ static void idle_task(void) {
  */
 [[gnu::noreturn]]
 static void deleter_task(void) {
+    taskmgr_t *const taskmgr = smp_get_running_taskmgr();
+    if (!taskmgr) { panic("running processor has no task manager"); }
+
     for (;;) {
-        ASSERT(gp_task_to_delete);
-        ASSERT(gp_task_to_delete->is_terminating);
-        ASSERT(!gp_task_to_delete->is_blocked);
-        ASSERT(gp_task_to_delete->num_owned_mutexes == 0);
+        ASSERT(taskmgr->task_to_delete);
+        ASSERT(taskmgr->task_to_delete->is_terminating);
+        ASSERT(!taskmgr->task_to_delete->is_blocked);
+        ASSERT(taskmgr->task_to_delete->num_owned_mutexes == 0);
 
-        heap_free(gp_task_to_delete->kernel_stack.p_bottom);
+        heap_free(taskmgr->task_to_delete->kernel_stack.p_bottom);
 
-        if (gp_task_to_delete->tcb.page_dir_phys != (uint32_t)vmm_kvas_dir()) {
-            vmm_free_vas((uint32_t *)gp_task_to_delete->tcb.page_dir_phys);
+        if (taskmgr->task_to_delete->tcb.page_dir_phys !=
+            (uint32_t)vmm_kvas_dir()) {
+            vmm_free_vas(
+                (uint32_t *)taskmgr->task_to_delete->tcb.page_dir_phys);
         }
 
-        ASSERT(
-            list_remove(&g_all_tasks, &gp_task_to_delete->all_tasks_list_node));
+        ASSERT(list_remove(&taskmgr->all_tasks,
+                           &taskmgr->task_to_delete->all_tasks_list_node));
 
-        heap_free(gp_task_to_delete);
-        gp_task_to_delete = NULL;
+        heap_free(taskmgr->task_to_delete);
+        taskmgr->task_to_delete = NULL;
 
         // Mark the deleter task as 'blocked' so that it is not added to the
         // list of runnable tasks when it is switched from.
-        gp_deleter_task->is_blocked = true;
+        taskmgr->deleter_task->is_blocked = true;
 
-        taskmgr_unlock_scheduler();
+        taskmgr_local_unlock_scheduler();
         taskmgr_schedule();
     }
 }

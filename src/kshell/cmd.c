@@ -247,6 +247,7 @@ static void cmd_tasks(char **pp_args, size_t num_args) {
         return;
     }
 
+    /*
     taskmgr_lock_scheduler();
 
     kprintf(" ID     PAGEDIR         ESP     MAX ESP   USED  BLOCK  TERM\n");
@@ -267,6 +268,7 @@ static void cmd_tasks(char **pp_args, size_t num_args) {
     }
 
     taskmgr_unlock_scheduler();
+    */
 }
 
 static void cmd_vasview(char **pp_args, size_t num_args) {
@@ -555,6 +557,7 @@ static void cmd_kill(char **pp_args, size_t num_args) {
         return;
     }
 
+    /*
     task_t *p_task = taskmgr_get_task_by_id(task_id);
     if (p_task) {
         taskmgr_terminate_task(p_task);
@@ -562,6 +565,7 @@ static void cmd_kill(char **pp_args, size_t num_args) {
     } else {
         kprintf("No such task: ID %u\n", task_id);
     }
+    */
 }
 
 static void ksh_blkdev_callback(bool success) {

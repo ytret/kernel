@@ -143,29 +143,37 @@ uint8_t smp_get_num_procs(void) {
     return g_smp_num_procs;
 }
 
-smp_proc_t *smp_get_running_proc(void) {
-    if (!g_smp_procs) {
-        panic_enter();
-        panic("requested running processor context before smp has been "
-              "initialized");
-    }
-    for (uint8_t proc_num = 0; proc_num < g_smp_num_procs; proc_num++) {
-        smp_proc_t *const proc = &g_smp_procs[proc_num];
-        if (proc->acpi->lapic_id == lapic_get_id()) { return proc; }
-    }
-    return NULL;
-}
-
 smp_proc_t *smp_get_proc(uint8_t proc_num) {
-    if (!g_smp_procs) {
-        panic_enter();
-        panic("requested processor context before smp has been initialized");
-    }
-    if (proc_num < g_smp_num_procs) {
+    if (g_smp_procs && proc_num < g_smp_num_procs) {
         return &g_smp_procs[proc_num];
     } else {
         return NULL;
     }
+}
+
+smp_proc_t *smp_get_running_proc(void) {
+    if (g_smp_procs) {
+        for (uint8_t proc_num = 0; proc_num < g_smp_num_procs; proc_num++) {
+            smp_proc_t *const proc = &g_smp_procs[proc_num];
+            if (proc->acpi->lapic_id == lapic_get_id()) { return proc; }
+        }
+    }
+    return NULL;
+}
+
+taskmgr_t *smp_get_running_taskmgr(void) {
+    smp_proc_t *proc = smp_get_running_proc();
+    if (proc) {
+        return proc->taskmgr;
+    } else {
+        return NULL;
+    }
+}
+
+void smp_init_proc_taskmgr(void) {
+    taskmgr_t *const taskmgr = heap_alloc(sizeof(*taskmgr));
+    kmemset(taskmgr, 0, sizeof(*taskmgr));
+
 }
 
 void smp_send_tlb_shootdown(uint32_t addr) {
