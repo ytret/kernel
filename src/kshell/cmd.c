@@ -27,6 +27,7 @@
 #include "mbi.h"
 #include "panic.h"
 #include "pci.h"
+#include "smp.h"
 #include "string.h"
 #include "taskmgr.h"
 #include "term.h"
@@ -226,7 +227,8 @@ static void cmd_exec(char **pp_args, size_t num_args) {
     bool ok = elf_load(p_dir, p_mod_user->mod_start, &g_exec_entry);
     if (!ok) { kprintf("kshell: failed to load the executable\n"); }
 
-    task_t *p_task = taskmgr_local_new_user_task(p_dir, ((uint32_t)cmd_exec_entry));
+    task_t *p_task =
+        taskmgr_local_new_user_task(p_dir, ((uint32_t)cmd_exec_entry));
     kprintf("kshell: task id %u\n", p_task->id);
 }
 
@@ -247,18 +249,26 @@ static void cmd_tasks(char **pp_args, size_t num_args) {
         return;
     }
 
-    /*
-    taskmgr_lock_scheduler();
+    for (uint8_t proc_num = 0; proc_num < smp_get_num_procs(); proc_num++) {
+        taskmgr_t *const taskmgr = smp_get_proc(proc_num)->taskmgr;
+        if (!taskmgr) {
+            kprintf("kshell: no task manager for processor %u\n", proc_num);
+            continue;
+        }
+        taskmgr_lock_scheduler(taskmgr);
+    }
 
-    kprintf(" ID     PAGEDIR         ESP     MAX ESP   USED  BLOCK  TERM\n");
+    kprintf("%3s  %3s  %10s  %10s  %10s  %5s  %5s  %4s\n", "ID", "CPU",
+            "PAGEDIR", "ESP", "MAX ESP", "USED", "BLOCK", "TERM");
 
-    list_t *p_all_tasks = taskmgr_all_tasks_list();
+    taskmgr_lock_all_tasks_list();
+    const list_t *p_all_tasks = taskmgr_all_tasks_list();
     for (list_node_t *p_node = p_all_tasks->p_first_node; p_node != NULL;
          p_node = p_node->p_next) {
         task_t *p_task =
             LIST_NODE_TO_STRUCT(p_node, task_t, all_tasks_list_node);
-        kprintf("%3u  0x%08x  0x%08x  0x%08x  %5d  %5s  %4s\n", p_task->id,
-                p_task->tcb.page_dir_phys,
+        kprintf("%3u  %3d  0x%08x  0x%08x  0x%08x  %5d  %5s  %4s\n", p_task->id,
+                p_task->taskmgr->proc_num, p_task->tcb.page_dir_phys,
                 (uint32_t)p_task->tcb.p_kernel_stack->p_top,
                 (uint32_t)p_task->tcb.p_kernel_stack->p_top_max,
                 (int32_t)p_task->tcb.p_kernel_stack->p_top_max -
@@ -266,9 +276,16 @@ static void cmd_tasks(char **pp_args, size_t num_args) {
                 p_task->is_blocked ? "YES" : "NO",
                 p_task->is_terminating ? "YES" : "NO");
     }
+    taskmgr_unlock_all_tasks_list();
 
-    taskmgr_unlock_scheduler();
-    */
+    for (uint8_t proc_num = 0; proc_num < smp_get_num_procs(); proc_num++) {
+        taskmgr_t *const taskmgr = smp_get_proc(proc_num)->taskmgr;
+        if (!taskmgr) {
+            kprintf("kshell: no task manager for processor %u\n", proc_num);
+            continue;
+        }
+        taskmgr_unlock_scheduler(taskmgr);
+    }
 }
 
 static void cmd_vasview(char **pp_args, size_t num_args) {
