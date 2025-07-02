@@ -211,13 +211,11 @@ void taskmgr_reschedule(void) {
 }
 
 void taskmgr_lock_scheduler(void) {
-    __asm__ volatile("cli");
     atomic_fetch_add_explicit(&g_scheduler_lock, 1, memory_order_acquire);
 }
 
 void taskmgr_unlock_scheduler(void) {
     atomic_fetch_sub_explicit(&g_scheduler_lock, 1, memory_order_release);
-    if (atomic_load(&g_scheduler_lock) == 0) { __asm__ volatile("sti"); }
 }
 
 task_t *taskmgr_running_task(void) {
