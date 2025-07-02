@@ -85,6 +85,18 @@ void taskmgr_global_init(void) {
     spinlock_init(&g_taskmgr_all_tasks_lock);
 }
 
+const list_t *taskmgr_all_tasks_list(void) {
+    return &g_taskmgr_all_tasks;
+}
+
+void taskmgr_lock_all_tasks_list(void) {
+    spinlock_acquire(&g_taskmgr_all_tasks_lock);
+}
+
+void taskmgr_unlock_all_tasks_list(void) {
+    spinlock_release(&g_taskmgr_all_tasks_lock);
+}
+
 [[gnu::noreturn]]
 void taskmgr_local_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
     // Load the TSS.

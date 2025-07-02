@@ -5,10 +5,13 @@
  * Each processor has its own task management. The only thing shared between the
  * task managers is the next new task ID (see #g_new_task_id).
  *
- * The functions are separated into two categories: those operating on the
- * "local" task manager (i.e., the task manager of the running processor), and
- * those operating on the given task manager context (possibly, a task manager
- * of another processor).
+ * The functions are separated into three categories:
+ * - "Global" functions operating on all task managers or data shared between
+ *   all task managers.
+ * - "Local" functions operating on the "local" task manager (i.e., the task
+ *   manager of the running processor).
+ * - Operating on the given task manager context (possibly, a task manager
+ *   of another processor).
  *
  * If SMP is enabled, the data structures of a given task manager may be
  * simultaneously accessed and modified by different processors. To preclude
@@ -169,10 +172,38 @@ struct taskmgr {
 void taskmgr_global_init(void);
 
 /**
- * Starts the scheduler and runs @ref taskmgr_t.init_task "the initial task".
+ * Returns the global list of all tasks.
+ * See #g_taskmgr_all_tasks.
+ * @warning
+ * Lock the list with #taskmgr_lock_all_tasks_list() and unlock it with
+ * #taskmgr_unlock_all_tasks_list().
+ */
+const list_t *taskmgr_all_tasks_list(void);
+
+/**
+ * Locks the global list of all tasks, preventing it from being modified.
+ * See #g_taskmgr_all_tasks, #g_taskmgr_all_tasks_lock.
+ * @warning
+ * A call to this function *must* happen after the call to
+ * #taskmgr_global_init().
+ */
+void taskmgr_lock_all_tasks_list(void);
+
+/**
+ * Unlocks the global list of all tasks.
+ * See #g_taskmgr_all_tasks, #g_taskmgr_all_tasks_lock.
+ * @warning
+ * A call to this function *must* happen after the call to
+ * #taskmgr_global_init().
+ */
+void taskmgr_unlock_all_tasks_list(void);
+
+/**
+ * Starts the scheduler and runs @ref taskmgr_t.init_task "the initial
+ * task".
  *
- * This function does not return, for the initial task entry must not and does
- * not return.
+ * This function does not return, for the initial task entry must not and
+ * does not return.
  *
  * @warning
  * @a p_init_entry() must enable interrupts, otherwise no task switches will
