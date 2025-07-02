@@ -94,7 +94,7 @@ void taskmgr_init([[gnu::noreturn]] void (*p_init_entry)(void));
  */
 void taskmgr_schedule(void);
 /**
- * Forces a scheduling step inside or outside an ISR context.
+ * Forces a scheduling step inside or outside of an ISR context.
  * Can be called in ordinary kernel tasks when a resource is blocked and
  * rescheduling is required.
  */
