@@ -72,7 +72,7 @@ typedef struct {
     /**
      * Termination flag.
      * This task is to be terminated when it is switched from after being run.
-     * See #taskmgr_schedule() for details.
+     * See #taskmgr_local_schedule() for details.
      */
     bool is_terminating;
 
@@ -94,8 +94,8 @@ typedef struct {
      * Node in the task lists.
      * Each task (except the currently running one) is always in only one of the
      * following lists:
-     * - @ref g_runnable_tasks "Runnable tasks"
-     * - @ref g_sleeping_tasks "Sleeping tasks"
+     * - Runnable tasks
+     * - Sleeping tasks
      * - @ref task_mutex_t.waiting_tasks "Mutex waiting tasks"
      */
     list_node_t list_node;
@@ -106,10 +106,10 @@ typedef struct {
 
 struct taskmgr {
     /**
-     * Nested locks preventing @ref taskmgr_schedule "task scheduling".
+     * Nested locks preventing @ref taskmgr_local_schedule "task scheduling".
      * @note
      * Initial value must be 1 and it is decremented after the scheduler is
-     * initialized in #taskmgr_init().
+     * initialized in #taskmgr_local_init().
      */
     int scheduler_lock;
 
@@ -128,7 +128,7 @@ struct taskmgr {
 
     /**
      * List of sleeping tasks (node: #task_t.list_node).
-     * See #taskmgr_sleep_ms().
+     * See #taskmgr_local_sleep_ms().
      */
     list_t sleeping_tasks;
 
@@ -169,7 +169,7 @@ struct taskmgr {
 void taskmgr_global_init(void);
 
 /**
- * Starts the scheduler and runs @ref gp_init_task "the initial task".
+ * Starts the scheduler and runs @ref taskmgr_t.init_task "the initial task".
  *
  * This function does not return, for the initial task entry must not and does
  * not return.
@@ -195,16 +195,32 @@ void taskmgr_local_schedule(void);
  */
 void taskmgr_local_reschedule(void);
 
+/**
+ * Increments the lock counter of the local task manager.
+ * See #taskmgr_lock_scheduler().
+ */
 void taskmgr_local_lock_scheduler(void);
+
+/**
+ * Decrements the lock counter of the local task manager.
+ * See #taskmgr_lock_scheduler().
+ */
 void taskmgr_local_unlock_scheduler(void);
+
+/**
+ * Returns the task being executed by the current processor.
+ * See #taskmgr_running_task().
+ */
 task_t *taskmgr_local_running_task(void);
 
 /**
  * Creates a new runnable kernel-mode task with a mapped userspace stack.
  *
- * The difference from #taskmgr_new_kernel_task() is that this function maps
- * the user stack. The initial entry point is reached in kernel-mode. See
- * #taskmgr_go_usermode().
+ * The difference from #taskmgr_local_new_kernel_task() is that this function
+ * maps the user stack. The initial entry point is reached in kernel-mode. See
+ * #taskmgr_local_go_usermode().
+ *
+ * The created task runs on the current processor.
  *
  * @param p_dir Page directory to be used by the task.
  * @param entry Task entry point.
@@ -214,6 +230,9 @@ task_t *taskmgr_local_new_user_task(uint32_t *p_dir, uint32_t entry);
 
 /**
  * Creates a new runnable kernel-mode task.
+ *
+ * The created task runs on the current processor.
+ *
  * @param entry Task entry point.
  * @returns Task context pointer. The task is in the runnable tasks list.
  */
@@ -243,18 +262,40 @@ void taskmgr_local_sleep_ms(uint32_t duration_ms);
 void taskmgr_local_terminate_task(task_t *p_task);
 
 /**
+ * Blocks the running task and appends it to the @a task_list list.
+ * See #task_t.is_blocked.
+ * @param task_list Task list to append the running task to.
+ * @warning
+ * This function returns immediately. Call #taskmgr_local_reschedule() to force
+ * a scheduling step.
+ */
+void taskmgr_block_running_task(list_t *task_list);
+
+/**
  * Unblocks the task @a p_task and appends it to the runnable tasks list.
- * @param p_task Task to unblock (must be blocked, see
- *               #taskmgr_block_running_task()).
+ * @param task Task to unblock (must be blocked, see
+ *             #taskmgr_block_running_task()).
  * @warning
  * Do not call this function on a non-blocked task.
  */
 void taskmgr_unblock(task_t *task);
 
+/**
+ * Increments the lock counter of @a taskmgr, preventing it from scheduling.
+ * @param taskmgr Task manager context.
+ */
 void taskmgr_lock_scheduler(taskmgr_t *taskmgr);
 
+/**
+ * Decrements the lock counter of @a taskmgr, possibly allowing to reschedule.
+ * @param taskmgr Task manager context.
+ */
 void taskmgr_unlock_scheduler(taskmgr_t *taskmgr);
 
+/**
+ * Returns the running task of @a taskmgr.
+ * @param taskmgr Task manager context.
+ */
 task_t *taskmgr_running_task(taskmgr_t *taskmgr);
 
 /**
@@ -265,13 +306,3 @@ task_t *taskmgr_running_task(taskmgr_t *taskmgr);
  * - `NULL` otherwise.
  */
 task_t *taskmgr_get_task_by_id(uint32_t task_id);
-
-/**
- * Blocks the running task and appends it to the @a task_list list.
- * See #task_t.is_blocked.
- * @param task_list Task list to append the running task to.
- * @warning
- * This function returns immediately. Call #taskmgr_reschedule() to force a
- * scheduling step.
- */
-void taskmgr_block_running_task(list_t *task_list);

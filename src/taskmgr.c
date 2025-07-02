@@ -386,38 +386,39 @@ static task_t *prv_taskmgr_get_runnable_task(taskmgr_t *taskmgr) {
 
 /**
  * Creates a new kernel-mode task with a kernel stack.
+ * @param taskmgr     Task manager that will be responsible for the task.
  * @param entry_point Kernel-mode entry point.
  * @returns Task context pointer.
  */
 static task_t *new_task(taskmgr_t *taskmgr, uint32_t entry_point) {
-    task_t *p_task = heap_alloc(sizeof(*p_task));
-    __builtin_memset(p_task, 0, sizeof(*p_task));
-    p_task->id = (g_new_task_id++);
-    p_task->taskmgr = taskmgr;
+    task_t *task = heap_alloc(sizeof(*task));
+    __builtin_memset(task, 0, sizeof(*task));
+    task->id = (g_new_task_id++);
+    task->taskmgr = taskmgr;
 
     // Allocate the kernel stack.
     void *p_stack = heap_alloc(KERNEL_STACK_SIZE);
-    stack_new(&p_task->kernel_stack, p_stack, KERNEL_STACK_SIZE);
+    stack_new(&task->kernel_stack, p_stack, KERNEL_STACK_SIZE);
 
     // Set up the control block.
-    p_task->tcb.page_dir_phys = ((uint32_t)vmm_kvas_dir());
-    p_task->tcb.p_kernel_stack = &p_task->kernel_stack;
+    task->tcb.page_dir_phys = ((uint32_t)vmm_kvas_dir());
+    task->tcb.p_kernel_stack = &task->kernel_stack;
 
     // Set up initial stack entries that will be popped during a task switch.
-    stack_push(&p_task->kernel_stack, entry_point); // eip
-    stack_push(&p_task->kernel_stack, 1);           // ebp
-    stack_push(&p_task->kernel_stack, 2);           // eax
-    stack_push(&p_task->kernel_stack, 3);           // ecx
-    stack_push(&p_task->kernel_stack, 4);           // edx
-    stack_push(&p_task->kernel_stack, 5);           // ebx
-    stack_push(&p_task->kernel_stack, 6);           // esi
-    stack_push(&p_task->kernel_stack, 7);           // edi
+    stack_push(&task->kernel_stack, entry_point); // eip
+    stack_push(&task->kernel_stack, 1);           // ebp
+    stack_push(&task->kernel_stack, 2);           // eax
+    stack_push(&task->kernel_stack, 3);           // ecx
+    stack_push(&task->kernel_stack, 4);           // edx
+    stack_push(&task->kernel_stack, 5);           // ebx
+    stack_push(&task->kernel_stack, 6);           // esi
+    stack_push(&task->kernel_stack, 7);           // edi
 
     spinlock_acquire(&g_taskmgr_all_tasks_lock);
-    list_append(&g_taskmgr_all_tasks, &p_task->all_tasks_list_node);
+    list_append(&g_taskmgr_all_tasks, &task->all_tasks_list_node);
     spinlock_release(&g_taskmgr_all_tasks_lock);
 
-    return p_task;
+    return task;
 }
 
 /**
@@ -450,7 +451,7 @@ static void map_user_stack(uint32_t *p_dir) {
 
 /**
  * Idle task entry point.
- * See #gp_idle_task.
+ * See #taskmgr_t.idle_task.
  */
 [[gnu::noreturn]]
 static void idle_task(void) {
@@ -462,7 +463,7 @@ static void idle_task(void) {
 
 /**
  * Deleter task entry point.
- * See #gp_deleter_task.
+ * See #taskmgr_t.deleter_task.
  */
 [[gnu::noreturn]]
 static void deleter_task(void) {
