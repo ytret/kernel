@@ -32,7 +32,6 @@ static uint32_t *gp_kvas_dir;
 static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
                      uint32_t flags);
 static void unmap_page(uint32_t *p_dir, uint32_t virt);
-static void invlpg(uint32_t addr);
 
 void vmm_init(void) {
     mbi_t const *p_mbi = mbi_ptr();
@@ -115,12 +114,12 @@ void vmm_map_user_page(uint32_t *p_dir, uint32_t virt, uint32_t phys) {
 
 void vmm_map_kernel_page(uint32_t virt, uint32_t phys) {
     map_page(gp_kvas_dir, virt, phys, (VMM_PAGE_RW | VMM_PAGE_PRESENT));
-    invlpg(virt);
+    vmm_invlpg(virt);
 }
 
 void vmm_unmap_kernel_page(uint32_t virt) {
     unmap_page(gp_kvas_dir, virt);
-    invlpg(virt);
+    vmm_invlpg(virt);
 }
 
 static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
@@ -202,11 +201,4 @@ static void unmap_page(uint32_t *p_dir, uint32_t virt) {
     }
 
     p_tbl[tbl_idx] = 0;
-}
-
-static void invlpg(uint32_t addr) {
-    __asm__ volatile("invlpg (%0)"
-                     : /* no outputs */
-                     : "r"(addr)
-                     : "memory");
 }

@@ -82,6 +82,7 @@ void idt_init(void) {
     fill_entry(&gp_idt[32 + 15], isr_irq15);
 
     fill_entry(&gp_idt[SMP_VEC_HALT], isr_ipi_halt);
+    fill_entry(&gp_idt[SMP_VEC_TLB_SHOOTDOWN], isr_ipi_tlb_shootdown);
 
     fill_user_entry(&gp_idt[SYSCALL_INT_NUM], isr_syscall);
 

@@ -228,13 +228,30 @@ isr_irq15:      cli
                 iret
                 .size   isr_irq15, . - isr_irq15
 
-                ## Syscall ISR.
+                ## Halt on panic ISR (inter-processor interrupt).
                 .global isr_ipi_halt
                 .type   isr_ipi_halt, @function
 isr_ipi_halt:   cli
 1:              hlt
                 jmp     1b
                 .size   isr_ipi_halt, . - isr_ipi_halt
+
+                ## TLB Shootdown ISR (inter-processor interrupt).
+                .global isr_ipi_tlb_shootdown
+                .type   isr_ipi_tlb_shootdown, @function
+isr_ipi_tlb_shootdown:
+                cli
+                push    %ebp
+                mov     %esp, %ebp
+
+                pusha
+                cld
+                call    smp_tlb_shootdown_handler
+                popa
+
+                pop     %ebp
+                iret
+                .size   isr_ipi_tlb_shootdown, . - isr_ipi_halt
 
                 ## Syscall ISR.
                 .global isr_syscall

@@ -60,6 +60,7 @@ extern void isr_irq7(void);
 extern void isr_irq15(void);
 
 extern void isr_ipi_halt(void);
+extern void isr_ipi_tlb_shootdown(void);
 
 extern void isr_syscall(void);
 

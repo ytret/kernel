@@ -27,6 +27,7 @@ void vmm_free_vas(uint32_t *p_dir);
 void vmm_map_user_page(uint32_t *p_dir, uint32_t virt, uint32_t phys);
 void vmm_map_kernel_page(uint32_t virt, uint32_t phys);
 void vmm_unmap_kernel_page(uint32_t virt);
+void vmm_invlpg(uint32_t virt);
 
 // Defined in vmm.s.
 void vmm_load_dir(void const *p_dir);

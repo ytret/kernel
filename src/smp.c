@@ -10,6 +10,7 @@
 #include "memfun.h"
 #include "pit.h"
 #include "smp.h"
+#include "spinlock.h"
 #include "vmm.h"
 
 // physical/virtual (identity-mapped)
@@ -27,9 +28,17 @@ typedef struct [[gnu::packed]] {
     uint32_t pgdir_phys;
 } smp_ap_trampoline_args_t;
 
+typedef struct {
+    uint32_t addr;
+    _Atomic int ack_count;
+} smp_tlb_shootdown_req_t;
+
 static bool g_smp_is_active;
 static _Atomic bool g_smp_bsp_done;
 static _Atomic bool g_smp_curr_ap_done;
+
+static spinlock_t g_smp_tlb_shootdown_lock;
+static smp_tlb_shootdown_req_t g_smp_tlb_shootdown_req;
 
 static void prv_smp_init_trampoline(void);
 
@@ -110,6 +119,37 @@ void smp_init(void) {
 
 bool smp_is_active(void) {
     return g_smp_is_active;
+}
+
+void smp_send_tlb_shootdown(uint32_t addr) {
+    spinlock_acquire(&g_smp_tlb_shootdown_lock);
+
+    g_smp_tlb_shootdown_req.addr = addr;
+    g_smp_tlb_shootdown_req.ack_count = 0;
+
+    const lapic_icr_t ipi_tlb_shootdown = {
+        .vector = SMP_VEC_TLB_SHOOTDOWN,
+        .delmod = LAPIC_ICR_DELMOD_FIXED,
+        .destmod = APIC_DESTMOD_PHYSICAL, // ignored because destsh is used
+        .level = LAPIC_ICR_ASSERT, // must be ASSERT because it's not INIT
+        .trigmod = 0,              // ignored because it's not INIT
+        .destsh = LAPIC_ICR_DEST_ALL_BUT_SELF,
+        .dest = 0, // ignored because destsh is used
+    };
+    lapic_send_ipi(&ipi_tlb_shootdown);
+
+    const uint8_t num_procs = acpi_num_procs();
+    while (g_smp_tlb_shootdown_req.ack_count < num_procs - 1) {
+        __asm__ volatile("pause");
+    }
+
+    spinlock_release(&g_smp_tlb_shootdown_lock);
+}
+
+void smp_tlb_shootdown_handler(void) {
+    vmm_invlpg(g_smp_tlb_shootdown_req.addr);
+    g_smp_tlb_shootdown_req.ack_count++;
+    lapic_send_eoi();
 }
 
 [[gnu::noreturn]]
