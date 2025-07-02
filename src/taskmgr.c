@@ -113,6 +113,8 @@ void taskmgr_local_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
     kmemset(proc->taskmgr, 0, sizeof(taskmgr_t));
     taskmgr_t *const taskmgr = proc->taskmgr;
 
+    taskmgr->proc_num = proc->proc_num;
+
     list_init(&taskmgr->runnable_tasks, NULL);
     list_init(&taskmgr->sleeping_tasks, NULL);
     spinlock_init(&taskmgr->runnable_tasks_lock);

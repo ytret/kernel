@@ -109,6 +109,12 @@ typedef struct {
 
 struct taskmgr {
     /**
+     * Kernel number of the processor owning this task manager.
+     * See #smp_proc_t.taskmgr.
+     */
+    uint8_t proc_num;
+
+    /**
      * Nested locks preventing @ref taskmgr_local_schedule "task scheduling".
      * @note
      * Initial value must be 1 and it is decremented after the scheduler is
