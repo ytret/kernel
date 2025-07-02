@@ -103,6 +103,11 @@ void taskmgr_local_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
     taskmgr->init_task = new_task(taskmgr, (uint32_t)p_init_entry);
     taskmgr->running_task = taskmgr->init_task;
 
+    // Initialize the list access spinlocks.
+    spinlock_init(&taskmgr->runnable_tasks_lock);
+    spinlock_init(&taskmgr->sleeping_tasks_lock);
+    spinlock_init(&taskmgr->all_tasks_lock);
+
     // If interrupts were enabled and PIT IRQ happened after the following line
     // and before the entry, some bad things would happen to the stack.
     taskmgr->scheduler_lock = 0;

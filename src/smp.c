@@ -51,6 +51,8 @@ static void prv_smp_init_trampoline(void);
 extern void smp_ap_trampoline(void);
 
 void smp_init(void) {
+    spinlock_init(&g_smp_tlb_shootdown_lock);
+
     const uint8_t bsp_lapic = lapic_get_id();
     kprintf("smp: BSP's Local APIC ID = 0x%02X\n", bsp_lapic);
 
@@ -173,7 +175,6 @@ taskmgr_t *smp_get_running_taskmgr(void) {
 void smp_init_proc_taskmgr(void) {
     taskmgr_t *const taskmgr = heap_alloc(sizeof(*taskmgr));
     kmemset(taskmgr, 0, sizeof(*taskmgr));
-
 }
 
 void smp_send_tlb_shootdown(uint32_t addr) {
