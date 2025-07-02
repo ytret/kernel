@@ -221,7 +221,7 @@ static void cmd_exec(char **pp_args, size_t num_args) {
         return;
     }
 
-    uint32_t *p_dir = vmm_clone_kvas();
+    uint32_t *p_dir = vmm_clone_kvas_dir();
 
     bool ok = elf_load(p_dir, p_mod_user->mod_start, &g_exec_entry);
     if (!ok) { kprintf("kshell: failed to load the executable\n"); }

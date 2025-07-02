@@ -5,23 +5,27 @@
 #include "heap.h"
 #include "kprintf.h"
 #include "mbi.h"
+#include "memfun.h"
 #include "panic.h"
 #include "vmm.h"
 
-#define ADDR_TO_DIR_IDX(addr) (((addr) >> 22) & 0x3FF)
-#define ADDR_TO_TBL_IDX(addr) (((addr) >> 12) & 0x3FF)
+#define VMM_ADDR_DIR_IDX(addr) (((addr) >> 22) & 0x3FF)
+#define VMM_ADDR_TBL_IDX(addr) (((addr) >> 12) & 0x3FF)
 
-#define TABLE_USER    (1 << 2)
-#define TABLE_RW      (1 << 1)
-#define TABLE_PRESENT (1 << 0)
+#define VMM_TABLE_USER    (1 << 2)
+#define VMM_TABLE_RW      (1 << 1)
+#define VMM_TABLE_PRESENT (1 << 0)
 
-#define PAGE_USER    (1 << 2)
-#define PAGE_RW      (1 << 1)
-#define PAGE_PRESENT (1 << 0)
+#define VMM_PAGE_USER    (1 << 2)
+#define VMM_PAGE_RW      (1 << 1)
+#define VMM_PAGE_PRESENT (1 << 0)
 
-// Which page table flags to check when stumbling upon an existing page table
-// during page mapping.
-#define FLAG_CHECK_MASK (TABLE_USER | TABLE_RW | TABLE_PRESENT)
+/**
+ * Table entry flags that are checked when comparing two page tables.
+ * If the two page table entries have different values when this mask is
+ * applied, they are considered different.
+ */
+#define VMM_TBL_EQ_FLAGS (VMM_TABLE_USER | VMM_TABLE_RW | VMM_TABLE_PRESENT)
 
 static uint32_t *gp_kvas_dir;
 
@@ -77,31 +81,15 @@ uint32_t const *vmm_kvas_dir(void) {
     return gp_kvas_dir;
 }
 
-uint32_t *vmm_clone_kvas(void) {
-    uint32_t *p_dir = heap_alloc_aligned(4096, 4096);
-    __builtin_memset(p_dir, 0, 4096);
+uint32_t *vmm_clone_kvas_dir(void) {
+    uint32_t *const p_dir = heap_alloc_aligned(4096, 4096);
+    kmemset(p_dir, 0, 4096);
 
-    for (uint32_t dir_idx = 0; dir_idx < ADDR_TO_DIR_IDX(VMM_USER_START);
+    for (uint32_t dir_idx = 0; dir_idx < VMM_ADDR_DIR_IDX(VMM_USER_START);
          dir_idx++) {
-        if (gp_kvas_dir[dir_idx] & TABLE_PRESENT) {
-            // KVAS table pointer.
-            uint32_t *p_ktbl = ((uint32_t *)(gp_kvas_dir[dir_idx] & ~0xFFF));
+        if ((gp_kvas_dir[dir_idx] & VMM_TABLE_PRESENT) == 0) { continue; }
 
-            // Allocate space for the new table.
-            uint32_t *p_tbl = heap_alloc_aligned(4096, 4096);
-            __builtin_memset(p_tbl, 0, 4096);
-
-            // Fill the dir entry (flags are copied).
-            p_dir[dir_idx] =
-                (((uint32_t)p_tbl) | (gp_kvas_dir[dir_idx] & 0xFFF));
-
-            for (uint32_t tbl_idx = 0; tbl_idx < 1024; tbl_idx++) {
-                // Map the same pages, with the same flags.
-                if (p_ktbl[tbl_idx] & PAGE_PRESENT) {
-                    p_tbl[tbl_idx] = p_ktbl[tbl_idx];
-                }
-            }
-        }
+        p_dir[dir_idx] = gp_kvas_dir[dir_idx];
     }
 
     // Clone the video framebuffer.  If the framebuffer is text-only, both of
@@ -110,7 +98,7 @@ uint32_t *vmm_clone_kvas(void) {
     uint32_t fb_end_page = (framebuf_end() + 0xFFF) & ~0xFFF;
     for (uint32_t fb_page = fb_start_page; fb_page < fb_end_page;
          fb_page += 4096) {
-        map_page(p_dir, fb_page, fb_page, (PAGE_RW | PAGE_PRESENT));
+        map_page(p_dir, fb_page, fb_page, (VMM_PAGE_RW | VMM_PAGE_PRESENT));
     }
 
     return p_dir;
@@ -121,11 +109,12 @@ void vmm_free_vas(uint32_t *p_dir) {
 }
 
 void vmm_map_user_page(uint32_t *p_dir, uint32_t virt, uint32_t phys) {
-    map_page(p_dir, virt, phys, (PAGE_USER | PAGE_RW | PAGE_PRESENT));
+    map_page(p_dir, virt, phys,
+             (VMM_PAGE_USER | VMM_PAGE_RW | VMM_PAGE_PRESENT));
 }
 
 void vmm_map_kernel_page(uint32_t virt, uint32_t phys) {
-    map_page(gp_kvas_dir, virt, phys, (PAGE_RW | PAGE_PRESENT));
+    map_page(gp_kvas_dir, virt, phys, (VMM_PAGE_RW | VMM_PAGE_PRESENT));
     invlpg(virt);
 }
 
@@ -152,16 +141,16 @@ static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
         panic("invalid argument");
     }
 
-    uint32_t dir_idx = ADDR_TO_DIR_IDX(virt);
-    uint32_t tbl_idx = ADDR_TO_TBL_IDX(virt);
+    uint32_t dir_idx = VMM_ADDR_DIR_IDX(virt);
+    uint32_t tbl_idx = VMM_ADDR_TBL_IDX(virt);
 
     uint32_t *p_tbl;
-    if (p_dir[dir_idx] & TABLE_PRESENT) {
-        if ((p_dir[dir_idx] & FLAG_CHECK_MASK) != flags) {
+    if (p_dir[dir_idx] & VMM_TABLE_PRESENT) {
+        if ((p_dir[dir_idx] & VMM_TBL_EQ_FLAGS) != flags) {
             panic_enter();
             kprintf("vmm: map_page: page table for %P is present, but its"
                     " checked flags 0x%03x are different from 0x%03x\n",
-                    virt, (p_dir[dir_idx] & FLAG_CHECK_MASK), flags);
+                    virt, (p_dir[dir_idx] & VMM_TBL_EQ_FLAGS), flags);
             panic("unexpected behavior");
         }
 
@@ -193,10 +182,10 @@ static void unmap_page(uint32_t *p_dir, uint32_t virt) {
         panic("invalid argument");
     }
 
-    uint32_t dir_idx = ADDR_TO_DIR_IDX(virt);
-    uint32_t tbl_idx = ADDR_TO_TBL_IDX(virt);
+    uint32_t dir_idx = VMM_ADDR_DIR_IDX(virt);
+    uint32_t tbl_idx = VMM_ADDR_TBL_IDX(virt);
 
-    if (!(p_dir[dir_idx] & TABLE_PRESENT)) {
+    if (!(p_dir[dir_idx] & VMM_TABLE_PRESENT)) {
         panic_enter();
         kprintf("vmm: unmap_page: table %u for %P is not present\n", dir_idx,
                 ((void *)virt));
@@ -205,7 +194,7 @@ static void unmap_page(uint32_t *p_dir, uint32_t virt) {
 
     uint32_t *p_tbl = ((uint32_t *)(p_dir[dir_idx] & ~0xFFF));
 
-    if (!(p_tbl[tbl_idx] & PAGE_PRESENT)) {
+    if (!(p_tbl[tbl_idx] & VMM_PAGE_PRESENT)) {
         panic_enter();
         kprintf("vmm: unmap_page: page %u for %P is not present\n", tbl_idx,
                 ((void *)virt));
