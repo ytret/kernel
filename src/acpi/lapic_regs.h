@@ -143,6 +143,7 @@ typedef struct [[gnu::packed]] {
  * See #lapic_icr_t.
  */
 typedef enum {
+    LAPIC_ICR_DELMOD_FIXED = 0b000,
     LAPIC_ICR_DELMOD_LOW_PRI = 0b001,
     LAPIC_ICR_DELMOD_SMI = 0b010,
     LAPIC_ICR_DELMOD_NMI = 0b100,
