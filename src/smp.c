@@ -5,6 +5,7 @@
 #include "acpi/acpi.h"
 #include "acpi/lapic.h"
 #include "gdt.h"
+#include "idt.h"
 #include "kprintf.h"
 #include "memfun.h"
 #include "pit.h"
@@ -26,6 +27,7 @@ typedef struct [[gnu::packed]] {
     uint32_t pgdir_phys;
 } smp_ap_trampoline_args_t;
 
+static bool g_smp_is_active;
 static _Atomic bool g_smp_bsp_done;
 static _Atomic bool g_smp_curr_ap_done;
 
@@ -41,6 +43,13 @@ void smp_init(void) {
     prv_smp_init_trampoline();
 
     const uint8_t num_procs = acpi_num_procs();
+
+    // If there are more than 1 usable processors, we consider the SMP to be
+    // "active". The most important effect is that entering a kernel panic on
+    // one of the processors causes a "halt" IPI to be sent by the panicking
+    // processor. See panic.c.
+    if (num_procs > 1) { g_smp_is_active = true; }
+
     for (uint8_t proc_num = 0; proc_num < num_procs; proc_num++) {
         const acpi_proc_t *const proc = acpi_get_proc(proc_num);
         if (proc->lapic_id == bsp_lapic) { continue; }
@@ -99,6 +108,10 @@ void smp_init(void) {
     g_smp_bsp_done = true;
 }
 
+bool smp_is_active(void) {
+    return g_smp_is_active;
+}
+
 [[gnu::noreturn]]
 void smp_ap_trampoline_c(void) {
     // NOTE: this function is called from 'smp_ap_trampoline' in smp.s.
@@ -106,8 +119,12 @@ void smp_ap_trampoline_c(void) {
     vmm_load_dir(vmm_kvas_dir());
 
     kprintf("smp: Hello, World! from AP with LAPIC ID %u\n", lapic_get_id());
+    idt_load(idt_get_desc());
+    lapic_init(false);
 
     g_smp_curr_ap_done = true;
+
+    __asm__ volatile("sti");
 
     while (!g_smp_bsp_done) {
         __asm__ volatile("pause" ::: "memory");

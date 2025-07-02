@@ -228,6 +228,13 @@ isr_irq15:      cli
                 iret
                 .size   isr_irq15, . - isr_irq15
 
+                ## Syscall ISR.
+                .global isr_ipi_halt
+                .type   isr_ipi_halt, @function
+isr_ipi_halt:   cli
+1:              hlt
+                jmp     1b
+                .size   isr_ipi_halt, . - isr_ipi_halt
 
                 ## Syscall ISR.
                 .global isr_syscall

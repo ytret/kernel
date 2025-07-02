@@ -63,9 +63,10 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     kprintf("Interrupts enabled\n");
 
     smp_init();
+    // NOTE: main() is executed only by the bootstrap processor (BSP). Hence,
+    // everything below is also executed only by the BSP.
 
     devmgr_init();
-
     taskmgr_init(init_entry);
 
     kprintf("End of main\n");
