@@ -7,6 +7,7 @@
 #include "mbi.h"
 #include "memfun.h"
 #include "panic.h"
+#include "smp.h"
 #include "vmm.h"
 
 #define VMM_ADDR_DIR_IDX(addr) (((addr) >> 22) & 0x3FF)
@@ -115,11 +116,20 @@ void vmm_map_user_page(uint32_t *p_dir, uint32_t virt, uint32_t phys) {
 void vmm_map_kernel_page(uint32_t virt, uint32_t phys) {
     map_page(gp_kvas_dir, virt, phys, (VMM_PAGE_RW | VMM_PAGE_PRESENT));
     vmm_invlpg(virt);
+    if (smp_is_active()) { smp_send_tlb_shootdown(virt); }
 }
 
 void vmm_unmap_kernel_page(uint32_t virt) {
     unmap_page(gp_kvas_dir, virt);
     vmm_invlpg(virt);
+    if (smp_is_active()) { smp_send_tlb_shootdown(virt); }
+}
+
+void vmm_invlpg(uint32_t virt) {
+    __asm__ volatile("invlpg (%0)"
+                     : /* no outputs */
+                     : "r"(virt)
+                     : "memory");
 }
 
 static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
