@@ -5,9 +5,11 @@
 #include "acpi/acpi.h"
 #include "acpi/lapic.h"
 #include "gdt.h"
+#include "heap.h"
 #include "idt.h"
 #include "kprintf.h"
 #include "memfun.h"
+#include "panic.h"
 #include "pit.h"
 #include "smp.h"
 #include "spinlock.h"
@@ -37,6 +39,9 @@ static bool g_smp_is_active;
 static _Atomic bool g_smp_bsp_done;
 static _Atomic bool g_smp_curr_ap_done;
 
+static smp_proc_t *g_smp_procs;
+static uint8_t g_smp_num_procs;
+
 static spinlock_t g_smp_tlb_shootdown_lock;
 static smp_tlb_shootdown_req_t g_smp_tlb_shootdown_req;
 
@@ -53,6 +58,11 @@ void smp_init(void) {
 
     const uint8_t num_procs = acpi_num_procs();
 
+    // Allocate the processor context array for the total number of processors.
+    // Some of them may be unusable, but for simplicity we allocate for them,
+    // too.
+    g_smp_procs = heap_alloc(num_procs * sizeof(smp_proc_t));
+
     // If there are more than 1 usable processors, we consider the SMP to be
     // "active". The most important effect is that entering a kernel panic on
     // one of the processors causes a "halt" IPI to be sent by the panicking
@@ -60,8 +70,16 @@ void smp_init(void) {
     if (num_procs > 1) { g_smp_is_active = true; }
 
     for (uint8_t proc_num = 0; proc_num < num_procs; proc_num++) {
-        const acpi_proc_t *const proc = acpi_get_proc(proc_num);
-        if (proc->lapic_id == bsp_lapic) { continue; }
+        const acpi_proc_t *const acpi_proc = acpi_get_proc(proc_num);
+
+        // Create a kernel SMP context for each usable processor.
+        if (acpi_proc->enabled) {
+            g_smp_procs[g_smp_num_procs].proc_num = g_smp_num_procs;
+            g_smp_procs[g_smp_num_procs].acpi = acpi_proc;
+            g_smp_num_procs++;
+        }
+
+        if (acpi_proc->lapic_id == bsp_lapic) { continue; }
 
         g_smp_curr_ap_done = false;
 
@@ -75,7 +93,7 @@ void smp_init(void) {
             .level = LAPIC_ICR_ASSERT,
             .trigmod = APIC_TRIGMOD_LEVEL,
             .destsh = LAPIC_ICR_DEST_NO_SHORTHAND,
-            .dest = proc->lapic_id,
+            .dest = acpi_proc->lapic_id,
         };
         lapic_send_ipi(&ipi_init);
         lapic_wait_ipi_delivered();
@@ -100,7 +118,7 @@ void smp_init(void) {
                 .level = LAPIC_ICR_DEASSERT,
                 .trigmod = APIC_TRIGMOD_EDGE,
                 .destsh = LAPIC_ICR_DEST_NO_SHORTHAND,
-                .dest = proc->lapic_id,
+                .dest = acpi_proc->lapic_id,
             };
             lapic_send_ipi(&ipi_startup);
             pit_delay_ms(1);
@@ -112,13 +130,42 @@ void smp_init(void) {
             __asm__ volatile("pause" ::: "memory");
         }
         kprintf("smp: AP UID %u (LAPIC ID %u) is up and running\n",
-                proc->proc_uid, proc->lapic_id);
+                acpi_proc->proc_uid, acpi_proc->lapic_id);
     }
     g_smp_bsp_done = true;
 }
 
 bool smp_is_active(void) {
     return g_smp_is_active;
+}
+
+uint8_t smp_get_num_procs(void) {
+    return g_smp_num_procs;
+}
+
+smp_proc_t *smp_get_running_proc(void) {
+    if (!g_smp_procs) {
+        panic_enter();
+        panic("requested running processor context before smp has been "
+              "initialized");
+    }
+    for (uint8_t proc_num = 0; proc_num < g_smp_num_procs; proc_num++) {
+        smp_proc_t *const proc = &g_smp_procs[proc_num];
+        if (proc->acpi->lapic_id == lapic_get_id()) { return proc; }
+    }
+    return NULL;
+}
+
+smp_proc_t *smp_get_proc(uint8_t proc_num) {
+    if (!g_smp_procs) {
+        panic_enter();
+        panic("requested processor context before smp has been initialized");
+    }
+    if (proc_num < g_smp_num_procs) {
+        return &g_smp_procs[proc_num];
+    } else {
+        return NULL;
+    }
 }
 
 void smp_send_tlb_shootdown(uint32_t addr) {
@@ -158,7 +205,11 @@ void smp_ap_trampoline_c(void) {
 
     vmm_load_dir(vmm_kvas_dir());
 
-    kprintf("smp: Hello, World! from AP with LAPIC ID %u\n", lapic_get_id());
+    kprintf(
+        "smp: Hello, World! from AP kernel num %u UID %u with LAPIC ID %u\n",
+        smp_get_running_proc()->proc_num,
+        smp_get_running_proc()->acpi->proc_uid,
+        smp_get_running_proc()->acpi->lapic_id);
     idt_load(idt_get_desc());
     lapic_init(false);
 

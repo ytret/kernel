@@ -2,11 +2,24 @@
 
 #include <stdint.h>
 
+#include "acpi/acpi.h"
+#include "taskmgr.h"
+
 #define SMP_VEC_HALT          0xF1 //!< Halt on panic.
 #define SMP_VEC_TLB_SHOOTDOWN 0xF2 //!< TLB shootdown.
 
+typedef struct {
+    uint8_t proc_num;
+    const acpi_proc_t *acpi;
+    // taskmgr_t *taskmgr;
+} smp_proc_t;
+
 void smp_init(void);
 bool smp_is_active(void);
+
+uint8_t smp_get_num_procs(void);
+smp_proc_t *smp_get_running_proc(void);
+smp_proc_t *smp_get_proc(uint8_t proc_num);
 
 void smp_send_tlb_shootdown(uint32_t addr);
 void smp_tlb_shootdown_handler(void);
