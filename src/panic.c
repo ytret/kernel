@@ -39,7 +39,7 @@ void panic_silent(void) {
 static void prv_panic_send_ipi(void) {
     if (!smp_is_active()) { return; }
     const lapic_icr_t ipi_halt = {
-        .vector = SMP_HALT_INT_NUM,
+        .vector = SMP_VEC_HALT,
         .delmod = LAPIC_ICR_DELMOD_FIXED,
         .destmod = APIC_DESTMOD_PHYSICAL, // ignored because destsh is used
         .level = LAPIC_ICR_ASSERT, // must be ASSERT because it's not INIT

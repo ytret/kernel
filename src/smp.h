@@ -1,6 +1,6 @@
 #pragma once
 
-#define SMP_HALT_INT_NUM 0xF1
+#define SMP_VEC_HALT 0xF1
 
 void smp_init(void);
 bool smp_is_active(void);
