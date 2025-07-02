@@ -22,7 +22,8 @@ add_executable(kernel
     src/main.c
 
     src/acpi/acpi.c
-    src/acpi/apic.c
+    src/acpi/ioapic.c
+    src/acpi/lapic.c
     src/blkdev/ahci.c
     src/blkdev/blkdev.c
     src/cpu.c

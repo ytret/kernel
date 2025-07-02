@@ -1,7 +1,8 @@
 #include <stdint.h>
 
 #include "acpi/acpi.h"
-#include "acpi/apic.h"
+#include "acpi/ioapic.h"
+#include "acpi/lapic.h"
 #include "blkdev/blkdev.h"
 #include "devmgr.h"
 #include "gdt.h"
@@ -43,16 +44,20 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     // term_clear();
 
     acpi_init();
-    apic_init();
+    lapic_init();
+    ioapic_init();
+
     pit_init(PIT_PERIOD_MS);
-    apic_map_irq(PIT_IRQ, 32 + PIT_IRQ);
+    ioapic_map_irq(PIT_IRQ, 32 + PIT_IRQ, lapic_get_id());
 
     kbd_init();
-    apic_map_irq(KBD_IRQ, 32 + KBD_IRQ);
+    ioapic_map_irq(KBD_IRQ, 32 + KBD_IRQ, lapic_get_id());
 
     vmm_init();
     pmm_init();
-    apic_map_pages();
+
+    lapic_map_pages();
+    ioapic_map_pages();
 
     __asm__ volatile("sti");
     kprintf("Interrupts enabled\n");
@@ -60,14 +65,6 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     smp_init();
 
     devmgr_init();
-
-    /*
-    uint64_t root_start_sector;
-    uint64_t root_num_sectors;
-    bool b_root_found =
-        gpt_find_root_part(&root_start_sector, &root_num_sectors);
-    if (!b_root_found) { kprintf("Could not find root partition\n"); }
-    */
 
     taskmgr_init(init_entry);
 

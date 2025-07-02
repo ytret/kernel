@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 #include "acpi/acpi.h"
-#include "acpi/apic.h"
+#include "acpi/lapic.h"
 #include "gdt.h"
 #include "kprintf.h"
 #include "memfun.h"

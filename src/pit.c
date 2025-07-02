@@ -1,4 +1,4 @@
-#include "acpi/apic.h"
+#include "acpi/lapic.h"
 #include "kprintf.h"
 #include "panic.h"
 #include "pit.h"
@@ -57,7 +57,7 @@ void pit_irq_handler(void) {
         panic("unexpected behavior");
     }
 
-    apic_send_eoi();
+    lapic_send_eoi();
 
     g_counter_ms += PIT_PERIOD_MS;
     taskmgr_schedule();

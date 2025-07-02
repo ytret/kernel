@@ -1,7 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "acpi/apic.h"
+#include "acpi/lapic.h"
 #include "kbd.h"
 #include "kprintf.h"
 #include "panic.h"
@@ -40,7 +40,7 @@ void kbd_irq_handler(void) {
     uint8_t sc = read_code();
     append_code(sc);
     try_parse_codes();
-    apic_send_eoi();
+    lapic_send_eoi();
 }
 
 queue_t *kbd_event_queue(void) {
