@@ -7,7 +7,6 @@
 #include "gdt.h"
 #include "kprintf.h"
 #include "memfun.h"
-#include "panic.h"
 #include "pit.h"
 #include "smp.h"
 #include "vmm.h"
@@ -30,14 +29,13 @@ typedef struct [[gnu::packed]] {
 static _Atomic bool g_smp_bsp_done;
 static _Atomic bool g_smp_curr_ap_done;
 
-static uint8_t prv_smp_get_lapic_id(void);
 static void prv_smp_init_trampoline(void);
 
 // Defined in smp.s.
 extern void smp_ap_trampoline(void);
 
 void smp_init(void) {
-    const uint8_t bsp_lapic = prv_smp_get_lapic_id();
+    const uint8_t bsp_lapic = lapic_get_id();
     kprintf("smp: BSP's Local APIC ID = 0x%02X\n", bsp_lapic);
 
     prv_smp_init_trampoline();
@@ -107,8 +105,7 @@ void smp_ap_trampoline_c(void) {
 
     vmm_load_dir(vmm_kvas_dir());
 
-    kprintf("smp: Hello, World! from AP with LAPIC ID %u\n",
-            prv_smp_get_lapic_id());
+    kprintf("smp: Hello, World! from AP with LAPIC ID %u\n", lapic_get_id());
 
     g_smp_curr_ap_done = true;
 
@@ -119,18 +116,6 @@ void smp_ap_trampoline_c(void) {
     for (;;) {
         __asm__ volatile("hlt");
     }
-}
-
-static uint8_t prv_smp_get_lapic_id(void) {
-    unsigned int unused;
-    unsigned int ebx;
-    const int ok = __get_cpuid(1, &unused, &ebx, &unused, &unused);
-    if (!ok) {
-        panic_enter();
-        kprintf("smp: failed to get CPUID leaf 1\n");
-        panic("unexpected behavior");
-    }
-    return ebx >> 24;
 }
 
 static void prv_smp_init_trampoline(void) {
