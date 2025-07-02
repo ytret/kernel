@@ -86,6 +86,10 @@ void idt_init(void) {
     idt_load(p_desc);
 }
 
+uint8_t *idt_get_desc(void) {
+    return p_desc;
+}
+
 void idt_dummy_exception_handler(uint32_t exc_num, uint32_t err_code,
                                  isr_stack_frame_t *p_stack_frame) {
     task_t *p_running_task = taskmgr_running_task();
