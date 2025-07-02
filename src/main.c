@@ -44,7 +44,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     // term_clear();
 
     acpi_init();
-    lapic_init();
+    lapic_init(true);
     ioapic_init();
 
     pit_init(PIT_PERIOD_MS);

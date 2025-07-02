@@ -14,7 +14,7 @@
 
 static lapic_regs_t *g_lapic_regs;
 
-void lapic_init(void) {
+void lapic_init(bool is_bsp) {
     // Set the global APIC enable bit in the IA32_APIC_BASE MSR.
     cpu_msr_apic_base_t msr_apic_base;
     msr_apic_base.val = cpu_read_msr(CPU_MSR_APIC_BASE);
@@ -25,8 +25,11 @@ void lapic_init(void) {
     }
     msr_apic_base.bit.apic_gl_en = 1;
     cpu_write_msr(CPU_MSR_APIC_BASE, msr_apic_base.val);
-    g_lapic_regs =
-        (lapic_regs_t *)((uint32_t)msr_apic_base.bit.apic_base << 12);
+
+    if (is_bsp) {
+        g_lapic_regs =
+            (lapic_regs_t *)((uint32_t)msr_apic_base.bit.apic_base << 12);
+    }
 
     // Mask LINT0 and LINT1.
     g_lapic_regs->lvt_lint0 = 1 << 16;

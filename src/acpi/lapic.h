@@ -7,7 +7,7 @@
 
 #include "acpi/lapic_regs.h"
 
-void lapic_init(void);
+void lapic_init(bool is_bsp);
 
 /**
  * Identity maps the LAPIC memory-mapped register pages.
