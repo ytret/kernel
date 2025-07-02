@@ -59,6 +59,8 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     lapic_map_pages();
     ioapic_map_pages();
 
+    taskmgr_global_init();
+
     __asm__ volatile("sti");
     kprintf("Interrupts enabled\n");
 

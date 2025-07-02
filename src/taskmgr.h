@@ -1,6 +1,18 @@
 /**
  * @file taskmgr.h
  * Task manager API.
+ *
+ * Each processor has its own task management. The only thing shared between the
+ * task managers is the next new task ID (see #g_new_task_id).
+ *
+ * The functions are separated into two categories: those operating on the
+ * "local" task manager (i.e., the task manager of the running processor), and
+ * those operating on the given task manager context (possibly, a task manager
+ * of another processor).
+ *
+ * If SMP is enabled, the data structures of a given task manager may be
+ * simultaneously accessed and modified by different processors. To preclude
+ * this, a scheduler lock and task list spinlocks are used.
  */
 
 #pragma once
@@ -28,20 +40,32 @@ typedef struct [[gnu::packed]] {
  * Task context.
  */
 typedef struct {
+    /// Kernel-level unique task ID.
     uint32_t id;
+
+    /// Task manager responsible for this task.
     taskmgr_t *taskmgr;
+
+    /// Kernel stack used while executing kernel-mode code of the task.
     stack_t kernel_stack;
+
+    /// Thread control block used when switching to/from the task.
     tcb_t tcb;
 
     /**
      * Blocked flag.
+     * If `true`, the task cannot be switched to, until it is unblocked by a
+     * mutex release or semaphore increase operation.
+     * @note
      * If a task is blocked (e.g., by a mutex), it must not appear on the
      * runnable tasks list and cannot be terminated.
      */
     bool is_blocked;
+
     /**
      * Sleeping flag.
-     * Once #task_t.sleep_until_counter_ms is reached, the task is unblocked.
+     * If `true`, the task cannot be switched to, until the timer counter value
+     * of #task_t.sleep_until_counter_ms is reached, then the task is unblocked.
      */
     bool is_sleeping;
 
@@ -54,27 +78,29 @@ typedef struct {
 
     /**
      * Number of owned mutexes.
-     * If a task owns any mutex, it cannot be terminated.
      * This value is managed by #mutex_acquire(), #mutex_release().
+     * @note
+     * If the task owns any mutexes, it cannot be terminated.
      */
     size_t num_owned_mutexes;
+
     /**
-     * Target counter value to unblock a sleeping task at.
+     * Target counter value to unblock the sleeping task at.
      * Relevant only if #task_t.is_sleeping is `true`.
      */
     uint64_t sleep_until_counter_ms;
 
     /**
      * Node in the task lists.
-     * Each task (except the currently running one)_ is always in only one of
-     * the following lists:
+     * Each task (except the currently running one) is always in only one of the
+     * following lists:
      * - @ref g_runnable_tasks "Runnable tasks"
      * - @ref g_sleeping_tasks "Sleeping tasks"
      * - @ref task_mutex_t.waiting_tasks "Mutex waiting tasks"
      */
     list_node_t list_node;
 
-    /// Node in @ref g_all_tasks "the list of all tasks".
+    /// Node in @ref g_taskmgr_all_tasks "the list of all tasks".
     list_node_t all_tasks_list_node;
 } task_t;
 
@@ -106,16 +132,8 @@ struct taskmgr {
      */
     list_t sleeping_tasks;
 
-    /**
-     * List of all tasks (node: #task_t.all_tasks_list_node).
-     * - Tasks are added to this list upon creation in #new_task().
-     * - Tasks are removed from this list only by the #deleter_task().
-     */
-    list_t all_tasks;
-
     spinlock_t runnable_tasks_lock;
     spinlock_t sleeping_tasks_lock;
-    spinlock_t all_tasks_lock;
 
     /**
      * Idle task.
@@ -144,6 +162,11 @@ struct taskmgr {
      */
     task_t *task_to_delete;
 };
+
+/**
+ * Initializes global data structures used by per-processor task managers.
+ */
+void taskmgr_global_init(void);
 
 /**
  * Starts the scheduler and runs @ref gp_init_task "the initial task".
@@ -241,7 +264,7 @@ task_t *taskmgr_running_task(taskmgr_t *taskmgr);
  * - Pointer to the task with ID @a task_id, if found.
  * - `NULL` otherwise.
  */
-task_t *taskmgr_get_task_by_id(taskmgr_t *taskmgr, uint32_t task_id);
+task_t *taskmgr_get_task_by_id(uint32_t task_id);
 
 /**
  * Blocks the running task and appends it to the @a task_list list.

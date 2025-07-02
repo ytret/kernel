@@ -50,6 +50,17 @@ typedef struct [[gnu::packed]] {
  */
 static _Atomic uint32_t g_new_task_id;
 
+/**
+ * List of all tasks (node: #task_t.all_tasks_list_node).
+ * This list contains the nodes of every task of every processor.
+ * - Tasks are added to this list upon creation in #new_task().
+ * - Tasks are removed from this list only by the #deleter_task().
+ */
+static list_t g_taskmgr_all_tasks;
+
+/// Spinlock precluding simultaneous access to #g_taskmgr_all_tasks.
+static spinlock_t g_taskmgr_all_tasks_lock;
+
 static void wake_up_sleeping_tasks(void);
 
 static void prv_taskmgr_add_runnable_task(taskmgr_t *taskmgr, task_t *task);
@@ -70,6 +81,10 @@ extern void taskmgr_go_usermode_impl(uint32_t user_code_seg,
                                      uint32_t entry_point,
                                      gen_regs_t *p_user_regs);
 
+void taskmgr_global_init(void) {
+    spinlock_init(&g_taskmgr_all_tasks_lock);
+}
+
 [[gnu::noreturn]]
 void taskmgr_local_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
     // Load the TSS.
@@ -85,6 +100,11 @@ void taskmgr_local_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
     proc->taskmgr = heap_alloc(sizeof(taskmgr_t));
     kmemset(proc->taskmgr, 0, sizeof(taskmgr_t));
     taskmgr_t *const taskmgr = proc->taskmgr;
+
+    list_init(&taskmgr->runnable_tasks, NULL);
+    list_init(&taskmgr->sleeping_tasks, NULL);
+    spinlock_init(&taskmgr->runnable_tasks_lock);
+    spinlock_init(&taskmgr->sleeping_tasks_lock);
 
     // Create an idle task.
     taskmgr->idle_task = new_task(taskmgr, (uint32_t)idle_task);
@@ -106,7 +126,6 @@ void taskmgr_local_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
     // Initialize the list access spinlocks.
     spinlock_init(&taskmgr->runnable_tasks_lock);
     spinlock_init(&taskmgr->sleeping_tasks_lock);
-    spinlock_init(&taskmgr->all_tasks_lock);
 
     // If interrupts were enabled and PIT IRQ happened after the following line
     // and before the entry, some bad things would happen to the stack.
@@ -168,7 +187,6 @@ void taskmgr_local_reschedule(void) {
 
     if (b_restore_int) { __asm__ volatile("sti"); }
 }
-
 
 void taskmgr_local_lock_scheduler(void) {
     taskmgr_t *const taskmgr = smp_get_running_taskmgr();
@@ -291,10 +309,12 @@ task_t *taskmgr_running_task(taskmgr_t *taskmgr) {
     return taskmgr->running_task;
 }
 
-task_t *taskmgr_get_task_by_id(taskmgr_t *taskmgr, uint32_t task_id) {
+task_t *taskmgr_get_task_by_id(uint32_t task_id) {
     task_t *p_found_task;
-    LIST_FIND(&taskmgr->all_tasks, p_found_task, task_t, all_tasks_list_node,
+    spinlock_acquire(&g_taskmgr_all_tasks_lock);
+    LIST_FIND(&g_taskmgr_all_tasks, p_found_task, task_t, all_tasks_list_node,
               p_task->id == task_id, p_task);
+    spinlock_release(&g_taskmgr_all_tasks_lock);
     return p_found_task;
 }
 
@@ -393,7 +413,9 @@ static task_t *new_task(taskmgr_t *taskmgr, uint32_t entry_point) {
     stack_push(&p_task->kernel_stack, 6);           // esi
     stack_push(&p_task->kernel_stack, 7);           // edi
 
-    list_append(&taskmgr->all_tasks, &p_task->all_tasks_list_node);
+    spinlock_acquire(&g_taskmgr_all_tasks_lock);
+    list_append(&g_taskmgr_all_tasks, &p_task->all_tasks_list_node);
+    spinlock_release(&g_taskmgr_all_tasks_lock);
 
     return p_task;
 }
@@ -461,8 +483,12 @@ static void deleter_task(void) {
                 (uint32_t *)taskmgr->task_to_delete->tcb.page_dir_phys);
         }
 
-        ASSERT(list_remove(&taskmgr->all_tasks,
-                           &taskmgr->task_to_delete->all_tasks_list_node));
+        spinlock_acquire(&g_taskmgr_all_tasks_lock);
+        bool removed_task =
+            list_remove(&g_taskmgr_all_tasks,
+                        &taskmgr->task_to_delete->all_tasks_list_node);
+        spinlock_release(&g_taskmgr_all_tasks_lock);
+        ASSERT(removed_task);
 
         heap_free(taskmgr->task_to_delete);
         taskmgr->task_to_delete = NULL;
