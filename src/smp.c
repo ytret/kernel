@@ -4,6 +4,7 @@
 
 #include "acpi/acpi.h"
 #include "acpi/apic.h"
+#include "gdt.h"
 #include "kprintf.h"
 #include "memfun.h"
 #include "panic.h"
@@ -11,7 +12,23 @@
 #include "smp.h"
 #include "vmm.h"
 
+// physical/virtual (identity-mapped)
 #define SMP_AP_TRAMPOLINE_ADDR 0x8000
+#define SMP_AP_TRAMPLINE_ARGS  0x8800
+
+// virtual
+#define SMP_AP_INIT_STACK_TOP 0xA000 // page 0x9000..0x9FFF
+
+typedef struct [[gnu::packed]] {
+    // WARNING: the order, alignment and size of these fields is relied upon in
+    // smp_ap_trampoline() in smp.s.
+    uint8_t gdt_desc[6];
+    uint32_t stack_top_virt;
+    uint32_t pgdir_phys;
+} smp_ap_trampoline_args_t;
+
+static _Atomic bool g_smp_bsp_done;
+static _Atomic bool g_smp_curr_ap_done;
 
 static uint8_t prv_smp_get_lapic_id(void);
 static void prv_smp_init_trampoline(void);
@@ -29,6 +46,8 @@ void smp_init(void) {
     for (uint8_t proc_num = 0; proc_num < num_procs; proc_num++) {
         const acpi_proc_t *const proc = acpi_get_proc(proc_num);
         if (proc->lapic_id == bsp_lapic) { continue; }
+
+        g_smp_curr_ap_done = false;
 
         lapic_clear_ers();
 
@@ -71,6 +90,30 @@ void smp_init(void) {
             pit_delay_ms(1);
             lapic_wait_ipi_delivered();
         }
+
+        // Wait for the current AP to initialize.
+        while (!g_smp_curr_ap_done) {
+            __asm__ volatile("pause" ::: "memory");
+        }
+        kprintf("smp: AP UID %u (LAPIC ID %u) is up and running\n",
+                proc->proc_uid, proc->lapic_id);
+    }
+    g_smp_bsp_done = true;
+}
+
+[[gnu::noreturn]]
+void smp_ap_trampoline_c(void) {
+    // NOTE: this function is called from 'smp_ap_trampoline' in smp.s.
+
+    vmm_load_dir(vmm_kvas_dir());
+
+    kprintf("smp: Hello, World! from AP with LAPIC ID %u\n",
+            prv_smp_get_lapic_id());
+
+    g_smp_curr_ap_done = true;
+
+    while (!g_smp_bsp_done) {
+        __asm__ volatile("pause" ::: "memory");
     }
 
     for (;;) {
@@ -91,8 +134,18 @@ static uint8_t prv_smp_get_lapic_id(void) {
 }
 
 static void prv_smp_init_trampoline(void) {
-    // vmm_map_kernel_page(SMP_AP_TRAMPOLINE_ADDR, SMP_AP_TRAMPOLINE_ADDR);
+    // NOTE: it is assumed that everything below the kernel is identity mapped.
+
     static_assert(SMP_AP_TRAMPOLINE_ADDR % 4096 == 0);
+    static_assert(SMP_AP_INIT_STACK_TOP % 4096 == 0);
 
     kmemcpy((void *)SMP_AP_TRAMPOLINE_ADDR, smp_ap_trampoline, 4096);
+    kmemclr_sse2((void *)(SMP_AP_INIT_STACK_TOP - 4096), 4096);
+
+    smp_ap_trampoline_args_t args = {
+        .pgdir_phys = (uint32_t)vmm_kvas_dir(),
+        .stack_top_virt = SMP_AP_INIT_STACK_TOP,
+    };
+    kmemcpy(&args.gdt_desc, gdt_get_desc(), 6);
+    kmemcpy((void *)SMP_AP_TRAMPLINE_ARGS, &args, sizeof(args));
 }
