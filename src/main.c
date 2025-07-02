@@ -68,7 +68,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     devmgr_init();
 
-    taskmgr_init(init_entry);
+    taskmgr_local_init(init_entry);
     kprintf("End of main\n");
 }
 
@@ -89,7 +89,7 @@ static void init_entry(void) {
     // taskmgr_switch_tasks() requires that task entries enable interrupts.
     __asm__ volatile("sti");
 
-    taskmgr_new_kernel_task((uint32_t)blkdev_task_entry);
+    taskmgr_local_new_kernel_task((uint32_t)blkdev_task_entry);
 
     kshell();
 

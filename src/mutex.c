@@ -33,7 +33,7 @@ void mutex_acquire(task_mutex_t *mutex) {
         // The mutex is blocked by another task. In no-SMP and after-SMP, force
         // a rescheduling.
         taskmgr_block_running_task(&mutex->waiting_tasks);
-        taskmgr_reschedule();
+        taskmgr_local_reschedule();
     } else {
         // There is no caller task, meaning this is the pre-SMP state. The mutex
         panic_silent();

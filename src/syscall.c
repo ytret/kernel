@@ -16,7 +16,7 @@ void syscall_dispatch(isr_regs_t *p_regs) {
 }
 
 static void syscall_sleep_ms(uint32_t duration_ms) {
-    taskmgr_sleep_ms(duration_ms);
+    taskmgr_local_sleep_ms(duration_ms);
 }
 
 static void syscall_exit(uint32_t exit_code) {

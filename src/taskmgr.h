@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include "list.h"
+#include "spinlock.h"
 #include "stack.h"
 
 typedef struct taskmgr taskmgr_t;
@@ -112,6 +113,10 @@ struct taskmgr {
      */
     list_t all_tasks;
 
+    spinlock_t runnable_tasks_lock;
+    spinlock_t sleeping_tasks_lock;
+    spinlock_t all_tasks_lock;
+
     /**
      * Idle task.
      * The idle task is always present in the runnable tasks list and provides
@@ -151,27 +156,26 @@ struct taskmgr {
  * happen.
  */
 [[gnu::noreturn]]
-void taskmgr_init([[gnu::noreturn]] void (*p_init_entry)(void));
+void taskmgr_local_init([[gnu::noreturn]] void (*p_init_entry)(void));
 
 /**
  * Performs a scheduling step.
  * It is intented, but this is not necessary, to be called inside an ISR context
  * -- either in the timer IRQ ISR, or in the syscall ISR.
  */
-void taskmgr_schedule(void);
+void taskmgr_local_schedule(void);
 
 /**
  * Forces a scheduling step inside or outside of an ISR context.
  * Can be called in ordinary kernel tasks when a resource is blocked and
  * rescheduling is required.
  */
-void taskmgr_reschedule(void);
+void taskmgr_local_reschedule(void);
 
 void taskmgr_lock_scheduler(taskmgr_t *taskmgr);
 void taskmgr_unlock_scheduler(taskmgr_t *taskmgr);
 
 task_t *taskmgr_running_task(taskmgr_t *taskmgr);
-list_t *taskmgr_all_tasks_list(taskmgr_t *taskmgr);
 
 void taskmgr_local_lock_scheduler(void);
 void taskmgr_local_unlock_scheduler(void);
@@ -197,14 +201,14 @@ task_t *taskmgr_get_task_by_id(taskmgr_t *taskmgr, uint32_t task_id);
  * @param entry Task entry point.
  * @returns Task context pointer. The task is in the runnable tasks list.
  */
-task_t *taskmgr_new_user_task(uint32_t *p_dir, uint32_t entry);
+task_t *taskmgr_local_new_user_task(uint32_t *p_dir, uint32_t entry);
 
 /**
  * Creates a new runnable kernel-mode task.
  * @param entry Task entry point.
  * @returns Task context pointer. The task is in the runnable tasks list.
  */
-task_t *taskmgr_new_kernel_task(uint32_t entry);
+task_t *taskmgr_local_new_kernel_task(uint32_t entry);
 
 /**
  * Does a far return (_iret_) with usermode segments to address @a entry.
@@ -219,7 +223,7 @@ void taskmgr_go_usermode(uint32_t entry);
  * duration_ms milliseconds have passed.
  * @param duration_ms Duration of sleep (ms).
  */
-void taskmgr_sleep_ms(uint32_t duration_ms);
+void taskmgr_local_sleep_ms(uint32_t duration_ms);
 
 /**
  * Marks the task @a p_task as terminating.
@@ -227,7 +231,7 @@ void taskmgr_sleep_ms(uint32_t duration_ms);
  * @param p_task Task to mark as terminating (passing the running task pointer
  *               is allowed).
  */
-void taskmgr_terminate_task(task_t *p_task);
+void taskmgr_local_terminate_task(task_t *p_task);
 
 /**
  * Blocks the running task and appends it to the @a task_list list.

@@ -60,5 +60,5 @@ void pit_irq_handler(void) {
     lapic_send_eoi();
 
     g_counter_ms += PIT_PERIOD_MS;
-    taskmgr_schedule();
+    taskmgr_local_schedule();
 }

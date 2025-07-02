@@ -226,7 +226,7 @@ static void cmd_exec(char **pp_args, size_t num_args) {
     bool ok = elf_load(p_dir, p_mod_user->mod_start, &g_exec_entry);
     if (!ok) { kprintf("kshell: failed to load the executable\n"); }
 
-    task_t *p_task = taskmgr_new_user_task(p_dir, ((uint32_t)cmd_exec_entry));
+    task_t *p_task = taskmgr_local_new_user_task(p_dir, ((uint32_t)cmd_exec_entry));
     kprintf("kshell: task id %u\n", p_task->id);
 }
 

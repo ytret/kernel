@@ -32,7 +32,7 @@ void semaphore_decrease(semaphore_t *p_sem) {
             }
         } else {
             taskmgr_block_running_task(&p_sem->waiting_tasks);
-            taskmgr_reschedule();
+            taskmgr_local_reschedule();
         }
     }
 }
