@@ -21,6 +21,10 @@ typedef struct {
 void smp_init(void);
 bool smp_is_active(void);
 
+bool smp_is_bsp_ready(void);
+void smp_set_bsp_ready(void);
+void smp_set_ap_ready(void);
+
 uint8_t smp_get_num_procs(void);
 smp_proc_t *smp_get_proc(uint8_t proc_num);
 smp_proc_t *smp_get_running_proc(void);

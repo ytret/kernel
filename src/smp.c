@@ -142,12 +142,22 @@ void smp_init(void) {
     }
 
     gdt_load(&smp_get_running_proc()->gdtr);
-
-    g_smp_bsp_done = true;
 }
 
 bool smp_is_active(void) {
     return g_smp_is_active;
+}
+
+bool smp_is_bsp_ready(void) {
+    return g_smp_bsp_done;
+}
+
+void smp_set_bsp_ready(void) {
+    g_smp_bsp_done = true;
+}
+
+void smp_set_ap_ready(void) {
+    g_smp_curr_ap_done = true;
 }
 
 uint8_t smp_get_num_procs(void) {
@@ -231,13 +241,7 @@ void smp_ap_trampoline_c(void) {
     idt_load(idt_get_desc());
     lapic_init(false);
 
-    g_smp_curr_ap_done = true;
-    __asm__ volatile("sti");
-    while (!g_smp_bsp_done) {
-        __asm__ volatile("pause" ::: "memory");
-    }
-
-    taskmgr_local_init(init_bsp_task);
+    taskmgr_local_init(init_ap_task);
 
     panic_enter();
     panic("End of smp_ap_trampoline_c\n");
