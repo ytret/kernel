@@ -90,20 +90,11 @@ uint32_t *vmm_clone_kvas_dir(void) {
     uint32_t *const p_dir = heap_alloc_aligned(4096, 4096);
     kmemset(p_dir, 0, 4096);
 
-    for (uint32_t dir_idx = 0; dir_idx < VMM_ADDR_DIR_IDX(VMM_USER_START);
-         dir_idx++) {
+    for (uint32_t dir_idx = 0; dir_idx < 1024; dir_idx++) {
         if ((gp_kvas_dir[dir_idx] & VMM_TABLE_PRESENT) == 0) { continue; }
+        if ((gp_kvas_dir[dir_idx] & VMM_TABLE_USER) != 0) { continue; }
 
         p_dir[dir_idx] = gp_kvas_dir[dir_idx];
-    }
-
-    // Clone the video framebuffer.  If the framebuffer is text-only, both of
-    // these variables are zero, and no mapping is performed.
-    uint32_t fb_start_page = framebuf_start() & ~0xFFF;
-    uint32_t fb_end_page = (framebuf_end() + 0xFFF) & ~0xFFF;
-    for (uint32_t fb_page = fb_start_page; fb_page < fb_end_page;
-         fb_page += 4096) {
-        map_page(p_dir, fb_page, fb_page, (VMM_PAGE_RW | VMM_PAGE_PRESENT));
     }
 
     return p_dir;
