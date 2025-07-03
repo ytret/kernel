@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "acpi/acpi.h"
+#include "gdt.h"
 #include "taskmgr.h"
 
 #define SMP_VEC_HALT          0xF1 //!< Halt on panic.
@@ -11,6 +12,9 @@
 typedef struct {
     uint8_t proc_num;
     const acpi_proc_t *acpi;
+    gdt_seg_desc_t *gdt;
+    tss_t *tss;
+    gdtr_t gdtr;
     taskmgr_t *taskmgr;
 } smp_proc_t;
 

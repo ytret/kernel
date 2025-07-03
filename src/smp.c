@@ -7,6 +7,7 @@
 #include "gdt.h"
 #include "heap.h"
 #include "idt.h"
+#include "init.h"
 #include "kprintf.h"
 #include "memfun.h"
 #include "panic.h"
@@ -45,7 +46,7 @@ static uint8_t g_smp_num_procs;
 static spinlock_t g_smp_tlb_shootdown_lock;
 static smp_tlb_shootdown_req_t g_smp_tlb_shootdown_req;
 
-static void prv_smp_init_trampoline(void);
+static void prv_smp_init_trampoline(const gdtr_t *gdtr);
 
 // Defined in smp.s.
 extern void smp_ap_trampoline(void);
@@ -53,12 +54,9 @@ extern void smp_ap_trampoline(void);
 void smp_init(void) {
     spinlock_init(&g_smp_tlb_shootdown_lock);
 
+    const uint8_t num_procs = acpi_num_procs();
     const uint8_t bsp_lapic = lapic_get_id();
     kprintf("smp: BSP's Local APIC ID = 0x%02X\n", bsp_lapic);
-
-    prv_smp_init_trampoline();
-
-    const uint8_t num_procs = acpi_num_procs();
 
     // Allocate the processor context array for the total number of processors.
     // Some of them may be unusable, but for simplicity we allocate for them,
@@ -75,15 +73,23 @@ void smp_init(void) {
         const acpi_proc_t *const acpi_proc = acpi_get_proc(proc_num);
 
         // Create a kernel SMP context for each usable processor.
+        smp_proc_t *const smp_proc = &g_smp_procs[g_smp_num_procs];
         if (acpi_proc->enabled) {
-            g_smp_procs[g_smp_num_procs].proc_num = g_smp_num_procs;
-            g_smp_procs[g_smp_num_procs].acpi = acpi_proc;
+
+            gdt_init_for_proc(&smp_proc->gdt, &smp_proc->tss, &smp_proc->gdtr);
+
+            smp_proc->proc_num = g_smp_num_procs;
+            smp_proc->acpi = acpi_proc;
+
             g_smp_num_procs++;
+
+            // FIXME: skip disabled processors.
         }
 
         if (acpi_proc->lapic_id == bsp_lapic) { continue; }
 
         g_smp_curr_ap_done = false;
+        prv_smp_init_trampoline(&smp_proc->gdtr);
 
         lapic_clear_ers();
 
@@ -134,6 +140,9 @@ void smp_init(void) {
         kprintf("smp: AP UID %u (LAPIC ID %u) is up and running\n",
                 acpi_proc->proc_uid, acpi_proc->lapic_id);
     }
+
+    gdt_load(&smp_get_running_proc()->gdtr);
+
     g_smp_bsp_done = true;
 }
 
@@ -223,19 +232,18 @@ void smp_ap_trampoline_c(void) {
     lapic_init(false);
 
     g_smp_curr_ap_done = true;
-
     __asm__ volatile("sti");
-
     while (!g_smp_bsp_done) {
         __asm__ volatile("pause" ::: "memory");
     }
 
-    for (;;) {
-        __asm__ volatile("hlt");
-    }
+    taskmgr_local_init(init_bsp_task);
+
+    panic_enter();
+    panic("End of smp_ap_trampoline_c\n");
 }
 
-static void prv_smp_init_trampoline(void) {
+static void prv_smp_init_trampoline(const gdtr_t *gdtr) {
     // NOTE: it is assumed that everything below the kernel is identity mapped.
 
     static_assert(SMP_AP_TRAMPOLINE_ADDR % 4096 == 0);
@@ -248,6 +256,6 @@ static void prv_smp_init_trampoline(void) {
         .pgdir_phys = (uint32_t)vmm_kvas_dir(),
         .stack_top_virt = SMP_AP_INIT_STACK_TOP,
     };
-    kmemcpy(&args.gdt_desc, gdt_get_desc(), 6);
+    kmemcpy(&args.gdt_desc, gdtr, GDT_NUM_SMP_SEGS);
     kmemcpy((void *)SMP_AP_TRAMPLINE_ARGS, &args, sizeof(args));
 }

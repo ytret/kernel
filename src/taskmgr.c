@@ -100,9 +100,14 @@ void taskmgr_unlock_all_tasks_list(void) {
 [[gnu::noreturn]]
 void taskmgr_local_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
     // Load the TSS.
+    const gdt_seg_sel_t tss_sel = {
+        .index = GDT_SMP_TSS_IDX,
+        .ti = 0,
+        .rpl = 0,
+    };
     __asm__ volatile("ltr %%ax"
-                     :           /* no outputs */
-                     : "a"(0x28) /* TSS segment */
+                     :              /* no outputs */
+                     : "a"(tss_sel) /* TSS segment */
                      : /* no clobber */);
 
     // Critical section. The initial entry must enable interrupts.
@@ -145,7 +150,7 @@ void taskmgr_local_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
     // and before the entry, some bad things would happen to the stack.
     taskmgr->scheduler_lock = 0;
 
-    taskmgr_switch_tasks(NULL, &taskmgr->running_task->tcb, gdt_get_tss());
+    taskmgr_switch_tasks(NULL, &taskmgr->running_task->tcb, proc->tss);
 
     panic_enter();
     kprintf("taskmgr: initial task entry has returned\n");
@@ -186,8 +191,9 @@ void taskmgr_local_schedule(void) {
         }
     }
 
+    smp_proc_t *const proc = smp_get_running_proc();
     taskmgr->running_task = next_task;
-    taskmgr_switch_tasks(&caller_task->tcb, &next_task->tcb, gdt_get_tss());
+    taskmgr_switch_tasks(&caller_task->tcb, &next_task->tcb, proc->tss);
 }
 
 void taskmgr_local_reschedule(void) {

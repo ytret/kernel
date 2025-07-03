@@ -31,7 +31,10 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     kprintf("Hello, world!\n");
     check_bootloader(magic_num, mbi_addr);
 
-    gdt_init();
+    gdtr_t gdtr;
+    gdt_init_pre_smp(&gdtr);
+    gdt_load(&gdtr);
+
     idt_init();
 
     heap_init();
