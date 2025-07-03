@@ -21,9 +21,38 @@ typedef struct {
 void smp_init(void);
 bool smp_is_active(void);
 
+/**
+ * @{
+ * @anchor smp_sync
+ * @name Processor initialization synchronization functions
+ *
+ * Due to the blocking nature of mutexes, which are used in various sensitive
+ * kernel modules (e.g., #g_kvas_lock, #g_heap_mutex), there must not be a state
+ * where only _some_ of the processors have a running task manager. Otherwise,
+ * if #mutex_acquire() sees that there is no task manager on the running
+ * processor, but the mutex is locked by some task, it panics.
+ *
+ * These functions allow the processors to synchronize, i.e. do nothing, until
+ * all processors have a running task manager.
+ */
+/// Returns `true` if the BSP initial task has been reached.
 bool smp_is_bsp_ready(void);
+
+/**
+ * Indicates to the APs that the BSP has reached the initial task.
+ * See #smp_is_bsp_ready().
+ * @warning
+ * Use this only in the BSP initital task, see #init_bsp_task().
+ */
 void smp_set_bsp_ready(void);
+
+/**
+ * Indicates to the BSP that the running AP has reached the initial task.
+ * @warning
+ * Use this only in the AP initial task, see #init_ap_task().
+ */
 void smp_set_ap_ready(void);
+/// @}
 
 uint8_t smp_get_num_procs(void);
 smp_proc_t *smp_get_proc(uint8_t proc_num);

@@ -36,6 +36,9 @@ void mutex_acquire(task_mutex_t *mutex) {
         taskmgr_local_reschedule();
     } else {
         // There is no caller task, meaning this is the pre-SMP state. The mutex
+        // is locked by some task, which is only possible if some other
+        // processor's task has acquired it. The processors initialization has
+        // not been synchronized properly, see @ref smp_sync.
         panic_silent();
     }
 }

@@ -37,7 +37,15 @@ typedef struct {
 } smp_tlb_shootdown_req_t;
 
 static bool g_smp_is_active;
+
+/**
+ * Flag: BSP has finished initializing the APs and reached the initial task.
+ */
 static _Atomic bool g_smp_bsp_done;
+
+/**
+ * Flag: the AP currently being initialized has reached the initial task.
+ */
 static _Atomic bool g_smp_curr_ap_done;
 
 static smp_proc_t *g_smp_procs;
