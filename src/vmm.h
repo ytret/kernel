@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #define VMM_USER_START 0x40000000
+#define VMM_USER_END   0xE0000000
 
 void vmm_init(void);
 

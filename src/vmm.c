@@ -92,7 +92,13 @@ uint32_t *vmm_clone_kvas_dir(void) {
 
     for (uint32_t dir_idx = 0; dir_idx < 1024; dir_idx++) {
         if ((gp_kvas_dir[dir_idx] & VMM_TABLE_PRESENT) == 0) { continue; }
-        if ((gp_kvas_dir[dir_idx] & VMM_TABLE_USER) != 0) { continue; }
+
+        static_assert(VMM_USER_START % (4096 * 1024) == 0);
+        static_assert(VMM_USER_END % (4096 * 1024) == 0);
+        if (dir_idx >= VMM_ADDR_DIR_IDX(VMM_USER_START) &&
+            dir_idx < VMM_ADDR_DIR_IDX(VMM_USER_END)) {
+            continue;
+        }
 
         p_dir[dir_idx] = gp_kvas_dir[dir_idx];
     }
