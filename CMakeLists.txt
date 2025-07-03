@@ -34,6 +34,7 @@ add_executable(kernel
     # src/gpt.c
     src/heap.c
     src/idt.c
+    src/init.c
     src/kbd.c
     src/kprintf.c
     src/mbi.c

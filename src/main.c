@@ -3,15 +3,13 @@
 #include "acpi/acpi.h"
 #include "acpi/ioapic.h"
 #include "acpi/lapic.h"
-#include "blkdev/blkdev.h"
 #include "devmgr.h"
 #include "gdt.h"
-#include "gpt.h"
 #include "heap.h"
 #include "idt.h"
+#include "init.h"
 #include "kbd.h"
 #include "kprintf.h"
-#include "kshell/kshell.h"
 #include "mbi.h"
 #include "panic.h"
 #include "pit.h"
@@ -24,7 +22,6 @@
 #define MULTIBOOT_MAGIC_NUM 0x2BADB002
 
 static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr);
-[[gnu::noreturn]] static void init_entry(void);
 
 void main(uint32_t magic_num, uint32_t mbi_addr) {
     mbi_init(mbi_addr);
@@ -70,7 +67,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     devmgr_init();
 
-    taskmgr_local_init(init_entry);
+    taskmgr_local_init(init_bsp_task);
     kprintf("End of main\n");
 }
 
@@ -84,18 +81,4 @@ static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr) {
                 MULTIBOOT_MAGIC_NUM);
         panic("booted by an unknown bootloader");
     }
-}
-
-[[gnu::noreturn]]
-static void init_entry(void) {
-    // taskmgr_switch_tasks() requires that task entries enable interrupts.
-    __asm__ volatile("sti");
-
-    taskmgr_local_new_kernel_task((uint32_t)blkdev_task_entry);
-
-    kshell();
-
-    panic_enter();
-    kprintf("init_entry: kshell returned\n");
-    panic("unexpected behavior");
 }
