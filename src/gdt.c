@@ -1,96 +1,116 @@
 #include "gdt.h"
+#include "heap.h"
+#include "memfun.h"
 
-#define NUM_ENTRIES 32
+#define GDT_NUM_PRE_SMP_SEGS 3
 
-#define DESC_SIZE_BYTES  6
-#define ENTRY_SIZE_BYTES 8
+static gdt_seg_desc_t g_gdt_pre_smp[GDT_NUM_PRE_SMP_SEGS];
 
-#define ENTRY_PRESENT (1 << 7)
+static void prv_gdt_init_kernel_segs(gdt_seg_desc_t *gdt);
+static void prv_gdt_set_base_limit(gdt_seg_desc_t *seg_desc, uint32_t base,
+                                   uint32_t limit);
 
-// Access byte fields.
-#define ACCESS_DPL_KERNEL    (0 << 5)
-#define ACCESS_DPL_USER      (3 << 5)
-#define ACCESS_S_FLAG        (1 << 4)
-#define ACCESS_EXECUTABLE    (1 << 3)
-#define ACCESS_CODE_READABLE (1 << 1)
-#define ACCESS_DATA_WRITABLE (1 << 1)
+void gdt_init_pre_smp(gdtr_t *out_gdtr) {
+    kmemset(g_gdt_pre_smp, 0, sizeof(g_gdt_pre_smp));
+    prv_gdt_init_kernel_segs(g_gdt_pre_smp);
 
-// Other flags.
-#define FLAG_LIMIT_IN_PAGES (1 << 3)
-#define FLAG_PROTECTED      (1 << 2)
-
-// TSS descriptor flags.
-#define TSS_FLAGS ((1 << 3) | (1 << 0))
-
-static uint8_t gp_desc[DESC_SIZE_BYTES];
-static uint8_t gpp_gdt[NUM_ENTRIES][ENTRY_SIZE_BYTES];
-
-static tss_t g_tss;
-
-static void fill_desc(uint8_t *p_desc, void const *p_gdt, uint16_t gdt_size);
-static void fill_entry(uint8_t *p_entry, uint32_t base, uint32_t limit,
-                       uint8_t access_byte, uint8_t flags);
-
-void gdt_init(void) {
-    // Ring 0 code and data.
-    fill_entry(gpp_gdt[1], 0, 0x000FFFFF,
-               (ENTRY_PRESENT | ACCESS_DPL_KERNEL | ACCESS_S_FLAG |
-                ACCESS_EXECUTABLE | ACCESS_CODE_READABLE),
-               (FLAG_LIMIT_IN_PAGES | FLAG_PROTECTED));
-    fill_entry(gpp_gdt[2], 0, 0x000FFFFF,
-               (ENTRY_PRESENT | ACCESS_DPL_KERNEL | ACCESS_S_FLAG |
-                ACCESS_DATA_WRITABLE),
-               (FLAG_LIMIT_IN_PAGES | FLAG_PROTECTED));
-
-    // Ring 3 code and data.
-    fill_entry(gpp_gdt[3], 0, 0x000FFFFF,
-               (ENTRY_PRESENT | ACCESS_DPL_USER | ACCESS_S_FLAG |
-                ACCESS_EXECUTABLE | ACCESS_CODE_READABLE),
-               (FLAG_LIMIT_IN_PAGES | FLAG_PROTECTED));
-    fill_entry(gpp_gdt[4], 0, 0x000FFFFF,
-               (ENTRY_PRESENT | ACCESS_DPL_USER | ACCESS_S_FLAG |
-                ACCESS_DATA_WRITABLE),
-               (FLAG_LIMIT_IN_PAGES | FLAG_PROTECTED));
-
-    // Task state segment.
-    fill_entry(gpp_gdt[5], ((uint32_t)&g_tss), sizeof(g_tss),
-               (ENTRY_PRESENT | TSS_FLAGS), FLAG_PROTECTED);
-
-    // Fill in the TSS.
-    g_tss.ss0 = 0x10;
-
-    fill_desc(gp_desc, gpp_gdt, (sizeof(gpp_gdt) - 1));
-    gdt_load(gp_desc);
+    out_gdtr->size = 3 * sizeof(g_gdt_pre_smp[0]) - 1;
+    out_gdtr->addr = (uint32_t)&g_gdt_pre_smp[0];
 }
 
-uint8_t *gdt_get_desc(void) {
-    return gp_desc;
+void gdt_init_for_proc(gdt_seg_desc_t **out_gdt, tss_t **out_tss,
+                       gdtr_t *out_gdtr) {
+    /*
+     * Per-processor GDTs have 6 segment descriptors:
+     * - entry 0 is not used.
+     * - entry 1 is kernel code.
+     * - entry 2 is kernel data.
+     * - entry 3 is user code.
+     * - entry 4 is user data.
+     * - entry 5 is task state segment.
+     */
+
+    static_assert(GDT_NUM_SMP_SEGS == 6);
+    gdt_seg_desc_t *const gdt = heap_alloc(6 * sizeof(gdt_seg_desc_t));
+    tss_t *const tss = heap_alloc(sizeof(tss_t));
+
+    kmemset(gdt, 0, 6 * sizeof(gdt_seg_desc_t));
+    kmemset(tss, 0, sizeof(tss_t));
+
+    // Ring 0 (kernel) code and data.
+    prv_gdt_init_kernel_segs(gdt);
+
+    // Ring 3 (user) code.
+    prv_gdt_set_base_limit(&gdt[3], 0, 0x000FFFF);
+    gdt[3].desc_type = GDT_DESC_TYPE_CODE_OR_DATA;
+    gdt[3].seg_type = GDT_SEG_TYPE_CODE_RD;
+    gdt[3].dpl = 3;
+    gdt[3].present = 1;
+    gdt[3].longm = 0;
+    gdt[3].db = 1;
+    gdt[3].gran = GDT_SEG_GRAN_4KB;
+
+    // Ring 3 (user) data.
+    prv_gdt_set_base_limit(&gdt[4], 0, 0x000FFFF);
+    gdt[4].desc_type = GDT_DESC_TYPE_CODE_OR_DATA;
+    gdt[4].seg_type = GDT_SEG_TYPE_DATA_RW;
+    gdt[4].dpl = 3;
+    gdt[4].present = 1;
+    gdt[4].longm = 0;
+    gdt[4].db = 1;
+    gdt[4].gran = GDT_SEG_GRAN_4KB;
+
+    // Task state segment descriptor.
+    static_assert(GDT_SMP_TSS_IDX == 5);
+    prv_gdt_set_base_limit(&gdt[5], (uint32_t)tss, sizeof(tss_t));
+    gdt[5].desc_type = GDT_DESC_TYPE_SYSTEM;
+    gdt[5].seg_type = GDT_SEG_TYPE_TSS_32BIT;
+    gdt[5].dpl = 0;
+    gdt[5].present = 1;
+    gdt[5].longm = 0;
+    gdt[5].db = 1;
+    gdt[5].gran = GDT_SEG_GRAN_BYTE;
+
+    gdt_seg_sel_t tss_sel;
+    tss_sel.index = 2;
+    tss_sel.ti = 0;
+    tss_sel.rpl = 0;
+    kmemcpy(&tss->ss0, &tss_sel, sizeof(tss_sel));
+
+    *out_gdt = gdt;
+    *out_tss = tss;
+    out_gdtr->size = 6 * sizeof(gdt_seg_desc_t) - 1;
+    out_gdtr->addr = (uint32_t)gdt;
 }
 
-tss_t *gdt_get_tss(void) {
-    return &g_tss;
+static void prv_gdt_init_kernel_segs(gdt_seg_desc_t *gdt) {
+    // Ring 0 code.
+    prv_gdt_set_base_limit(&gdt[1], 0, 0x000FFFF);
+    gdt[1].desc_type = GDT_DESC_TYPE_CODE_OR_DATA;
+    gdt[1].seg_type = GDT_SEG_TYPE_CODE_RD;
+    gdt[1].dpl = 0;
+    gdt[1].present = 1;
+    gdt[1].longm = 0;
+    gdt[1].db = 1;
+    gdt[1].gran = GDT_SEG_GRAN_4KB;
+
+    // Ring 0 data.
+    prv_gdt_set_base_limit(&gdt[2], 0, 0x000FFFF);
+    gdt[2].desc_type = GDT_DESC_TYPE_CODE_OR_DATA;
+    gdt[2].seg_type = GDT_SEG_TYPE_DATA_RW;
+    gdt[2].dpl = 0;
+    gdt[2].present = 1;
+    gdt[2].longm = 0;
+    gdt[2].db = 1;
+    gdt[2].gran = GDT_SEG_GRAN_4KB;
 }
 
-static void fill_desc(uint8_t *p_desc, void const *p_gdt, uint16_t gdt_size) {
-    __builtin_memset(p_desc, 0, DESC_SIZE_BYTES);
+static void prv_gdt_set_base_limit(gdt_seg_desc_t *seg_desc, uint32_t base,
+                                   uint32_t limit) {
+    seg_desc->limit_15_0 = (uint16_t)limit;
+    seg_desc->limit_19_16 = (limit >> 16) & 0x0F;
 
-    __builtin_memcpy(&p_desc[0], &gdt_size, 2);
-    __builtin_memcpy(&p_desc[2], &p_gdt, 4);
-}
-
-static void fill_entry(uint8_t *p_entry, uint32_t base, uint32_t limit,
-                       uint8_t access_byte, uint8_t flags) {
-    __builtin_memset(p_entry, 0, ENTRY_SIZE_BYTES);
-
-    p_entry[0] |= ((limit >> 0) & 0xFF);  // limit[00..07]
-    p_entry[1] |= ((limit >> 8) & 0xFF);  // limit[08..15]
-    p_entry[6] |= ((limit >> 16) & 0x0F); // limit[16..19]
-
-    p_entry[2] |= ((base >> 0) & 0xFF);  // base[00..07]
-    p_entry[3] |= ((base >> 8) & 0xFF);  // base[08..15]
-    p_entry[4] |= ((base >> 16) & 0xFF); // base[16..23]
-    p_entry[7] |= ((base >> 24) & 0xFF); // base[24..31]
-
-    p_entry[5] |= access_byte;
-    p_entry[6] |= ((flags & 0x0F) << 4);
+    seg_desc->base_15_0 = (uint16_t)base;
+    seg_desc->base_23_16 = (uint8_t)(base >> 16);
+    seg_desc->base_31_24 = (uint8_t)(base >> 24);
 }
