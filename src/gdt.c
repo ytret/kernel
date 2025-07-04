@@ -41,7 +41,7 @@ void gdt_init_for_proc(gdt_seg_desc_t **out_gdt, tss_t **out_tss,
     prv_gdt_init_kernel_segs(gdt);
 
     // Ring 3 (user) code.
-    prv_gdt_set_base_limit(&gdt[3], 0, 0x000FFFF);
+    prv_gdt_set_base_limit(&gdt[3], 0, 0x00FFFFF);
     gdt[3].desc_type = GDT_DESC_TYPE_CODE_OR_DATA;
     gdt[3].seg_type = GDT_SEG_TYPE_CODE_RD;
     gdt[3].dpl = 3;
@@ -51,7 +51,7 @@ void gdt_init_for_proc(gdt_seg_desc_t **out_gdt, tss_t **out_tss,
     gdt[3].gran = GDT_SEG_GRAN_4KB;
 
     // Ring 3 (user) data.
-    prv_gdt_set_base_limit(&gdt[4], 0, 0x000FFFF);
+    prv_gdt_set_base_limit(&gdt[4], 0, 0x00FFFFF);
     gdt[4].desc_type = GDT_DESC_TYPE_CODE_OR_DATA;
     gdt[4].seg_type = GDT_SEG_TYPE_DATA_RW;
     gdt[4].dpl = 3;
@@ -85,7 +85,7 @@ void gdt_init_for_proc(gdt_seg_desc_t **out_gdt, tss_t **out_tss,
 
 static void prv_gdt_init_kernel_segs(gdt_seg_desc_t *gdt) {
     // Ring 0 code.
-    prv_gdt_set_base_limit(&gdt[1], 0, 0x000FFFF);
+    prv_gdt_set_base_limit(&gdt[1], 0, 0x00FFFFF);
     gdt[1].desc_type = GDT_DESC_TYPE_CODE_OR_DATA;
     gdt[1].seg_type = GDT_SEG_TYPE_CODE_RD;
     gdt[1].dpl = 0;
@@ -95,7 +95,7 @@ static void prv_gdt_init_kernel_segs(gdt_seg_desc_t *gdt) {
     gdt[1].gran = GDT_SEG_GRAN_4KB;
 
     // Ring 0 data.
-    prv_gdt_set_base_limit(&gdt[2], 0, 0x000FFFF);
+    prv_gdt_set_base_limit(&gdt[2], 0, 0x00FFFFF);
     gdt[2].desc_type = GDT_DESC_TYPE_CODE_OR_DATA;
     gdt[2].seg_type = GDT_SEG_TYPE_DATA_RW;
     gdt[2].dpl = 0;
