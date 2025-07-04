@@ -1,8 +1,8 @@
-#include <kprintf.h>
-#include <panic.h>
-
 #include "heap.h"
+#include "kprintf.h"
 #include "mbi.h"
+#include "memfun.h"
+#include "panic.h"
 #include "string.h"
 
 static mbi_t *gp_mbi;
@@ -29,6 +29,13 @@ void mbi_save_on_heap(void) {
     gp_mbi = heap_alloc(sizeof(mbi_t));
     __builtin_memcpy(gp_mbi, p_src, sizeof(mbi_t));
 
+    if (p_src->flags & MBI_FLAG_CMDLINE) {
+        // Copy the cmdline.
+        const size_t cmdline_len = string_len((const char *)p_src->cmdline);
+        char *const cmdline = heap_alloc(cmdline_len + 1);
+        kmemcpy(cmdline, (void *)p_src->cmdline, cmdline_len + 1);
+        gp_mbi->cmdline = (uint32_t)cmdline;
+    }
     if (p_src->flags & MBI_FLAG_MODS) {
         // Copy the modules info.
         uint8_t *p_mods = heap_alloc(p_src->mods_count * sizeof(mbi_mod_t));

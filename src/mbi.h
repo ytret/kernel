@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define MBI_FLAG_CMDLINE  (1 << 2)
 #define MBI_FLAG_MODS     (1 << 3)
 #define MBI_FLAG_MMAP     (1 << 6)
 #define MBI_FLAG_FRAMEBUF (1 << 12)
