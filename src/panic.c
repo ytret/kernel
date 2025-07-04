@@ -13,6 +13,8 @@ static void prv_panic_send_ipi(void);
 
 void panic_enter(void) {
     prv_panic_send_ipi();
+    __asm__ volatile("cli");
+
     if (smp_get_running_taskmgr()) { taskmgr_local_lock_scheduler(); }
     term_enter_panic_mode();
 
@@ -27,13 +29,18 @@ void panic(char const *p_msg) {
     b_in_panic = true;
     kprintf("Kernel panic: %s. Halting.\n", p_msg);
 
-    for (;;) {}
+    __asm__ volatile("cli");
+    for (;;) {
+        __asm__ volatile("hlt");
+    }
 }
 
 [[gnu::noreturn]]
 void panic_silent(void) {
     __asm__ volatile("cli");
-    for (;;) {}
+    for (;;) {
+        __asm__ volatile("hlt");
+    }
 }
 
 static void prv_panic_send_ipi(void) {
