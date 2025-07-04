@@ -33,19 +33,19 @@ void lapic_init(bool is_bsp) {
             (lapic_regs_t *)((uint32_t)msr_apic_base.bit.apic_base << 12);
     }
 
+    kprintf("apic: Local APIC 0x%02X version %u (%u entries) at %P\n",
+            g_lapic_regs->lapic_id_bit.apic_id,
+            g_lapic_regs->lapic_version_bit.version,
+            g_lapic_regs->lapic_version_bit.max_lvt_entry + 1, g_lapic_regs);
+
     // Mask LINT0 and LINT1.
-    g_lapic_regs->lvt_lint0 = 1 << 16;
-    g_lapic_regs->lvt_lint1 = 1 << 16;
+    g_lapic_regs->lvt_lint0 |= 1 << 16;
+    g_lapic_regs->lvt_lint1 |= 1 << 16;
 
     // Set the spurious IRQ to 0xFF (the lowest 4 bits must be set, see
     // section 10.9) and enable the LAPIC.
     g_lapic_regs->sivr_bit.sv = 0xFF; // other values won't work?
     g_lapic_regs->sivr_bit.ase = 1;
-
-    kprintf("apic: Local APIC 0x%02X version %u (%u entries) at %P\n",
-            g_lapic_regs->lapic_id_bit.apic_id,
-            g_lapic_regs->lapic_version_bit.version,
-            g_lapic_regs->lapic_version_bit.max_lvt_entry + 1, g_lapic_regs);
 }
 
 void lapic_init_tim(void) {
