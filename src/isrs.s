@@ -251,7 +251,7 @@ isr_ipi_tlb_shootdown:
 
                 pop     %ebp
                 iret
-                .size   isr_ipi_tlb_shootdown, . - isr_ipi_halt
+                .size   isr_ipi_tlb_shootdown, . - isr_ipi_tlb_shootdown
 
                 ## Syscall ISR.
                 .global isr_syscall
