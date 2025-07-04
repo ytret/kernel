@@ -1,5 +1,6 @@
 #include <stddef.h>
 
+#include "acpi/lapic.h"
 #include "idt.h"
 #include "isrs.h"
 #include "kprintf.h"
@@ -81,6 +82,7 @@ void idt_init(void) {
     fill_entry(&gp_idt[32 + 7], isr_irq7);
     fill_entry(&gp_idt[32 + 15], isr_irq15);
 
+    fill_entry(&gp_idt[LAPIC_VEC_TIM], isr_lapic_tim);
     fill_entry(&gp_idt[SMP_VEC_HALT], isr_ipi_halt);
     fill_entry(&gp_idt[SMP_VEC_TLB_SHOOTDOWN], isr_ipi_tlb_shootdown);
 

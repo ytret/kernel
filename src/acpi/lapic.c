@@ -10,6 +10,8 @@
 #include "kprintf.h"
 #include "memfun.h"
 #include "panic.h"
+#include "pit.h"
+#include "taskmgr.h"
 #include "vmm.h"
 
 static lapic_regs_t *g_lapic_regs;
@@ -44,6 +46,37 @@ void lapic_init(bool is_bsp) {
             g_lapic_regs->lapic_id_bit.apic_id,
             g_lapic_regs->lapic_version_bit.version,
             g_lapic_regs->lapic_version_bit.max_lvt_entry + 1, g_lapic_regs);
+}
+
+void lapic_init_tim(void) {
+    constexpr uint32_t calib_dur_ms = 100;
+    kprintf("lapic: calibrating Local APIC Timer for %u ms\n", calib_dur_ms);
+
+    lapic_lvt_tim_t lvt_tim = {
+        .vector = LAPIC_VEC_TIM,
+        .mask = 1,
+        .tim_mode = LAPIC_TIM_MODE_PERIODIC,
+    };
+    uint32_t lvt_tim_val;
+    kmemcpy(&lvt_tim_val, &lvt_tim, 4);
+    g_lapic_regs->lvt_tim = lvt_tim_val;
+
+    g_lapic_regs->dcr = LAPIC_DCR_DIV_16;
+    g_lapic_regs->icr = 0xFFFFFFFF;
+
+    pit_delay_ms(calib_dur_ms);
+
+    const uint32_t cnt_diff = 0xFFFFFFFF - g_lapic_regs->ccr;
+    const uint32_t freq = 1000 / calib_dur_ms * cnt_diff;
+    kprintf("lapic: timer frequency is %u Hz\n", freq);
+
+    const uint32_t init_cnt_val = freq / LAPIC_TIM_PERIOD_MS;
+    kprintf("lapic: initial counter value is %u\n", init_cnt_val);
+    g_lapic_regs->icr = init_cnt_val;
+
+    lvt_tim.mask = 0;
+    kmemcpy(&lvt_tim_val, &lvt_tim, 4);
+    g_lapic_regs->lvt_tim = lvt_tim_val;
 }
 
 void lapic_map_pages(void) {
@@ -94,4 +127,9 @@ void lapic_wait_ipi_delivered(void) {
 
 void lapic_send_eoi(void) {
     g_lapic_regs->eoi = 0;
+}
+
+void lapic_tim_irq_handler(void) {
+    lapic_send_eoi();
+    taskmgr_local_schedule();
 }

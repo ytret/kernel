@@ -170,3 +170,44 @@ typedef enum {
     LAPIC_ICR_DEST_ALL_INC_SELF = 0b10,
     LAPIC_ICR_DEST_ALL_BUT_SELF = 0b11,
 } lapic_icr_destsh_t;
+
+/**
+ * Local APIC LVT Timer Entry structure.
+ * Refer to section 10.5.1 "Local Vector Table".
+ * See #lapic_regs_t.
+ */
+typedef struct [[gnu::packed]] {
+    uint32_t vector : 8;
+    uint32_t reserved1 : 4;
+    uint32_t delivs : 1; //!< Delivery Status.
+    uint32_t reserved2 : 3;
+    uint32_t mask : 1;
+    uint32_t tim_mode : 2; //!< Timer Mode.
+    uint32_t reserved3 : 13;
+} lapic_lvt_tim_t;
+
+/**
+ * Local APIC LVT Timer Entry, field Timer Mode.
+ * See #lapic_lvt_tim_t.tim_mode.
+ */
+typedef enum {
+    LAPIC_TIM_MODE_ONE_SHOT = 0b00,
+    LAPIC_TIM_MODE_PERIODIC = 0b01,
+    LAPIC_TIM_MODE_TSC_DEADLINE = 0b10,
+} lapic_tim_mode_t;
+
+/**
+ * Local APIC Divide Configuration Register.
+ * Refer to section 10.5.4 "APIC Timer".
+ * See #lapic_regs_t.dcr.
+ */
+typedef enum {
+    LAPIC_DCR_DIV_2 = 0b0000,
+    LAPIC_DCR_DIV_4 = 0b0001,
+    LAPIC_DCR_DIV_8 = 0b0010,
+    LAPIC_DCR_DIV_16 = 0b0011,
+    LAPIC_DCR_DIV_32 = 0b1000,
+    LAPIC_DCR_DIV_64 = 0b1001,
+    LAPIC_DCR_DIV_128 = 0b1010,
+    LAPIC_DCR_DIV_1 = 0b1011,
+} lapic_dcr_t;

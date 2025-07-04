@@ -7,7 +7,12 @@
 
 #include "acpi/lapic_regs.h"
 
+#define LAPIC_VEC_TIM       0xF0
+#define LAPIC_TIM_PERIOD_MS 10
+
 void lapic_init(bool is_bsp);
+
+void lapic_init_tim(void);
 
 /**
  * Identity maps the LAPIC memory-mapped register pages.
@@ -45,3 +50,5 @@ void lapic_wait_ipi_delivered(void);
  * This function does not check if the LAPIC register pointer is initialized.
  */
 void lapic_send_eoi(void);
+
+void lapic_tim_irq_handler(void);

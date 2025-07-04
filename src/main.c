@@ -68,6 +68,8 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     // NOTE: main() is executed only by the bootstrap processor (BSP). Hence,
     // everything below is also executed only by the BSP.
 
+    lapic_init_tim();
+
     devmgr_init();
 
     taskmgr_local_init(init_bsp_task);

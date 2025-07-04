@@ -228,6 +228,23 @@ isr_irq15:      cli
                 iret
                 .size   isr_irq15, . - isr_irq15
 
+                ## LAPIC Timer ISR.
+                .global isr_lapic_tim
+                .type   isr_lapic_tim, @function
+isr_lapic_tim:
+                cli
+                push    %ebp
+                mov     %esp, %ebp
+
+                pusha
+                cld
+                call    lapic_tim_irq_handler
+                popa
+
+                pop     %ebp
+                iret
+                .size   isr_lapic_tim, . - isr_lapic_tim
+
                 ## Halt on panic ISR (inter-processor interrupt).
                 .global isr_ipi_halt
                 .type   isr_ipi_halt, @function

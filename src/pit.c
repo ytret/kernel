@@ -57,8 +57,6 @@ void pit_irq_handler(void) {
         panic("unexpected behavior");
     }
 
-    lapic_send_eoi();
-
     g_counter_ms += PIT_PERIOD_MS;
-    taskmgr_local_schedule();
+    lapic_send_eoi();
 }
