@@ -34,6 +34,9 @@ static void enqueue_event(uint8_t key, bool b_released);
 void kbd_init(void) {
     queue_init(&g_kbd_event_queue, EVENT_QUEUE_LEN, sizeof(kbd_event_t));
     queue_init(&g_kbd_sysevent_queue, EVENT_QUEUE_LEN, sizeof(kbd_event_t));
+
+    // On QEMU this is required to free space in the buffer.
+    read_code();
 }
 
 void kbd_irq_handler(void) {
