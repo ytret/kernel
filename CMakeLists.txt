@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.19)
 if(CMAKE_VERSION VERSION_GREATER 3.19)
     # CMP0115: Source file extensions must be explicit.
     # 3.20+
