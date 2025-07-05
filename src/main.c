@@ -64,11 +64,11 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     __asm__ volatile("sti");
     kprintf("Interrupts enabled\n");
 
+    lapic_calib_tim();
+
     smp_init();
     // NOTE: main() is executed only by the bootstrap processor (BSP). Hence,
     // everything below is also executed only by the BSP.
-
-    lapic_init_tim();
 
     devmgr_init();
 

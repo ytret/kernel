@@ -12,8 +12,6 @@
 
 void lapic_init(bool is_bsp);
 
-void lapic_init_tim(void);
-
 /**
  * Identity maps the LAPIC memory-mapped register pages.
  * @note
@@ -50,5 +48,21 @@ void lapic_wait_ipi_delivered(void);
  * This function does not check if the LAPIC register pointer is initialized.
  */
 void lapic_send_eoi(void);
+
+/**
+ * Calibrates the Local APIC Timer counting frequency using the PIT.
+ * See #pit_delay_ms(), #g_lapic_tim_freq_hz.
+ * @note The interrupts must be enabled for #pit_delay_ms() to work.
+ */
+void lapic_calib_tim(void);
+
+/**
+ * Initializes the Local APIC Timer for the current processor.
+ * @param period_ms Interrupt period (milliseconds).
+ * See #lapic_tim_irq_handler().
+ * @note The timer counting frequency must be already calibrated with
+ * #lapic_calib_tim().
+ */
+void lapic_init_tim(uint32_t period_ms);
 
 void lapic_tim_irq_handler(void);
