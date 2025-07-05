@@ -3,14 +3,13 @@
 #include "panic.h"
 #include "pit.h"
 #include "port.h"
-#include "taskmgr.h"
 
 #define PORT_CMD      0x0043
 #define PORT_CH0_DATA 0x0040
 
-#define REG_CH0         (0 << 6)
-#define REG_BOTH_BYTES  (3 << 4)
-#define REG_SQUARE_WAVE (3 << 1)
+#define REG_CH0        (0 << 6)
+#define REG_BOTH_BYTES (3 << 4)
+#define REG_RATE_GEN   (2 << 1)
 
 #define BASE_FREQ_KHZ 1193
 
@@ -19,7 +18,7 @@ static volatile _Atomic uint64_t g_counter_ms;
 
 void pit_init(uint8_t period_ms) {
     // Calculate the reload value.
-    uint32_t reload_u32 = (BASE_FREQ_KHZ * period_ms);
+    uint32_t reload_u32 = BASE_FREQ_KHZ * period_ms;
     if (reload_u32 > 65535) {
         panic_enter();
         kprintf("PIT: reload value (%u) for period_ms = %u is too big\n",
@@ -29,7 +28,7 @@ void pit_init(uint8_t period_ms) {
     }
 
     // Send the mode/command register.
-    uint8_t reg_byte = (REG_SQUARE_WAVE | REG_BOTH_BYTES | REG_CH0);
+    uint8_t reg_byte = REG_RATE_GEN | REG_BOTH_BYTES | REG_CH0;
     port_outb(PORT_CMD, reg_byte);
 
     // Send the reload value.
@@ -46,7 +45,7 @@ uint64_t pit_counter_ms(void) {
 void pit_delay_ms(uint32_t delay_ms) {
     const uint64_t stop_at = g_counter_ms + delay_ms;
     while (g_counter_ms < stop_at) {
-        __asm__ volatile("pause");
+        __asm__ volatile("pause" ::: "memory");
     }
 }
 
