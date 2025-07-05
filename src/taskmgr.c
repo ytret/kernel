@@ -134,10 +134,6 @@ void taskmgr_local_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
     taskmgr->deleter_task = new_task(taskmgr, (uint32_t)deleter_task);
     taskmgr->deleter_task->is_blocked = true;
 
-    // Create the term task.
-    task_t *p_term_task = new_task(taskmgr, (uint32_t)term_task);
-    prv_taskmgr_add_runnable_task(taskmgr, p_term_task);
-
     // Create the initial task.
     taskmgr->init_task = new_task(taskmgr, (uint32_t)p_init_entry);
     taskmgr->running_task = taskmgr->init_task;
