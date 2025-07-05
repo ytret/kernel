@@ -3,8 +3,17 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(dirname $0)"
-BUILD_DIR="$SCRIPT_DIR/build"
 ISO_DIR="$SCRIPT_DIR/isodir"
+
+if [[ "$#" -eq 0 ]]; then
+    BUILD_DIR="$SCRIPT_DIR/build"
+else
+    BUILD_DIR="$1"
+fi
+if [[ ! -d "$BUILD_DIR" ]]; then
+    echo "Build directory '$BUILD_DIR' does not exist." >&2
+    exit 1
+fi
 
 if ! command grub-mkrescue --version &>/dev/null; then
     if ! command grub2-mkrescue --version &>/dev/null; then
