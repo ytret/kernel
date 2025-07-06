@@ -29,7 +29,7 @@ void ioapic_init(void) {
     if (ics_ioapic) {
         g_ioapic_regs = (ioapic_regs_t *)ics_ioapic->ioapic_addr;
     } else {
-        kprintf("apic: could not get I/O APIC ICS from acpi, using 0x%08X\n",
+        kprintf("ioapic: could not get I/O APIC ICS from acpi, using 0x%08X\n",
                 acpiIOAPIC_FALLBACK_ADDR);
         g_ioapic_regs = (ioapic_regs_t *)acpiIOAPIC_FALLBACK_ADDR;
     }
@@ -43,7 +43,7 @@ void ioapic_init(void) {
     g_ioapic_version = reg_ver.version;
     g_ioapic_redirs = reg_ver.max_redir_entry + 1;
 
-    kprintf("apic: I/O APIC 0x%02X version %u (%u entries) at %P\n",
+    kprintf("ioapic: I/O APIC 0x%02X version %u (%u entries) at %P\n",
             g_ioapic_id, g_ioapic_version, g_ioapic_redirs, g_ioapic_regs);
 }
 
@@ -58,7 +58,7 @@ void ioapic_map_pages(void) {
 
 bool ioapic_map_irq(uint8_t irq_num, uint8_t vec_num, uint8_t lapic_id) {
     if (!g_ioapic_regs) {
-        kprintf("apic: cannot remap IRQ %u to vector %u: I/O APIC is not "
+        kprintf("ioapic: cannot remap IRQ %u to vector %u: I/O APIC is not "
                 "initialized\n",
                 irq_num, vec_num);
         return false;
@@ -78,7 +78,7 @@ bool ioapic_map_irq(uint8_t irq_num, uint8_t vec_num, uint8_t lapic_id) {
     };
     bool ok = ioapic_set_redirect(gsi_num, &redir);
     if (ok) {
-        kprintf("apic: mapped IRQ %u to vector %u of LAPIC ID %u\n", irq_num,
+        kprintf("ioapic: mapped IRQ %u to vector %u of LAPIC ID %u\n", irq_num,
                 vec_num, lapic_id);
     }
     return ok;
