@@ -29,6 +29,8 @@ void mutex_acquire(task_mutex_t *mutex) {
 
     // First, fast attempt to get the lock.
     if (__sync_bool_compare_and_swap(&mutex->locking_task, NULL, caller_task)) {
+        // The mutex has been acquired. Also see below for another path that
+        // leads to mutex acquisition.
         if (caller_task) { caller_task->num_owned_mutexes++; }
         return;
     }
@@ -48,9 +50,10 @@ void mutex_acquire(task_mutex_t *mutex) {
     // task might have released the lock, checked the list, saw it empty, and
     // left the lock released. We need to do a second CAS-lock attempt.
     if (__sync_bool_compare_and_swap(&mutex->locking_task, NULL, caller_task)) {
-        // Indeed, the lock is now released, but we also own the waiting list
-        // lock, which guarantees that the previous mutex owner has returned
-        // from mutex_release().
+        // Indeed, the lock has been released and now we own it, but we also own
+        // the waiting list lock, which guarantees that the previous mutex owner
+        // has returned from mutex_release().
+        caller_task->num_owned_mutexes++;
         spinlock_release(&mutex->list_lock);
         return;
     }
