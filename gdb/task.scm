@@ -18,7 +18,7 @@
 (export listify-tasks-list)
 
 (define-public (listify-all-tasks)
-  (listify-tasks-list "g_all_tasks" "all_tasks_list_node"))
+  (listify-tasks-list "g_taskmgr_all_tasks" "all_tasks_list_node"))
 
 (define-public (listify-runnable-tasks)
   (listify-tasks-list "g_runnable_tasks"))
