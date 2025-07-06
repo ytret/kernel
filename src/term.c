@@ -21,7 +21,7 @@ typedef struct {
     bool (*p_is_history_mode_active)(void);
 } output_impl_t;
 
-static task_mutex_t g_mutex;
+static task_mutex_t g_term_mutex;
 static bool gb_panic_mode;
 static bool gb_history_mode;
 static output_impl_t g_output_impl;
@@ -37,7 +37,7 @@ static void scroll_new_row(void);
 
 [[gnu::artificial]]
 static inline void assert_owns_mutex(void) {
-    if (!mutex_caller_owns(&g_mutex) && !gb_panic_mode) { panic_silent(); }
+    if (!mutex_caller_owns(&g_term_mutex) && !gb_panic_mode) { panic_silent(); }
 }
 
 [[gnu::artificial]]
@@ -88,7 +88,7 @@ void term_init(void) {
         g_output_impl.p_is_history_mode_active = vga_is_history_mode_active;
     }
 
-    mutex_init(&g_mutex);
+    mutex_init(&g_term_mutex);
 }
 
 void term_init_history(void) {
@@ -122,15 +122,15 @@ void term_task(void) {
 }
 
 void term_acquire_mutex(void) {
-    if (!gb_panic_mode) { mutex_acquire(&g_mutex); }
+    if (!gb_panic_mode) { mutex_acquire(&g_term_mutex); }
 }
 
 void term_release_mutex(void) {
-    if (!gb_panic_mode) { mutex_release(&g_mutex); }
+    if (!gb_panic_mode) { mutex_release(&g_term_mutex); }
 }
 
 bool term_owns_mutex(void) {
-    return mutex_caller_owns(&g_mutex);
+    return mutex_caller_owns(&g_term_mutex);
 }
 
 void term_enter_panic_mode(void) {
