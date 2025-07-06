@@ -311,7 +311,13 @@ void taskmgr_local_terminate_task(task_t *p_task);
 /**
  * Blocks the running task and appends it to the @a task_list list.
  * See #task_t.is_blocked.
+ *
  * @param task_list Task list to append the running task to.
+ *
+ * @warning
+ * Guard @a task_list with a spinlock, otherwise multiple processors may try to
+ * access it simultaneously causing a race condition.
+ *
  * @warning
  * This function returns immediately. Call #taskmgr_local_reschedule() to force
  * a scheduling step.
