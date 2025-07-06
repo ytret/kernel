@@ -90,7 +90,7 @@ typedef struct {
      * @note
      * If the task owns any mutexes, it cannot be terminated.
      */
-    size_t num_owned_mutexes;
+    _Atomic size_t num_owned_mutexes;
 
     /**
      * Target counter value to unblock the sleeping task at.
