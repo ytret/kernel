@@ -77,6 +77,7 @@ void mutex_release(task_mutex_t *mutex) {
         task_t *const waiting_task =
             LIST_NODE_TO_STRUCT(waiting_node, task_t, list_node);
         mutex->locking_task = waiting_task;
+        waiting_task->num_owned_mutexes++;
         taskmgr_unblock(waiting_task);
     } else {
         mutex->locking_task = NULL;
