@@ -50,6 +50,8 @@ static void print_tag(tag_t const *p_tag);
 static void check_tags(void);
 
 void heap_init(void) {
+    mutex_init(&g_heap_mutex);
+
     uint32_t heap_start = find_heap_start();
 
     gp_heap_start = ((tag_t *)heap_start);
