@@ -18,6 +18,7 @@
 #include "pmm.h"
 #include "smp.h"
 #include "stack.h"
+#include "string.h"
 #include "taskmgr.h"
 #include "vmm.h"
 
@@ -66,7 +67,8 @@ static void prv_taskmgr_add_runnable_task(taskmgr_t *taskmgr, task_t *task);
 static void prv_taskmgr_add_sleeping_task(taskmgr_t *taskmgr, task_t *task);
 static task_t *prv_taskmgr_get_runnable_task(taskmgr_t *taskmgr);
 
-static task_t *new_task(taskmgr_t *taskmgr, uint32_t entry_point);
+static task_t *new_task(const char *name, taskmgr_t *taskmgr,
+                        uint32_t entry_point);
 static void map_user_stack(uint32_t *p_dir);
 
 [[gnu::noreturn]] static void idle_task(void);
@@ -125,16 +127,17 @@ void taskmgr_local_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
     spinlock_init(&taskmgr->sleeping_tasks_lock);
 
     // Create an idle task.
-    taskmgr->idle_task = new_task(taskmgr, (uint32_t)idle_task);
+    taskmgr->idle_task = new_task("idle", taskmgr, (uint32_t)idle_task);
     prv_taskmgr_add_runnable_task(taskmgr, taskmgr->idle_task);
 
     // Create the deleter task. It is switched to when the running task needs to
     // be terminated.
-    taskmgr->deleter_task = new_task(taskmgr, (uint32_t)deleter_task);
+    taskmgr->deleter_task =
+        new_task("deleter", taskmgr, (uint32_t)deleter_task);
     taskmgr->deleter_task->is_blocked = true;
 
     // Create the initial task.
-    taskmgr->init_task = new_task(taskmgr, (uint32_t)p_init_entry);
+    taskmgr->init_task = new_task("init", taskmgr, (uint32_t)p_init_entry);
     taskmgr->running_task = taskmgr->init_task;
 
     // Initialize the list access spinlocks.
@@ -224,13 +227,14 @@ task_t *taskmgr_local_running_task(void) {
     }
 }
 
-task_t *taskmgr_local_new_user_task(uint32_t *p_dir, uint32_t entry) {
+task_t *taskmgr_local_new_user_task(const char *name, uint32_t *p_dir,
+                                    uint32_t entry) {
     taskmgr_t *const taskmgr = smp_get_running_taskmgr();
     if (!taskmgr) { panic("running processor has no task manager"); }
 
     map_user_stack(p_dir);
 
-    task_t *task = new_task(taskmgr, entry);
+    task_t *task = new_task(name, taskmgr, entry);
     task->tcb.page_dir_phys = ((uint32_t)p_dir);
 
     taskmgr_local_lock_scheduler();
@@ -240,11 +244,12 @@ task_t *taskmgr_local_new_user_task(uint32_t *p_dir, uint32_t entry) {
     return task;
 }
 
-task_t *taskmgr_local_new_kernel_task(uint32_t entry) {
+task_t *taskmgr_local_new_kernel_task(const char *name, uint32_t entry) {
     taskmgr_t *const taskmgr = smp_get_running_taskmgr();
     if (!taskmgr) { panic("running processor has no task manager"); }
 
-    task_t *task = new_task(taskmgr, entry);
+    task_t *const task = new_task(name, taskmgr, entry);
+
     taskmgr_local_lock_scheduler();
     prv_taskmgr_add_runnable_task(taskmgr, task);
     taskmgr_local_unlock_scheduler();
@@ -399,15 +404,22 @@ static task_t *prv_taskmgr_get_runnable_task(taskmgr_t *taskmgr) {
 
 /**
  * Creates a new kernel-mode task with a kernel stack.
+ * @param name        Task name (maximum length #TASK_NAME_LEN counting NUL).
  * @param taskmgr     Task manager that will be responsible for the task.
  * @param entry_point Kernel-mode entry point.
  * @returns Task context pointer.
  */
-static task_t *new_task(taskmgr_t *taskmgr, uint32_t entry_point) {
+static task_t *new_task(const char *name, taskmgr_t *taskmgr,
+                        uint32_t entry_point) {
     task_t *task = heap_alloc(sizeof(*task));
     __builtin_memset(task, 0, sizeof(*task));
     task->id = (g_new_task_id++);
     task->taskmgr = taskmgr;
+
+    size_t name_len = string_len(name);
+    if (name_len > TASK_NAME_LEN - 1) { name_len = TASK_NAME_LEN - 1; }
+    kmemcpy(task->name, name, name_len);
+    task->name[name_len] = 0;
 
     // Allocate the kernel stack.
     void *p_stack = heap_alloc(KERNEL_STACK_SIZE);

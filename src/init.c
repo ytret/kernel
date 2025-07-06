@@ -21,8 +21,8 @@ void init_bsp_task(void) {
     lapic_init_tim(LAPIC_TIM_PERIOD_MS);
     smp_set_bsp_ready();
 
-    taskmgr_local_new_kernel_task((uint32_t)term_task);
-    taskmgr_local_new_kernel_task((uint32_t)blkdev_task_entry);
+    taskmgr_local_new_kernel_task("term", (uint32_t)term_task);
+    taskmgr_local_new_kernel_task("blkdev", (uint32_t)blkdev_task_entry);
 
     kshell();
 

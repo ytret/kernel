@@ -26,6 +26,8 @@
 #include "spinlock.h"
 #include "stack.h"
 
+#define TASK_NAME_LEN 32
+
 typedef struct taskmgr taskmgr_t;
 
 /**
@@ -45,6 +47,9 @@ typedef struct [[gnu::packed]] {
 typedef struct {
     /// Kernel-level unique task ID.
     uint32_t id;
+
+    /// Name of the task.
+    char name[TASK_NAME_LEN];
 
     /// Task manager responsible for this task.
     taskmgr_t *taskmgr;
@@ -259,21 +264,26 @@ task_t *taskmgr_local_running_task(void);
  *
  * The created task runs on the current processor.
  *
+ * @name  name  Task name (maximum length #TASK_NAME_LEN counting NUL).
  * @param p_dir Page directory to be used by the task.
  * @param entry Task entry point.
+ *
  * @returns Task context pointer. The task is in the runnable tasks list.
  */
-task_t *taskmgr_local_new_user_task(uint32_t *p_dir, uint32_t entry);
+task_t *taskmgr_local_new_user_task(const char *name, uint32_t *p_dir,
+                                    uint32_t entry);
 
 /**
  * Creates a new runnable kernel-mode task.
  *
  * The created task runs on the current processor.
  *
+ * @param name  Task name (maximum length #TASK_NAME_LEN counting NUL).
  * @param entry Task entry point.
+ *
  * @returns Task context pointer. The task is in the runnable tasks list.
  */
-task_t *taskmgr_local_new_kernel_task(uint32_t entry);
+task_t *taskmgr_local_new_kernel_task(const char *name, uint32_t entry);
 
 /**
  * Does a far return (_iret_) with usermode segments to address @a entry.

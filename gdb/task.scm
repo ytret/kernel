@@ -27,13 +27,23 @@
   (listify-tasks-list "g_sleeping_tasks"))
 
 (define-public (print-task task)
-  (let* ((kernel-stack (value-field task "kernel_stack"))
+  (let* ((taskmgr (value-field task "taskmgr"))
+         (kernel-stack (value-field task "kernel_stack"))
          (esp0-max (value->integer (value-field kernel-stack "p_top_max")))
          (esp0-top (value->integer (value-field kernel-stack "p_top")))
          (esp0-bot (value->integer (value-field kernel-stack "p_bottom"))))
-    (format #t "id ~3d  esp0: (max 0x~8,'0x, top 0x~8,'0x, bot 0x~8,'0x, used ~d)\n"
+    (format #t "id ~3d  cpu ~2d  esp0: (max 0x~8,'0x, top 0x~8,'0x, bot 0x~8,'0x, used ~4d) ~32s ~a ~a ~a M:~d\n"
             (value->integer (value-field task "id"))
+            (value->integer (value-field taskmgr "proc_num"))
             esp0-max
             esp0-top
             esp0-bot
-            (- esp0-max esp0-top))))
+            (- esp0-max esp0-top)
+            (value->string (value-field task "name") #:encoding "ascii")
+            (if (equal? 0 (value->integer (value-field task "is_blocked")))
+              "b" "B")
+            (if (equal? 0 (value->integer (value-field task "is_terminating")))
+              "t" "T")
+            (if (equal? 0 (value->integer (value-field task "is_sleeping")))
+              "s" "S")
+            (value->integer (value-field task "num_owned_mutexes")))))

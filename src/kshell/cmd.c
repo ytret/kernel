@@ -228,7 +228,7 @@ static void cmd_exec(char **pp_args, size_t num_args) {
     if (!ok) { kprintf("kshell: failed to load the executable\n"); }
 
     task_t *p_task =
-        taskmgr_local_new_user_task(p_dir, ((uint32_t)cmd_exec_entry));
+        taskmgr_local_new_user_task("user", p_dir, ((uint32_t)cmd_exec_entry));
     kprintf("kshell: task id %u\n", p_task->id);
 }
 
