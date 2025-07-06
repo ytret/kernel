@@ -1,3 +1,18 @@
+/**
+ * @file mutex.c
+ * Mutex implementation.
+ *
+ * Mutex acquire and release functions need to work both before multitasking and
+ * multiprocessing is reached, and after they are reached.
+ *
+ * Before multitasking and multiprocessing there is only one "task" and ISR
+ * handlers getting called at random times. The mutex is always available.
+ *
+ * Once each processor is initialized, i.e. @ref smp_sync "has a task manager",
+ * multiple tasks on different processors may try to acquire the mutex
+ * simultaneously.
+ */
+
 #include "mutex.h"
 #include "panic.h"
 #include "taskmgr.h"
@@ -5,55 +20,59 @@
 void mutex_init(task_mutex_t *mutex) {
     __builtin_memset(mutex, 0, sizeof(*mutex));
     list_init(&mutex->waiting_tasks, NULL);
+    spinlock_init(&mutex->list_lock);
 }
 
 void mutex_acquire(task_mutex_t *mutex) {
-    /*
-     * This function needs to work in several kernel states: pre-SMP, no-SMP,
-     * and after-SMP.
-     *
-     * In pre-SMP, hence pre-multitasking, there are no task managers and only
-     * one running processor. The mutex acquiral always succeeds.
-     *
-     * In no-SMP, after multitasking is initialized, there is only one running
-     * processor, but the mutex may be locked by one of the tasks.
-     *
-     * In after-SMP, there are several processors running their own task
-     * managers. The mutex may be locked by a task running on another processor,
-     * hence controlled by a different task manager.
-     */
-
     task_t *const caller_task = taskmgr_local_running_task();
     if (caller_task && mutex->locking_task == caller_task) { panic_silent(); }
 
+    // First, fast attempt to get the lock.
     if (__sync_bool_compare_and_swap(&mutex->locking_task, NULL, caller_task)) {
-        // The caller task has successfuly acquired the mutex.
         if (caller_task) { caller_task->num_owned_mutexes++; }
-    } else if (caller_task) {
-        // The mutex is blocked by another task. In no-SMP and after-SMP, force
-        // a rescheduling.
-        taskmgr_block_running_task(&mutex->waiting_tasks);
-        taskmgr_local_reschedule();
-    } else {
+        return;
+    }
+
+    if (!caller_task) {
         // There is no caller task, meaning this is the pre-SMP state. The mutex
         // is locked by some task, which is only possible if some other
         // processor's task has acquired it. The processors initialization has
         // not been synchronized properly, see @ref smp_sync.
         panic_silent();
     }
+
+    // The mutex is blocked by another task.
+    spinlock_acquire(&mutex->list_lock);
+
+    // The fast CAS-lock attempt above has failed, but at this point the locking
+    // task might have released the lock, checked the list, saw it empty, and
+    // left the lock released. We need to do a second CAS-lock attempt.
+    if (__sync_bool_compare_and_swap(&mutex->locking_task, NULL, caller_task)) {
+        // Indeed, the lock is now released, but we also own the waiting list
+        // lock, which guarantees that the previous mutex owner has returned
+        // from mutex_release().
+        spinlock_release(&mutex->list_lock);
+        return;
+    }
+
+    // The lock is still owned by someone. Maybe it's a new owner which was
+    // also trying to acquire the mutex and has succeeded in the above if
+    // branch. Or maybe it's the same owner. In both cases, when they release
+    // the lock, they will see the caller task in the waiting list.
+
+    taskmgr_block_running_task(&mutex->waiting_tasks);
+
+    spinlock_release(&mutex->list_lock);
+    taskmgr_local_reschedule();
 }
 
 void mutex_release(task_mutex_t *mutex) {
-    // See the comment in mutex_acquire() for explanation of what pre-SMP,
-    // no-SMP, and after-SMP mean.
+    // Releasing the lock always leads to accessing the waiting tasks list, so
+    // lock it here.
+    spinlock_acquire(&mutex->list_lock);
 
     task_t *const caller_task = taskmgr_local_running_task();
-    if (caller_task) {
-        // There is a locally running task, hence the kernel is either in the
-        // no-SMP or after-SMP state. Lock the local scheduler so that the
-        // caller task is not preempted.
-        taskmgr_local_lock_scheduler();
-    }
+    if (caller_task) { taskmgr_local_lock_scheduler(); }
 
     if (caller_task) {
         if (mutex->locking_task == caller_task) {
@@ -67,16 +86,23 @@ void mutex_release(task_mutex_t *mutex) {
 
     list_node_t *const waiting_node = list_pop_first(&mutex->waiting_tasks);
     if (waiting_node) {
-        // There is a waiting task. This means that the mutex has been
-        // previously acquired, implying the kernel is in the no-SMP or
-        // after-SMP state.
-        if (!caller_task) { panic_silent(); }
+        if (!caller_task) {
+            // There is a task waiting, but no calling task.
+            panic_silent();
+        }
 
         // The top waiting task may be assigned to the local task manager or to
         // the task manager of another processor.
         task_t *const waiting_task =
             LIST_NODE_TO_STRUCT(waiting_node, task_t, list_node);
-        mutex->locking_task = waiting_task;
+
+        if (!__sync_bool_compare_and_swap(&mutex->locking_task, caller_task,
+                                          waiting_task)) {
+            // Failed to atomically change 'locking_task', even though
+            // mutex_acquire() must fail to set 'locking_task' if it's not NULL.
+            panic_silent();
+        }
+
         waiting_task->num_owned_mutexes++;
         taskmgr_unblock(waiting_task);
     } else {
@@ -84,6 +110,7 @@ void mutex_release(task_mutex_t *mutex) {
     }
 
     if (caller_task) { taskmgr_local_unlock_scheduler(); }
+    spinlock_release(&mutex->list_lock);
 }
 
 bool mutex_caller_owns(task_mutex_t *mutex) {
