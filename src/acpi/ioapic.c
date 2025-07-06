@@ -87,13 +87,21 @@ bool ioapic_map_irq(uint8_t irq_num, uint8_t vec_num, uint8_t lapic_id) {
 bool ioapic_set_redirect(uint32_t gsi, const ioapic_redir_t *redir) {
     if (!g_ioapic_regs) {
         kprintf(
-            "apic: cannot set I/O APIC GSI %u: I/O APIC is not initialized\n",
+            "ioapic: cannot set I/O APIC GSI %u: I/O APIC is not initialized\n",
             gsi);
         return false;
     }
     if (gsi >= g_ioapic_redirs) {
-        kprintf("apic: cannot set I/O APIC GSI %u: maximum GSI is %u\n", gsi,
+        kprintf("ioapic: cannot set I/O APIC GSI %u: maximum GSI is %u\n", gsi,
                 g_ioapic_redirs - 1);
+        return false;
+    }
+
+    ioapic_redir_t prev_val;
+    prv_ioapic_read_u64(IOAPIC_REG_REDIR(gsi), &prev_val);
+    if (prev_val.intvec != 0) {
+        kprintf("ioapic: cannot set I/O APIC GSI %u: already mapped to %u\n",
+                prev_val.intvec);
         return false;
     }
 
