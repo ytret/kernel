@@ -48,10 +48,14 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     ioapic_init();
 
     pit_init(PIT_PERIOD_MS);
-    ioapic_map_irq(PIT_IRQ, 32 + PIT_IRQ, lapic_get_id());
+    if (!ioapic_map_irq(PIT_IRQ, 32 + PIT_IRQ, lapic_get_id())) {
+        panic("failed to map PIT IRQ");
+    }
 
     kbd_init();
-    ioapic_map_irq(KBD_IRQ, 32 + KBD_IRQ, lapic_get_id());
+    if (!ioapic_map_irq(KBD_IRQ, 32 + KBD_IRQ, lapic_get_id())) {
+        panic("failed to map kbd IRQ");
+    }
 
     vmm_init();
     pmm_init();
