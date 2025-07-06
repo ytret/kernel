@@ -19,7 +19,6 @@
 #include "smp.h"
 #include "stack.h"
 #include "taskmgr.h"
-#include "term.h"
 #include "vmm.h"
 
 #define KERNEL_STACK_SIZE 4096
@@ -335,12 +334,10 @@ task_t *taskmgr_get_task_by_id(uint32_t task_id) {
 }
 
 void taskmgr_unblock(task_t *task) {
-    taskmgr_t *const taskmgr = task->taskmgr;
-
-    taskmgr_lock_scheduler(taskmgr);
+    taskmgr_lock_scheduler(task->taskmgr);
     task->is_blocked = false;
-    prv_taskmgr_add_runnable_task(taskmgr, task);
-    taskmgr_unlock_scheduler(taskmgr);
+    prv_taskmgr_add_runnable_task(task->taskmgr, task);
+    taskmgr_unlock_scheduler(task->taskmgr);
 }
 
 /**
