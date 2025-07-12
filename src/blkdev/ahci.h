@@ -34,7 +34,7 @@ typedef struct ahci_port_ctx ahci_port_ctx_t;
 typedef enum {
     AHCI_PORT_UNINIT,
     AHCI_PORT_IDLE,
-    AHCI_PORT_READING,
+    AHCI_PORT_ACTIVE,
 } ahci_port_state_t;
 
 ahci_ctrl_ctx_t *ahci_ctrl_new(const pci_dev_t *pci_dev);
@@ -84,7 +84,7 @@ bool ahci_port_is_idle(ahci_port_ctx_t *port_ctx);
  * @param port_ctx     Port context pointer.
  * @param start_sector First sector to read.
  * @param num_sectors  Number of sectors to read.
- * @param out_buf      Output buffer.
+ * @param buf          Output buffer.
  *
  * @returns
  * - `true` if the read command has been issued.
@@ -92,7 +92,23 @@ bool ahci_port_is_idle(ahci_port_ctx_t *port_ctx);
  *   sector parameters, or the port being busy.
  */
 bool ahci_port_start_read(ahci_port_ctx_t *port_ctx, uint64_t start_sector,
-                          uint32_t num_sectors, void *out_buf);
+                          uint32_t num_sectors, void *buf);
+
+/**
+ * Starts a write operation on port @a port_ctx.
+ *
+ * @param port_ctx     Port context pointer.
+ * @param start_sector First sector to write at.
+ * @param num_sectors  Number of sectors to write.
+ * @param buf          Source buffer.
+ *
+ * @returns
+ * - `true` if the write command has been issued.
+ * - `false` if the write command could not be issued, e.g., due to invalid
+ *   sector parameters, or the port being busy.
+ */
+bool ahci_port_start_write(ahci_port_ctx_t *port_ctx, uint64_t start_sector,
+                           uint32_t num_sectors, const void *buf);
 
 /**
  * Fills the fields of the blkdev interface struct.

@@ -15,6 +15,7 @@ struct blkdev_if {
 
 typedef enum {
     BLKDEV_OP_READ,
+    BLKDEV_OP_WRITE,
 } blkdev_op_t;
 
 typedef enum {

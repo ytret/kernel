@@ -85,6 +85,7 @@ struct ahci_port_ctx {
 
     _Atomic ahci_port_state_t state;
     blkdev_req_t *blkdev_req;
+    size_t req_cmd_slot;
 
     /// Context pointer of the controller this port is a part of.
     ahci_ctrl_ctx_t *ctrl_ctx;
@@ -176,10 +177,17 @@ static void prv_ahci_set_port_name(ahci_port_ctx_t *port_ctx);
 static void prv_ahci_setup_port(ahci_port_ctx_t *port_ctx);
 static void prv_ahci_identify_port(ahci_port_ctx_t *port_ctx);
 
-static bool send_read_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd, void *p_buf,
-                          size_t num_sectors, size_t *p_cmd_slot);
-static bool wait_for_cmd(ahci_port_ctx_t *port_ctx, size_t cmd_slot);
-static bool find_cmd_slot(reg_port_t *reg_port, size_t *out_slot);
+static bool prv_ahci_port_check_sectors(ahci_port_ctx_t *port_ctx,
+                                        uint64_t start_sector,
+                                        uint32_t num_sectors);
+static bool prv_ahci_send_ata_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd,
+                                  uint32_t buf_addr, size_t num_sectors,
+                                  bool dir_write, size_t *p_cmd_slot);
+static bool prv_ahci_wait_for_cmd(ahci_port_ctx_t *port_ctx, size_t cmd_slot);
+static bool prv_ahci_find_cmd_slot(reg_port_t *reg_port, size_t *out_slot);
+
+static void prv_ahci_port_handle_tfe(ahci_port_ctx_t *port_ctx);
+static void prv_ahci_port_handle_dhr(ahci_port_ctx_t *port_ctx);
 
 ahci_ctrl_ctx_t *ahci_ctrl_new(const pci_dev_t *pci_dev) {
     const uint32_t abar = pci_dev->header.bar5;
@@ -275,95 +283,79 @@ void ahci_port_set_int(ahci_port_ctx_t *port_ctx, ahci_port_int_t port_int,
 void ahci_port_irq_handler(ahci_port_ctx_t *port_ctx) {
     const uint32_t int_status = port_ctx->reg_port->is;
 
+    // NOTE: check for TFE *before* DHR, because both of them may be set.
+    if (int_status & AHCI_PORT_INT_TFE) {
+        port_ctx->reg_port->is = AHCI_PORT_INT_TFE;
+        kprintf("ahci: port %s irq: AHCI_PORT_INT_TFE\n", port_ctx->name);
+
+        prv_ahci_port_handle_tfe(port_ctx);
+    }
+
     if (int_status & AHCI_PORT_INT_DHR) {
         port_ctx->reg_port->is = AHCI_PORT_INT_DHR;
-        kprintf("ahci: port irq: AHCI_PORT_INT_DHR\n");
+        kprintf("ahci: port %s irq: AHCI_PORT_INT_DHR\n", port_ctx->name);
 
-        const ahci_port_state_t port_state = port_ctx->state;
-        if (port_state == AHCI_PORT_READING) {
-            kprintf("ahci: port irq: AHCI_PORT_READING\n");
-            if (port_ctx->blkdev_req->state == BLKDEV_REQ_ACTIVE) {
-                kprintf("ahci: port irq: active req\n");
-                port_ctx->blkdev_req->state = BLKDEV_REQ_SUCCESS;
-                semaphore_increase(&port_ctx->blkdev_req->sem_done);
-            } else {
-                panic_enter();
-                kprintf("ahci: port irq: port %s state is AHCI_PORT_READING, "
-                        "but there is no active request\n",
-                        port_ctx->name);
-                panic("unexpected AHCI DHR IRQ");
-            }
-            port_ctx->state = AHCI_PORT_IDLE;
-        } else {
-            panic_enter();
-            kprintf("ahci: port irq: unexpected port %s state: %u\n",
-                    port_ctx->name, port_state);
-            panic("unexpected AHCI DHR IRQ");
-        }
+        prv_ahci_port_handle_dhr(port_ctx);
     }
     if (int_status & AHCI_PORT_INT_PS) {
         port_ctx->reg_port->is = AHCI_PORT_INT_PS;
-        kprintf("ahci: port irq: AHCI_PORT_INT_PS\n");
+        kprintf("ahci: port %s irq: AHCI_PORT_INT_PS\n", port_ctx->name);
     }
     if (int_status & AHCI_PORT_INT_DS) {
         port_ctx->reg_port->is = AHCI_PORT_INT_DS;
-        kprintf("ahci: port irq: AHCI_PORT_INT_DS\n");
+        kprintf("ahci: port %s irq: AHCI_PORT_INT_DS\n", port_ctx->name);
     }
     if (int_status & AHCI_PORT_INT_SDB) {
         port_ctx->reg_port->is = AHCI_PORT_INT_SDB;
-        kprintf("ahci: port irq: AHCI_PORT_INT_SDB\n");
+        kprintf("ahci: port %s irq: AHCI_PORT_INT_SDB\n", port_ctx->name);
     }
     if (int_status & AHCI_PORT_INT_UF) {
         port_ctx->reg_port->is = AHCI_PORT_INT_UF;
-        kprintf("ahci: port irq: AHCI_PORT_INT_UF\n");
+        kprintf("ahci: port %s irq: AHCI_PORT_INT_UF\n", port_ctx->name);
     }
     if (int_status & AHCI_PORT_INT_DP) {
         port_ctx->reg_port->is = AHCI_PORT_INT_DP;
-        kprintf("ahci: port irq: AHCI_PORT_INT_DP\n");
+        kprintf("ahci: port %s irq: AHCI_PORT_INT_DP\n", port_ctx->name);
     }
     if (int_status & AHCI_PORT_INT_PC) {
         port_ctx->reg_port->is = AHCI_PORT_INT_PC;
-        kprintf("ahci: port irq: AHCI_PORT_INT_PC\n");
+        kprintf("ahci: port %s irq: AHCI_PORT_INT_PC\n", port_ctx->name);
     }
     if (int_status & AHCI_PORT_INT_DMP) {
         port_ctx->reg_port->is = AHCI_PORT_INT_DMP;
-        kprintf("ahci: port irq: AHCI_PORT_INT_DMP\n");
+        kprintf("ahci: port %s irq: AHCI_PORT_INT_DMP\n", port_ctx->name);
     }
     if (int_status & AHCI_PORT_INT_PRC) {
         port_ctx->reg_port->is = AHCI_PORT_INT_PRC;
-        kprintf("ahci: port irq: AHCI_PORT_INT_PRC\n");
+        kprintf("ahci: port %s irq: AHCI_PORT_INT_PRC\n", port_ctx->name);
     }
     if (int_status & AHCI_PORT_INT_IPM) {
         port_ctx->reg_port->is = AHCI_PORT_INT_IPM;
-        kprintf("ahci: port irq: AHCI_PORT_INT_IPM\n");
+        kprintf("ahci: port %s irq: AHCI_PORT_INT_IPM\n", port_ctx->name);
     }
     if (int_status & AHCI_PORT_INT_OF) {
         port_ctx->reg_port->is = AHCI_PORT_INT_OF;
-        kprintf("ahci: port irq: AHCI_PORT_INT_OF\n");
+        kprintf("ahci: port %s irq: AHCI_PORT_INT_OF\n", port_ctx->name);
     }
     if (int_status & AHCI_PORT_INT_INF) {
         port_ctx->reg_port->is = AHCI_PORT_INT_INF;
-        kprintf("ahci: port irq: AHCI_PORT_INT_INF\n");
+        kprintf("ahci: port %s irq: AHCI_PORT_INT_INF\n", port_ctx->name);
     }
     if (int_status & AHCI_PORT_INT_IF) {
         port_ctx->reg_port->is = AHCI_PORT_INT_IF;
-        kprintf("ahci: port irq: AHCI_PORT_INT_IF\n");
+        kprintf("ahci: port %s irq: AHCI_PORT_INT_IF\n", port_ctx->name);
     }
     if (int_status & AHCI_PORT_INT_HBD) {
         port_ctx->reg_port->is = AHCI_PORT_INT_HBD;
-        kprintf("ahci: port irq: AHCI_PORT_INT_HBD\n");
+        kprintf("ahci: port %s irq: AHCI_PORT_INT_HBD\n", port_ctx->name);
     }
     if (int_status & AHCI_PORT_INT_HBF) {
         port_ctx->reg_port->is = AHCI_PORT_INT_HBF;
-        kprintf("ahci: port irq: AHCI_PORT_INT_HBF\n");
-    }
-    if (int_status & AHCI_PORT_INT_TFE) {
-        port_ctx->reg_port->is = AHCI_PORT_INT_TFE;
-        kprintf("ahci: port irq: AHCI_PORT_INT_TFE\n");
+        kprintf("ahci: port %s irq: AHCI_PORT_INT_HBF\n", port_ctx->name);
     }
     if (int_status & AHCI_PORT_INT_CPD) {
         port_ctx->reg_port->is = AHCI_PORT_INT_CPD;
-        kprintf("ahci: port irq: AHCI_PORT_INT_CPD\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_CPD\n", port_ctx->name);
     }
 }
 
@@ -372,36 +364,9 @@ bool ahci_port_is_idle(ahci_port_ctx_t *port_ctx) {
 }
 
 bool ahci_port_start_read(ahci_port_ctx_t *port_ctx, uint64_t start_sector,
-                          uint32_t num_sectors, void *p_buf) {
+                          uint32_t num_sectors, void *buf) {
     if (port_ctx->state != AHCI_PORT_IDLE) { return false; }
-
-    // Check start_sector.
-    if (start_sector >> 48) {
-        kprintf("ahci: %s: start sector number cannot be wider than 48 bits\n",
-                port_ctx->name);
-        return false;
-    }
-    if (start_sector >= port_ctx->num_sectors) {
-        kprintf("ahci: %s: start sector is past disk end by %u sectors\n",
-                port_ctx->name, start_sector - port_ctx->num_sectors);
-        return false;
-    }
-
-    // Check num_sectors.
-    if (0 == num_sectors) { return true; }
-    if (start_sector + num_sectors > port_ctx->num_sectors) {
-        kprintf("ahci: %s: cannot read past disk end by %u sectors\n",
-                port_ctx->name,
-                (start_sector + num_sectors) - port_ctx->num_sectors);
-        return false;
-    }
-
-    // We have a finite amount of PRDs. Each can describe a 4 MiB data block,
-    // or 8192 512-byte sectors.
-    if (num_sectors > 8192 * AHCI_CMD_TABLE_NUM_PRDS) {
-        kprintf(
-            "ahci: %s: number of sectors to read cannot be greater than %u\n",
-            port_ctx->name, 8192 * AHCI_CMD_TABLE_NUM_PRDS);
+    if (!prv_ahci_port_check_sectors(port_ctx, start_sector, num_sectors)) {
         return false;
     }
 
@@ -409,15 +374,45 @@ bool ahci_port_start_read(ahci_port_ctx_t *port_ctx, uint64_t start_sector,
     ata_cmd_t cmd = {0};
     cmd.count = num_sectors;
     cmd.lba = start_sector;
-    cmd.device = (1 << 6);
+    cmd.device = 1 << 6; // "shall be set to one"
     cmd.command = SATA_CMD_READ_DMA_EXT;
 
     // Issue the command.
-    port_ctx->state = AHCI_PORT_READING;
-    size_t cmd_slot;
-    if (!send_read_cmd(port_ctx, cmd, p_buf, num_sectors, &cmd_slot)) {
+    port_ctx->state = AHCI_PORT_ACTIVE;
+    if (!prv_ahci_send_ata_cmd(port_ctx, cmd, (uint32_t)buf, num_sectors, false,
+                               &port_ctx->req_cmd_slot)) {
         port_ctx->state = AHCI_PORT_IDLE;
         kprintf("ahci: %s: failed to issue read command\n", port_ctx->name);
+        return false;
+    }
+
+    return true;
+}
+
+bool ahci_port_start_write(ahci_port_ctx_t *port_ctx, uint64_t start_sector,
+                           uint32_t num_sectors, const void *buf) {
+    if (port_ctx->state != AHCI_PORT_IDLE) { return false; }
+    if (!prv_ahci_port_check_sectors(port_ctx, start_sector, num_sectors)) {
+        return false;
+    }
+
+    // Set up an ATA command.
+    ata_cmd_t cmd = {0};
+    cmd.count = num_sectors;
+    cmd.lba = start_sector;
+    cmd.device = 1 << 6;
+    // There is no mention of setting the 6th bit in "ATA/ATAPI Command Set -
+    // 3" for the WRITE DMA EXT command, however not setting it in QEMU results
+    // in the command failing. Internet says it's the LBA mode bit, but I could
+    // not find the original source for this.
+    cmd.command = SATA_CMD_WRITE_DMA_EXT;
+
+    // Issue the command.
+    port_ctx->state = AHCI_PORT_ACTIVE;
+    if (!prv_ahci_send_ata_cmd(port_ctx, cmd, (uint32_t)buf, num_sectors, true,
+                               &port_ctx->req_cmd_slot)) {
+        port_ctx->state = AHCI_PORT_IDLE;
+        kprintf("ahci: %s: failed to issue write command\n", port_ctx->name);
         return false;
     }
 
@@ -437,18 +432,30 @@ bool ahci_port_if_is_busy(void *v_port_ctx) {
 void ahci_port_if_submit_req(blkdev_req_t *req) {
     ahci_port_ctx_t *port_ctx = req->dev_ctx;
 
+    if (!ahci_port_is_idle(req->dev_ctx)) {
+        kprintf("ahci: refuse to submit request when the port is busy\n");
+        req->state = BLKDEV_REQ_ERROR;
+        semaphore_increase(&req->sem_done);
+        return;
+    }
+
     switch (req->op) {
     case BLKDEV_OP_READ:
-        if (ahci_port_is_idle(req->dev_ctx)) {
-            port_ctx->blkdev_req = req;
-            port_ctx->blkdev_req->state = BLKDEV_REQ_ACTIVE;
-            if (!ahci_port_start_read(req->dev_ctx, req->start_sector,
-                                      req->read_sectors, req->read_buf)) {
-                port_ctx->blkdev_req->state = BLKDEV_REQ_ERROR;
-                semaphore_increase(&req->sem_done);
-            }
-        } else {
-            req->state = BLKDEV_REQ_ERROR;
+        port_ctx->blkdev_req = req;
+        port_ctx->blkdev_req->state = BLKDEV_REQ_ACTIVE;
+        if (!ahci_port_start_read(req->dev_ctx, req->start_sector,
+                                  req->read_sectors, req->read_buf)) {
+            port_ctx->blkdev_req->state = BLKDEV_REQ_ERROR;
+            semaphore_increase(&req->sem_done);
+        }
+        break;
+
+    case BLKDEV_OP_WRITE:
+        port_ctx->blkdev_req = req;
+        port_ctx->blkdev_req->state = BLKDEV_REQ_ACTIVE;
+        if (!ahci_port_start_write(req->dev_ctx, req->start_sector,
+                                   req->write_sectors, req->write_buf)) {
+            port_ctx->blkdev_req->state = BLKDEV_REQ_ERROR;
             semaphore_increase(&req->sem_done);
         }
         break;
@@ -708,14 +715,15 @@ static void prv_ahci_identify_port(ahci_port_ctx_t *port_ctx) {
 
     uint16_t *const p_ident = heap_alloc_aligned(512, 2);
     size_t cmd_slot;
-    if (!send_read_cmd(port_ctx, cmd, p_ident, 1, &cmd_slot)) {
+    if (!prv_ahci_send_ata_cmd(port_ctx, cmd, (uint32_t)p_ident, 1, false,
+                               &cmd_slot)) {
         kprintf("ahci: %s: could not issue IDENTIFY_DEVICE\n", port_ctx->name);
         heap_free(p_ident);
         port_ctx->identified = false;
         return;
     }
 
-    bool b_ok = wait_for_cmd(port_ctx, cmd_slot);
+    bool b_ok = prv_ahci_wait_for_cmd(port_ctx, cmd_slot);
     if (!b_ok) {
         kprintf("ahci: %s: command IDENTIFY_DEVICE failed\n", port_ctx->name);
         heap_free(p_ident);
@@ -737,21 +745,60 @@ static void prv_ahci_identify_port(ahci_port_ctx_t *port_ctx) {
     port_ctx->identified = true;
 }
 
+/// Checks sector arguments for validness.
+static bool prv_ahci_port_check_sectors(ahci_port_ctx_t *port_ctx,
+                                        uint64_t start_sector,
+                                        uint32_t num_sectors) {
+    // Check start_sector.
+    if (start_sector >> 48) {
+        kprintf("ahci: %s: start sector number cannot be wider than 48 bits\n",
+                port_ctx->name);
+        return false;
+    }
+    if (start_sector >= port_ctx->num_sectors) {
+        kprintf("ahci: %s: start sector is past disk end by %u sectors\n",
+                port_ctx->name, start_sector - port_ctx->num_sectors);
+        return false;
+    }
+
+    // Check num_sectors.
+    if (0 == num_sectors) { return true; }
+    if (start_sector + num_sectors > port_ctx->num_sectors) {
+        kprintf("ahci: %s: cannot read past disk end by %u sectors\n",
+                port_ctx->name,
+                (start_sector + num_sectors) - port_ctx->num_sectors);
+        return false;
+    }
+
+    // There is a finite amount of PRDs in the driver. Each can describe a 4 MiB
+    // data block, or 8192 512-byte sectors.
+    if (num_sectors > 8192 * AHCI_CMD_TABLE_NUM_PRDS) {
+        kprintf(
+            "ahci: %s: number of sectors to read cannot be greater than %u\n",
+            port_ctx->name, 8192 * AHCI_CMD_TABLE_NUM_PRDS);
+        return false;
+    }
+
+    return true;
+}
+
 /**
- * Sends an ATA command to read from a device.
+ * Sends an ATA command to a device.
  *
  * @param[in]  port_ctx    Context of the port that will handle the command.
  * @param[in]  cmd         ATA command details.
- * @param[in]  p_buf       Output buffer to copy the data read from the device.
- * @param[in]  num_sectors Number of sectors to be received into @a p_buf.
+ * @param[in]  buf_addr    Buffer to read sectors to or write them from.
+ * @param[in]  num_sectors Number of sectors in @a p_buf.
+ * @param[in]  dir_write   `true` if writing to the device, `false` if reading.
  * @param[out] p_cmd_slot  Command slot pointer.
  *
  * If the command has been issued, writes its slot to @a p_cmd_slot.
  *
  * @returns `true` if the command has been issued, otherwise `false`.
  */
-static bool send_read_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd, void *p_buf,
-                          size_t num_sectors, size_t *p_cmd_slot) {
+static bool prv_ahci_send_ata_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd,
+                                  uint32_t buf_addr, size_t num_sectors,
+                                  bool dir_write, size_t *p_cmd_slot) {
     // Depending on the sector count, there may be one or more physical region
     // descriptors necessary. Maximum region length is 4 MiB. However, the last
     // region length may be less than that to ensure that the buffer is not
@@ -767,7 +814,7 @@ static bool send_read_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd, void *p_buf,
     // One PRD can describe a 4 MiB block of data.
     const size_t read_size = 512 * num_sectors;
     const size_t num_prds = (read_size + 0x3FFFFF) / 0x400000;
-    const size_t last_prd_len = read_size % 0x400000;
+    const size_t last_prd_len = (read_size % 0x400000) - 1;
 
     if (num_prds > AHCI_CMD_TABLE_NUM_PRDS) {
         kprintf("ahci: %s: not enough PRDs to transfer %u bytes\n",
@@ -777,7 +824,7 @@ static bool send_read_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd, void *p_buf,
 
     // Find a free command slot.
     size_t cmd_slot;
-    if (!find_cmd_slot(port_ctx->reg_port, &cmd_slot)) {
+    if (!prv_ahci_find_cmd_slot(port_ctx->reg_port, &cmd_slot)) {
         kprintf("ahci: %s: could not find free command slot\n", port_ctx->name);
         return false;
     }
@@ -786,7 +833,7 @@ static bool send_read_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd, void *p_buf,
     ahci_cmd_hdr_t *const p_cmd_hdr = &port_ctx->p_cmd_list[cmd_slot];
     p_cmd_hdr->cfl = (sizeof(sata_fis_reg_h2d_t) / 4);
     p_cmd_hdr->b_atapi = false;
-    p_cmd_hdr->b_write = false;
+    p_cmd_hdr->b_write = dir_write;
     p_cmd_hdr->b_prefetch = false;
     p_cmd_hdr->b_reset = false;
     p_cmd_hdr->b_bist = 0;
@@ -799,7 +846,7 @@ static bool send_read_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd, void *p_buf,
     ASSERT(num_prds >= 1);
     for (size_t prd_idx = 0; prd_idx < num_prds - 1; prd_idx++) {
         ahci_prd_t *const p_prd = &p_cmd_table->p_prd_table[prd_idx];
-        p_prd->dba = (uint32_t)p_buf + 0x400000 * prd_idx;
+        p_prd->dba = buf_addr + 0x400000 * prd_idx;
         p_prd->dbau = 0;
         p_prd->dbc = 0x3FFFFF; // 4 MiB
         p_prd->b_int = true;
@@ -807,7 +854,7 @@ static bool send_read_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd, void *p_buf,
     // The last PRD may describe less than 4 MiB, that's why it's not in the
     // loop.
     ahci_prd_t *const last_prd = &p_cmd_table->p_prd_table[num_prds - 1];
-    last_prd->dba = (uint32_t)p_buf + 0x400000 * (num_prds - 1);
+    last_prd->dba = buf_addr + 0x400000 * (num_prds - 1);
     last_prd->dbau = 0;
     last_prd->dbc = last_prd_len;
     last_prd->b_int = true;
@@ -864,7 +911,7 @@ static bool send_read_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd, void *p_buf,
  * - `false` if the Task File Error bit is set in the Port Interrupt Status
  *   register (IS.TFES), or if no FIS has been received at all.
  */
-static bool wait_for_cmd(ahci_port_ctx_t *port_ctx, size_t cmd_slot) {
+static bool prv_ahci_wait_for_cmd(ahci_port_ctx_t *port_ctx, size_t cmd_slot) {
     reg_port_t *const reg_port = port_ctx->reg_port;
 
     bool b_has_err = false;
@@ -903,7 +950,7 @@ static bool wait_for_cmd(ahci_port_ctx_t *port_ctx, size_t cmd_slot) {
     return true;
 }
 
-static bool find_cmd_slot(reg_port_t *reg_port, size_t *out_slot) {
+static bool prv_ahci_find_cmd_slot(reg_port_t *reg_port, size_t *out_slot) {
     ASSERT(out_slot);
 
     for (int cmd_slot = 0; cmd_slot < 32; cmd_slot++) {
@@ -918,4 +965,111 @@ static bool find_cmd_slot(reg_port_t *reg_port, size_t *out_slot) {
         }
     }
     return false;
+}
+
+/**
+ * Handles a Task File Error interrupt.
+ * Refer to section 6.2.2.1 "Non-Queued Error Recovery".
+ * @param port_ctx Port that got a Task File Error.
+ */
+static void prv_ahci_port_handle_tfe(ahci_port_ctx_t *port_ctx) {
+    const ahci_port_state_t port_state = port_ctx->state;
+    if (port_state != AHCI_PORT_ACTIVE) {
+        panic_enter();
+        kprintf("ahci: port %s TFE: unexpected port state: %u\n",
+                port_ctx->name, port_state);
+        panic("unexpected AHCI TFE IRQ");
+    }
+
+    kprintf("ahci: port %s TFE: AHCI_PORT_ACTIVE\n", port_ctx->name);
+
+    if (port_ctx->blkdev_req->state != BLKDEV_REQ_ACTIVE) {
+        panic_enter();
+        kprintf("ahci: port %s TFE: no active request\n");
+        panic("unexpected AHCI request state");
+    }
+
+    const uint32_t ci = port_ctx->reg_port->ci;
+    if (ci != (uint32_t)(1 << (port_ctx->req_cmd_slot))) {
+        panic_enter();
+        kprintf("ahci: port %s TFE: CI = 0x%08X, request slot = %u\n",
+                port_ctx->name, ci, port_ctx->req_cmd_slot);
+        panic("unexpected AHCI CI register value");
+    }
+
+    // Clear PxCMD.ST to '0' to reset the CI register.
+    port_ctx->reg_port->cmd &= ~AHCI_PORT_CMD_ST;
+    while (port_ctx->reg_port->cmd & AHCI_PORT_CMD_CR) {}
+
+    // Clear any error bits in PxSERR to enable capturing new errors.
+    kprintf("ahci: port %s TFE: SERR = 0x%08X\n", port_ctx->name,
+            port_ctx->reg_port->serr);
+    port_ctx->reg_port->serr = 0;
+
+    // 6.2.2.1 states that PxIS needs to be cleared, but the IRQ handler already
+    // has done that. If it really needs to be cleared, add the appropriate
+    // code.
+    if (port_ctx->reg_port->is & AHCI_PORT_INT_TFE) {
+        panic_enter();
+        kprintf("ahci: TODO: prv_ahci_port_handle_tfe() clear IS.TFES\n");
+        panic("not implemented");
+    }
+
+    // In case PxTFD.STS.BSY or PxTFD.STS.DRQ is set, a COMRESET needs to be
+    // issued to put the device in an idle state.
+    bool do_comreset = false;
+    ahci_port_tfd_t tfd;
+    kmemread_v4(&tfd, &port_ctx->reg_port->tfd);
+    kprintf("ahci port %s TFE: TFD.STS = 0x%02X, TFD.ERR = 0x%02X\n",
+            port_ctx->name, tfd.sts, tfd.err);
+    if (tfd.sts & AHCI_TFD_STS_BSY) {
+        kprintf("ahci: port %s TFE: STS.BSY is set, need COMRESET\n",
+                port_ctx->name);
+        do_comreset = true;
+    }
+    if (tfd.sts & AHCI_TFD_STS_DRQ) {
+        kprintf("ahci: port %s TFE: STS.DRQ is set, need COMRESET\n",
+                port_ctx->name);
+        do_comreset = true;
+    }
+    if (do_comreset) {
+        panic_enter();
+        kprintf("ahci: TODO: prv_ahci_port_handle_tfe() COMRESET\n");
+        panic("not implemented");
+    }
+
+    // Set PxCMD.ST back to '1' to be able to issue new commands.
+    port_ctx->reg_port->cmd |= AHCI_PORT_CMD_ST;
+    while (!(port_ctx->reg_port->cmd & AHCI_PORT_CMD_CR)) {}
+
+    kprintf("ahci: port %s TFE: failing active request\n", port_ctx->name);
+    port_ctx->blkdev_req->state = BLKDEV_REQ_ERROR;
+    semaphore_increase(&port_ctx->blkdev_req->sem_done);
+    port_ctx->state = AHCI_PORT_IDLE;
+}
+
+/**
+ * Handles a Device to Host Register FIS interrupt.
+ * @param port_ctx Port that got a DHR interrupt.
+ */
+static void prv_ahci_port_handle_dhr(ahci_port_ctx_t *port_ctx) {
+    const ahci_port_state_t port_state = port_ctx->state;
+    if (port_state != AHCI_PORT_ACTIVE) {
+        kprintf("ahci: port %s irq: port is not active, ignoring DHR\n",
+                port_ctx->name, port_state);
+    }
+
+    kprintf("ahci: port %s irq: AHCI_PORT_ACTIVE\n", port_ctx->name);
+    if (port_ctx->blkdev_req->state == BLKDEV_REQ_ACTIVE) {
+        kprintf("ahci: port %s irq: has active request\n", port_ctx->name);
+        port_ctx->blkdev_req->state = BLKDEV_REQ_SUCCESS;
+        semaphore_increase(&port_ctx->blkdev_req->sem_done);
+    } else {
+        panic_enter();
+        kprintf("ahci: port %s irq: port state is AHCI_PORT_ACTIVE, "
+                "but there is no active request\n",
+                port_ctx->name);
+        panic("unexpected AHCI DHR IRQ");
+    }
+    port_ctx->state = AHCI_PORT_IDLE;
 }

@@ -37,6 +37,7 @@
  */
 #define SATA_CMD_IDENTIFY_DEVICE 0xEC
 #define SATA_CMD_READ_DMA_EXT    0x25
+#define SATA_CMD_WRITE_DMA_EXT   0x35
 /// @}
 
 #define SATA_SERIAL_STR_LEN 20
