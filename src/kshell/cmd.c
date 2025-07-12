@@ -43,8 +43,6 @@ static char const *const gp_cmd_names[NUM_CMDS] = {
 };
 
 static uint32_t g_exec_entry;
-static bool g_ksh_blkdev_busy;
-static bool g_ksh_blkdev_success;
 
 static void cmd_clear(char **pp_args, size_t num_args);
 static void cmd_help(char **pp_args, size_t num_args);
@@ -63,8 +61,6 @@ static void cmd_execrep(char **pp_args, size_t num_args);
 static void cmd_kbdlog(char **pp_args, size_t num_args);
 static void cmd_heap(char **pp_args, size_t num_args);
 static void cmd_kill(char **pp_args, size_t num_args);
-
-static void ksh_blkdev_callback(bool success);
 
 void kshell_cmd_parse(char const *p_cmd) {
     char *pp_args[MAX_ARGS];
@@ -440,51 +436,48 @@ static void cmd_blkdev(char **pp_args, size_t num_args) {
 
     devmgr_dev_t *const dev = devmgr_get_by_id(dev_id);
     if (!dev) {
-        kprintf("blkdev: no device with ID %u\n", dev_id);
+        kprintf("kshell: no device with ID %u\n", dev_id);
         return;
     }
     if (dev->dev_class != DEVMGR_CLASS_DISK) {
-        kprintf("blkdev: device ID %u is %s, not a block device\n", dev_id,
+        kprintf("kshell: device ID %u is %s, not a block device\n", dev_id,
                 devmgr_class_name(dev->dev_class));
         return;
     }
 
     uint8_t *const p_buf = heap_alloc_aligned(512 * num_sectors, 2);
+    kprintf("kshell: p_buf = %P\n", p_buf);
 
     blkdev_req_t blkdev_req = {
+        .state = BLKDEV_REQ_INACTIVE,
         .op = BLKDEV_OP_READ,
         .start_sector = start_sector,
         .read_sectors = num_sectors,
         .read_buf = p_buf,
         .dev_ctx = dev->driver_ctx,
-        .cb_done = ksh_blkdev_callback,
     };
+    semaphore_init(&blkdev_req.sem_done);
 
     if (dev->driver_id == DEVMGR_DRIVER_AHCI_PORT) {
         ahci_port_fill_blkdev_if(&blkdev_req.dev_if);
     } else {
-        kprintf("blkdev: handling of driver ID %u not implemented\n",
+        kprintf("kshell: handling of driver ID %u not implemented\n",
                 dev->driver_id);
         heap_free(p_buf);
         return;
     }
 
-    g_ksh_blkdev_busy = true;
     ok = blkdev_enqueue_req(&blkdev_req);
     if (!ok) {
-        g_ksh_blkdev_busy = false;
-        kprintf("blkdev: request queue of blkdev is full\n");
+        kprintf("kshell: request queue of blkdev is full\n");
         heap_free(p_buf);
         return;
     }
 
-    while (g_ksh_blkdev_busy) {
-        // FIXME: implement AHCI interrupts so that this HACK is not needed
-        volatile bool idle = ahci_port_is_idle(dev->driver_ctx);
-        (void)idle;
-    }
+    semaphore_decrease(&blkdev_req.sem_done);
+    kprintf("kshell: decreased sem_done\n");
 
-    if (g_ksh_blkdev_success) {
+    if (blkdev_req.state == BLKDEV_REQ_SUCCESS) {
         const size_t num_bytes = 512 * num_sectors;
         for (size_t row = 0; row < (num_bytes + 23) / 24; row++) {
             kprintf("%02x  ", row);
@@ -495,8 +488,11 @@ static void cmd_blkdev(char **pp_args, size_t num_args) {
             }
             kprintf("\n");
         }
+    } else if (blkdev_req.state == BLKDEV_REQ_ERROR) {
+        kprintf("kshell: blkdev I/O error\n");
     } else {
-        kprintf("blkdev: I/O error\n");
+        kprintf("kshell: blkdev request has unexpected state %u\n",
+                blkdev_req.state);
     }
 
     heap_free(p_buf);
@@ -583,13 +579,4 @@ static void cmd_kill(char **pp_args, size_t num_args) {
         kprintf("No such task: ID %u\n", task_id);
     }
     */
-}
-
-static void ksh_blkdev_callback(bool success) {
-    if (!g_ksh_blkdev_busy) {
-        kprintf("kshell: ksh_blkdev_callback called unexpectedly\n");
-        return;
-    }
-    g_ksh_blkdev_busy = false;
-    g_ksh_blkdev_success = success;
 }

@@ -83,9 +83,8 @@ struct ahci_port_ctx {
     /// Port parameters have been identified using #SATA_CMD_IDENTIFY_DEVICE.
     bool identified;
 
-    ahci_port_state_t state;
-    blkdev_req_t blkdev_req;
-    bool has_blkdev_req;
+    _Atomic ahci_port_state_t state;
+    blkdev_req_t *blkdev_req;
 
     /// Context pointer of the controller this port is a part of.
     ahci_ctrl_ctx_t *ctrl_ctx;
@@ -178,7 +177,7 @@ static void prv_ahci_setup_port(ahci_port_ctx_t *port_ctx);
 static void prv_ahci_identify_port(ahci_port_ctx_t *port_ctx);
 
 static bool send_read_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd, void *p_buf,
-                          size_t read_len, size_t *p_cmd_slot);
+                          size_t num_sectors, size_t *p_cmd_slot);
 static bool wait_for_cmd(ahci_port_ctx_t *port_ctx, size_t cmd_slot);
 static bool find_cmd_slot(reg_port_t *reg_port, size_t *out_slot);
 
@@ -279,6 +278,28 @@ void ahci_port_irq_handler(ahci_port_ctx_t *port_ctx) {
     if (int_status & AHCI_PORT_INT_DHR) {
         port_ctx->reg_port->is = AHCI_PORT_INT_DHR;
         kprintf("ahci port interrupt: AHCI_PORT_INT_DHR\n");
+
+        const ahci_port_state_t port_state = port_ctx->state;
+        if (port_state == AHCI_PORT_READING) {
+            kprintf("ahci port irq: AHCI_PORT_READING\n");
+            if (port_ctx->blkdev_req->state == BLKDEV_REQ_ACTIVE) {
+                kprintf("ahci port irq: active req\n");
+                port_ctx->blkdev_req->state = BLKDEV_REQ_SUCCESS;
+                semaphore_increase(&port_ctx->blkdev_req->sem_done);
+            } else {
+                panic_enter();
+                kprintf("ahci_port_irq_handler: port %s state is "
+                        "AHCI_PORT_READING, but there is no active request\n",
+                        port_ctx->name);
+                panic("unexpected AHCI DHR IRQ");
+            }
+            port_ctx->state = AHCI_PORT_IDLE;
+        } else {
+            panic_enter();
+            kprintf("ahci_port_irq_handler: unexpected port %s state: %u\n",
+                    port_ctx->name, port_state);
+            panic("unexpected AHCI DHR IRQ");
+        }
     }
     if (int_status & AHCI_PORT_INT_PS) {
         port_ctx->reg_port->is = AHCI_PORT_INT_PS;
@@ -347,22 +368,6 @@ void ahci_port_irq_handler(ahci_port_ctx_t *port_ctx) {
 }
 
 bool ahci_port_is_idle(ahci_port_ctx_t *port_ctx) {
-    // FIXME: use an interrupt to change the state.
-    bool has_error = false;
-    if (port_ctx->reg_port->is & AHCI_PORT_INT_TFE) {
-        port_ctx->reg_port->is = AHCI_PORT_INT_TFE;
-        has_error = true;
-    }
-    if (port_ctx->p_rfis->rfis.error) { has_error = true; }
-    if (has_error || port_ctx->reg_port->ci == 0) {
-        port_ctx->state = AHCI_PORT_IDLE;
-
-        if (port_ctx->has_blkdev_req) {
-            port_ctx->blkdev_req.cb_done(!has_error);
-            port_ctx->has_blkdev_req = false;
-        }
-    }
-
     return port_ctx->state == AHCI_PORT_IDLE;
 }
 
@@ -408,13 +413,14 @@ bool ahci_port_start_read(ahci_port_ctx_t *port_ctx, uint64_t start_sector,
     cmd.command = SATA_CMD_READ_DMA_EXT;
 
     // Issue the command.
+    port_ctx->state = AHCI_PORT_READING;
     size_t cmd_slot;
-    if (!send_read_cmd(port_ctx, cmd, p_buf, 512 * num_sectors, &cmd_slot)) {
+    if (!send_read_cmd(port_ctx, cmd, p_buf, num_sectors, &cmd_slot)) {
+        port_ctx->state = AHCI_PORT_IDLE;
         kprintf("ahci: %s: failed to issue read command\n", port_ctx->name);
         return false;
     }
 
-    port_ctx->state = AHCI_PORT_READING;
     return true;
 }
 
@@ -429,18 +435,21 @@ bool ahci_port_if_is_busy(void *v_port_ctx) {
 }
 
 void ahci_port_if_submit_req(blkdev_req_t *req) {
-    // NOTE: lifetime of 'req' ends when this function returns.
-
     ahci_port_ctx_t *port_ctx = req->dev_ctx;
 
     switch (req->op) {
     case BLKDEV_OP_READ:
-        if (ahci_port_start_read(req->dev_ctx, req->start_sector,
-                                 req->read_sectors, req->read_buf)) {
-            kmemcpy(&port_ctx->blkdev_req, req, sizeof(*req));
-            port_ctx->has_blkdev_req = true;
+        if (ahci_port_is_idle(req->dev_ctx)) {
+            port_ctx->blkdev_req = req;
+            port_ctx->blkdev_req->state = BLKDEV_REQ_ACTIVE;
+            if (!ahci_port_start_read(req->dev_ctx, req->start_sector,
+                                      req->read_sectors, req->read_buf)) {
+                port_ctx->blkdev_req->state = BLKDEV_REQ_ERROR;
+                semaphore_increase(&req->sem_done);
+            }
         } else {
-            req->cb_done(false);
+            req->state = BLKDEV_REQ_ERROR;
+            semaphore_increase(&req->sem_done);
         }
         break;
     }
@@ -699,7 +708,7 @@ static void prv_ahci_identify_port(ahci_port_ctx_t *port_ctx) {
 
     uint16_t *const p_ident = heap_alloc_aligned(512, 2);
     size_t cmd_slot;
-    if (!send_read_cmd(port_ctx, cmd, p_ident, 512, &cmd_slot)) {
+    if (!send_read_cmd(port_ctx, cmd, p_ident, 1, &cmd_slot)) {
         kprintf("ahci: %s: could not issue IDENTIFY_DEVICE\n", port_ctx->name);
         heap_free(p_ident);
         port_ctx->identified = false;
@@ -713,6 +722,9 @@ static void prv_ahci_identify_port(ahci_port_ctx_t *port_ctx) {
         port_ctx->identified = false;
         return;
     }
+
+    // Clear all interrupt status flags.
+    port_ctx->reg_port->is = AHCI_PORT_INT_ALL;
 
     kmemcpy(port_ctx->serial_str, p_ident + 10, SATA_SERIAL_STR_LEN);
     port_ctx->num_sectors = *((uint32_t *)&p_ident[60]);
@@ -728,27 +740,38 @@ static void prv_ahci_identify_port(ahci_port_ctx_t *port_ctx) {
 /**
  * Sends an ATA command to read from a device.
  *
- * @param[in]  port_ctx   Context of the port that will handle the command.
- * @param[in]  cmd        ATA command details.
- * @param[in]  p_buf      Output buffer to copy the data read from the device.
- * @param[in]  read_len   Number of bytes to be received into @a p_buf.
- * @param[out] p_cmd_slot Command slot pointer.
+ * @param[in]  port_ctx    Context of the port that will handle the command.
+ * @param[in]  cmd         ATA command details.
+ * @param[in]  p_buf       Output buffer to copy the data read from the device.
+ * @param[in]  num_sectors Number of sectors to be received into @a p_buf.
+ * @param[out] p_cmd_slot  Command slot pointer.
  *
  * If the command has been issued, writes its slot to @a p_cmd_slot.
  *
  * @returns `true` if the command has been issued, otherwise `false`.
- *
- * @warning
- * Does not check if the command was aborted, or for any other ATA error.
  */
 static bool send_read_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd, void *p_buf,
-                          size_t read_len, size_t *p_cmd_slot) {
+                          size_t num_sectors, size_t *p_cmd_slot) {
+    // Depending on the sector count, there may be one or more physical region
+    // descriptors necessary. Maximum region length is 4 MiB. However, the last
+    // region length may be less than that to ensure that the buffer is not
+    // overwritten.
+
+    if (num_sectors == 0) {
+        // FIXME: do not fail
+        panic_enter();
+        kprintf("send_read_cmd: port %s, num_sectors = 0\n", port_ctx->name);
+        panic("invalid send_read_cmd argument");
+    }
+
     // One PRD can describe a 4 MiB block of data.
-    const uint16_t prdtl =
-        ((read_len + ((4 * 1024 * 1024) - 1)) / (4 * 1024 * 1024));
-    if (prdtl > AHCI_CMD_TABLE_NUM_PRDS) {
-        kprintf("ahci: %s: cannot transfer %u bytes of data\n", port_ctx->name,
-                read_len);
+    const size_t read_size = 512 * num_sectors;
+    const size_t num_prds = (read_size + 0x3FFFFF) / 0x400000;
+    const size_t last_prd_len = read_size % 0x400000;
+
+    if (num_prds > AHCI_CMD_TABLE_NUM_PRDS) {
+        kprintf("ahci: %s: not enough PRDs to transfer %u bytes\n",
+                port_ctx->name, read_size);
         return false;
     }
 
@@ -769,18 +792,25 @@ static bool send_read_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd, void *p_buf,
     p_cmd_hdr->b_bist = 0;
     p_cmd_hdr->b_clear_bsy = false;
     p_cmd_hdr->pmp = 0;
-    p_cmd_hdr->prdtl = prdtl;
+    p_cmd_hdr->prdtl = num_prds;
 
-    // Fill the command table.  Start with the PRD table.  We have N PRDs, each
-    // can describe 4 MiBs.
+    // Fill the command table. Start with the PRD table.
     ahci_cmd_table_t *const p_cmd_table = &port_ctx->p_cmd_tables[cmd_slot];
-    for (size_t prd_idx = 0; prd_idx < prdtl; prd_idx++) {
+    ASSERT(num_prds >= 1);
+    for (size_t prd_idx = 0; prd_idx < num_prds - 1; prd_idx++) {
         ahci_prd_t *const p_prd = &p_cmd_table->p_prd_table[prd_idx];
-        p_prd->dba = (((uint32_t)p_buf) + (4 * 1024 * 1024 * prd_idx));
+        p_prd->dba = (uint32_t)p_buf + 0x400000 * prd_idx;
         p_prd->dbau = 0;
-        p_prd->dbc = ((read_len - (4 * 1024 * 1024 * prd_idx)) - 1);
+        p_prd->dbc = 0x3FFFFF; // 4 MiB
         p_prd->b_int = true;
     }
+    // The last PRD may describe less than 4 MiB, that's why it's not in the
+    // loop.
+    ahci_prd_t *const last_prd = &p_cmd_table->p_prd_table[num_prds - 1];
+    last_prd->dba = (uint32_t)p_buf + 0x400000 * (num_prds - 1);
+    last_prd->dbau = 0;
+    last_prd->dbc = last_prd_len;
+    last_prd->b_int = true;
 
     // Finish by setting the CFIS.
     sata_fis_reg_h2d_t *p_cfis = (sata_fis_reg_h2d_t *)&p_cmd_table->p_cfis;
@@ -833,11 +863,6 @@ static bool send_read_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd, void *p_buf,
  * - `true` if the command has finished successfully.
  * - `false` if the Task File Error bit is set in the Port Interrupt Status
  *   register (IS.TFES), or if no FIS has been received at all.
- *
- * @note
- * Use this function right after issuing a command, e.g., using
- * #send_read_cmd(), so that the D2H RFIS Interrupt (IS.DHRS) is not reset
- * between the calls.
  */
 static bool wait_for_cmd(ahci_port_ctx_t *port_ctx, size_t cmd_slot) {
     reg_port_t *const reg_port = port_ctx->reg_port;
