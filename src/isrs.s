@@ -228,6 +228,22 @@ isr_irq15:      cli
                 iret
                 .size   isr_irq15, . - isr_irq15
 
+                ## ISR for the AHCI IRQ.
+                .global isr_irq_ahci
+                .type   isr_irq_ahci, @function
+isr_irq_ahci:   cli
+                push    %ebp
+                mov     %esp, %ebp
+
+                pusha
+                cld
+                call    ahci_ctrl_irq_handler
+                popa
+
+                pop     %ebp
+                iret
+                .size   isr_irq_ahci, . - isr_irq_ahci
+
                 ## LAPIC Timer ISR.
                 .global isr_lapic_tim
                 .type   isr_lapic_tim, @function

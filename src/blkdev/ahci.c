@@ -7,9 +7,12 @@
 
 #include <stddef.h>
 
+#include "acpi/ioapic.h"
+#include "acpi/lapic.h"
 #include "assert.h"
 #include "blkdev/ahci.h"
 #include "blkdev/ahci_regs.h"
+#include "devmgr.h"
 #include "heap.h"
 #include "kprintf.h"
 #include "memfun.h"
@@ -130,6 +133,12 @@ struct ahci_ctrl_ctx {
     /// PCI device context.
     const pci_dev_t *pci_dev;
 
+    /**
+     * IRQ number extracted from the PCI header.
+     * See #pci_header_00h_t.int_line;
+     */
+    uint8_t irq;
+
     /// Generic HBA Control register.
     reg_ghc_t *reg_ghc;
 
@@ -205,6 +214,8 @@ ahci_ctrl_ctx_t *ahci_ctrl_new(const pci_dev_t *pci_dev) {
         }
     }
 
+    ctrl_ctx->irq = pci_dev->header.int_line;
+
     return ctrl_ctx;
 }
 
@@ -217,12 +228,119 @@ ahci_port_ctx_t *ahci_ctrl_get_port(ahci_ctrl_ctx_t *ctrl_ctx,
     }
 }
 
+void ahci_ctrl_set_int(ahci_ctrl_ctx_t *ctrl_ctx, bool on) {
+    ctrl_ctx->reg_ghc->ghc_bit.ie = on;
+}
+
+void ahci_ctrl_map_irq(ahci_ctrl_ctx_t *ctrl_ctx, uint8_t vec) {
+    ioapic_map_irq(ctrl_ctx->irq, vec, lapic_get_id());
+}
+
+void ahci_ctrl_irq_handler(void) {
+    devmgr_iter_t iter;
+    devmgr_iter_init(&iter, DEVMGR_CLASS_DISK);
+
+    devmgr_dev_t *dev;
+    while ((dev = devmgr_iter_next(&iter))) {
+        if (dev->driver_id == DEVMGR_DRIVER_AHCI_PORT) {
+            ahci_port_ctx_t *const port_ctx = dev->driver_ctx;
+            ahci_port_irq_handler(port_ctx);
+        }
+    }
+
+    lapic_send_eoi();
+}
+
 bool ahci_port_is_online(const ahci_port_ctx_t *port_ctx) {
     return port_ctx->online_sata;
 }
 
 const char *ahci_port_name(const ahci_port_ctx_t *port_ctx) {
     return port_ctx->name;
+}
+
+void ahci_port_set_int(ahci_port_ctx_t *port_ctx, ahci_port_int_t port_int,
+                       bool on) {
+    uint32_t ie_val = port_ctx->reg_port->ie;
+    if (on) {
+        ie_val |= (uint32_t)port_int;
+    } else {
+        ie_val &= ~((uint32_t)port_int);
+    }
+    port_ctx->reg_port->ie = ie_val;
+}
+
+void ahci_port_irq_handler(ahci_port_ctx_t *port_ctx) {
+    const uint32_t int_status = port_ctx->reg_port->is;
+
+    if (int_status & AHCI_PORT_INT_DHR) {
+        port_ctx->reg_port->is |= AHCI_PORT_INT_DHR;
+        kprintf("ahci port interrupt: AHCI_PORT_INT_DHR\n");
+    }
+    if (int_status & AHCI_PORT_INT_PS) {
+        port_ctx->reg_port->is |= AHCI_PORT_INT_PS;
+        kprintf("ahci port interrupt: AHCI_PORT_INT_PS\n");
+    }
+    if (int_status & AHCI_PORT_INT_DS) {
+        port_ctx->reg_port->is |= AHCI_PORT_INT_DS;
+        kprintf("ahci port interrupt: AHCI_PORT_INT_DS\n");
+    }
+    if (int_status & AHCI_PORT_INT_SDB) {
+        port_ctx->reg_port->is |= AHCI_PORT_INT_SDB;
+        kprintf("ahci port interrupt: AHCI_PORT_INT_SDB\n");
+    }
+    if (int_status & AHCI_PORT_INT_UF) {
+        port_ctx->reg_port->is |= AHCI_PORT_INT_UF;
+        kprintf("ahci port interrupt: AHCI_PORT_INT_UF\n");
+    }
+    if (int_status & AHCI_PORT_INT_DP) {
+        port_ctx->reg_port->is |= AHCI_PORT_INT_DP;
+        kprintf("ahci port interrupt: AHCI_PORT_INT_DP\n");
+    }
+    if (int_status & AHCI_PORT_INT_PC) {
+        port_ctx->reg_port->is |= AHCI_PORT_INT_PC;
+        kprintf("ahci port interrupt: AHCI_PORT_INT_PC\n");
+    }
+    if (int_status & AHCI_PORT_INT_DMP) {
+        port_ctx->reg_port->is |= AHCI_PORT_INT_DMP;
+        kprintf("ahci port interrupt: AHCI_PORT_INT_DMP\n");
+    }
+    if (int_status & AHCI_PORT_INT_PRC) {
+        port_ctx->reg_port->is |= AHCI_PORT_INT_PRC;
+        kprintf("ahci port interrupt: AHCI_PORT_INT_PRC\n");
+    }
+    if (int_status & AHCI_PORT_INT_IPM) {
+        port_ctx->reg_port->is |= AHCI_PORT_INT_IPM;
+        kprintf("ahci port interrupt: AHCI_PORT_INT_IPM\n");
+    }
+    if (int_status & AHCI_PORT_INT_OF) {
+        port_ctx->reg_port->is |= AHCI_PORT_INT_OF;
+        kprintf("ahci port interrupt: AHCI_PORT_INT_OF\n");
+    }
+    if (int_status & AHCI_PORT_INT_INF) {
+        port_ctx->reg_port->is |= AHCI_PORT_INT_INF;
+        kprintf("ahci port interrupt: AHCI_PORT_INT_INF\n");
+    }
+    if (int_status & AHCI_PORT_INT_IF) {
+        port_ctx->reg_port->is |= AHCI_PORT_INT_IF;
+        kprintf("ahci port interrupt: AHCI_PORT_INT_IF\n");
+    }
+    if (int_status & AHCI_PORT_INT_HBD) {
+        port_ctx->reg_port->is |= AHCI_PORT_INT_HBD;
+        kprintf("ahci port interrupt: AHCI_PORT_INT_HBD\n");
+    }
+    if (int_status & AHCI_PORT_INT_HBF) {
+        port_ctx->reg_port->is |= AHCI_PORT_INT_HBF;
+        kprintf("ahci port interrupt: AHCI_PORT_INT_HBF\n");
+    }
+    if (int_status & AHCI_PORT_INT_TFE) {
+        port_ctx->reg_port->is |= AHCI_PORT_INT_TFE;
+        kprintf("ahci port interrupt: AHCI_PORT_INT_TFE\n");
+    }
+    if (int_status & AHCI_PORT_INT_CPD) {
+        port_ctx->reg_port->is |= AHCI_PORT_INT_CPD;
+        kprintf("ahci port interrupt: AHCI_PORT_INT_CPD\n");
+    }
 }
 
 bool ahci_port_is_idle(ahci_port_ctx_t *port_ctx) {

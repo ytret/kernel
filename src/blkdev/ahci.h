@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "ahci_regs.h"
 #include "blkdev/blkdev.h"
 #include "pci.h"
 
@@ -21,6 +22,12 @@
  */
 #define AHCI_PORTS_PER_CTRL 30
 
+/**
+ * Interrupt number for the global AHCI interrupts.
+ * IRQs of all AHCI controllers are mapped to this vector in the I/O APIC.
+ */
+#define AHCI_VEC_GLOBAL 0xA0
+
 typedef struct ahci_ctrl_ctx ahci_ctrl_ctx_t;
 typedef struct ahci_port_ctx ahci_port_ctx_t;
 
@@ -33,8 +40,40 @@ typedef enum {
 ahci_ctrl_ctx_t *ahci_ctrl_new(const pci_dev_t *pci_dev);
 ahci_port_ctx_t *ahci_ctrl_get_port(ahci_ctrl_ctx_t *ctrl_ctx, size_t port_idx);
 
+/**
+ * Enables or disables the controller's global interrupt line.
+ *
+ * See #reg_ghc_t.ghc_bit, field _ie_.
+ *
+ * @param ctrl_ctx Controller context pointer.
+ * @param on       Enable (`true`) or disable (`false`) the global interrupt.
+ */
+void ahci_ctrl_set_int(ahci_ctrl_ctx_t *ctrl_ctx, bool on);
+
+/**
+ * Maps the IRQ of an AHCI Controller to a Local APIC vector.
+ *
+ * @param ctrl_ctx Controller context pointer.
+ * @param vec      Interrupt vector to map the global IRQ of @a ctrl_ctx to.
+ */
+void ahci_ctrl_map_irq(ahci_ctrl_ctx_t *ctrl_ctx, uint8_t vec);
+
+void ahci_ctrl_irq_handler(void);
+
 bool ahci_port_is_online(const ahci_port_ctx_t *port_ctx);
 const char *ahci_port_name(const ahci_port_ctx_t *port_ctx);
+
+/**
+ * Enables or disables an interrupt @a port_int on port @a port_ctx.
+ *
+ * @param port_ctx Port context pointer.
+ * @param port_int Port interrupt selection.
+ * @param on       Enable (`true`) or disable (`false`) interrupt @a port_int.
+ */
+void ahci_port_set_int(ahci_port_ctx_t *port_ctx, ahci_port_int_t port_int,
+                       bool on);
+
+void ahci_port_irq_handler(ahci_port_ctx_t *port_ctx);
 
 /// Returns `true` if port @a port_ctx is ready for a new request.
 bool ahci_port_is_idle(ahci_port_ctx_t *port_ctx);

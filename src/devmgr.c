@@ -164,9 +164,14 @@ static void prv_devmgr_init_ahci(const pci_dev_t *pci_dev) {
         dev->driver_id = DEVMGR_DRIVER_AHCI_PORT;
         dev->driver_ctx = ahci_port;
 
+        ahci_port_set_int(ahci_port, AHCI_PORT_INT_ALL, true);
+
         kprintf("devmgr: loaded driver for AHCI Port %s\n",
                 ahci_port_name(ahci_port));
     }
+
+    ahci_ctrl_map_irq(ahci_ctrl, AHCI_VEC_GLOBAL);
+    ahci_ctrl_set_int(ahci_ctrl, true);
 }
 
 /**
