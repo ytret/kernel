@@ -67,139 +67,95 @@
  * Generic HBA Control registers.
  * Refer to section 3.1.
  */
-typedef volatile struct [[gnu::packed]] {
-    /// Host Capabilities register.
-    union {
-        IO32 cap;
-        struct {
-            IO32 np : 5;   //!< Number of Ports.
-            IO32 sxs : 1;  //!< Supports Extended SATA.
-            IO32 ems : 1;  //!< Enclosure Management Supported.
-            IO32 cccs : 1; //!< Command Completion Coalescing Supported.
-            IO32 ncs : 5;  //!< Number of Command Slots.
-            IO32 psc : 1;  //!< Partial State Capable.
-            IO32 ssc : 1;  //!< Slumber State Capable.
-            IO32 pmd : 1;  //!< PIO Multiple DRQ Block.
-            IO32 fbss : 1; //!< FIS-based Switching Supported.
-            IO32 spm : 1;  //!< Supports Port Multiplier.
-            IO32 sam : 1;  //!< Supports AHCI Mode Only.
-            IO32 reserved1 : 1;
-            IO32 iss : 4;   //!< Interface Speed Support.
-            IO32 sclo : 1;  //!< Supports Command List Override.
-            IO32 sal : 1;   //!< Supports Activity LED.
-            IO32 salp : 1;  //!< Supports Aggressive Link Power Management.
-            IO32 sss : 1;   //!< Supports Staggered Spin-up.
-            IO32 smps : 1;  //!< Supports Mechanical Presence Switch.
-            IO32 ssntf : 1; //!< Supports SNotification Register.
-            IO32 sncq : 1;  //!< Supports Native Command Queueing.
-            IO32 s64a : 1;  //!< Supports 64-bit Addressing.
-        } cap_bit;
-    };
-
-    /// Global HBA Control register.
-    union {
-        IO32 ghc;
-        struct {
-            IO32 hr : 1;   //!< HBA Reset.
-            IO32 ie : 1;   //!< Interrupt Enable.
-            IO32 mrsm : 1; //!< MSI Revert to Single Message.
-            IO32 reserved1 : 28;
-            IO32 ae : 1; //!< AHCI Enable.
-        } ghc_bit;
-    };
-    IO32 is; //!< Interrupt Status register.
-    IO32 pi; //!< Ports Implemented register.
-
-    /// Version register.
-    union {
-        IO32 vs;
-        struct {
-            IO32 minor : 16;
-            IO32 major : 16;
-        } vs_bit;
-    };
-
-    /// Command Completion Coalescing Control register.
-    union {
-        IO32 ccc_ctl;
-        struct {
-            IO32 en : 1; //!< Enable.
-            IO32 reserved1 : 2;
-            IO32 intr : 5; //!< Interrupt.
-            IO32 cc : 8;   //!< Command Completions.
-            IO32 tv : 16;  //!< Timeout Value.
-        } ccc_ctl_bit;
-    };
-
+typedef volatile struct {
+    IO32 cap;       //!< Host Capabilities register.
+    IO32 ghc;       //!< Global HBA Control register.
+    IO32 is;        //!< Interrupt Status register.
+    IO32 pi;        //!< Ports Implemented register.
+    IO32 vs;        //!< Version register.
+    IO32 ccc_ctl;   //!< Command Completion Coalescing Control register.
     IO32 ccc_ports; //!< Command Completion Coalescing Ports register.
-
-    /// Enclosure Management Location register.
-    union {
-        IO32 em_loc;
-        struct {
-            IO32 sz : 16;   //!< Buffer Size.
-            IO32 ofst : 16; //!< Offset.
-        } em_loc_bit;
-    };
-
-    /// Enclosure Management Control register.
-    union {
-        IO32 em_ctl;
-        struct {
-            IO32 sts_mr : 1; //!< Message Received.
-            IO32 reserved1 : 7;
-            IO32 ctl_tm : 1;  //!< Transmit Message.
-            IO32 ctl_rst : 1; //!< Reset.
-            IO32 reserved2 : 6;
-            IO32 supp_led : 1;   //!< LED Message Types.
-            IO32 supp_safte : 1; //!< SAF-TE Enclosure Management Messages.
-            IO32 supp_ses2 : 1;  //!< SES-2 Enclosure Management Messages.
-            IO32 supp_sgpio : 1; //!< SGPIO Enclosure Management Messages.
-            IO32 reserved3 : 4;
-            IO32 attr_smb : 1;  //!< Single Message Buffer.
-            IO32 attr_xmt : 1;  //!< Transmit Only.
-            IO32 attr_alhd : 1; //!< Activity LED Hardware Driven.
-            IO32 attr_pm : 1;   //!< Port Multiplier Support.
-            IO32 reserved4 : 4;
-        } em_ctl_bit;
-    };
-
-    /// HBA Capabilities Extended register.
-    union {
-        IO32 cap2;
-        struct {
-            IO32 boh : 1;  //!< BIOS/OS Handoff.
-            IO32 nvmp : 1; //!< NVMHCI Present.
-            IO32 apst : 1; //!< Automatic Partial to Slumber Transitions.
-            IO32 sds : 1;  //!< Supports Device Sleep.
-            IO32 sadm : 1; //!< Supports Aggressive Device Sleep Management.
-            IO32 deso : 1; //!< DevSleep Entrance from Slumber Only.
-            IO32 reserved1 : 26;
-        } cap2_bit;
-    };
-
-    /// BIOS/OS Handoff Control and Status register.
-    union {
-        IO32 bohc;
-        struct {
-            IO32 bos : 1;  //!< BIOS Owned Semaphore.
-            IO32 oos : 1;  //!< OS Owned Semaphore.
-            IO32 sooe : 1; //!< SMI on OS Ownership Change Enable.
-            IO32 ooc : 1;  //!< OS Ownership Change.
-            IO32 bb : 1;   //!< BIOS Busy.
-            IO32 reserved1 : 27;
-        } bohc_bit;
-    };
+    IO32 em_loc;    //!< Enclosure Management Location register.
+    IO32 em_ctl;    //!< Enclosure Management Control register.
+    IO32 cap2;      //!< HBA Capabilities Extended register.
+    IO32 bohc;      //!< BIOS/OS Handoff Control and Status register.
 } reg_ghc_t;
 
-/// Interface Speed Support (ISS) values in the Host Capabilities register.
+/**
+ * Supports AHCI Mode Only bit in the Host Capabilities register.
+ * See #reg_ghc_t.cap, #ahci_cap_t.sam.
+ */
+#define AHCI_GHC_CAP_SAM (1 << 18)
+
+/**
+ * Host Capabilities register structure.
+ * See #reg_ghc_t.cap.
+ */
+typedef struct {
+    uint32_t np : 5;   //!< Number of Ports.
+    uint32_t sxs : 1;  //!< Supports Extended SATA.
+    uint32_t ems : 1;  //!< Enclosure Management Supported.
+    uint32_t cccs : 1; //!< Command Completion Coalescing Supported.
+    uint32_t ncs : 5;  //!< Number of Command Slots.
+    uint32_t psc : 1;  //!< Partial State Capable.
+    uint32_t ssc : 1;  //!< Slumber State Capable.
+    uint32_t pmd : 1;  //!< PIO Multiple DRQ Block.
+    uint32_t fbss : 1; //!< FIS-based Switching Supported.
+    uint32_t spm : 1;  //!< Supports Port Multiplier.
+    uint32_t sam : 1;  //!< Supports AHCI Mode Only.
+    uint32_t reserved1 : 1;
+    uint32_t iss : 4;   //!< Interface Speed Support.
+    uint32_t sclo : 1;  //!< Supports Command List Override.
+    uint32_t sal : 1;   //!< Supports Activity LED.
+    uint32_t salp : 1;  //!< Supports Aggressive Link Power Management.
+    uint32_t sss : 1;   //!< Supports Staggered Spin-up.
+    uint32_t smps : 1;  //!< Supports Mechanical Presence Switch.
+    uint32_t ssntf : 1; //!< Supports SNotification Register.
+    uint32_t sncq : 1;  //!< Supports Native Command Queueing.
+    uint32_t s64a : 1;  //!< Supports 64-bit Addressing.
+} ahci_cap_t;
+
+/**
+ * Interface Speed Support (ISS) values in the Host Capabilities register.
+ * See #ahci_cap_t.iss.
+ */
 typedef enum {
     AHCI_CAP_ISS_GEN1 = 0b0001, //!< Gen 1 (1.5 Gbps).
     AHCI_CAP_ISS_GEN2 = 0b0010, //!< Gen 2 (3 Gbps).
     AHCI_CAP_ISS_GEN3 = 0b0011, //!< Gen 3 (6 Gbps).
 } ahci_cap_iss_t;
 
-/// AHCI Verson (VS) values in the Host Capabilities register.
+/**
+ * AHCI Enable bit in the Global HBA Control register.
+ * See #reg_ghc_t.ghc, #ahci_ghc_ghc_t.ae.
+ */
+#define AHCI_GHC_GHC_AE (1 << 31)
+
+/**
+ * Global HBA Control register structure.
+ * See #reg_ghc_t.ghc.
+ */
+typedef struct {
+    uint32_t hr : 1;   //!< HBA Reset.
+    uint32_t ie : 1;   //!< Interrupt Enable.
+    uint32_t mrsm : 1; //!< MSI Revert to Single Message.
+    uint32_t reserved1 : 28;
+    uint32_t ae : 1; //!< AHCI Enable.
+} ahci_ghc_ghc_t;
+
+/**
+ * Version register structure.
+ * See #reg_ghc_t.vs.
+ */
+typedef struct {
+    uint32_t minor : 16;
+    uint32_t major : 16;
+} ahci_ghc_vs_t;
+
+/**
+ * AHCI Verson (VS) values in the Version register.
+ * See #ahci_ghc_vs_t.
+ */
 typedef enum {
     AHCI_VERSION_0_95 = 0x00000905,  //!< AHCI 0.95 Compliant HBA.
     AHCI_VERSION_1_0 = 0x00010000,   //!< AHCI 1.0 Compliant HBA.
@@ -210,181 +166,106 @@ typedef enum {
 } ahci_version_t;
 
 /**
+ * Command Completion Coalescing Control register structure.
+ * See #reg_ghc_t.ccc_ctl.
+ */
+typedef struct {
+    uint32_t en : 1; //!< Enable.
+    uint32_t reserved1 : 2;
+    uint32_t intr : 5; //!< Interrupt.
+    uint32_t cc : 8;   //!< Command Completions.
+    uint32_t tv : 16;  //!< Timeout Value.
+} ahci_ghc_ccc_ctl_t;
+
+/**
+ * Enclosure Management Location register structure.
+ * See #reg_ghc_t.em_loc.
+ */
+typedef struct {
+    uint32_t sz : 16;   //!< Buffer Size.
+    uint32_t ofst : 16; //!< Offset.
+} ahci_ghc_em_loc_t;
+
+/**
+ * Enclosure Management Control register structure.
+ * See #reg_ghc_t.em_ctl.
+ */
+typedef struct {
+    uint32_t sts_mr : 1; //!< Message Received.
+    uint32_t reserved1 : 7;
+    uint32_t ctl_tm : 1;  //!< Transmit Message.
+    uint32_t ctl_rst : 1; //!< Reset.
+    uint32_t reserved2 : 6;
+    uint32_t supp_led : 1;   //!< LED Message Types.
+    uint32_t supp_safte : 1; //!< SAF-TE Enclosure Management Messages.
+    uint32_t supp_ses2 : 1;  //!< SES-2 Enclosure Management Messages.
+    uint32_t supp_sgpio : 1; //!< SGPIO Enclosure Management Messages.
+    uint32_t reserved3 : 4;
+    uint32_t attr_smb : 1;  //!< Single Message Buffer.
+    uint32_t attr_xmt : 1;  //!< Transmit Only.
+    uint32_t attr_alhd : 1; //!< Activity LED Hardware Driven.
+    uint32_t attr_pm : 1;   //!< Port Multiplier Support.
+    uint32_t reserved4 : 4;
+} ahci_ghc_em_ctl_t;
+
+/**
+ * HBA Capabilities Extended register structure.
+ * See #reg_ghc_t.cap2.
+ */
+typedef struct {
+    uint32_t boh : 1;  //!< BIOS/OS Handoff.
+    uint32_t nvmp : 1; //!< NVMHCI Present.
+    uint32_t apst : 1; //!< Automatic Partial to Slumber Transitions.
+    uint32_t sds : 1;  //!< Supports Device Sleep.
+    uint32_t sadm : 1; //!< Supports Aggressive Device Sleep Management.
+    uint32_t deso : 1; //!< DevSleep Entrance from Slumber Only.
+    uint32_t reserved1 : 26;
+} ahci_ghc_cap2_t;
+
+/**
+ * BIOS/OS Handoff Control and Status register structure.
+ * See #reg_ghc_t.bohc.
+ */
+typedef struct {
+    uint32_t bos : 1;  //!< BIOS Owned Semaphore.
+    uint32_t oos : 1;  //!< OS Owned Semaphore.
+    uint32_t sooe : 1; //!< SMI on OS Ownership Change Enable.
+    uint32_t ooc : 1;  //!< OS Ownership Change.
+    uint32_t bb : 1;   //!< BIOS Busy.
+    uint32_t reserved1 : 27;
+} ahci_ghc_bohc_t;
+
+/**
  * Port registers.
  * Refer to section 3.3.
  */
-typedef struct [[gnu::packed]] {
-    IO32 clb;  //!< Command List Base Address register.
-    IO32 clbu; //!< Upper 32 Bits of the CLB register.
-    IO32 fb;   //!< FIS Base Address register.
-    IO32 fbu;  //!< Upper 32 Bits of the FB register.
-
-    /// Interrupt Status register.
-    union {
-        IO32 is;
-        struct {
-            IO32 dhrs : 1; //!< Device to Host Register FIS Interrupt.
-            IO32 pss : 1;  //!< PIO Setup FIS Interrupt.
-            IO32 dss : 1;  //!< DMA Setup FIS Interrupt.
-            IO32 sdbs : 1; //!< Set-Device-Bits Interrupt.
-            IO32 ufs : 1;  //!< Unknown FIS Interrupt.
-            IO32 dps : 1;  //!< Descriptor Processed.
-            IO32 pcs : 1;  //!< Port Connect Change Status.
-            IO32 dmps : 1; //!< Device Mechanical Presence Status.
-            IO32 reserved1 : 14;
-            IO32 prcs : 1; //!< PhyRdy Change Status.
-            IO32 ipms : 1; //!< Incorrect Port Multiplier Status.
-            IO32 ofs : 1;  //!< Overflow Status.
-            IO32 reserved2 : 1;
-            IO32 infs : 1; //!< Interface Non-fatal Error Status.
-            IO32 ifs : 1;  //!< Interface Fatal Error Status.
-            IO32 hbds : 1; //!< Host Bus Data Error Status.
-            IO32 hbfs : 1; //!< Host Bus Fatal Error Status.
-            IO32 tfes : 1; //!< Task File Error Status.
-            IO32 cpds : 1; //!< Cold Port Detect Status.
-        } is_bit;
-    };
-
-    /// Interrupt Enable register.
-    union {
-        IO32 ie;
-        struct {
-            IO32 dhre : 1; //!< Device to Host Register FIS Interrupt Enable.
-            IO32 pse : 1;  //!< PIO Setup FIS Interrupt Enable.
-            IO32 dse : 1;  //!< DMA Setup FIS Interrupt Enable.
-            IO32 sdbe : 1; //!< Set-Device-Bits FIS Interrupt Enable.
-            IO32 ufe : 1;  //!< Unknown FIS Interrupt Enable.
-            IO32 dpe : 1;  //!< Descriptor Processed Interrupt Enable.
-            IO32 pce : 1;  //!< Port Change Interrupt Enable.
-            IO32 dmpe : 1; //!< Device Mechanical Presence Enable.
-            IO32 reserved1 : 14;
-            IO32 prce : 1; //!< PhyRdy Change Interrupt Enable.
-            IO32 ipme : 1; //!< Incorrect Port Multiplier Enable.
-            IO32 ofe : 1;  //!< Overflow Enable.
-            IO32 reserved2 : 1;
-            IO32 infe : 1; //!< Interface Non-fatal Error Enable.
-            IO32 ife : 1;  //!< Interface Fatal Error Enable.
-            IO32 hbde : 1; //!< Host Bus Data Error Enable.
-            IO32 hbfe : 1; //!< Host Bus Fatal Error Enable.
-            IO32 tfee : 1; //!< Task File Error Enable.
-            IO32 cpde : 1; //!< Cold Presence Detect Enable.
-        } ie_bit;
-    };
-
-    /// Command and Status register.
-    union {
-        IO32 cmd;
-        struct {
-            IO32 st : 1;  //!< Start.
-            IO32 sud : 1; //!< Spin-Up Device.
-            IO32 pod : 1; //!< Power On Device.
-            IO32 clo : 1; //!< Command List Override.
-            IO32 fre : 1; //!< FIS Receive Enable.
-            IO32 reserved1 : 3;
-            IO32 ccs : 5;   //!< Current Command Slot.
-            IO32 mpss : 1;  //!< Mechanical Presence Switch State.
-            IO32 fr : 1;    //!< FIS Receive Running.
-            IO32 cr : 1;    //!< Command List Running.
-            IO32 cps : 1;   //!< Cold Presence State.
-            IO32 pma : 1;   //!< Port Multiplier Attached.
-            IO32 hpcp : 1;  //!< Hot Plug Capable Port.
-            IO32 mpsp : 1;  //!< Mechanical Presence Switch Attached to Port.
-            IO32 cpd : 1;   //!< Cold Presence Detection.
-            IO32 esp : 1;   //!< External SATA Port.
-            IO32 fbscp : 1; //!< FIS-based Switching Capable Port.
-            IO32 apste : 1; //!< Auto Partial to Slumber Transitions Enabled.
-            IO32 atapi : 1; //!< Device is ATAPI.
-            IO32 dlae : 1;  //!< Drive LED on ATAPI Enable.
-            IO32 alpe : 1;  //!< Aggressive Link Power Management Enable.
-            IO32 asp : 1;   //!< Aggressive Slumber / Partial.
-            IO32 icc : 4;   //!< Interface Communication Control.
-        } cmd_bit;
-    };
-
-    IO32 _reserved_1; //!< Reserved.
-
-    /// Task File Data register.
-    union {
-        IO32 tfd;
-        struct {
-            IO32 sts : 8; //!< Status.
-            IO32 err : 8; //!< Error.
-            IO32 reserved1 : 16;
-        } tfd_bit;
-    };
-
-    IO32 sig; //!< Signature register.
-
-    /// SATA Status register.
-    union {
-        IO32 ssts;
-        struct {
-            IO32 det : 4; //!< Device Detection.
-            IO32 spd : 4; //!< Current Interface Speed.
-            IO32 ipm : 4; //!< Interface Power Management.
-        } ssts_bit;
-    };
-
-    /// SATA Control register.
-    union {
-        IO32 sctl;
-        struct {
-            IO32 det : 4; //!< Device Detection Initialization.
-            IO32 spd : 4; //!< Speed Allowed.
-            IO32 ipm : 4; //!< Interface Power Management Transitions Allowed.
-            IO32 reserved1 : 20;
-        } sctl_bit;
-    };
-
-    /// SATA Error register.
-    union {
-        IO32 serr;
-        struct {
-            IO32 diag : 16; //!< Diagnostics.
-            IO32 err : 16;  //!< Error.
-        } serr_bit;
-    };
-
-    IO32 sact; //!< SATA Active register.
-    IO32 ci;   //!< Command Issue register.
-    IO32 sntf; //!< SATA Notification register.
-
-    /// FIS-based Switching Control register.
-    union {
-        IO32 fbs;
-        struct {
-            IO32 en : 1;  //!< Enable.
-            IO32 dec : 1; //!< Device Error Clear.
-            IO32 sde : 1; //!< Single Device Error.
-            IO32 reserved1 : 5;
-            IO32 dev : 4; //!< Device To Issue.
-            IO32 ado : 4; //!< Active Device Optimization.
-            IO32 dwe : 4; //!< Device With Error.
-            IO32 reserved2 : 12;
-        } fbs_bit;
-    };
-
-    /// Device Sleep register.
-    union {
-        IO32 devslp;
-        struct {
-            IO32 adse : 1;  //!< Aggressive Device Sleep Enable.
-            IO32 dsp : 1;   //!< Device Sleep Present.
-            IO32 deto : 8;  //!< Device Sleep Exit Timeout.
-            IO32 mdat : 5;  //!< Minimum Device Sleep Assertion Time.
-            IO32 dito : 10; //!< Device Sleep Idle Timeout.
-            IO32 dm : 3;    //!< DITO (Device Sleep Idle Timeout) Multiplier.
-            IO32 reserved1 : 3;
-        } devslp_bit;
-    };
-
+typedef struct {
+    IO32 clb;           //!< Command List Base Address register.
+    IO32 clbu;          //!< Upper 32 Bits of the CLB register.
+    IO32 fb;            //!< FIS Base Address register.
+    IO32 fbu;           //!< Upper 32 Bits of the FB register.
+    IO32 is;            //!< Interrupt Status register.
+    IO32 ie;            //!< Interrupt Enable register.
+    IO32 cmd;           //!< Command and Status register.
+    IO32 _reserved_1;   //!< Resered.
+    IO32 tfd;           //!< Task File Data register.
+    IO32 sig;           //!< Signature register.
+    IO32 ssts;          //!< SATA Status register.
+    IO32 sctl;          //!< SATA Control register.
+    IO32 serr;          //!< SATA Error register.
+    IO32 sact;          //!< SATA Active register.
+    IO32 ci;            //!< Command Issue register.
+    IO32 sntf;          //!< SATA Notification register.
+    IO32 fbs;           //!< FIS-based Switching Control register.
+    IO32 devslp;        //!< Device Sleep register.
     IO32 reserved1[10]; //!< Reserved.
     IO32 p_vs[4];       //!< Vendor Specific registers.
 } reg_port_t;
 
 /**
  * Interrupt Enable (IE) and Interrupt Status (IS) bits.
- * See #reg_port_t.ie_bit.
+ *
+ * See #reg_port_t.is, #reg_port_t.ie.
  */
 typedef enum {
     AHCI_PORT_INT_DHR = 1 << 0,  //!< Device to Host Register FIS Interrupt.
@@ -408,7 +289,61 @@ typedef enum {
     AHCI_PORT_INT_ALL = 0xFDC000FF, //!< Enable all interrupts.
 } ahci_port_int_t;
 
-/// Interface Communication Control (ICC) values in the Port Command register.
+/**
+ * Start bit in the Command and Status register.
+ * See #reg_port_t.cmd, #ahci_port_cmd_t.st.
+ */
+#define AHCI_PORT_CMD_ST  (1 << 0)
+/**
+ * FIS Receive Enable bit in the Command and Status register.
+ * See #reg_port_t.cmd, #ahci_port_cmd_t.fre.
+ */
+#define AHCI_PORT_CMD_FRE (1 << 4)
+/**
+ * FIS Receive Running bit in the Command and Status register.
+ * See #reg_port_t.cmd, #ahci_port_cmd_t.fr.
+ */
+#define AHCI_PORT_CMD_FR  (1 << 14)
+/**
+ * Command List Running bit in the Command and Status register.
+ * See #reg_port_t.cmd, #ahci_port_cmd_t.cr.
+ */
+#define AHCI_PORT_CMD_CR  (1 << 15)
+
+/**
+ * Command and Status register structure.
+ * See #reg_port_t.cmd.
+ */
+typedef struct {
+    uint32_t st : 1;  //!< Start.
+    uint32_t sud : 1; //!< Spin-Up Device.
+    uint32_t pod : 1; //!< Power On Device.
+    uint32_t clo : 1; //!< Command List Override.
+    uint32_t fre : 1; //!< FIS Receive Enable.
+    uint32_t reserved1 : 3;
+    uint32_t ccs : 5;   //!< Current Command Slot.
+    uint32_t mpss : 1;  //!< Mechanical Presence Switch State.
+    uint32_t fr : 1;    //!< FIS Receive Running.
+    uint32_t cr : 1;    //!< Command List Running.
+    uint32_t cps : 1;   //!< Cold Presence State.
+    uint32_t pma : 1;   //!< Port Multiplier Attached.
+    uint32_t hpcp : 1;  //!< Hot Plug Capable Port.
+    uint32_t mpsp : 1;  //!< Mechanical Presence Switch Attached to Port.
+    uint32_t cpd : 1;   //!< Cold Presence Detection.
+    uint32_t esp : 1;   //!< External SATA Port.
+    uint32_t fbscp : 1; //!< FIS-based Switching Capable Port.
+    uint32_t apste : 1; //!< Auto Partial to Slumber Transitions Enabled.
+    uint32_t atapi : 1; //!< Device is ATAPI.
+    uint32_t dlae : 1;  //!< Drive LED on ATAPI Enable.
+    uint32_t alpe : 1;  //!< Aggressive Link Power Management Enable.
+    uint32_t asp : 1;   //!< Aggressive Slumber / Partial.
+    uint32_t icc : 4;   //!< Interface Communication Control.
+} ahci_port_cmd_t;
+
+/**
+ * Interface Communication Control (ICC) values in the Port Command register.
+ * See #ahci_port_cmd_t.icc.
+ */
 typedef enum {
     AHCI_CMD_ICC_IDLE = 0x00,     //!< No-Op / Idle.
     AHCI_CMD_ICC_ACTIVE = 0x01,   //!< Transition into the Active state.
@@ -417,14 +352,40 @@ typedef enum {
     AHCI_CMD_ICC_DEVSLEEP = 0x08, //!< Transition into the DevSleep state.
 } ahci_port_cmd_icc_t;
 
-/// Status (STS) values in the Port Task File Data register.
+/**
+ * Task File Data register structure.
+ * See #reg_port_t.tfd.
+ */
+typedef struct {
+    uint32_t sts : 8; //!< Status.
+    uint32_t err : 8; //!< Error.
+    uint32_t reserved1 : 16;
+} ahci_port_tfd_t;
+
+/**
+ * Status (STS) values in the Port Task File Data register.
+ * See #ahci_port_tfd_t.sts.
+ */
 typedef enum {
     AHCI_TFD_STS_ERR = 0x00, //!< An error during transfer.
     AHCI_TFD_STS_DRQ = 0x08, //!< A data transfer is requested.
     AHCI_TFD_STS_BSY = 0x80, //!< The interface is busy.
 } ahci_port_tfd_sts_t;
 
-/// Device Detection (DET) values in the Port SATA Status register.
+/**
+ * SATA Status register structure.
+ * See #reg_port_t.ssts.
+ */
+typedef struct {
+    uint32_t det : 4; //!< Device Detection.
+    uint32_t spd : 4; //!< Current Interface Speed.
+    uint32_t ipm : 4; //!< Interface Power Management.
+} ahci_port_ssts_t;
+
+/**
+ * Device Detection (DET) values in the Port SATA Status register.
+ * See #ahci_port_ssts_t.det.
+ */
 typedef enum {
     AHCI_SSTS_DET_NDEV_NPHY = 0x00, //!< No device, no Phy communication.
     AHCI_SSTS_DET_DEV_NPHY = 0x01,  //!< Device detected, no Phy communication.
@@ -432,7 +393,21 @@ typedef enum {
     AHCI_SSTS_DET_PHY_OFF = 0x04,   //!< Phy in offline mode.
 } ahci_port_ssts_det_t;
 
-/// Device Detection (DET) values in the Port SATA Control register.
+/**
+ * SATA Control register structure.
+ * See #reg_port_t.sctl.
+ */
+typedef struct {
+    uint32_t det : 4; //!< Device Detection Initialization.
+    uint32_t spd : 4; //!< Speed Allowed.
+    uint32_t ipm : 4; //!< Interface Power Management Transitions Allowed.
+    uint32_t reserved1 : 20;
+} ahci_port_sctl_t;
+
+/**
+ * Device Detection (DET) values in the Port SATA Control register.
+ * See #ahci_port_sctl_t.det.
+ */
 typedef enum {
     /// No request.
     AHCI_SCTL_DET_NONE = 0x00,
@@ -448,7 +423,7 @@ typedef enum {
 
 /**
  * Speed Allowed (SPD) values in the Port SATA Control register.
- * See #ahci_cap_iss_t.
+ * See #ahci_port_sctl_t.spd, #ahci_cap_iss_t.
  */
 typedef enum {
     AHCI_SCTL_SPD_NONE = 0x00, //!< No speed negotiation restrictions.
@@ -460,6 +435,7 @@ typedef enum {
 /**
  * Interface Power Management Transitions Allowed (IPM) bits in Port SCTL.
  * OR this values to disable transition into several states.
+ * See #ahci_port_sctl_t.spd.
  */
 typedef enum {
     /// No interface restrictions.
@@ -472,7 +448,19 @@ typedef enum {
     AHCI_SCTL_IPM_DIS_DEVSLEEP = 0x04,
 } ahci_port_sctl_ipm_t;
 
-/// Diagnostics (DIAG) values in the Port SATA Error register.
+/**
+ * SATA Error register structure.
+ * See #reg_port_t.serr.
+ */
+typedef struct {
+    uint32_t diag : 16; //!< Diagnostics.
+    uint32_t err : 16;  //!< Error.
+} ahci_port_serr_t;
+
+/**
+ * Diagnostics (DIAG) values in the Port SATA Error register.
+ * See #ahci_port_serr_t.diag.
+ */
 typedef enum {
     /// PhyRdy signal changed state.
     AHCI_SERR_DIAG_PHYRDY_CHANGE = 0x0001,
@@ -497,7 +485,38 @@ typedef enum {
     AHCI_SERR_DIAG_EXCHANGED = 0x0400,
 } ahci_port_serr_diag_t;
 
-/// Error (ERR) values in the Port SATA Error Register.
+/**
+ * FIS-based Switching Control register structure.
+ * See #reg_port_t.fbs.
+ */
+typedef struct {
+    uint32_t en : 1;  //!< Enable.
+    uint32_t dec : 1; //!< Device Error Clear.
+    uint32_t sde : 1; //!< Single Device Error.
+    uint32_t reserved1 : 5;
+    uint32_t dev : 4; //!< Device To Issue.
+    uint32_t ado : 4; //!< Active Device Optimization.
+    uint32_t dwe : 4; //!< Device With Error.
+    uint32_t reserved2 : 12;
+} ahci_port_fbs_t;
+
+/**
+ * Device Sleep register.
+ */
+typedef struct {
+    uint32_t adse : 1;  //!< Aggressive Device Sleep Enable.
+    uint32_t dsp : 1;   //!< Device Sleep Present.
+    uint32_t deto : 8;  //!< Device Sleep Exit Timeout.
+    uint32_t mdat : 5;  //!< Minimum Device Sleep Assertion Time.
+    uint32_t dito : 10; //!< Device Sleep Idle Timeout.
+    uint32_t dm : 3;    //!< DITO (Device Sleep Idle Timeout) Multiplier.
+    uint32_t reserved1 : 3;
+} ahci_port_devslp_t;
+
+/**
+ * Error (ERR) values in the Port SATA Error Register.
+ * See #ahci_port_serr_t.err.
+ */
 typedef enum {
     /// Data integrity error occurred and recovered from.
     AHCI_SERR_ERR_RECOVERED_INTEGRITY = 0x0001,

@@ -229,7 +229,10 @@ ahci_port_ctx_t *ahci_ctrl_get_port(ahci_ctrl_ctx_t *ctrl_ctx,
 }
 
 void ahci_ctrl_set_int(ahci_ctrl_ctx_t *ctrl_ctx, bool on) {
-    ctrl_ctx->reg_ghc->ghc_bit.ie = on;
+    ahci_ghc_ghc_t ctrl_ghc;
+    kmemread_v4(&ctrl_ghc, &ctrl_ctx->reg_ghc->ghc);
+    ctrl_ghc.ie = on;
+    kmemwrite_v4(&ctrl_ctx->reg_ghc->ghc, &ctrl_ghc);
 }
 
 void ahci_ctrl_map_irq(ahci_ctrl_ctx_t *ctrl_ctx, uint8_t vec) {
@@ -274,71 +277,71 @@ void ahci_port_irq_handler(ahci_port_ctx_t *port_ctx) {
     const uint32_t int_status = port_ctx->reg_port->is;
 
     if (int_status & AHCI_PORT_INT_DHR) {
-        port_ctx->reg_port->is |= AHCI_PORT_INT_DHR;
+        port_ctx->reg_port->is = AHCI_PORT_INT_DHR;
         kprintf("ahci port interrupt: AHCI_PORT_INT_DHR\n");
     }
     if (int_status & AHCI_PORT_INT_PS) {
-        port_ctx->reg_port->is |= AHCI_PORT_INT_PS;
+        port_ctx->reg_port->is = AHCI_PORT_INT_PS;
         kprintf("ahci port interrupt: AHCI_PORT_INT_PS\n");
     }
     if (int_status & AHCI_PORT_INT_DS) {
-        port_ctx->reg_port->is |= AHCI_PORT_INT_DS;
+        port_ctx->reg_port->is = AHCI_PORT_INT_DS;
         kprintf("ahci port interrupt: AHCI_PORT_INT_DS\n");
     }
     if (int_status & AHCI_PORT_INT_SDB) {
-        port_ctx->reg_port->is |= AHCI_PORT_INT_SDB;
+        port_ctx->reg_port->is = AHCI_PORT_INT_SDB;
         kprintf("ahci port interrupt: AHCI_PORT_INT_SDB\n");
     }
     if (int_status & AHCI_PORT_INT_UF) {
-        port_ctx->reg_port->is |= AHCI_PORT_INT_UF;
+        port_ctx->reg_port->is = AHCI_PORT_INT_UF;
         kprintf("ahci port interrupt: AHCI_PORT_INT_UF\n");
     }
     if (int_status & AHCI_PORT_INT_DP) {
-        port_ctx->reg_port->is |= AHCI_PORT_INT_DP;
+        port_ctx->reg_port->is = AHCI_PORT_INT_DP;
         kprintf("ahci port interrupt: AHCI_PORT_INT_DP\n");
     }
     if (int_status & AHCI_PORT_INT_PC) {
-        port_ctx->reg_port->is |= AHCI_PORT_INT_PC;
+        port_ctx->reg_port->is = AHCI_PORT_INT_PC;
         kprintf("ahci port interrupt: AHCI_PORT_INT_PC\n");
     }
     if (int_status & AHCI_PORT_INT_DMP) {
-        port_ctx->reg_port->is |= AHCI_PORT_INT_DMP;
+        port_ctx->reg_port->is = AHCI_PORT_INT_DMP;
         kprintf("ahci port interrupt: AHCI_PORT_INT_DMP\n");
     }
     if (int_status & AHCI_PORT_INT_PRC) {
-        port_ctx->reg_port->is |= AHCI_PORT_INT_PRC;
+        port_ctx->reg_port->is = AHCI_PORT_INT_PRC;
         kprintf("ahci port interrupt: AHCI_PORT_INT_PRC\n");
     }
     if (int_status & AHCI_PORT_INT_IPM) {
-        port_ctx->reg_port->is |= AHCI_PORT_INT_IPM;
+        port_ctx->reg_port->is = AHCI_PORT_INT_IPM;
         kprintf("ahci port interrupt: AHCI_PORT_INT_IPM\n");
     }
     if (int_status & AHCI_PORT_INT_OF) {
-        port_ctx->reg_port->is |= AHCI_PORT_INT_OF;
+        port_ctx->reg_port->is = AHCI_PORT_INT_OF;
         kprintf("ahci port interrupt: AHCI_PORT_INT_OF\n");
     }
     if (int_status & AHCI_PORT_INT_INF) {
-        port_ctx->reg_port->is |= AHCI_PORT_INT_INF;
+        port_ctx->reg_port->is = AHCI_PORT_INT_INF;
         kprintf("ahci port interrupt: AHCI_PORT_INT_INF\n");
     }
     if (int_status & AHCI_PORT_INT_IF) {
-        port_ctx->reg_port->is |= AHCI_PORT_INT_IF;
+        port_ctx->reg_port->is = AHCI_PORT_INT_IF;
         kprintf("ahci port interrupt: AHCI_PORT_INT_IF\n");
     }
     if (int_status & AHCI_PORT_INT_HBD) {
-        port_ctx->reg_port->is |= AHCI_PORT_INT_HBD;
+        port_ctx->reg_port->is = AHCI_PORT_INT_HBD;
         kprintf("ahci port interrupt: AHCI_PORT_INT_HBD\n");
     }
     if (int_status & AHCI_PORT_INT_HBF) {
-        port_ctx->reg_port->is |= AHCI_PORT_INT_HBF;
+        port_ctx->reg_port->is = AHCI_PORT_INT_HBF;
         kprintf("ahci port interrupt: AHCI_PORT_INT_HBF\n");
     }
     if (int_status & AHCI_PORT_INT_TFE) {
-        port_ctx->reg_port->is |= AHCI_PORT_INT_TFE;
+        port_ctx->reg_port->is = AHCI_PORT_INT_TFE;
         kprintf("ahci port interrupt: AHCI_PORT_INT_TFE\n");
     }
     if (int_status & AHCI_PORT_INT_CPD) {
-        port_ctx->reg_port->is |= AHCI_PORT_INT_CPD;
+        port_ctx->reg_port->is = AHCI_PORT_INT_CPD;
         kprintf("ahci port interrupt: AHCI_PORT_INT_CPD\n");
     }
 }
@@ -346,8 +349,8 @@ void ahci_port_irq_handler(ahci_port_ctx_t *port_ctx) {
 bool ahci_port_is_idle(ahci_port_ctx_t *port_ctx) {
     // FIXME: use an interrupt to change the state.
     bool has_error = false;
-    if (port_ctx->reg_port->is_bit.tfes) {
-        port_ctx->reg_port->is_bit.tfes = 1; // write 1 to clear
+    if (port_ctx->reg_port->is & AHCI_PORT_INT_TFE) {
+        port_ctx->reg_port->is = AHCI_PORT_INT_TFE;
         has_error = true;
     }
     if (port_ctx->p_rfis->rfis.error) { has_error = true; }
@@ -511,18 +514,20 @@ static void prv_ahci_set_ctrl_name(ahci_ctrl_ctx_t *ctrl_ctx) {
 static bool prv_ahci_enter_ahci_mode(ahci_ctrl_ctx_t *ctrl_ctx) {
     reg_ghc_t *const p_ghc = ctrl_ctx->reg_ghc;
 
-    if (p_ghc->ghc_bit.ae) {
+    if (p_ghc->ghc & AHCI_GHC_GHC_AE) {
         // AE set means AHCI mode is enabled.
         return true;
     }
 
-    if (p_ghc->cap_bit.sam) {
+    if (p_ghc->cap & AHCI_GHC_CAP_SAM) {
         // SAM set means the SATA controller supports both AHCI and legacy
         // interfaces. Enable AHCI.
-        p_ghc->ghc_bit.ae = 1;
+        uint32_t ghc_val = p_ghc->ghc;
+        ghc_val |= AHCI_GHC_GHC_AE;
+        p_ghc->ghc = ghc_val;
 
         // Ensure that AE was set.
-        if (p_ghc->ghc_bit.ae) {
+        if (p_ghc->ghc & AHCI_GHC_GHC_AE) {
             return true;
         } else {
             kprintf("ahci: cannot set GHC.AE bit, when it must be R/W"
@@ -553,8 +558,10 @@ static bool prv_ahci_enter_ahci_mode(ahci_ctrl_ctx_t *ctrl_ctx) {
 static void prv_ahci_enumerate_ports(ahci_ctrl_ctx_t *ctrl_ctx) {
     reg_ghc_t *const reg_ghc = ctrl_ctx->reg_ghc;
 
-    kprintf("ahci: %s: port cabaility: %u\n", ctrl_ctx->name,
-            reg_ghc->cap_bit.np + 1);
+    ahci_cap_t ctrl_cap;
+    kmemread_v4(&ctrl_cap, &reg_ghc->cap);
+
+    kprintf("ahci: %s: port cabaility: %u\n", ctrl_ctx->name, ctrl_cap.np + 1);
     kprintf("ahci: %s: implemented ports: 0x%08X\n", ctrl_ctx->name,
             reg_ghc->pi);
 
@@ -573,7 +580,9 @@ static void prv_ahci_enumerate_ports(ahci_ctrl_ctx_t *ctrl_ctx) {
         if (!impl) { continue; }
 
         reg_port_t *const reg_port = port_ctx->reg_port;
-        switch (reg_port->ssts_bit.det) {
+        ahci_port_ssts_t port_ssts;
+        kmemread_v4(&port_ssts, &reg_port->ssts);
+        switch (port_ssts.det) {
         case AHCI_SSTS_DET_NDEV_NPHY:
             kprintf("ahci: %s: no device\n", port_ctx->name);
             break;
@@ -646,9 +655,10 @@ static void prv_ahci_setup_port(ahci_port_ctx_t *port_ctx) {
 
     // Stop FIS receive and command list DMA engines. The order is important.
     // Refer to section 10.3, Software Manipulation of Port DMA Engines.
-    reg_port->cmd_bit.st = 0;
-    reg_port->cmd_bit.fre = 0;
-    while (reg_port->cmd_bit.fr || reg_port->cmd_bit.cr) {}
+    reg_port->cmd &= ~AHCI_PORT_CMD_ST;
+    reg_port->cmd &= ~AHCI_PORT_CMD_FRE;
+    while ((reg_port->cmd & AHCI_PORT_CMD_FR) ||
+           (reg_port->cmd & AHCI_PORT_CMD_CR)) {}
 
     // Initialzie the Command List Base Address and FIS Base Address registers.
     reg_port->clb = (uint32_t)port_ctx->p_cmd_list;
@@ -664,11 +674,12 @@ static void prv_ahci_setup_port(ahci_port_ctx_t *port_ctx) {
     }
 
     // Start the command list DMA engine. The order is important.
-    reg_port->cmd_bit.fre = 1;
-    reg_port->cmd_bit.st = 1;
+    reg_port->cmd |= AHCI_PORT_CMD_FRE;
+    reg_port->cmd |= AHCI_PORT_CMD_ST;
 
     // Wait for them to start.
-    while (!reg_port->cmd_bit.cr || !reg_port->cmd_bit.fr) {}
+    while (((reg_port->cmd & AHCI_PORT_CMD_CR) == 0) ||
+           ((reg_port->cmd & AHCI_PORT_CMD_FR) == 0)) {}
 }
 
 /**
@@ -790,16 +801,20 @@ static bool send_read_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd, void *p_buf,
 
     // Wait until the port is no longer busy.
     size_t spin = 0;
-    while ((port_ctx->reg_port->tfd_bit.sts &
-            (AHCI_TFD_STS_BSY | AHCI_TFD_STS_DRQ)) &&
-           (spin++ < 100000)) {}
+    while (spin < 100000) {
+        ahci_port_tfd_t port_tfd;
+        kmemread_v4(&port_tfd, &port_ctx->reg_port->tfd);
+        if ((port_tfd.sts & (AHCI_TFD_STS_BSY | AHCI_TFD_STS_DRQ)) == 0) {
+            break;
+        }
+    }
     if (spin >= 100000) {
         kprintf("ahci: %s: port is busy\n", port_ctx->name);
         return false;
     }
 
     // Clear the D2H Register FIS interrupt flag.
-    port_ctx->reg_port->is_bit.dhrs = 0;
+    port_ctx->reg_port->is = AHCI_PORT_INT_DHR;
 
     // Issue the command.
     port_ctx->reg_port->ci = (1 << cmd_slot);
@@ -829,9 +844,9 @@ static bool wait_for_cmd(ahci_port_ctx_t *port_ctx, size_t cmd_slot) {
 
     bool b_has_err = false;
     while (true) {
-        if (reg_port->is_bit.tfes) {
+        if (reg_port->is & AHCI_PORT_INT_TFE) {
             b_has_err = true;
-            reg_port->is_bit.tfes = 1; // write 1 to clear
+            reg_port->is = AHCI_PORT_INT_TFE;
             kprintf("ahci: task file error\n");
             break;
         }
@@ -840,14 +855,14 @@ static bool wait_for_cmd(ahci_port_ctx_t *port_ctx, size_t cmd_slot) {
     }
 
     // We expect a D2H RFIS to arrive.
-    if (!reg_port->is_bit.dhrs) {
+    if (!(reg_port->is & AHCI_PORT_INT_DHR)) {
         // RFIS did not arrive.
         kprintf("ahci: command completed, but RFIS was not received\n");
         return false;
     }
 
     // Clear RFIS interrupt flag.
-    reg_port->is_bit.dhrs = 1;
+    reg_port->is = AHCI_PORT_INT_DHR;
 
     // Check the error.
     if (b_has_err) {

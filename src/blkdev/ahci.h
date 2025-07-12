@@ -43,7 +43,7 @@ ahci_port_ctx_t *ahci_ctrl_get_port(ahci_ctrl_ctx_t *ctrl_ctx, size_t port_idx);
 /**
  * Enables or disables the controller's global interrupt line.
  *
- * See #reg_ghc_t.ghc_bit, field _ie_.
+ * See #ahci_ghc_ghc_t.ie.
  *
  * @param ctrl_ctx Controller context pointer.
  * @param on       Enable (`true`) or disable (`false`) the global interrupt.
