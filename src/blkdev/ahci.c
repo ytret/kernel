@@ -85,6 +85,7 @@ struct ahci_port_ctx {
 
     _Atomic ahci_port_state_t state;
     blkdev_req_t *blkdev_req;
+    bool has_blkdev_req;
     size_t req_cmd_slot;
 
     /// Context pointer of the controller this port is a part of.
@@ -443,9 +444,11 @@ void ahci_port_if_submit_req(blkdev_req_t *req) {
     case BLKDEV_OP_READ:
         port_ctx->blkdev_req = req;
         port_ctx->blkdev_req->state = BLKDEV_REQ_ACTIVE;
+        port_ctx->has_blkdev_req = true;
         if (!ahci_port_start_read(req->dev_ctx, req->start_sector,
                                   req->read_sectors, req->read_buf)) {
             port_ctx->blkdev_req->state = BLKDEV_REQ_ERROR;
+            port_ctx->has_blkdev_req = false;
             semaphore_increase(&req->sem_done);
         }
         break;
@@ -453,9 +456,11 @@ void ahci_port_if_submit_req(blkdev_req_t *req) {
     case BLKDEV_OP_WRITE:
         port_ctx->blkdev_req = req;
         port_ctx->blkdev_req->state = BLKDEV_REQ_ACTIVE;
+        port_ctx->has_blkdev_req = true;
         if (!ahci_port_start_write(req->dev_ctx, req->start_sector,
                                    req->write_sectors, req->write_buf)) {
             port_ctx->blkdev_req->state = BLKDEV_REQ_ERROR;
+            port_ctx->has_blkdev_req = false;
             semaphore_increase(&req->sem_done);
         }
         break;
@@ -983,7 +988,8 @@ static void prv_ahci_port_handle_tfe(ahci_port_ctx_t *port_ctx) {
 
     kprintf("ahci: port %s TFE: AHCI_PORT_ACTIVE\n", port_ctx->name);
 
-    if (port_ctx->blkdev_req->state != BLKDEV_REQ_ACTIVE) {
+    if (!port_ctx->has_blkdev_req ||
+        port_ctx->blkdev_req->state != BLKDEV_REQ_ACTIVE) {
         panic_enter();
         kprintf("ahci: port %s TFE: no active request\n");
         panic("unexpected AHCI request state");
@@ -1045,6 +1051,8 @@ static void prv_ahci_port_handle_tfe(ahci_port_ctx_t *port_ctx) {
     kprintf("ahci: port %s TFE: failing active request\n", port_ctx->name);
     port_ctx->blkdev_req->state = BLKDEV_REQ_ERROR;
     semaphore_increase(&port_ctx->blkdev_req->sem_done);
+
+    port_ctx->has_blkdev_req = false;
     port_ctx->state = AHCI_PORT_IDLE;
 }
 
@@ -1061,15 +1069,17 @@ static void prv_ahci_port_handle_dhr(ahci_port_ctx_t *port_ctx) {
 
     kprintf("ahci: port %s irq: AHCI_PORT_ACTIVE\n", port_ctx->name);
     if (port_ctx->blkdev_req->state == BLKDEV_REQ_ACTIVE) {
-        kprintf("ahci: port %s irq: has active request\n", port_ctx->name);
-        port_ctx->blkdev_req->state = BLKDEV_REQ_SUCCESS;
-        semaphore_increase(&port_ctx->blkdev_req->sem_done);
-    } else {
         panic_enter();
         kprintf("ahci: port %s irq: port state is AHCI_PORT_ACTIVE, "
                 "but there is no active request\n",
                 port_ctx->name);
         panic("unexpected AHCI DHR IRQ");
     }
+
+    kprintf("ahci: port %s irq: has active request\n", port_ctx->name);
+    port_ctx->blkdev_req->state = BLKDEV_REQ_SUCCESS;
+    semaphore_increase(&port_ctx->blkdev_req->sem_done);
+
+    port_ctx->has_blkdev_req = false;
     port_ctx->state = AHCI_PORT_IDLE;
 }
