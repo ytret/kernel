@@ -76,7 +76,7 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
 
     if (num_bytes == 0) {
         panic_enter();
-        kprintf("heap_alloc_aligned: num_bytes is zero\n");
+        kprintf("heap: heap_alloc_aligned: num_bytes is zero\n");
         panic("invalid argument");
     }
 
@@ -84,13 +84,13 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
         align = MIN_ALIGN;
     } else if ((align & (align - 1)) != 0) {
         panic_enter();
-        kprintf("heap_alloc_aligned: align must be a power of two\n");
+        kprintf("heap: heap_alloc_aligned: align must be a power of two\n");
         panic("invalid argument");
     }
 
     if (!gp_heap_start) {
         panic_enter();
-        kprintf("heap_alloc_aligned: heap is not initialized\n");
+        kprintf("heap: heap_alloc_aligned: heap is not initialized\n");
         panic("unexpected behavior");
     }
 
@@ -118,7 +118,7 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
 
     if (!p_found) {
         panic_enter();
-        kprintf("heap_alloc_aligned: no suitable chunk\n");
+        kprintf("heap: heap_alloc_aligned: no suitable chunk\n");
         panic("allocation failed");
     }
 
@@ -162,7 +162,7 @@ void heap_free(void *p_addr) {
 void heap_dump_tags(void) {
     mutex_acquire(&g_heap_mutex);
 
-    if (NULL == gp_heap_start) { kprintf("heap_dump_tags: no tags\n"); }
+    if (NULL == gp_heap_start) { kprintf("heap: heap_dump_tags: no tags\n"); }
 
     for (tag_t const *p_tag = gp_heap_start; p_tag != NULL;
          p_tag = p_tag->p_next) {

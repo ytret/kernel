@@ -23,7 +23,7 @@ void lapic_init(bool is_bsp) {
     msr_apic_base.val = cpu_read_msr(CPU_MSR_APIC_BASE);
     if (msr_apic_base.bit.apic_base >> 20) {
         panic_enter();
-        kprintf("apic: MSR IA32_APIC_BASE address is beyond 4 GiB\n");
+        kprintf("lapic: MSR IA32_APIC_BASE address is beyond 4 GiB\n");
         panic("unexpected behavior");
     }
     msr_apic_base.bit.apic_gl_en = 1;
@@ -34,7 +34,7 @@ void lapic_init(bool is_bsp) {
             (lapic_regs_t *)((uint32_t)msr_apic_base.bit.apic_base << 12);
     }
 
-    kprintf("apic: Local APIC 0x%02X version %u (%u entries) at %P\n",
+    kprintf("lapic: Local APIC 0x%02X version %u (%u entries) at %P\n",
             g_lapic_regs->lapic_id_bit.apic_id,
             g_lapic_regs->lapic_version_bit.version,
             g_lapic_regs->lapic_version_bit.max_lvt_entry + 1, g_lapic_regs);

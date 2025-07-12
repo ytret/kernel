@@ -177,20 +177,20 @@ void idt_dummy_exception_handler(uint32_t exc_num, uint32_t err_code,
         p_name = "reserved";
     }
 
-    kprintf("Exception: %d (%s)\n", exc_num, p_name);
+    kprintf("idt: exception: %d (%s)\n", exc_num, p_name);
     if (p_running_task) {
-        kprintf("Running task ID: %u\n", p_running_task->id);
+        kprintf("idt: running task ID: %u\n", p_running_task->id);
     } else {
-        kprintf("Running task ID: none\n");
+        kprintf("idt: running task ID: none\n");
     }
-    kprintf("Error code: %d\n", err_code);
+    kprintf("idt: error code: %d\n", err_code);
     print_stack_frame(p_stack_frame);
     panic("no handler defined");
 }
 
 void idt_dummy_handler(isr_stack_frame_t *p_stack_frame) {
     panic_enter();
-    kprintf("idt_dummy_handler()\n");
+    kprintf("idt: idt_dummy_handler()\n");
     print_stack_frame(p_stack_frame);
     panic("no handler defined");
 }
@@ -200,14 +200,14 @@ void idt_page_fault_handler(uint32_t addr, uint32_t err_code,
     task_t *const p_running_task = taskmgr_local_running_task();
 
     panic_enter();
-    kprintf("Page fault exception\n");
+    kprintf("idt: page fault exception\n");
     if (p_running_task) {
-        kprintf("Running task ID: %u\n", p_running_task->id);
+        kprintf("idt: running task ID: %u\n", p_running_task->id);
     } else {
-        kprintf("Running task ID: none\n");
+        kprintf("idt: running task ID: none\n");
     }
-    kprintf("Virtual address: 0x%08X\n", addr);
-    kprintf("Error code: %d\n", err_code);
+    kprintf("idt: virtual address: 0x%08X\n", addr);
+    kprintf("idt: Error code: %d\n", err_code);
     print_stack_frame(p_stack_frame);
     panic("unresolved page fault");
 }
@@ -245,7 +245,7 @@ static void fill_user_entry(entry_t *p_entry, void (*p_handler)(void)) {
 
 [[maybe_unused]]
 static void print_entry(entry_t const *p_entry) {
-    kprintf("offset=%P, P=%d, DPL=%d, type=0x%X, selector=0x%X (%X %X)\n",
+    kprintf("idt: offset=%P, P=%d, DPL=%d, type=0x%X, selector=0x%X (%X %X)\n",
             ((p_entry->offset_31_16 << 16) | p_entry->offset_15_0),
             ((p_entry->present_dpl_type >> 7) & 1),
             ((p_entry->present_dpl_type >> 5) & 3),
@@ -255,8 +255,8 @@ static void print_entry(entry_t const *p_entry) {
 
 [[maybe_unused]]
 static void print_stack_frame(isr_stack_frame_t const *p_stack_frame) {
-    kprintf("Stack frame is at %P:\n", p_stack_frame);
-    kprintf("   eip = 0x%X\n", p_stack_frame->eip);
-    kprintf("    cs = 0x%X\n", p_stack_frame->cs);
-    kprintf("eflags = 0x%X\n", p_stack_frame->eflags);
+    kprintf("idt: stack frame is at %P:\n", p_stack_frame);
+    kprintf("idt:   eip = 0x%X\n", p_stack_frame->eip);
+    kprintf("idt:    cs = 0x%X\n", p_stack_frame->cs);
+    kprintf("idt:eflags = 0x%X\n", p_stack_frame->eflags);
 }

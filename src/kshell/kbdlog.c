@@ -13,7 +13,7 @@ void kbdlog(size_t num_events) {
     for (size_t idx = 0; idx < num_events; idx++) {
         term_read_kbd_event(&event);
 
-        kprintf("%3u: key = %u, ", idx, event.key);
+        kprintf("kbdlog: %3u: key = %u, ", idx, event.key);
         if (event.b_released) {
             kprintf("released\n");
         } else {

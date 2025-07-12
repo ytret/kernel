@@ -277,93 +277,93 @@ void ahci_port_irq_handler(ahci_port_ctx_t *port_ctx) {
 
     if (int_status & AHCI_PORT_INT_DHR) {
         port_ctx->reg_port->is = AHCI_PORT_INT_DHR;
-        kprintf("ahci port interrupt: AHCI_PORT_INT_DHR\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_DHR\n");
 
         const ahci_port_state_t port_state = port_ctx->state;
         if (port_state == AHCI_PORT_READING) {
-            kprintf("ahci port irq: AHCI_PORT_READING\n");
+            kprintf("ahci: port irq: AHCI_PORT_READING\n");
             if (port_ctx->blkdev_req->state == BLKDEV_REQ_ACTIVE) {
-                kprintf("ahci port irq: active req\n");
+                kprintf("ahci: port irq: active req\n");
                 port_ctx->blkdev_req->state = BLKDEV_REQ_SUCCESS;
                 semaphore_increase(&port_ctx->blkdev_req->sem_done);
             } else {
                 panic_enter();
-                kprintf("ahci_port_irq_handler: port %s state is "
-                        "AHCI_PORT_READING, but there is no active request\n",
+                kprintf("ahci: port irq: port %s state is AHCI_PORT_READING, "
+                        "but there is no active request\n",
                         port_ctx->name);
                 panic("unexpected AHCI DHR IRQ");
             }
             port_ctx->state = AHCI_PORT_IDLE;
         } else {
             panic_enter();
-            kprintf("ahci_port_irq_handler: unexpected port %s state: %u\n",
+            kprintf("ahci: port irq: unexpected port %s state: %u\n",
                     port_ctx->name, port_state);
             panic("unexpected AHCI DHR IRQ");
         }
     }
     if (int_status & AHCI_PORT_INT_PS) {
         port_ctx->reg_port->is = AHCI_PORT_INT_PS;
-        kprintf("ahci port interrupt: AHCI_PORT_INT_PS\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_PS\n");
     }
     if (int_status & AHCI_PORT_INT_DS) {
         port_ctx->reg_port->is = AHCI_PORT_INT_DS;
-        kprintf("ahci port interrupt: AHCI_PORT_INT_DS\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_DS\n");
     }
     if (int_status & AHCI_PORT_INT_SDB) {
         port_ctx->reg_port->is = AHCI_PORT_INT_SDB;
-        kprintf("ahci port interrupt: AHCI_PORT_INT_SDB\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_SDB\n");
     }
     if (int_status & AHCI_PORT_INT_UF) {
         port_ctx->reg_port->is = AHCI_PORT_INT_UF;
-        kprintf("ahci port interrupt: AHCI_PORT_INT_UF\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_UF\n");
     }
     if (int_status & AHCI_PORT_INT_DP) {
         port_ctx->reg_port->is = AHCI_PORT_INT_DP;
-        kprintf("ahci port interrupt: AHCI_PORT_INT_DP\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_DP\n");
     }
     if (int_status & AHCI_PORT_INT_PC) {
         port_ctx->reg_port->is = AHCI_PORT_INT_PC;
-        kprintf("ahci port interrupt: AHCI_PORT_INT_PC\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_PC\n");
     }
     if (int_status & AHCI_PORT_INT_DMP) {
         port_ctx->reg_port->is = AHCI_PORT_INT_DMP;
-        kprintf("ahci port interrupt: AHCI_PORT_INT_DMP\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_DMP\n");
     }
     if (int_status & AHCI_PORT_INT_PRC) {
         port_ctx->reg_port->is = AHCI_PORT_INT_PRC;
-        kprintf("ahci port interrupt: AHCI_PORT_INT_PRC\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_PRC\n");
     }
     if (int_status & AHCI_PORT_INT_IPM) {
         port_ctx->reg_port->is = AHCI_PORT_INT_IPM;
-        kprintf("ahci port interrupt: AHCI_PORT_INT_IPM\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_IPM\n");
     }
     if (int_status & AHCI_PORT_INT_OF) {
         port_ctx->reg_port->is = AHCI_PORT_INT_OF;
-        kprintf("ahci port interrupt: AHCI_PORT_INT_OF\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_OF\n");
     }
     if (int_status & AHCI_PORT_INT_INF) {
         port_ctx->reg_port->is = AHCI_PORT_INT_INF;
-        kprintf("ahci port interrupt: AHCI_PORT_INT_INF\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_INF\n");
     }
     if (int_status & AHCI_PORT_INT_IF) {
         port_ctx->reg_port->is = AHCI_PORT_INT_IF;
-        kprintf("ahci port interrupt: AHCI_PORT_INT_IF\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_IF\n");
     }
     if (int_status & AHCI_PORT_INT_HBD) {
         port_ctx->reg_port->is = AHCI_PORT_INT_HBD;
-        kprintf("ahci port interrupt: AHCI_PORT_INT_HBD\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_HBD\n");
     }
     if (int_status & AHCI_PORT_INT_HBF) {
         port_ctx->reg_port->is = AHCI_PORT_INT_HBF;
-        kprintf("ahci port interrupt: AHCI_PORT_INT_HBF\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_HBF\n");
     }
     if (int_status & AHCI_PORT_INT_TFE) {
         port_ctx->reg_port->is = AHCI_PORT_INT_TFE;
-        kprintf("ahci port interrupt: AHCI_PORT_INT_TFE\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_TFE\n");
     }
     if (int_status & AHCI_PORT_INT_CPD) {
         port_ctx->reg_port->is = AHCI_PORT_INT_CPD;
-        kprintf("ahci port interrupt: AHCI_PORT_INT_CPD\n");
+        kprintf("ahci: port irq: AHCI_PORT_INT_CPD\n");
     }
 }
 

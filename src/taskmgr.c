@@ -177,7 +177,8 @@ void taskmgr_local_schedule(void) {
         if (!next_task) {
             if (caller_task->is_blocked) {
                 panic_enter();
-                kprintf("No tasks to preempt the blocked running task.\n");
+                kprintf(
+                    "taskmgr: no tasks to preempt the blocked running task\n");
                 panic("scheduling failed");
             } else {
                 return;
@@ -269,7 +270,7 @@ void taskmgr_local_sleep_ms(uint32_t duration_ms) {
 
     if (!taskmgr->running_task) {
         panic_enter();
-        kprintf("taskmgr_sleep: no running task\n");
+        kprintf("taskmgr: taskmgr_sleep: no running task\n");
         panic("taskmgr_sleep failed");
     }
 
@@ -298,7 +299,8 @@ void taskmgr_local_terminate_task(task_t *p_task) {
         // 1) it always marks itself as blocked before rescheduling,
         // 2) it cannot free its own stack.
         panic_enter();
-        kprintf("Deleter task (ID %u) cannot delete itself.\n", p_task->id);
+        kprintf("taskmgr: deleter task (ID %u) cannot delete itself\n",
+                p_task->id);
         panic("invalid argument");
     }
 

@@ -35,7 +35,8 @@ bool psf_load(psf_t *p_font, uint32_t addr) {
 
 uint8_t const *psf_glyph(psf_t const *p_psf, char ch) {
     if (((size_t)ch) >= p_psf->num_glyphs) {
-        kprintf("psf_glyph: glyph for char %u is absent\n", ((uint32_t)ch));
+        kprintf("psf: psf_glyph: glyph for char %u is absent\n",
+                ((uint32_t)ch));
     }
 
     size_t offset = (ch * p_psf->glyph_size);

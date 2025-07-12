@@ -396,7 +396,7 @@ static void cmd_pci(char **pp_args, size_t num_args) {
         const pci_dev_t *dev = pci_get_dev_const(dev_idx);
         pci_dump_dev_header(dev);
     } else {
-        kprintf("pci: unknown command: '%s'\n", pp_args[1]);
+        kprintf("kshell: pci: unknown subcommand: '%s'\n", pp_args[1]);
         return;
     }
 }

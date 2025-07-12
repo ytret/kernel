@@ -27,7 +27,7 @@ void init_bsp_task(void) {
     kshell();
 
     panic_enter();
-    kprintf("init_bsp_task: kshell returned\n");
+    kprintf("init: init_bsp_task: kshell returned\n");
     panic("unexpected behavior");
 }
 

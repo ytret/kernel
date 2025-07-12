@@ -75,34 +75,34 @@ void pci_dump_dev_short(const pci_dev_t *dev) {
 void pci_dump_dev_header(const pci_dev_t *dev) {
     if (!dev) { panic("pci_dump_dev_short: dev = NULL"); }
 
-    kprintf("vendor_id = 0x%04X\n", dev->header.common.vendor_id);
-    kprintf("device_id = 0x%04X\n", dev->header.common.device_id);
-    kprintf("command = 0x%04X\n", dev->header.common.command);
-    kprintf("status = 0x%04X\n", dev->header.common.status);
-    kprintf("revision_id = 0x%02X\n", dev->header.common.revision_id);
-    kprintf("base_class = 0x%02X\n", dev->header.common.base_class);
-    kprintf("sub_class = 0x%02X\n", dev->header.common.sub_class);
-    kprintf("interface = 0x%02X\n", dev->header.common.interface);
-    kprintf("cacheline_size = 0x%02X\n", dev->header.common.cacheline_size);
-    kprintf("latency_timer = 0x%02X\n", dev->header.common.latency_timer);
-    kprintf("header_type = 0x%02X\n", dev->header.common.header_type);
-    kprintf("bist = 0x%02X\n", dev->header.common.bist);
-    kprintf("bar0 = 0x%08X\n", dev->header.bar0);
-    kprintf("bar1 = 0x%08X\n", dev->header.bar1);
-    kprintf("bar2 = 0x%08X\n", dev->header.bar2);
-    kprintf("bar3 = 0x%08X\n", dev->header.bar3);
-    kprintf("bar4 = 0x%08X\n", dev->header.bar4);
-    kprintf("bar5 = 0x%08X\n", dev->header.bar5);
-    kprintf("cardbus_cis_ptr = 0x%08X\n", dev->header.cardbus_cis_ptr);
-    kprintf("subsys_vendor_id = 0x%04X\n", dev->header.subsys_vendor_id);
-    kprintf("subsys_id = 0x%04X\n", dev->header.subsys_id);
-    kprintf("expansion_rom_base_addr = 0x%08X\n",
+    kprintf("pci: vendor_id = 0x%04X\n", dev->header.common.vendor_id);
+    kprintf("pci: device_id = 0x%04X\n", dev->header.common.device_id);
+    kprintf("pci: command = 0x%04X\n", dev->header.common.command);
+    kprintf("pci: status = 0x%04X\n", dev->header.common.status);
+    kprintf("pci: revision_id = 0x%02X\n", dev->header.common.revision_id);
+    kprintf("pci: base_class = 0x%02X\n", dev->header.common.base_class);
+    kprintf("pci: sub_class = 0x%02X\n", dev->header.common.sub_class);
+    kprintf("pci: interface = 0x%02X\n", dev->header.common.interface);
+    kprintf("pci: cacheline_size = 0x%02X\n", dev->header.common.cacheline_size);
+    kprintf("pci: latency_timer = 0x%02X\n", dev->header.common.latency_timer);
+    kprintf("pci: header_type = 0x%02X\n", dev->header.common.header_type);
+    kprintf("pci: bist = 0x%02X\n", dev->header.common.bist);
+    kprintf("pci: bar0 = 0x%08X\n", dev->header.bar0);
+    kprintf("pci: bar1 = 0x%08X\n", dev->header.bar1);
+    kprintf("pci: bar2 = 0x%08X\n", dev->header.bar2);
+    kprintf("pci: bar3 = 0x%08X\n", dev->header.bar3);
+    kprintf("pci: bar4 = 0x%08X\n", dev->header.bar4);
+    kprintf("pci: bar5 = 0x%08X\n", dev->header.bar5);
+    kprintf("pci: cardbus_cis_ptr = 0x%08X\n", dev->header.cardbus_cis_ptr);
+    kprintf("pci: subsys_vendor_id = 0x%04X\n", dev->header.subsys_vendor_id);
+    kprintf("pci: subsys_id = 0x%04X\n", dev->header.subsys_id);
+    kprintf("pci: expansion_rom_base_addr = 0x%08X\n",
             dev->header.expansion_rom_base_addr);
-    kprintf("cap_ptr = 0x%02X\n", dev->header.cap_ptr);
-    kprintf("int_line = 0x%02X\n", dev->header.int_line);
-    kprintf("int_pin = 0x%02X\n", dev->header.int_pin);
-    kprintf("min_gnt = 0x%02X\n", dev->header.min_gnt);
-    kprintf("max_lat = 0x%02X\n", dev->header.max_lat);
+    kprintf("pci: cap_ptr = 0x%02X\n", dev->header.cap_ptr);
+    kprintf("pci: int_line = 0x%02X\n", dev->header.int_line);
+    kprintf("pci: int_pin = 0x%02X\n", dev->header.int_pin);
+    kprintf("pci: min_gnt = 0x%02X\n", dev->header.min_gnt);
+    kprintf("pci: max_lat = 0x%02X\n", dev->header.max_lat);
 }
 
 /**

@@ -32,16 +32,16 @@ void pmm_init(void) {
 
     if (!(p_mbi->flags & MBI_FLAG_MMAP)) {
         panic_enter();
-        kprintf("PMM: memory map is not present in multiboot info struct\n");
+        kprintf("pmm: memory map is not present in multiboot info struct\n");
         panic("memory map unavailable");
     }
 
-    kprintf("PMM: mmap_length = %d\n", p_mbi->mmap_length);
-    kprintf("PMM: mmap_addr = 0x%X\n", p_mbi->mmap_addr);
+    kprintf("pmm: mmap_length = %d\n", p_mbi->mmap_length);
+    kprintf("pmm: mmap_addr = 0x%X\n", p_mbi->mmap_addr);
 
     // Determine the first free page.
     g_first_free_page = ((heap_end() + 0xFFF) & ~0xFFF);
-    kprintf("PMM: first free page: %P\n", g_first_free_page);
+    kprintf("pmm: first free page: %P\n", g_first_free_page);
 
     // Prepare the free page stack.
     size_t stack_size = ((size_t)(((uintptr_t)&ld_pmm_stack_top) -
@@ -58,7 +58,7 @@ void pmm_init(void) {
 void pmm_push_page(uint32_t addr) {
     if (addr & 0xFFF) {
         panic_enter();
-        kprintf("PMM: cannot push page: addr is not page-aligned\n");
+        kprintf("pmm: cannot push page: addr is not page-aligned\n");
         panic("unexpected behavior");
     }
 
@@ -74,7 +74,7 @@ uint32_t pmm_pop_page(void) {
     if (stack_is_empty(&g_page_stack)) {
         // Cannot pop the page - the stack is empty.
         panic_enter();
-        kprintf("PMM: cannot pop page: stack is empty\n");
+        kprintf("pmm: cannot pop page: stack is empty\n");
         panic("no free memory");
     }
 
@@ -93,15 +93,15 @@ static void parse_mmap(uint32_t addr, uint32_t map_len) {
 
         uint64_t end = (base_addr + length);
 
-        kprintf("PMM: size = %d, addr = 0x%X, end = 0x%X, type = %d\n", size,
+        kprintf("pmm: size = %d, addr = 0x%X, end = 0x%X, type = %d\n", size,
                 ((uint32_t)base_addr), ((uint32_t)end), type);
 
         if ((base_addr > ((uint64_t)UINT_MAX)) ||
             (length > ((uint64_t)UINT_MAX)) || (end > ((uint64_t)UINT_MAX))) {
-            kprintf("PMM: region lies outside of 4 GiB memory, ignoring it\n");
+            kprintf("pmm: region lies outside of 4 GiB memory, ignoring it\n");
         } else if (MMAP_ENTRY_AVAILABLE == type) {
             if (end < g_first_free_page) {
-                kprintf("PMM: region is below the first free page, ignoring"
+                kprintf("pmm: region is below the first free page, ignoring"
                         " it\n");
             } else {
                 while (base_addr < g_first_free_page) {
@@ -121,14 +121,14 @@ static void add_region(uint32_t start, uint32_t num_bytes) {
         pmm_push_page(page);
     }
 
-    kprintf("PMM: added %u bytes starting at 0x%X\n", num_bytes, start);
+    kprintf("pmm: added %u bytes starting at 0x%X\n", num_bytes, start);
 }
 
 static void print_usage(void) {
     uint32_t used_perc =
         (100 * ((uint32_t)(g_page_stack.p_top_max - g_page_stack.p_top)) /
          ((uint32_t)(g_page_stack.p_top_max - g_page_stack.p_bottom)));
-    kprintf("PMM: stack is %u%% used", used_perc);
+    kprintf("pmm: stack is %u%% used", used_perc);
 
     uint32_t num_bytes =
         (4096 * ((uint32_t)(g_page_stack.p_top_max - g_page_stack.p_top)));

@@ -39,7 +39,7 @@ void devmgr_init(void) {
     const size_t num_devs = pci_num_devs();
     for (size_t idx_dev = 0; idx_dev < num_devs; idx_dev++) {
         if (g_devmgr_num_devs == DEVMGR_MAX_DEVS) {
-            kprintf("devmgr_init: device limit (%u) has been reached\n",
+            kprintf("devmgr: device limit (%u) has been reached\n",
                     DEVMGR_MAX_DEVS);
             break;
         }

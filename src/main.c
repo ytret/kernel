@@ -28,7 +28,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     term_init();
 
-    kprintf("Hello, world!\n");
+    kprintf("main: Hello, world!\n");
     check_bootloader(magic_num, mbi_addr);
 
     gdtr_t gdtr;
@@ -66,7 +66,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     taskmgr_global_init();
 
     __asm__ volatile("sti");
-    kprintf("Interrupts enabled\n");
+    kprintf("main: interrupts enabled\n");
 
     lapic_calib_tim();
 
@@ -77,16 +77,16 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     devmgr_init();
 
     taskmgr_local_init(init_bsp_task);
-    kprintf("End of main\n");
+    kprintf("main: end of main\n");
 }
 
 static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr) {
     if (MULTIBOOT_MAGIC_NUM == magic_num) {
-        kprintf("Booted by a multiboot-compliant bootloader\n");
-        kprintf("Multiboot information structure is at %P\n", mbi_addr);
+        kprintf("main: booted by a multiboot-compliant bootloader\n");
+        kprintf("main: multiboot information structure is at %P\n", mbi_addr);
     } else {
         panic_enter();
-        kprintf("Magic number: 0x%X, expected: 0x%X\n", magic_num,
+        kprintf("main: magic number: 0x%X, expected: 0x%X\n", magic_num,
                 MULTIBOOT_MAGIC_NUM);
         panic("booted by an unknown bootloader");
     }

@@ -56,7 +56,7 @@ void blkdev_task_entry(void) {
         req->dev_if.f_submit_req(req);
     }
 
-    kprintf("blkdev_task_entry: reached end\n");
+    kprintf("blkdev: reached task end\n");
     panic("unexpected behavior");
 }
 
