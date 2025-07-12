@@ -146,6 +146,17 @@ void *kmemclr_sse2(void *p_dest, size_t num_bytes) {
     return p_orig_dest;
 }
 
+void kmemread_v4(void *p_dest, const volatile uint32_t *p_src) {
+    uint32_t val = *p_src;
+    kmemcpy(p_dest, &val, 4);
+}
+
+void kmemwrite_v4(volatile uint32_t *p_dest, const void *p_src) {
+    uint32_t val;
+    kmemcpy(&val, p_src, 4);
+    *p_dest = val;
+}
+
 /**
  * Moves a memory region using SSE2 instructions.
  *

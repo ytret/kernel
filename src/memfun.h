@@ -29,3 +29,19 @@ void *kmemmove_sse2(void *p_dest, const void *p_src, size_t num_bytes);
  * @param num_bytes Number of bytes to zero out, not necessarily 4-byte aligned.
  */
 void *kmemclr_sse2(void *p_dest, size_t num_bytes);
+
+/**
+ * Reads a volatile dword from @a p_src and copies it to @a p_dest.
+ *
+ * @param p_dest Destination buffer.
+ * @param p_src  Volatile dword pointer.
+ */
+void kmemread_v4(void *p_dest, const volatile uint32_t *p_src);
+
+/**
+ * Writes a volatile dword at @a p_dest with a dword copied from @a p_src.
+ *
+ * @param p_dest Volatile dword pointer.
+ * @param p_src  Source buffer.
+ */
+void kmemwrite_v4(volatile uint32_t *p_dest, const void *p_src);
