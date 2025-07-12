@@ -382,6 +382,32 @@ typedef struct [[gnu::packed]] {
     IO32 p_vs[4];       //!< Vendor Specific registers.
 } reg_port_t;
 
+/**
+ * Interrupt Enable (IE) and Interrupt Status (IS) bits.
+ * See #reg_port_t.ie_bit.
+ */
+typedef enum {
+    AHCI_PORT_INT_DHR = 1 << 0,  //!< Device to Host Register FIS Interrupt.
+    AHCI_PORT_INT_PS = 1 << 1,   //!< PIO Setup FIS Interrupt.
+    AHCI_PORT_INT_DS = 1 << 2,   //!< DMA Setup FIS Interrupt.
+    AHCI_PORT_INT_SDB = 1 << 3,  //!< Set-Device-Bits FIS Interrupt.
+    AHCI_PORT_INT_UF = 1 << 4,   //!< Unknown FIS Interrupt.
+    AHCI_PORT_INT_DP = 1 << 5,   //!< Descriptor Processed Interrupt.
+    AHCI_PORT_INT_PC = 1 << 6,   //!< Port Change Interrupt.
+    AHCI_PORT_INT_DMP = 1 << 7,  //!< Device Mechanical Presence.
+    AHCI_PORT_INT_PRC = 1 << 22, //!< PhyRdy Change Interrupt.
+    AHCI_PORT_INT_IPM = 1 << 23, //!< Incorrect Port Multiplier.
+    AHCI_PORT_INT_OF = 1 << 24,  //!< Overflow.
+    AHCI_PORT_INT_INF = 1 << 26, //!< Interface Non-fatal Error.
+    AHCI_PORT_INT_IF = 1 << 27,  //!< Interface Fatal Error.
+    AHCI_PORT_INT_HBD = 1 << 28, //!< Host Bus Data Error.
+    AHCI_PORT_INT_HBF = 1 << 29, //!< Host Bus Fatal Error.
+    AHCI_PORT_INT_TFE = 1 << 30, //!< Task File Error.
+    AHCI_PORT_INT_CPD = 1 << 31, //!< Cold Presence Detect.
+
+    AHCI_PORT_INT_ALL = 0xFDC000FF, //!< Enable all interrupts.
+} ahci_port_int_t;
+
 /// Interface Communication Control (ICC) values in the Port Command register.
 typedef enum {
     AHCI_CMD_ICC_IDLE = 0x00,     //!< No-Op / Idle.
