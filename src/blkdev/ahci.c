@@ -249,7 +249,7 @@ void ahci_ctrl_map_irq(ahci_ctrl_ctx_t *ctrl_ctx, uint8_t vec) {
 
 void ahci_ctrl_irq_handler(void) {
     devmgr_iter_t iter;
-    devmgr_iter_init(&iter, DEVMGR_CLASS_DISK);
+    devmgr_iter_init(&iter, DEVMGR_CLASS_BLOCK);
 
     devmgr_dev_t *dev;
     while ((dev = devmgr_iter_next(&iter))) {

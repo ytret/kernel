@@ -12,14 +12,14 @@
 
 typedef enum {
     DEVMGR_CLASS_NONE,
-    DEVMGR_CLASS_DISK,
-    DEVMGR_CLASS_DISK_PART,
+    DEVMGR_CLASS_BLOCK,
+    DEVMGR_CLASS_BLOCK_PART,
 } devmgr_class_t;
 
 typedef enum {
     DEVMGR_DRVIER_NONE,
     DEVMGR_DRIVER_AHCI_PORT,
-    DEVMGR_DRIVER_DISK_PART,
+    DEVMGR_DRIVER_BLKPART,
 } devmgr_driver_t;
 
 typedef struct {
@@ -30,7 +30,7 @@ typedef struct {
     /**
      * @{
      * @name Block-device-specific fields
-     * These fields are valid only for block devices, e.g., #DEVMGR_CLASS_DISK.
+     * These fields are valid only for block devices, e.g., #DEVMGR_CLASS_BLOCK.
      */
     blkdev_dev_t blkdev_dev;
     gpt_disk_t *gpt_disk;
@@ -53,7 +53,7 @@ void devmgr_init(void);
  * initialized its request queue. Otherwise, the GPT parser wouldn't be able to
  * read anything.
  */
-void devmgr_init_disk_parts(void);
+void devmgr_init_blkdev_parts(void);
 
 /**
  * Returns the device with ID @a id.

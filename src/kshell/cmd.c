@@ -439,7 +439,7 @@ static void cmd_blkdev(char **pp_args, size_t num_args) {
         kprintf("kshell: no device with ID %u\n", dev_id);
         return;
     }
-    if (dev->dev_class != DEVMGR_CLASS_DISK) {
+    if (dev->dev_class != DEVMGR_CLASS_BLOCK) {
         kprintf("kshell: device ID %u is %s, not a block device\n", dev_id,
                 devmgr_class_name(dev->dev_class));
         return;

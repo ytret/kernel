@@ -34,7 +34,7 @@ static uint32_t g_devmgr_next_id = DEVMGR_FIRST_ID;
 static devmgr_dev_t *prv_devmgr_init_dev(const pci_dev_t *pci_dev);
 static devmgr_dev_t *prv_devmgr_init_ahci(const pci_dev_t *pci_dev);
 
-static void prv_devmgr_init_disk_parts(devmgr_dev_t *dev);
+static void prv_devmgr_init_blkparts(devmgr_dev_t *dev);
 
 static devmgr_dev_t *prv_devmgr_init_next_dev(void);
 
@@ -53,13 +53,13 @@ void devmgr_init(void) {
     }
 }
 
-void devmgr_init_disk_parts(void) {
+void devmgr_init_blkdev_parts(void) {
     devmgr_iter_t iter;
-    devmgr_iter_init(&iter, DEVMGR_CLASS_DISK);
+    devmgr_iter_init(&iter, DEVMGR_CLASS_BLOCK);
 
     devmgr_dev_t *blkdev;
     while ((blkdev = devmgr_iter_next(&iter))) {
-        prv_devmgr_init_disk_parts(blkdev);
+        prv_devmgr_init_blkparts(blkdev);
     }
 }
 
@@ -102,10 +102,10 @@ const char *devmgr_class_name(devmgr_class_t dev_class) {
     switch (dev_class) {
     case DEVMGR_CLASS_NONE:
         return "none";
-    case DEVMGR_CLASS_DISK:
-        return "disk";
-    case DEVMGR_CLASS_DISK_PART:
-        return "disk partition";
+    case DEVMGR_CLASS_BLOCK:
+        return "blkdev";
+    case DEVMGR_CLASS_BLOCK_PART:
+        return "blkpart";
     default:
         return "unknown";
     }
@@ -117,8 +117,8 @@ const char *devmgr_driver_name(devmgr_driver_t driver) {
         return "none";
     case DEVMGR_DRIVER_AHCI_PORT:
         return "ahci port";
-    case DEVMGR_DRIVER_DISK_PART:
-        return "disk partition";
+    case DEVMGR_DRIVER_BLKPART:
+        return "blkpart";
     default:
         return "unknown";
     }
@@ -190,7 +190,7 @@ static devmgr_dev_t *prv_devmgr_init_ahci(const pci_dev_t *pci_dev) {
         dev = prv_devmgr_init_next_dev();
         if (!dev) { return NULL; }
 
-        dev->dev_class = DEVMGR_CLASS_DISK;
+        dev->dev_class = DEVMGR_CLASS_BLOCK;
         dev->driver_id = DEVMGR_DRIVER_AHCI_PORT;
         dev->blkdev_dev.driver_ctx = ahci_port;
         ahci_port_fill_blkdev_if(&dev->blkdev_dev.driver_intf);
@@ -208,29 +208,30 @@ static devmgr_dev_t *prv_devmgr_init_ahci(const pci_dev_t *pci_dev) {
 }
 
 /**
- * Initializes disk partitions of a disk device @a dev.
+ * Initializes partitions of a block device @a dev.
  *
- * @param dev Device with device class #DEVMGR_CLASS_DISK.
+ * @param dev Device with device class #DEVMGR_CLASS_BLOCK.
  */
-static void prv_devmgr_init_disk_parts(devmgr_dev_t *dev) {
-    if (dev->dev_class != DEVMGR_CLASS_DISK) {
+static void prv_devmgr_init_blkparts(devmgr_dev_t *dev) {
+    if (dev->dev_class != DEVMGR_CLASS_BLOCK) {
         panic_enter();
-        kprintf("devmgr: init disk parts called on a non-disk device ID %u\n",
+        kprintf("devmgr: init blkparts called on a non-blkdev device ID %u\n",
                 dev->id);
         panic("unexpected behavior");
     }
 
     if (!gpt_probe_signature(&dev->blkdev_dev)) {
-        kprintf("devmgr: disk %u is not GPT-partitioned\n", dev->id);
+        kprintf("devmgr: blkdev %u is not GPT-partitioned\n", dev->id);
         return;
     }
     if (!gpt_parse(&dev->blkdev_dev, &dev->gpt_disk)) {
-        kprintf("devmgr: disk %u has GPT signature, but could not be parsed\n",
-                dev->id);
+        kprintf(
+            "devmgr: blkdev %u has GPT signature, but could not be parsed\n",
+            dev->id);
         return;
     }
 
-    kprintf("devmgr: disk %u has %u partitions\n", dev->id,
+    kprintf("devmgr: blkdev %u has %u partitions\n", dev->id,
             dev->gpt_disk->num_parts);
 
     for (size_t idx_part = 0; idx_part < dev->gpt_disk->num_parts; idx_part++) {
@@ -245,8 +246,8 @@ static void prv_devmgr_init_disk_parts(devmgr_dev_t *dev) {
         blkpart_ctx_t *const blkpart_ctx =
             blkpart_init(&dev->blkdev_dev, &dev->gpt_disk->parts[idx_part]);
 
-        dev_part->dev_class = DEVMGR_CLASS_DISK_PART;
-        dev_part->driver_id = DEVMGR_DRIVER_DISK_PART;
+        dev_part->dev_class = DEVMGR_CLASS_BLOCK_PART;
+        dev_part->driver_id = DEVMGR_DRIVER_BLKPART;
         dev_part->blkdev_dev.driver_ctx = blkpart_ctx;
         blkpart_fill_blkdev_if(&dev_part->blkdev_dev.driver_intf);
     }

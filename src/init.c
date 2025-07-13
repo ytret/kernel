@@ -29,7 +29,7 @@ void init_bsp_task(void) {
     while (!blkdev_is_ready()) {}
     kprintf("init_bsp_task: blkdev task is ready for requests\n");
 
-    devmgr_init_disk_parts();
+    devmgr_init_blkdev_parts();
 
     kshell();
 
