@@ -62,8 +62,8 @@ static constexpr uint8_t gp_root_guid[16] = {
     0xAB, 0xFC, 0xB1, 0x4E, 0xC7, 0xA6, 0x26, 0xCE,
 };
 
-static bool gpt_is_gpe_used(const gpt_gpe_t *gpe);
-static void gpt_print_guid(const uint8_t guid[16]);
+static bool prv_gpt_is_gpe_used(const gpt_gpe_t *gpe);
+static void prv_gpt_print_guid(const uint8_t guid[16]);
 
 bool gpt_probe_signature(blkdev_dev_t *dev) {
     uint8_t *const sector1 = heap_alloc(512);
@@ -112,7 +112,7 @@ bool gpt_parse(blkdev_dev_t *dev, gpt_disk_t **out_gpt_disk) {
     kprintf("gpt: First Usable LBA %u\n", gpt_hdr->first_usable_lba);
     kprintf("gpt: Last Usable LBA %u\n", gpt_hdr->last_usable_lba);
     kprintf("gpt: Disk GUID ");
-    gpt_print_guid(gpt_hdr->disk_guid);
+    prv_gpt_print_guid(gpt_hdr->disk_guid);
     kprintf("\n");
     kprintf("gpt: GPE Array starts at LBA %u\n", gpt_hdr->gpes_lba);
     kprintf("gpt: GPE Array length %u entries\n", gpt_hdr->gpes_num);
@@ -131,15 +131,27 @@ bool gpt_parse(blkdev_dev_t *dev, gpt_disk_t **out_gpt_disk) {
         return false;
     }
 
-    const size_t num_parts = gpt_hdr->gpes_num;
-    gpt_part_t *const parts = heap_alloc(sizeof(gpt_part_t) * num_parts);
-    kmemset(parts, 0, sizeof(gpt_part_t) * num_parts);
+    size_t num_parts = 0;
+    // First iteration through the GPE array - determine the number of used
+    // partition array entries.
+    for (size_t idx_gpe = 0; idx_gpe < gpt_hdr->gpes_num; idx_gpe++) {
+        const gpt_gpe_t *const gpe =
+            (const gpt_gpe_t *)(gpes_buf + gpt_hdr->gpe_size * idx_gpe);
+        if (prv_gpt_is_gpe_used(gpe)) { num_parts++; }
+    }
+
+    gpt_part_t *parts = NULL;
+    if (num_parts > 0) {
+        parts = heap_alloc(sizeof(gpt_part_t) * num_parts);
+        kmemset(parts, 0, sizeof(gpt_part_t) * num_parts);
+    }
 
     gpt_disk_t *const disk = heap_alloc(sizeof(*disk));
     kmemset(disk, 0, sizeof(*disk));
     disk->parts = parts;
     disk->num_parts = num_parts;
 
+    // Second iteration through the GPE array - copy the partition information.
     for (size_t idx_part = 0; idx_part < num_parts; idx_part++) {
         const gpt_gpe_t *const gpe =
             (const gpt_gpe_t *)(gpes_buf + gpt_hdr->gpe_size * idx_part);
@@ -155,7 +167,7 @@ bool gpt_parse(blkdev_dev_t *dev, gpt_disk_t **out_gpt_disk) {
         part->ending_lba = gpe->ending_lba;
         kmemcpy(part->type_guid, gpe->type_guid, 16);
         kmemcpy(part->part_guid, gpe->part_guid, 16);
-        part->used = gpt_is_gpe_used(gpe);
+        part->used = prv_gpt_is_gpe_used(gpe);
     }
 
     heap_free(sector1);
@@ -166,12 +178,12 @@ bool gpt_parse(blkdev_dev_t *dev, gpt_disk_t **out_gpt_disk) {
     return true;
 }
 
-static bool gpt_is_gpe_used(const gpt_gpe_t *gpe) {
+static bool prv_gpt_is_gpe_used(const gpt_gpe_t *gpe) {
     const uint8_t unused_type_guid[16] = {0};
     return kmemcmp(gpe->type_guid, unused_type_guid, 16) != 0;
 }
 
-static void gpt_print_guid(const uint8_t guid[16]) {
+static void prv_gpt_print_guid(const uint8_t guid[16]) {
     uint32_t *p_one = (uint32_t *)&guid[0];   // 0..3
     uint16_t *p_two = (uint16_t *)&guid[4];   // 4..5
     uint16_t *p_three = (uint16_t *)&guid[6]; // 6..7
