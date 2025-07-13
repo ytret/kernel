@@ -562,13 +562,11 @@ static void cmd_kill(char **pp_args, size_t num_args) {
         return;
     }
 
-    /*
-    task_t *p_task = taskmgr_get_task_by_id(task_id);
-    if (p_task) {
-        taskmgr_terminate_task(p_task);
+    task_t *const task = taskmgr_get_task_by_id(task_id);
+    if (task) {
+        taskmgr_terminate_task(task);
         kprintf("Marked task %u for termination\n", task_id);
     } else {
         kprintf("No such task: ID %u\n", task_id);
     }
-    */
 }
