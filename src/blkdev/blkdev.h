@@ -1,3 +1,8 @@
+/**
+ * @file blkdev.h
+ * Block device worker task API.
+ */
+
 #pragma once
 
 #include <stddef.h>
@@ -54,6 +59,24 @@ struct blkdev_req {
  * kernel heap or in another memory region visible to the driver task.
  */
 bool blkdev_enqueue_req(blkdev_req_t *req);
+
+/**
+ * Synchronously reads @a num_sectors starting from sector @a start_sector.
+ *
+ * @param driver_ctx   Device driver context.
+ * @param start_sector First sector to read.
+ * @param num_sectors  Number of sectors to read.
+ * @param buf          Destination buffer.
+ *
+ * @returns `true` if @a num_sectors sectors starting from @a start_sector have
+ * been read from the device @a dev and copied to @a buf.
+ *
+ * @note
+ * This function is synchronous, i.e., it blocks the calling task until the read
+ * request is finished.
+ */
+bool blkdev_sync_read(void *driver_ctx, uint64_t start_sector,
+                      uint32_t num_sectors, void *buf);
 
 [[gnu::noreturn]]
 void blkdev_task_entry(void);

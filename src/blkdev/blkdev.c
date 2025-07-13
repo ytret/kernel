@@ -4,6 +4,7 @@
  */
 
 #include "blkdev/blkdev.h"
+#include "heap.h"
 #include "kprintf.h"
 #include "mutex.h"
 #include "panic.h"
@@ -28,6 +29,28 @@ static void prv_blkdev_init(void);
 
 bool blkdev_enqueue_req(blkdev_req_t *req) {
     return queue_write(&g_blkdev_ctx.req_queue, &req);
+}
+
+bool blkdev_sync_read(void *driver_ctx, uint64_t start_sector,
+                      uint32_t num_sectors, void *buf) {
+    blkdev_req_t *const req = heap_alloc(sizeof(*req));
+    req->state = BLKDEV_REQ_INACTIVE;
+    req->op = BLKDEV_OP_READ;
+    req->start_sector = start_sector;
+    req->read_sectors = num_sectors;
+    req->read_buf = buf;
+    req->dev_ctx = driver_ctx;
+    semaphore_init(&req->sem_done);
+
+    if (!blkdev_enqueue_req(req)) {
+        kprintf("blkdev: blkdev_sync_read: failed to enqueue a request\n");
+        heap_free(req);
+        return false;
+    }
+
+    semaphore_decrease(&req->sem_done);
+    heap_free(req);
+    return req->state == BLKDEV_REQ_SUCCESS;
 }
 
 [[gnu::noreturn]]
