@@ -26,12 +26,12 @@ add_executable(kernel
     src/acpi/lapic.c
     src/blkdev/ahci.c
     src/blkdev/blkdev.c
+    src/blkdev/gpt.c
     src/cpu.c
     src/devmgr.c
     src/elf.c
     src/framebuf.c
     src/gdt.c
-    # src/gpt.c
     src/heap.c
     src/idt.c
     src/init.c
