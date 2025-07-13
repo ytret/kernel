@@ -168,7 +168,7 @@ bool gpt_parse(blkdev_dev_t *dev, gpt_disk_t **out_gpt_disk) {
 
 static bool gpt_is_gpe_used(const gpt_gpe_t *gpe) {
     const uint8_t unused_type_guid[16] = {0};
-    return !kmemcmp(gpe->type_guid, unused_type_guid, 16);
+    return kmemcmp(gpe->type_guid, unused_type_guid, 16) != 0;
 }
 
 static void gpt_print_guid(const uint8_t guid[16]) {
