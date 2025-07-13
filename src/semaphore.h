@@ -4,7 +4,7 @@
 #include "spinlock.h"
 
 typedef struct {
-    int count;
+    volatile int count;
     list_t waiting_tasks;
     spinlock_t list_lock;
 } semaphore_t;
