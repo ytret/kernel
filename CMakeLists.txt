@@ -26,6 +26,7 @@ add_executable(kernel
     src/acpi/lapic.c
     src/blkdev/ahci.c
     src/blkdev/blkdev.c
+    src/blkdev/blkpart.c
     src/blkdev/gpt.c
     src/cpu.c
     src/devmgr.c
