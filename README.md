@@ -3,10 +3,15 @@
 ## Kernel features
 
 * Text-mode or framebuffer terminal
-* PCI device enumeration
-* Reading from an AHCI disk with a GPT disklabel
-* Preemptive multitasking
-* Usermode programs with syscalls
+* Kernel-mode shell
+* Device manager with Convenital PCI enumeration
+* Symmetric Multiprocessing (SMP) support
+* Per-processor round-robin task scheduler
+* Task synchronization primitives: spinlocks, mutexes, semaphores, FIFO queues
+* Asynchronous block device layer
+* AHCI driver with read/write support
+* GUID Partition Table parsing
+* Bare-bones syscall support for usermode tasks
 
 
 ## Building and running
