@@ -65,9 +65,9 @@ static constexpr uint8_t gp_root_guid[16] = {
 static bool gpt_is_gpe_used(const gpt_gpe_t *gpe);
 static void gpt_print_guid(const uint8_t guid[16]);
 
-bool gpt_probe_signature(void *driver_ctx) {
+bool gpt_probe_signature(blkdev_dev_t *dev) {
     uint8_t *const sector1 = heap_alloc(512);
-    if (!blkdev_sync_read(driver_ctx, 1, 1, sector1)) {
+    if (!blkdev_sync_read(dev, 1, 1, sector1)) {
         kprintf("gpt: failed to read sector 1\n");
         heap_free(sector1);
         return false;
@@ -75,19 +75,19 @@ bool gpt_probe_signature(void *driver_ctx) {
 
     const gpt_hdr_t *const gpt_hdr = (const gpt_hdr_t *)sector1;
     if (gpt_hdr->signature == GPT_SIGNATURE) {
-        kprintf("gpt: found a valid GPT signature\n", driver_ctx);
+        kprintf("gpt: found a valid GPT signature\n");
         heap_free(sector1);
         return true;
     } else {
-        kprintf("gpt: no valid GPT signature\n", driver_ctx);
+        kprintf("gpt: no valid GPT signature\n");
         heap_free(sector1);
         return false;
     }
 }
 
-bool gpt_parse(void *driver_ctx, gpt_disk_t **out_gpt_disk) {
+bool gpt_parse(blkdev_dev_t *dev, gpt_disk_t **out_gpt_disk) {
     uint8_t *const sector1 = heap_alloc(512);
-    if (!blkdev_sync_read(driver_ctx, 1, 1, sector1)) {
+    if (!blkdev_sync_read(dev, 1, 1, sector1)) {
         kprintf("gpt: failed to read sector 1\n");
         heap_free(sector1);
         return false;
@@ -122,8 +122,7 @@ bool gpt_parse(void *driver_ctx, gpt_disk_t **out_gpt_disk) {
     const size_t gpes_sectors =
         ((gpt_hdr->gpe_size * gpt_hdr->gpes_num) + 511) / 512;
     uint8_t *const gpes_buf = heap_alloc(512 * gpes_sectors);
-    if (!blkdev_sync_read(driver_ctx, gpt_hdr->gpes_lba, gpes_sectors,
-                          gpes_buf)) {
+    if (!blkdev_sync_read(dev, gpt_hdr->gpes_lba, gpes_sectors, gpes_buf)) {
         kprintf(
             "gpt: failed to read GUID Partition Entry Array (sectors %u..%u)\n",
             gpt_hdr->gpes_lba, gpt_hdr->gpes_lba + gpes_sectors);

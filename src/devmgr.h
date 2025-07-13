@@ -7,21 +7,34 @@
 
 #include <stdint.h>
 
+#include "blkdev/blkdev.h"
+#include "blkdev/gpt.h"
+
 typedef enum {
     DEVMGR_CLASS_NONE,
     DEVMGR_CLASS_DISK,
+    DEVMGR_CLASS_DISK_PART,
 } devmgr_class_t;
 
 typedef enum {
     DEVMGR_DRVIER_NONE,
     DEVMGR_DRIVER_AHCI_PORT,
+    DEVMGR_DRIVER_DISK_PART,
 } devmgr_driver_t;
 
 typedef struct {
     uint32_t id;
     devmgr_class_t dev_class;
     devmgr_driver_t driver_id;
-    void *driver_ctx;
+
+    /**
+     * @{
+     * @name Block-device-specific fields
+     * These fields are valid only for block devices, e.g., #DEVMGR_CLASS_DISK.
+     */
+    blkdev_dev_t blkdev_dev;
+    gpt_disk_t *gpt_disk;
+    /// @}
 } devmgr_dev_t;
 
 /// Device iterator.
@@ -32,6 +45,15 @@ typedef struct {
 
 /// Enumerates devices and loads appropriate drivers.
 void devmgr_init(void);
+
+/**
+ * Initializes partitions of block devices as separate devices.
+ *
+ * It should be called only when the @ref blkdev_task_entry "blkdev task" has
+ * initialized its request queue. Otherwise, the GPT parser wouldn't be able to
+ * read anything.
+ */
+void devmgr_init_disk_parts(void);
 
 /**
  * Returns the device with ID @a id.

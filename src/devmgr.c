@@ -5,8 +5,10 @@
 
 #include "assert.h"
 #include "blkdev/ahci.h"
+#include "blkdev/gpt.h"
 #include "devmgr.h"
 #include "kprintf.h"
+#include "memfun.h"
 #include "panic.h"
 #include "pci.h"
 
@@ -28,8 +30,10 @@ static devmgr_dev_t g_devmgr_devs[DEVMGR_MAX_DEVS];
 static size_t g_devmgr_num_devs;
 static uint32_t g_devmgr_next_id = DEVMGR_FIRST_ID;
 
-static void prv_devmgr_init_dev(const pci_dev_t *pci_dev);
-static void prv_devmgr_init_ahci(const pci_dev_t *pci_dev);
+static devmgr_dev_t *prv_devmgr_init_dev(const pci_dev_t *pci_dev);
+static devmgr_dev_t *prv_devmgr_init_ahci(const pci_dev_t *pci_dev);
+
+static void prv_devmgr_init_disk_parts(devmgr_dev_t *dev);
 
 static devmgr_dev_t *prv_devmgr_init_next_dev(void);
 
@@ -45,6 +49,16 @@ void devmgr_init(void) {
         }
         const pci_dev_t *pci_dev = pci_get_dev_const(idx_dev);
         prv_devmgr_init_dev(pci_dev);
+    }
+}
+
+void devmgr_init_disk_parts(void) {
+    devmgr_iter_t iter;
+    devmgr_iter_init(&iter, DEVMGR_CLASS_DISK);
+
+    devmgr_dev_t *blkdev;
+    while ((blkdev = devmgr_iter_next(&iter))) {
+        prv_devmgr_init_disk_parts(blkdev);
     }
 }
 
@@ -89,6 +103,8 @@ const char *devmgr_class_name(devmgr_class_t dev_class) {
         return "none";
     case DEVMGR_CLASS_DISK:
         return "disk";
+    case DEVMGR_CLASS_DISK_PART:
+        return "disk partition";
     default:
         return "unknown";
     }
@@ -100,6 +116,8 @@ const char *devmgr_driver_name(devmgr_driver_t driver) {
         return "none";
     case DEVMGR_DRIVER_AHCI_PORT:
         return "ahci port";
+    case DEVMGR_DRIVER_DISK_PART:
+        return "disk partition";
     default:
         return "unknown";
     }
@@ -107,12 +125,19 @@ const char *devmgr_driver_name(devmgr_driver_t driver) {
 
 /**
  * Initializes a PCI device @a pci_dev if there is a driver for it.
+ *
  * @param pci_dev PCI device to load the driver(s) for.
+ *
+ * @returns An initialized device context pointer, if there is a driver for the
+ * device, otherwise `NULL`.
+ *
  * @note
  * One PCI device may result in several kernel devices registered.
  */
-static void prv_devmgr_init_dev(const pci_dev_t *pci_dev) {
+static devmgr_dev_t *prv_devmgr_init_dev(const pci_dev_t *pci_dev) {
     if (!pci_dev) { panic("prv_devmgr_init_dev: dev = NULL"); }
+
+    devmgr_dev_t *dev = NULL;
 
     const pci_header_common_t *const pci_header = &pci_dev->header.common;
     if (pci_header->base_class == PCI_BASE_CLASS_MASS_STORAGE) {
@@ -121,7 +146,7 @@ static void prv_devmgr_init_dev(const pci_dev_t *pci_dev) {
                 kprintf(
                     "devmgr: pci %u-%u-%u: SATA DPA, AHBI HBA (major rev. 1)\n",
                     pci_dev->bus_num, pci_dev->dev_num, pci_dev->fun_num);
-                prv_devmgr_init_ahci(pci_dev);
+                dev = prv_devmgr_init_ahci(pci_dev);
             } else {
                 kprintf("devmgr: pci %u-%u-%u: unknown SATA DPA interface %u\n",
                         pci_dev->bus_num, pci_dev->dev_num, pci_dev->fun_num,
@@ -138,18 +163,22 @@ static void prv_devmgr_init_dev(const pci_dev_t *pci_dev) {
                 pci_dev->bus_num, pci_dev->dev_num, pci_dev->fun_num,
                 pci_header->base_class);
     }
+
+    return dev;
 }
 
-static void prv_devmgr_init_ahci(const pci_dev_t *pci_dev) {
+static devmgr_dev_t *prv_devmgr_init_ahci(const pci_dev_t *pci_dev) {
     ASSERT(pci_dev->header.common.base_class == PCI_BASE_CLASS_MASS_STORAGE);
     ASSERT(pci_dev->header.common.sub_class == PCI_MASS_STORAGE_SATA_DPA);
     ASSERT(pci_dev->header.common.interface == PCI_SATA_INTERFACE_AHCI);
+
+    devmgr_dev_t *dev = NULL;
 
     ahci_ctrl_ctx_t *const ahci_ctrl = ahci_ctrl_new(pci_dev);
     if (!ahci_ctrl) {
         kprintf("devmgr: pci %u-%u-%u: failed to initialize ahci driver\n",
                 pci_dev->bus_num, pci_dev->dev_num, pci_dev->fun_num);
-        return;
+        return NULL;
     }
 
     for (size_t port_idx = 0; port_idx < AHCI_PORTS_PER_CTRL; port_idx++) {
@@ -157,12 +186,13 @@ static void prv_devmgr_init_ahci(const pci_dev_t *pci_dev) {
             ahci_ctrl_get_port(ahci_ctrl, port_idx);
         if (!ahci_port_is_online(ahci_port)) { continue; }
 
-        devmgr_dev_t *const dev = prv_devmgr_init_next_dev();
-        if (!dev) { return; }
+        dev = prv_devmgr_init_next_dev();
+        if (!dev) { return NULL; }
 
         dev->dev_class = DEVMGR_CLASS_DISK;
         dev->driver_id = DEVMGR_DRIVER_AHCI_PORT;
-        dev->driver_ctx = ahci_port;
+        dev->blkdev_dev.driver_ctx = ahci_port;
+        ahci_port_fill_blkdev_if(&dev->blkdev_dev.driver_intf);
 
         ahci_port_set_int(ahci_port, AHCI_PORT_INT_ALL, true);
 
@@ -172,6 +202,35 @@ static void prv_devmgr_init_ahci(const pci_dev_t *pci_dev) {
 
     ahci_ctrl_map_irq(ahci_ctrl, AHCI_VEC_GLOBAL);
     ahci_ctrl_set_int(ahci_ctrl, true);
+
+    return dev;
+}
+
+/**
+ * Initializes disk partitions of a disk device @a dev.
+ *
+ * @param dev Device with device class #DEVMGR_CLASS_DISK.
+ */
+static void prv_devmgr_init_disk_parts(devmgr_dev_t *dev) {
+    if (dev->dev_class != DEVMGR_CLASS_DISK) {
+        panic_enter();
+        kprintf("devmgr: init disk parts called on a non-disk device ID %u\n",
+                dev->id);
+        panic("unexpected behavior");
+    }
+
+    if (!gpt_probe_signature(&dev->blkdev_dev)) {
+        kprintf("devmgr: disk %u is not GPT-partitioned\n", dev->id);
+        return;
+    }
+
+    if (gpt_parse(&dev->blkdev_dev, &dev->gpt_disk)) {
+        kprintf("devmgr: disk %u has %u partitions\n", dev->id,
+                dev->gpt_disk->num_parts);
+    } else {
+        kprintf("devmgr: disk %u has GPT signature, but could not be parsed\n",
+                dev->id);
+    }
 }
 
 /**
@@ -180,6 +239,7 @@ static void prv_devmgr_init_ahci(const pci_dev_t *pci_dev) {
 static devmgr_dev_t *prv_devmgr_init_next_dev(void) {
     if (g_devmgr_num_devs < DEVMGR_MAX_DEVS) {
         devmgr_dev_t *const dev = &g_devmgr_devs[g_devmgr_num_devs];
+        kmemset(dev, 0, sizeof(*dev));
         dev->id = g_devmgr_next_id;
         g_devmgr_num_devs++;
         g_devmgr_next_id++;

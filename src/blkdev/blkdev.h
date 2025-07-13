@@ -10,13 +10,12 @@
 
 #include "semaphore.h"
 
-typedef struct blkdev_if blkdev_if_t;
 typedef struct blkdev_req blkdev_req_t;
 
-struct blkdev_if {
+typedef struct {
     bool (*f_is_busy)(void *ctx);
     void (*f_submit_req)(blkdev_req_t *req);
-};
+} blkdev_if_t;
 
 typedef enum {
     BLKDEV_OP_READ,
@@ -30,6 +29,11 @@ typedef enum {
     BLKDEV_REQ_SUCCESS,
 } blkdev_req_state_t;
 
+typedef struct {
+    void *driver_ctx;
+    blkdev_if_t driver_intf;
+} blkdev_dev_t;
+
 struct blkdev_req {
     _Atomic blkdev_req_state_t state;
     blkdev_op_t op;
@@ -40,11 +44,16 @@ struct blkdev_req {
     const void *write_buf;
     size_t write_sectors;
 
-    void *dev_ctx;      //!< Device driver context for the interface.
-    blkdev_if_t dev_if; //!< Device driver interface for blkdev.
+    blkdev_dev_t *dev;
 
     semaphore_t sem_done;
 };
+
+/**
+ * Returns `true` if the blkdev task is ready to process requests.
+ * See #blkdev_task_entry.
+ */
+bool blkdev_is_ready(void);
 
 /**
  * Enqueues the request @a req.
@@ -63,7 +72,8 @@ bool blkdev_enqueue_req(blkdev_req_t *req);
 /**
  * Synchronously reads @a num_sectors starting from sector @a start_sector.
  *
- * @param driver_ctx   Device driver context.
+ * @param dev          blkdev-level context of the device (see
+ *                     #devmgr_dev_t.blkdev_dev).
  * @param start_sector First sector to read.
  * @param num_sectors  Number of sectors to read.
  * @param buf          Destination buffer.
@@ -75,7 +85,7 @@ bool blkdev_enqueue_req(blkdev_req_t *req);
  * This function is synchronous, i.e., it blocks the calling task until the read
  * request is finished.
  */
-bool blkdev_sync_read(void *driver_ctx, uint64_t start_sector,
+bool blkdev_sync_read(blkdev_dev_t *dev, uint64_t start_sector,
                       uint32_t num_sectors, void *buf);
 
 [[gnu::noreturn]]

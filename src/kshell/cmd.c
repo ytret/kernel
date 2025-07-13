@@ -454,18 +454,9 @@ static void cmd_blkdev(char **pp_args, size_t num_args) {
         .start_sector = start_sector,
         .read_sectors = num_sectors,
         .read_buf = p_buf,
-        .dev_ctx = dev->driver_ctx,
+        .dev = &dev->blkdev_dev,
     };
     semaphore_init(&blkdev_req.sem_done);
-
-    if (dev->driver_id == DEVMGR_DRIVER_AHCI_PORT) {
-        ahci_port_fill_blkdev_if(&blkdev_req.dev_if);
-    } else {
-        kprintf("kshell: handling of driver ID %u not implemented\n",
-                dev->driver_id);
-        heap_free(p_buf);
-        return;
-    }
 
     ok = blkdev_enqueue_req(&blkdev_req);
     if (!ok) {

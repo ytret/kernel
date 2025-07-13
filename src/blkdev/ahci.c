@@ -254,7 +254,7 @@ void ahci_ctrl_irq_handler(void) {
     devmgr_dev_t *dev;
     while ((dev = devmgr_iter_next(&iter))) {
         if (dev->driver_id == DEVMGR_DRIVER_AHCI_PORT) {
-            ahci_port_ctx_t *const port_ctx = dev->driver_ctx;
+            ahci_port_ctx_t *const port_ctx = dev->blkdev_dev.driver_ctx;
             ahci_port_irq_handler(port_ctx);
         }
     }
@@ -431,9 +431,9 @@ bool ahci_port_if_is_busy(void *v_port_ctx) {
 }
 
 void ahci_port_if_submit_req(blkdev_req_t *req) {
-    ahci_port_ctx_t *port_ctx = req->dev_ctx;
+    ahci_port_ctx_t *const port_ctx = req->dev->driver_ctx;
 
-    if (!ahci_port_is_idle(req->dev_ctx)) {
+    if (!ahci_port_is_idle(port_ctx)) {
         kprintf("ahci: refuse to submit request when the port is busy\n");
         req->state = BLKDEV_REQ_ERROR;
         semaphore_increase(&req->sem_done);
@@ -445,7 +445,7 @@ void ahci_port_if_submit_req(blkdev_req_t *req) {
         port_ctx->blkdev_req = req;
         port_ctx->blkdev_req->state = BLKDEV_REQ_ACTIVE;
         port_ctx->has_blkdev_req = true;
-        if (!ahci_port_start_read(req->dev_ctx, req->start_sector,
+        if (!ahci_port_start_read(port_ctx, req->start_sector,
                                   req->read_sectors, req->read_buf)) {
             port_ctx->blkdev_req->state = BLKDEV_REQ_ERROR;
             port_ctx->has_blkdev_req = false;
@@ -457,7 +457,7 @@ void ahci_port_if_submit_req(blkdev_req_t *req) {
         port_ctx->blkdev_req = req;
         port_ctx->blkdev_req->state = BLKDEV_REQ_ACTIVE;
         port_ctx->has_blkdev_req = true;
-        if (!ahci_port_start_write(req->dev_ctx, req->start_sector,
+        if (!ahci_port_start_write(port_ctx, req->start_sector,
                                    req->write_sectors, req->write_buf)) {
             port_ctx->blkdev_req->state = BLKDEV_REQ_ERROR;
             port_ctx->has_blkdev_req = false;
