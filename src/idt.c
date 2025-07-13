@@ -256,7 +256,7 @@ static void print_entry(entry_t const *p_entry) {
 [[maybe_unused]]
 static void print_stack_frame(isr_stack_frame_t const *p_stack_frame) {
     kprintf("idt: stack frame is at %P:\n", p_stack_frame);
-    kprintf("idt:   eip = 0x%X\n", p_stack_frame->eip);
-    kprintf("idt:    cs = 0x%X\n", p_stack_frame->cs);
-    kprintf("idt:eflags = 0x%X\n", p_stack_frame->eflags);
+    kprintf("idt:    eip = 0x%X\n", p_stack_frame->eip);
+    kprintf("idt:     cs = 0x%X\n", p_stack_frame->cs);
+    kprintf("idt: eflags = 0x%X\n", p_stack_frame->eflags);
 }
