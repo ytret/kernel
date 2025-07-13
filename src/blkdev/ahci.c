@@ -1068,7 +1068,8 @@ static void prv_ahci_port_handle_dhr(ahci_port_ctx_t *port_ctx) {
     }
 
     kprintf("ahci: port %s irq: AHCI_PORT_ACTIVE\n", port_ctx->name);
-    if (port_ctx->blkdev_req->state == BLKDEV_REQ_ACTIVE) {
+    if (!port_ctx->has_blkdev_req ||
+        port_ctx->blkdev_req->state != BLKDEV_REQ_ACTIVE) {
         panic_enter();
         kprintf("ahci: port %s irq: port state is AHCI_PORT_ACTIVE, "
                 "but there is no active request\n",
