@@ -82,7 +82,7 @@ typedef struct {
      * This task is to be terminated when it is switched from after being run.
      * See #taskmgr_local_schedule() for details.
      */
-    bool is_terminating;
+    _Atomic bool is_terminating;
 
     /**
      * Number of owned mutexes.
@@ -301,14 +301,6 @@ void taskmgr_local_go_usermode(uint32_t entry);
 void taskmgr_local_sleep_ms(uint32_t duration_ms);
 
 /**
- * Marks the task @a p_task as terminating.
- * See #task_t.is_terminating.
- * @param p_task Task to mark as terminating (passing the running task pointer
- *               is allowed).
- */
-void taskmgr_local_terminate_task(task_t *p_task);
-
-/**
  * Blocks the running task and appends it to the @a task_list list.
  * See #task_t.is_blocked.
  *
@@ -332,6 +324,14 @@ void taskmgr_block_running_task(list_t *task_list);
  * Do not call this function on a non-blocked task.
  */
 void taskmgr_unblock(task_t *task);
+
+/**
+ * Marks the task @a task as terminating.
+ * See #task_t.is_terminating.
+ * @param task Task to mark as terminating (passing the running task pointer
+ *             is allowed).
+ */
+void taskmgr_terminate_task(task_t *task);
 
 /**
  * Increments the lock counter of @a taskmgr, preventing it from scheduling.

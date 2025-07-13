@@ -287,26 +287,6 @@ void taskmgr_local_sleep_ms(uint32_t duration_ms) {
     taskmgr_local_schedule();
 }
 
-void taskmgr_local_terminate_task(task_t *p_task) {
-    taskmgr_t *const taskmgr = smp_get_running_taskmgr();
-    if (!taskmgr) { panic("running processor has no task manager"); }
-    if (p_task->taskmgr != taskmgr) {
-        panic("tried to delete a non-local task");
-    }
-
-    if (p_task == taskmgr->deleter_task) {
-        // Deleter task cannot delete itself because:
-        // 1) it always marks itself as blocked before rescheduling,
-        // 2) it cannot free its own stack.
-        panic_enter();
-        kprintf("taskmgr: deleter task (ID %u) cannot delete itself\n",
-                p_task->id);
-        panic("invalid argument");
-    }
-
-    p_task->is_terminating = true;
-}
-
 void taskmgr_block_running_task(list_t *task_list) {
     taskmgr_t *const taskmgr = smp_get_running_taskmgr();
     if (!taskmgr) { panic("running processor has no task manager"); }
@@ -315,6 +295,20 @@ void taskmgr_block_running_task(list_t *task_list) {
     taskmgr->running_task->is_blocked = true;
     list_append(task_list, &taskmgr->running_task->list_node);
     taskmgr_unlock_scheduler(taskmgr);
+}
+
+void taskmgr_terminate_task(task_t *task) {
+    if (task == task->taskmgr->deleter_task) {
+        // Deleter task cannot delete itself because:
+        // 1) it always marks itself as blocked before rescheduling,
+        // 2) it cannot free its own stack.
+        panic_enter();
+        kprintf("taskmgr: deleter task (ID %u) cannot delete itself\n",
+                task->id);
+        panic("invalid argument");
+    }
+
+    task->is_terminating = true;
 }
 
 void taskmgr_lock_scheduler(taskmgr_t *taskmgr) {
