@@ -83,9 +83,9 @@ struct ahci_port_ctx {
     /// Port parameters have been identified using #SATA_CMD_IDENTIFY_DEVICE.
     bool identified;
 
-    _Atomic ahci_port_state_t state;
+    volatile _Atomic ahci_port_state_t state;
     blkdev_req_t *blkdev_req;
-    bool has_blkdev_req;
+    volatile bool has_blkdev_req;
     size_t req_cmd_slot;
 
     /// Context pointer of the controller this port is a part of.
@@ -248,6 +248,9 @@ void ahci_ctrl_map_irq(ahci_ctrl_ctx_t *ctrl_ctx, uint8_t vec) {
 }
 
 void ahci_ctrl_irq_handler(void) {
+    // FIXME: lock the devmgr device list in case device hot plugging support is
+    // added.
+
     devmgr_iter_t iter;
     devmgr_iter_init(&iter, DEVMGR_CLASS_BLOCK);
 
