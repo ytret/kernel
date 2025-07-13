@@ -5,6 +5,7 @@
 
 #include "assert.h"
 #include "blkdev/ahci.h"
+#include "blkdev/blkpart.h"
 #include "blkdev/gpt.h"
 #include "devmgr.h"
 #include "kprintf.h"
@@ -223,13 +224,31 @@ static void prv_devmgr_init_disk_parts(devmgr_dev_t *dev) {
         kprintf("devmgr: disk %u is not GPT-partitioned\n", dev->id);
         return;
     }
-
-    if (gpt_parse(&dev->blkdev_dev, &dev->gpt_disk)) {
-        kprintf("devmgr: disk %u has %u partitions\n", dev->id,
-                dev->gpt_disk->num_parts);
-    } else {
+    if (!gpt_parse(&dev->blkdev_dev, &dev->gpt_disk)) {
         kprintf("devmgr: disk %u has GPT signature, but could not be parsed\n",
                 dev->id);
+        return;
+    }
+
+    kprintf("devmgr: disk %u has %u partitions\n", dev->id,
+            dev->gpt_disk->num_parts);
+
+    for (size_t idx_part = 0; idx_part < dev->gpt_disk->num_parts; idx_part++) {
+        devmgr_dev_t *const dev_part = prv_devmgr_init_next_dev();
+        if (!dev_part) {
+            kprintf("devmgr: could not initialize all partitions of device ID "
+                    "%u: no free device slots\n",
+                    dev->id);
+            break;
+        }
+
+        blkpart_ctx_t *const blkpart_ctx =
+            blkpart_init(&dev->blkdev_dev, &dev->gpt_disk->parts[idx_part]);
+
+        dev_part->dev_class = DEVMGR_CLASS_DISK_PART;
+        dev_part->driver_id = DEVMGR_DRIVER_DISK_PART;
+        dev_part->blkdev_dev.driver_ctx = blkpart_ctx;
+        blkpart_fill_blkdev_if(&dev_part->blkdev_dev.driver_intf);
     }
 }
 
