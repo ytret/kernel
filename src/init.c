@@ -5,6 +5,7 @@
 
 #include "acpi/lapic.h"
 #include "blkdev/blkdev.h"
+#include "devmgr.h"
 #include "init.h"
 #include "kprintf.h"
 #include "kshell/kshell.h"
@@ -23,6 +24,12 @@ void init_bsp_task(void) {
 
     taskmgr_local_new_kernel_task("term", (uint32_t)term_task);
     taskmgr_local_new_kernel_task("blkdev", (uint32_t)blkdev_task_entry);
+
+    kprintf("init_bsp_task: waiting for blkdev...\n");
+    while (!blkdev_is_ready()) {}
+    kprintf("init_bsp_task: blkdev task is ready for requests\n");
+
+    devmgr_init_disk_parts();
 
     kshell();
 
