@@ -37,5 +37,7 @@ bool blkpart_if_is_busy(void *v_blkpart_ctx) {
 
 void blkpart_if_submit_req(blkdev_req_t *req) {
     blkpart_ctx_t *const blkpart_ctx = req->dev->driver_ctx;
-    blkpart_ctx->parent_dev->driver_intf.f_is_busy(req);
+    req->start_sector += blkpart_ctx->start_sector;
+    req->dev = blkpart_ctx->parent_dev;
+    blkpart_ctx->parent_dev->driver_intf.f_submit_req(req);
 }
