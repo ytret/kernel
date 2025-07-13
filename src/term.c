@@ -1,7 +1,7 @@
 #include "framebuf.h"
 #include "kbd.h"
+#include "kmutex.h"
 #include "mbi.h"
-#include "mutex.h"
 #include "panic.h"
 #include "queue.h"
 #include "term.h"

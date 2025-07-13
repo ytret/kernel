@@ -1,8 +1,8 @@
 #include <stdatomic.h>
 #include <stddef.h>
 
+#include "ksemaphore.h"
 #include "list.h"
-#include "semaphore.h"
 #include "taskmgr.h"
 
 void semaphore_init(semaphore_t *sem) {

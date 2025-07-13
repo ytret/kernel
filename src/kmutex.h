@@ -1,6 +1,6 @@
 #pragma once
 
-#include "spinlock.h"
+#include "kspinlock.h"
 #include "taskmgr.h"
 
 typedef struct {

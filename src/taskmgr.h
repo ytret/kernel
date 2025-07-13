@@ -22,8 +22,8 @@
 
 #include <stdint.h>
 
+#include "kspinlock.h"
 #include "list.h"
-#include "spinlock.h"
 #include "stack.h"
 
 #define TASK_NAME_LEN 32

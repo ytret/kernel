@@ -15,9 +15,9 @@
 #include "devmgr.h"
 #include "heap.h"
 #include "kprintf.h"
+#include "kstring.h"
 #include "memfun.h"
 #include "pci.h"
-#include "string.h"
 #include "vmm.h"
 
 /**

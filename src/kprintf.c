@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #include "kprintf.h"
-#include "string.h"
+#include "kstring.h"
 #include "term.h"
 
 // Maximum lengths of unsigned and signed ints in base 10 and/or base 16.

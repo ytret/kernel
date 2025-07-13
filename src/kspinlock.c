@@ -1,4 +1,4 @@
-#include "spinlock.h"
+#include "kspinlock.h"
 
 void spinlock_init(spinlock_t *spinlock) {
     atomic_flag_clear(spinlock);

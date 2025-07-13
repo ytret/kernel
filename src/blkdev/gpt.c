@@ -10,8 +10,8 @@
 #include "blkdev/gpt.h"
 #include "heap.h"
 #include "kprintf.h"
+#include "kstring.h"
 #include "memfun.h"
-#include "string.h"
 
 #define GPT_SIGNATURE 0x5452415020494645 // "EFI PART"
 

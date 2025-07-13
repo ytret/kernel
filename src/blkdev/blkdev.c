@@ -5,8 +5,8 @@
 
 #include "blkdev/blkdev.h"
 #include "heap.h"
+#include "kmutex.h"
 #include "kprintf.h"
-#include "mutex.h"
 #include "panic.h"
 #include "queue.h"
 

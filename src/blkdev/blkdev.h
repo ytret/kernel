@@ -8,7 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "semaphore.h"
+#include "ksemaphore.h"
 
 typedef struct blkdev_req blkdev_req_t;
 

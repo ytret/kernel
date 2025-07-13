@@ -1,7 +1,7 @@
 #pragma once
 
+#include "kspinlock.h"
 #include "list.h"
-#include "spinlock.h"
 
 typedef struct {
     volatile int count;

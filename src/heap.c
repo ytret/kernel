@@ -1,9 +1,9 @@
 #include <stdbool.h>
 
 #include "heap.h"
+#include "kmutex.h"
 #include "kprintf.h"
 #include "mbi.h"
-#include "mutex.h"
 #include "panic.h"
 
 #define HEAP_SIZE (12 * 1024 * 1024)

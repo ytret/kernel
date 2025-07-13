@@ -1,12 +1,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "framebuf.h"
 #include "heap.h"
+#include "kmutex.h"
 #include "kprintf.h"
 #include "mbi.h"
 #include "memfun.h"
-#include "mutex.h"
 #include "panic.h"
 #include "smp.h"
 #include "vmm.h"

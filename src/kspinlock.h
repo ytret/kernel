@@ -1,5 +1,5 @@
 /**
- * @file spinlock.h
+ * @file kspinlock.h
  * A simple spinlock without task blocking or rescheduling.
  */
 

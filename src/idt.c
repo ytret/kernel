@@ -5,9 +5,9 @@
 #include "idt.h"
 #include "isrs.h"
 #include "kprintf.h"
+#include "ksyscall.h"
 #include "panic.h"
 #include "smp.h"
-#include "syscall.h"
 #include "taskmgr.h"
 
 #define NUM_ENTRIES     256

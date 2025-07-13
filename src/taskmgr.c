@@ -11,6 +11,7 @@
 #include "gdt.h"
 #include "heap.h"
 #include "kprintf.h"
+#include "kstring.h"
 #include "list.h"
 #include "memfun.h"
 #include "panic.h"
@@ -18,7 +19,6 @@
 #include "pmm.h"
 #include "smp.h"
 #include "stack.h"
-#include "string.h"
 #include "taskmgr.h"
 #include "vmm.h"
 

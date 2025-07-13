@@ -14,7 +14,6 @@
 
 #include <cpuid.h>
 
-#include "blkdev/ahci.h"
 #include "blkdev/blkdev.h"
 #include "devmgr.h"
 #include "elf.h"
@@ -23,12 +22,12 @@
 #include "kshell/cmd.h"
 #include "kshell/kbdlog.h"
 #include "kshell/vasview.h"
+#include "kstring.h"
 #include "list.h"
 #include "mbi.h"
 #include "panic.h"
 #include "pci.h"
 #include "smp.h"
-#include "string.h"
 #include "taskmgr.h"
 #include "term.h"
 #include "vmm.h"

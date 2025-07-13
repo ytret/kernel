@@ -9,11 +9,11 @@
 #include "idt.h"
 #include "init.h"
 #include "kprintf.h"
+#include "kspinlock.h"
 #include "memfun.h"
 #include "panic.h"
 #include "pit.h"
 #include "smp.h"
-#include "spinlock.h"
 #include "vmm.h"
 
 // physical/virtual (identity-mapped)

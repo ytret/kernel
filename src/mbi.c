@@ -1,9 +1,9 @@
 #include "heap.h"
 #include "kprintf.h"
+#include "kstring.h"
 #include "mbi.h"
 #include "memfun.h"
 #include "panic.h"
-#include "string.h"
 
 static mbi_t *gp_mbi;
 

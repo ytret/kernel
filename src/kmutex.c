@@ -1,5 +1,5 @@
 /**
- * @file mutex.c
+ * @file kmutex.c
  * Mutex implementation.
  *
  * Mutex acquire and release functions need to work both before multitasking and
@@ -13,7 +13,7 @@
  * simultaneously.
  */
 
-#include "mutex.h"
+#include "kmutex.h"
 #include "panic.h"
 #include "taskmgr.h"
 

@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "semaphore.h"
+#include "ksemaphore.h"
 
 struct queue_node;
 

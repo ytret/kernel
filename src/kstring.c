@@ -1,5 +1,5 @@
 #include "heap.h"
-#include "string.h"
+#include "kstring.h"
 
 void string_to_upper(char *p_str) {
     while ((*p_str) != 0) {

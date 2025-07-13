@@ -38,6 +38,8 @@ add_executable(kernel
     src/init.c
     src/kbd.c
     src/kprintf.c
+    src/kstring.c
+    src/ksyscall.c
     src/mbi.c
     src/memfun.c
     src/panic.c
@@ -48,8 +50,6 @@ add_executable(kernel
     src/psf.c
     src/smp.c
     src/stack.c
-    src/string.c
-    src/syscall.c
     src/taskmgr.c
     src/term.c
     src/vga.c
@@ -68,11 +68,11 @@ add_executable(kernel
     src/kshell/kshell.c
     src/kshell/vasview.c
 
+    src/kmutex.c
+    src/ksemaphore.c
+    src/kspinlock.c
     src/list.c
-    src/mutex.c
     src/queue.c
-    src/semaphore.c
-    src/spinlock.c
 )
 target_compile_options(kernel PRIVATE
     -Wall -Wextra -Wmissing-prototypes
