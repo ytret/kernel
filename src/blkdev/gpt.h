@@ -23,12 +23,6 @@ struct gpt_part {
     uint64_t ending_lba;
     uint8_t type_guid[16];
     uint8_t part_guid[16];
-
-    /**
-     * Partition used flag.
-     * If #gpt_part.type_guid is all zeroes, then the partition is unused.
-     */
-    bool used;
 };
 
 /**

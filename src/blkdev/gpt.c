@@ -167,7 +167,6 @@ bool gpt_parse(blkdev_dev_t *dev, gpt_disk_t **out_gpt_disk) {
         part->ending_lba = gpe->ending_lba;
         kmemcpy(part->type_guid, gpe->type_guid, 16);
         kmemcpy(part->part_guid, gpe->part_guid, 16);
-        part->used = prv_gpt_is_gpe_used(gpe);
     }
 
     heap_free(sector1);
