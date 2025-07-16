@@ -66,6 +66,7 @@ add_executable(kernel
     src/kshell/cmd.c
     src/kshell/kbdlog.c
     src/kshell/kshell.c
+    src/kshell/kshscan.c
     src/kshell/vasview.c
 
     src/kmutex.c
