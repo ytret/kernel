@@ -79,6 +79,15 @@ void kshscan_free_arg(kshscan_arg_t *arg) {
     }
 }
 
+void kshscan_free_arg_list(list_t *arg_list) {
+    list_node_t *arg_node;
+    while ((arg_node = list_pop_first(arg_list))) {
+        kshscan_arg_t *const arg =
+            LIST_NODE_TO_STRUCT(arg_node, kshscan_arg_t, list_node);
+        kshscan_free_arg(arg);
+    }
+}
+
 static void prv_kshscan_add_arg(list_t *arg_list, const char *arg_buf,
                                 size_t len) {
     char *const arg_copy = heap_alloc(len + 1);

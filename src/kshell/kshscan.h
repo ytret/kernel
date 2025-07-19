@@ -24,3 +24,4 @@ typedef struct {
 
 kshscan_err_t kshscan_str(const char *str, list_t *arg_list);
 void kshscan_free_arg(kshscan_arg_t *arg);
+void kshscan_free_arg_list(list_t *arg_list);
