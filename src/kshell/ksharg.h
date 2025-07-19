@@ -9,7 +9,6 @@ typedef struct ksharg_parser_inst ksharg_parser_inst_t;
 
 typedef enum {
     KSHARG_VAL_STR,
-    KSHARG_VAL_PARSER,
 } ksharg_val_type_t;
 
 typedef union {
