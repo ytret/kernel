@@ -16,6 +16,7 @@ kshscan_err_t kshscan_str(const char *str, list_t *arg_list) {
 
     char *const arg_buf = heap_alloc(kshscanMAX_ARG_LEN + 1);
     size_t arg_len = 0;
+    bool add_arg = false;
 
     bool escaped = false;
     char quot = 0; // 0 is used as 'not inside quotation marks'
@@ -27,6 +28,7 @@ kshscan_err_t kshscan_str(const char *str, list_t *arg_list) {
         bool add_ch = true;
 
         if (ch == '\\') {
+            add_arg = true;
             if (!escaped && (next_ch == ' ' || next_ch == '\\' ||
                              next_ch == '\'' || next_ch == '"')) {
                 escaped = true;
@@ -35,6 +37,7 @@ kshscan_err_t kshscan_str(const char *str, list_t *arg_list) {
                 escaped = false;
             }
         } else if ((ch == '\'' || ch == '"') && (!quot || ch == quot)) {
+            add_arg = true;
             if (escaped) {
                 escaped = false;
             } else if (ch == quot) {
@@ -48,15 +51,19 @@ kshscan_err_t kshscan_str(const char *str, list_t *arg_list) {
             if (escaped) {
                 escaped = false;
             } else {
-                prv_kshscan_add_arg(arg_list, arg_buf, arg_len);
-                add_ch = false;
+                if (add_arg) {
+                    add_arg = false;
+                    prv_kshscan_add_arg(arg_list, arg_buf, arg_len);
+                }
                 arg_len = 0;
+                add_ch = false;
             }
         }
 
         if (add_ch) {
             arg_buf[arg_len] = ch;
             arg_len++;
+            add_arg = true;
         }
     }
 
@@ -66,7 +73,7 @@ kshscan_err_t kshscan_str(const char *str, list_t *arg_list) {
         err.char_pos = string_len(str);
     }
 
-    prv_kshscan_add_arg(arg_list, arg_buf, arg_len);
+    if (add_arg) { prv_kshscan_add_arg(arg_list, arg_buf, arg_len); }
 
     heap_free(arg_buf);
     return err;

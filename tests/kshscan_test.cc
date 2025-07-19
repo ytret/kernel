@@ -49,7 +49,11 @@ class KshscanTest : public testing::Test {
 };
 
 TEST_F(KshscanTest, TestEmptyString) {
-    check_ok("", {""});
+    check_ok("", {});
+}
+
+TEST_F(KshscanTest, TestOnlySpaces) {
+    check_ok("     ", {});
 }
 
 // Spaces.
@@ -70,7 +74,7 @@ TEST_F(KshscanTest, TestTwoAsciiStringsSingleSpace) {
 }
 
 TEST_F(KshscanTest, TestTwoAsciiStringsTwoSpaces) {
-    check_ok("Lorem  Ipsum", {"Lorem", "", "Ipsum"});
+    check_ok("Lorem  Ipsum", {"Lorem", "Ipsum"});
 }
 
 // Single quotes.
