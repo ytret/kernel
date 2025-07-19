@@ -1,5 +1,6 @@
 #include "heap.h"
 #include "kstring.h"
+#include "memfun.h"
 
 void string_to_upper(char *p_str) {
     while ((*p_str) != 0) {
@@ -176,4 +177,11 @@ size_t string_itoa(unsigned int num, bool b_signed, char *p_buf,
 
     p_buf[buf_pos++] = 0;
     return buf_pos;
+}
+
+char *string_dup(char const *p_str) {
+    const size_t len = string_len(p_str);
+    char *const dst = heap_alloc(len + 1);
+    kmemcpy(dst, p_str, len + 1);
+    return dst;
 }

@@ -12,3 +12,4 @@ size_t string_split(char const *p_str, char ch, bool b_ignore_empty,
 bool string_to_uint32(char const *p_str, uint32_t *p_num, int base);
 size_t string_itoa(unsigned int num, bool b_signed, char *p_buf,
                    unsigned int base);
+char *string_dup(char const *p_str);
