@@ -8,7 +8,6 @@ typedef struct ksharg_parser_desc ksharg_parser_desc_t;
 typedef struct ksharg_parser_inst ksharg_parser_inst_t;
 
 typedef enum {
-    KSHARG_VAL_INT,
     KSHARG_VAL_STR,
     KSHARG_VAL_PARSER,
 } ksharg_val_type_t;

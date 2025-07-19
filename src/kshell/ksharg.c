@@ -110,7 +110,6 @@ void ksharg_free_parser_inst(ksharg_parser_inst_t *inst) {
         ksharg_posarg_inst_t *const posarg = &inst->posargs[idx];
 
         switch (posarg->desc->val_type) {
-        case KSHARG_VAL_INT:
         case KSHARG_VAL_STR:
         case KSHARG_VAL_PARSER:
             if (posarg->given_str) { heap_free(posarg->val.val_str); }
@@ -130,7 +129,6 @@ void ksharg_free_parser_inst(ksharg_parser_inst_t *inst) {
             if (flag->val_str) { heap_free(flag->val_str); }
 
             switch (flag->desc->val_type) {
-            case KSHARG_VAL_INT:
             case KSHARG_VAL_STR:
             case KSHARG_VAL_PARSER:
                 if (flag->val.val_str) { heap_free(flag->val.val_str); }
@@ -459,7 +457,6 @@ static ksharg_err_t prv_ksharg_parse_typed_val(const char *str,
                                                char **err_str) {
     (void)err_str;
     switch (val_type) {
-    case KSHARG_VAL_INT:
     case KSHARG_VAL_STR:
     case KSHARG_VAL_PARSER:
         val->val_str = string_dup(str);
