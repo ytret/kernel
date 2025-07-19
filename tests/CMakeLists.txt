@@ -6,6 +6,7 @@ if(CMAKE_VERSION VERSION_GREATER 3.23)
 endif()
 
 project(kernel-tests C CXX)
+enable_testing()
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
