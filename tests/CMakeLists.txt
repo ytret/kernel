@@ -42,23 +42,21 @@ target_compile_options(fakes PRIVATE
 )
 target_include_directories(fakes PUBLIC fakes)
 
-function(add_unit_test name mod)
-    set(compile_defs)
-    foreach(arg ${ARGN})
-        list(APPEND compile_defs "${ARGV${idx}}")
-    endforeach()
-
-    add_executable(${name} ${name}.cc ${mod})
+function(add_unit_test name mod extra_src)
+    add_executable(${name}
+        ${name}.cc
+        ${mod}
+        ${extra_src}
+    )
     target_compile_options(${name} PRIVATE
         -Wall -Wextra -fdiagnostics-color=always
     )
     target_include_directories(${name} PRIVATE ${SRCDIR})
-    target_compile_definitions(${name} PRIVATE ${compile_defs})
     target_link_libraries(${name}
         fakes common GTest::gtest_main GTest::gmock_main
     )
     gtest_discover_tests(${name})
 endfunction()
 
-add_unit_test(kshscan_test ${SRCDIR}/kshell/kshscan.c)
-# add_unit_test(ksharg_test ${SRCDIR}/kshell/ksharg.c)
+add_unit_test(kshscan_test ${SRCDIR}/kshell/kshscan.c "")
+add_unit_test(ksharg_test ${SRCDIR}/kshell/ksharg.c ${SRCDIR}/kshell/kshscan.c)
