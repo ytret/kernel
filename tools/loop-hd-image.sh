@@ -15,11 +15,15 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: $0 [options] [FILE]"
             echo
             echo "Creates a loopback device (e.g., /dev/loop0) with partition scan for the FILE"
-            echo "disk image (default: '$DEFAULT_IMG_FILE')"
+            echo "disk image (default: '$DEFAULT_IMG_FILE')."
             echo
             echo "Options:"
             echo "    -h, --help"
             echo "        Print this message and exit."
+            echo
+            echo "Environment variables:"
+            echo "    NO_COLOR"
+            echo "        Set to a non-empty string to disable colored output."
             exit 0
             ;;
 
