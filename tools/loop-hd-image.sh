@@ -27,6 +27,12 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
 
+        -*)
+            echo "Unrecognized option: '$1'"
+            echo "Use '$0 --help'"
+            exit 1
+            ;;
+
         *)
             POSARGS+=("$1")
             shift
