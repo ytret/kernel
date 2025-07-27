@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+shopt -s inherit_errexit
 
-SCRIPT_DIR="$(dirname $0)"
-ISO_PATH="$SCRIPT_DIR/kernel.iso"
-HD_PATH="$SCRIPT_DIR/hd.img"
+source "$(dirname $0)/bash/prelude.sh"
+
+ISO_PATH="$REPO_DIR/build/kernel.iso"
+HD_PATH="$REPO_DIR/hd.img"
 HD_SIZE=4M  # must be understandable by qemu-img
 
 if [[ ! -f $HD_PATH ]]; then
