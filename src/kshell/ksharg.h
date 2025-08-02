@@ -94,14 +94,12 @@ typedef enum {
 } ksharg_err_t;
 
 ksharg_err_t ksharg_inst_parser(const ksharg_parser_desc_t *desc,
-                                ksharg_parser_inst_t **out_inst,
-                                char **err_str);
+                                ksharg_parser_inst_t **out_inst);
 void ksharg_free_parser_inst(ksharg_parser_inst_t *inst);
 
-ksharg_err_t ksharg_parse_str(ksharg_parser_inst_t *inst, const char *arg_str,
-                              char **err_str);
+ksharg_err_t ksharg_parse_str(ksharg_parser_inst_t *inst, const char *arg_str);
 ksharg_err_t ksharg_parse_list(ksharg_parser_inst_t *inst,
-                               const list_t *arg_list, char **err_str);
+                               const list_t *arg_list);
 
 ksharg_err_t ksharg_get_posarg_inst(ksharg_parser_inst_t *inst,
                                     const char *name,

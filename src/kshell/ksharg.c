@@ -1,52 +1,48 @@
 #include "heap.h"
+#include "kprintf.h"
 #include "kshell/ksharg.h"
 #include "kshell/kshscan.h"
 #include "kstring.h"
 #include "memfun.h"
 
 static ksharg_err_t
-prv_ksharg_check_name(const ksharg_parser_inst_t *parser_inst, const char *name,
-                      char **err);
+prv_ksharg_check_name(const ksharg_parser_inst_t *parser_inst,
+                      const char *name);
 
 static ksharg_err_t
 prv_ksharg_inst_posarg(ksharg_parser_inst_t *parser_inst,
                        const ksharg_posarg_desc_t *posarg_desc,
-                       ksharg_posarg_inst_t *posarg_inst, char **err_str);
+                       ksharg_posarg_inst_t *posarg_inst);
 static ksharg_err_t prv_ksharg_inst_flag(ksharg_parser_inst_t *parser_inst,
                                          const ksharg_flag_desc_t *flag_desc,
-                                         ksharg_flag_inst_t *flag_inst,
-                                         char **err_str);
+                                         ksharg_flag_inst_t *flag_inst);
 
 static ksharg_err_t
 prv_ksharg_parse_posarg_str(ksharg_posarg_inst_t *posarg_inst,
-                            const char *arg_str, char **err_str);
+                            const char *arg_str);
 static ksharg_err_t prv_ksharg_parse_flag_seq(ksharg_parser_inst_t *parser_inst,
                                               const char *arg_str,
                                               const char *next_arg,
-                                              bool *out_skip_next,
-                                              char **err_str);
+                                              bool *out_skip_next);
 
 static ksharg_err_t
 prv_ksharg_parse_long_flag(ksharg_parser_inst_t *parser_inst,
                            const char *arg_str, const char *next_arg,
-                           bool *out_skip_next, char **err_str);
+                           bool *out_skip_next);
 static ksharg_err_t
 prv_ksharg_parse_short_flag(ksharg_parser_inst_t *parser_inst, char flag_ch,
                             bool last_in_seq, const char *next_arg,
-                            bool *out_skip_next, char **err_str);
+                            bool *out_skip_next);
 static ksharg_err_t prv_ksharg_find_flag(ksharg_parser_inst_t *parser_inst,
                                          const char *name,
-                                         ksharg_flag_inst_t **out_flag_inst,
-                                         char **err_str);
+                                         ksharg_flag_inst_t **out_flag_inst);
 
 static ksharg_err_t prv_ksharg_parse_typed_val(const char *str,
                                                ksharg_val_type_t val_type,
-                                               ksharg_val_t *val,
-                                               char **err_str);
+                                               ksharg_val_t *val);
 
 ksharg_err_t ksharg_inst_parser(const ksharg_parser_desc_t *desc,
-                                ksharg_parser_inst_t **out_inst,
-                                char **err_str) {
+                                ksharg_parser_inst_t **out_inst) {
     ksharg_err_t err;
 
     ksharg_parser_inst_t *const inst = heap_alloc(sizeof(*inst));
@@ -75,6 +71,9 @@ ksharg_err_t ksharg_inst_parser(const ksharg_parser_desc_t *desc,
                 if (inst->posargs) { heap_free(inst->posargs); }
                 if (inst->flags) { heap_free(inst->flags); }
                 heap_free(inst);
+                kprintf("ksharg: required positional argument '%s' follows "
+                        "optional arguments\n",
+                        posarg_desc->name);
                 return KSHARG_ERR_REQUIRED_FOLLOWS_OPTIONAL;
             }
         } else {
@@ -82,7 +81,7 @@ ksharg_err_t ksharg_inst_parser(const ksharg_parser_desc_t *desc,
         }
 
         ksharg_posarg_inst_t *const posarg_inst = &inst->posargs[idx_posarg];
-        err = prv_ksharg_inst_posarg(inst, posarg_desc, posarg_inst, err_str);
+        err = prv_ksharg_inst_posarg(inst, posarg_desc, posarg_inst);
         if (err != KSHARG_ERR_NONE) {
             if (inst->posargs) { heap_free(inst->posargs); }
             if (inst->flags) { heap_free(inst->flags); }
@@ -93,7 +92,7 @@ ksharg_err_t ksharg_inst_parser(const ksharg_parser_desc_t *desc,
     for (size_t idx_flag = 0; idx_flag < desc->num_flags; idx_flag++) {
         const ksharg_flag_desc_t *const flag_desc = &desc->flags[idx_flag];
         ksharg_flag_inst_t *const flag_inst = &inst->flags[idx_flag];
-        err = prv_ksharg_inst_flag(inst, flag_desc, flag_inst, err_str);
+        err = prv_ksharg_inst_flag(inst, flag_desc, flag_inst);
         if (err != KSHARG_ERR_NONE) {
             if (inst->posargs) { heap_free(inst->posargs); }
             if (inst->flags) { heap_free(inst->flags); }
@@ -142,24 +141,25 @@ void ksharg_free_parser_inst(ksharg_parser_inst_t *inst) {
     heap_free(inst);
 }
 
-ksharg_err_t ksharg_parse_str(ksharg_parser_inst_t *inst, const char *arg_str,
-                              char **err_str) {
+ksharg_err_t ksharg_parse_str(ksharg_parser_inst_t *inst, const char *arg_str) {
     list_t arg_list;
     list_init(&arg_list, NULL);
 
     kshscan_err_t scan_err = kshscan_str(arg_str, &arg_list);
     if (scan_err.err_type != KSHSCAN_ERR_NONE) {
         kshscan_free_arg_list(&arg_list);
+        kprintf("ksharg: kshscan failed with error code %u\n",
+                scan_err.err_type);
         return KSHARG_ERR_SCAN_FAILED;
     }
 
-    ksharg_err_t err = ksharg_parse_list(inst, &arg_list, err_str);
+    ksharg_err_t err = ksharg_parse_list(inst, &arg_list);
     kshscan_free_arg_list(&arg_list);
     return err;
 }
 
 ksharg_err_t ksharg_parse_list(ksharg_parser_inst_t *inst,
-                               const list_t *arg_list, char **err_str) {
+                               const list_t *arg_list) {
     ksharg_err_t err;
     size_t posarg_idx = 0;
     bool skip_arg = false;
@@ -182,16 +182,16 @@ ksharg_err_t ksharg_parse_list(ksharg_parser_inst_t *inst,
         if (is_flag) {
             err = prv_ksharg_parse_flag_seq(inst, arg->arg_str,
                                             next_arg ? next_arg->arg_str : NULL,
-                                            &skip_arg, err_str);
+                                            &skip_arg);
             if (err != KSHARG_ERR_NONE) { return err; }
         } else {
             if (posarg_idx >= inst->num_posargs) {
+                kprintf("ksharg: too many positional arguments were given\n");
                 return KSHARG_ERR_TOO_MANY_POSARGS;
             }
             ksharg_posarg_inst_t *const posarg_inst =
                 &inst->posargs[posarg_idx];
-            err =
-                prv_ksharg_parse_posarg_str(posarg_inst, arg->arg_str, err_str);
+            err = prv_ksharg_parse_posarg_str(posarg_inst, arg->arg_str);
             if (err != KSHARG_ERR_NONE) { return err; }
             posarg_idx++;
         }
@@ -200,6 +200,8 @@ ksharg_err_t ksharg_parse_list(ksharg_parser_inst_t *inst,
     for (size_t idx = 0; idx < inst->num_posargs; idx++) {
         const ksharg_posarg_inst_t *posarg = &inst->posargs[idx];
         if (posarg->desc->required && posarg->given_str == NULL) {
+            kprintf("ksharg: missing required positional argument '%s'\n",
+                    posarg->desc->name);
             return KSHARG_ERR_MISSING_REQUIRED_POSARG;
         }
     }
@@ -218,6 +220,7 @@ ksharg_err_t ksharg_get_posarg_inst(ksharg_parser_inst_t *inst,
         }
     }
     *out_posarg = nullptr;
+    kprintf("ksharg: positional argument '%s' is not found\n", name);
     return KSHARG_ERR_POSARG_NOT_FOUND;
 }
 
@@ -231,19 +234,20 @@ ksharg_err_t ksharg_get_flag_inst(ksharg_parser_inst_t *inst, const char *name,
         }
     }
     *out_flag = nullptr;
+    kprintf("ksharg: flag '%s' is not found\n", name);
     return KSHARG_ERR_FLAG_NOT_FOUND;
 }
 
 static ksharg_err_t
 prv_ksharg_inst_posarg(ksharg_parser_inst_t *parser_inst,
                        const ksharg_posarg_desc_t *posarg_desc,
-                       ksharg_posarg_inst_t *posarg_inst, char **err_str) {
+                       ksharg_posarg_inst_t *posarg_inst) {
     if (!posarg_desc->name || string_len(posarg_desc->name) == 0) {
+        kprintf("ksharg: missing positional argument name\n");
         return KSHARG_ERR_NO_POSARG_NAME_GIVEN;
     }
 
-    ksharg_err_t err =
-        prv_ksharg_check_name(parser_inst, posarg_desc->name, err_str);
+    ksharg_err_t err = prv_ksharg_check_name(parser_inst, posarg_desc->name);
     if (err != KSHARG_ERR_NONE) { return err; }
 
     posarg_inst->desc = posarg_desc;
@@ -253,8 +257,7 @@ prv_ksharg_inst_posarg(ksharg_parser_inst_t *parser_inst,
 
 static ksharg_err_t prv_ksharg_inst_flag(ksharg_parser_inst_t *parser_inst,
                                          const ksharg_flag_desc_t *flag_desc,
-                                         ksharg_flag_inst_t *flag_inst,
-                                         char **err_str) {
+                                         ksharg_flag_inst_t *flag_inst) {
     ksharg_err_t err;
 
     const bool has_short_name =
@@ -262,16 +265,16 @@ static ksharg_err_t prv_ksharg_inst_flag(ksharg_parser_inst_t *parser_inst,
     const bool has_long_name =
         flag_desc->long_name && string_len(flag_desc->long_name) > 0;
     if (!has_short_name && !has_long_name) {
+        kprintf("ksharg: missing flag name\n");
         return KSHARG_ERR_NO_FLAG_NAME_GIVEN;
     }
 
     if (has_short_name) {
-        err =
-            prv_ksharg_check_name(parser_inst, flag_desc->short_name, err_str);
+        err = prv_ksharg_check_name(parser_inst, flag_desc->short_name);
         if (err != KSHARG_ERR_NONE) { return err; }
     }
     if (has_long_name) {
-        err = prv_ksharg_check_name(parser_inst, flag_desc->long_name, err_str);
+        err = prv_ksharg_check_name(parser_inst, flag_desc->long_name);
         if (err != KSHARG_ERR_NONE) { return err; }
     }
 
@@ -287,16 +290,15 @@ static ksharg_err_t prv_ksharg_inst_flag(ksharg_parser_inst_t *parser_inst,
 }
 
 static ksharg_err_t
-prv_ksharg_check_name(const ksharg_parser_inst_t *parser_inst, const char *name,
-                      char **err_str) {
+prv_ksharg_check_name(const ksharg_parser_inst_t *parser_inst,
+                      const char *name) {
     for (size_t idx = 0; idx < parser_inst->num_posargs; idx++) {
         ksharg_posarg_inst_t *const posarg_inst = &parser_inst->posargs[idx];
         if (!posarg_inst->desc) { continue; }
         if (string_equals(posarg_inst->desc->name, name)) {
-            if (err_str) {
-                const char err_buf[23] = "argument name conflict";
-                *err_str = string_dup(err_buf);
-            }
+            kprintf("ksharg: argument name conflict: '%s' is already used for "
+                    "a positional argument\n",
+                    name);
             return KSHARG_ERR_ARG_NAME_TAKEN;
         }
     }
@@ -312,10 +314,9 @@ prv_ksharg_check_name(const ksharg_parser_inst_t *parser_inst, const char *name,
             string_equals(flag_inst->desc->long_name, name);
 
         if (eq_short_name || eq_long_name) {
-            if (err_str) {
-                const char err_buf[23] = "argument name conflict";
-                *err_str = string_dup(err_buf);
-            }
+            kprintf("ksharg: argument name conflict: '%s' is already used for "
+                    "a flag\n",
+                    name);
             return KSHARG_ERR_ARG_NAME_TAKEN;
         }
     }
@@ -324,9 +325,9 @@ prv_ksharg_check_name(const ksharg_parser_inst_t *parser_inst, const char *name,
 
 static ksharg_err_t
 prv_ksharg_parse_posarg_str(ksharg_posarg_inst_t *posarg_inst,
-                            const char *arg_str, char **err_str) {
+                            const char *arg_str) {
     ksharg_err_t err = prv_ksharg_parse_typed_val(
-        arg_str, posarg_inst->desc->val_type, &posarg_inst->val, err_str);
+        arg_str, posarg_inst->desc->val_type, &posarg_inst->val);
     if (err != KSHARG_ERR_NONE) { return err; }
     posarg_inst->given_str = string_dup(arg_str);
     return KSHARG_ERR_NONE;
@@ -335,15 +336,14 @@ prv_ksharg_parse_posarg_str(ksharg_posarg_inst_t *posarg_inst,
 static ksharg_err_t prv_ksharg_parse_flag_seq(ksharg_parser_inst_t *parser_inst,
                                               const char *arg_str,
                                               const char *next_arg,
-                                              bool *out_skip_next,
-                                              char **err_str) {
+                                              bool *out_skip_next) {
     const bool is_long =
         string_len(arg_str) > 2 && (arg_str[0] == '-' && arg_str[1] == '-');
     if (is_long) {
         // FIXME: parse '--'
 
         return prv_ksharg_parse_long_flag(parser_inst, arg_str, next_arg,
-                                          out_skip_next, err_str);
+                                          out_skip_next);
     } else {
         // FIXME: parse '-'
         ksharg_err_t err;
@@ -352,7 +352,7 @@ static ksharg_err_t prv_ksharg_parse_flag_seq(ksharg_parser_inst_t *parser_inst,
             const char flag_ch = arg_str[ch_idx];
             const bool last_in_seq = ch_idx == string_len(arg_str) - 1;
             err = prv_ksharg_parse_short_flag(parser_inst, flag_ch, last_in_seq,
-                                              next_arg, out_skip_next, err_str);
+                                              next_arg, out_skip_next);
             if (err != KSHARG_ERR_NONE) { return err; }
         }
     }
@@ -363,24 +363,29 @@ static ksharg_err_t prv_ksharg_parse_flag_seq(ksharg_parser_inst_t *parser_inst,
 static ksharg_err_t
 prv_ksharg_parse_long_flag(ksharg_parser_inst_t *parser_inst,
                            const char *arg_str, const char *next_arg,
-                           bool *out_skip_next, char **err_str) {
+                           bool *out_skip_next) {
     ksharg_err_t err;
 
     ksharg_flag_inst_t *flag;
-    err = prv_ksharg_find_flag(parser_inst, arg_str, &flag, err_str);
+    err = prv_ksharg_find_flag(parser_inst, arg_str, &flag);
     if (err != KSHARG_ERR_NONE) { return err; }
 
-    if (flag->given_str) { return KSHARG_ERR_FLAG_SPECIFICED_TWICE; }
+    if (flag->given_str) {
+        kprintf("ksharg: flag '%s' was specified twice\n", flag->find_name);
+        return KSHARG_ERR_FLAG_SPECIFICED_TWICE;
+    }
     flag->given_str = string_dup(arg_str);
 
     if (flag->desc->has_val) {
         if (next_arg) {
             err = prv_ksharg_parse_typed_val(next_arg, flag->desc->val_type,
-                                             &flag->val, err_str);
+                                             &flag->val);
             if (err != KSHARG_ERR_NONE) { return err; }
             flag->val_str = string_dup(next_arg);
             *out_skip_next = true;
         } else {
+            kprintf("ksharg: flag '%s' requires an argument\n",
+                    flag->find_name);
             return KSHARG_ERR_FLAG_REQUIRES_ARG;
         }
     } else {
@@ -393,25 +398,31 @@ prv_ksharg_parse_long_flag(ksharg_parser_inst_t *parser_inst,
 static ksharg_err_t
 prv_ksharg_parse_short_flag(ksharg_parser_inst_t *parser_inst, char flag_ch,
                             bool last_in_seq, const char *next_arg,
-                            bool *out_skip_next, char **err_str) {
+                            bool *out_skip_next) {
     ksharg_err_t err;
 
     const char flag_str[2] = {flag_ch, 0};
     ksharg_flag_inst_t *flag;
-    err = prv_ksharg_find_flag(parser_inst, flag_str, &flag, err_str);
+    err = prv_ksharg_find_flag(parser_inst, flag_str, &flag);
     if (err != KSHARG_ERR_NONE) { return err; }
 
-    if (flag->given_str) { return KSHARG_ERR_FLAG_SPECIFICED_TWICE; }
+    if (flag->given_str) {
+        kprintf("ksharg: flag '%s' was specified twice\n", flag->find_name);
+        return KSHARG_ERR_FLAG_SPECIFICED_TWICE;
+    }
     flag->given_str = string_dup(flag_str);
 
     if (flag->desc->has_val) {
         if (last_in_seq) {
             err = prv_ksharg_parse_typed_val(next_arg, flag->desc->val_type,
-                                             &flag->val, err_str);
+                                             &flag->val);
             if (err != KSHARG_ERR_NONE) { return err; }
             flag->val_str = string_dup(next_arg);
             *out_skip_next = true;
         } else {
+            kprintf("ksharg: flag '%s' requires an argument, but is not last "
+                    "in the flag sequence\n",
+                    flag->find_name);
             return KSHARG_ERR_SHORT_FLAG_WITH_ARG_NOT_LAST;
         }
     } else {
@@ -423,10 +434,7 @@ prv_ksharg_parse_short_flag(ksharg_parser_inst_t *parser_inst, char flag_ch,
 
 static ksharg_err_t prv_ksharg_find_flag(ksharg_parser_inst_t *parser_inst,
                                          const char *name,
-                                         ksharg_flag_inst_t **out_flag_inst,
-                                         char **err_str) {
-    (void)err_str;
-
+                                         ksharg_flag_inst_t **out_flag_inst) {
     const bool is_long =
         string_len(name) > 2 && (name[0] == '-' && name[1] == '-');
     const char *nodash_name = is_long ? &name[2] : name;
@@ -447,14 +455,13 @@ static ksharg_err_t prv_ksharg_find_flag(ksharg_parser_inst_t *parser_inst,
         }
     }
 
+    kprintf("ksharg: unrecognized flag '%s'\n", name);
     return KSHARG_ERR_UNRECOGNIZED_FLAG;
 }
 
 static ksharg_err_t prv_ksharg_parse_typed_val(const char *str,
                                                ksharg_val_type_t val_type,
-                                               ksharg_val_t *val,
-                                               char **err_str) {
-    (void)err_str;
+                                               ksharg_val_t *val) {
     switch (val_type) {
     case KSHARG_VAL_STR:
         val->val_str = string_dup(str);

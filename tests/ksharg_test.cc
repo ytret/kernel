@@ -8,7 +8,7 @@ extern "C" {
 class KshargTest : public testing::Test {
   protected:
     void SetUp() override {
-        list_init(&empty_list, NULL);
+        list_init(&empty_list);
 
         desc.num_posargs = 0;
         desc.num_flags = 0;
@@ -48,11 +48,11 @@ class KshargTest : public testing::Test {
 
 TEST_F(KshargTest, NoArgs) {
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_list(inst, &empty_list, NULL);
+    err = ksharg_parse_list(inst, &empty_list);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
 
     ksharg_free_parser_inst(inst);
@@ -60,11 +60,11 @@ TEST_F(KshargTest, NoArgs) {
 
 TEST_F(KshargTest, NoArgs_ButOneGiven) {
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_str(inst, "arg", NULL);
+    err = ksharg_parse_str(inst, "arg");
     ASSERT_EQ(err, KSHARG_ERR_TOO_MANY_POSARGS);
 
     ksharg_free_parser_inst(inst);
@@ -80,11 +80,11 @@ TEST_F(KshargTest, OnePosArg_Req_Given) {
     }});
 
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_str(inst, "argval", NULL);
+    err = ksharg_parse_str(inst, "argval");
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_STREQ(inst->posargs[0].val.val_str, "argval");
 
@@ -101,11 +101,11 @@ TEST_F(KshargTest, OnePosArg_Req_Missing) {
     }});
 
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_list(inst, &empty_list, NULL);
+    err = ksharg_parse_list(inst, &empty_list);
     EXPECT_EQ(err, KSHARG_ERR_MISSING_REQUIRED_POSARG);
     EXPECT_EQ(inst->posargs[0].val.val_str, nullptr);
 
@@ -122,11 +122,11 @@ TEST_F(KshargTest, OnePosArg_Req_ButTwoGiven) {
     }});
 
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_str(inst, "arg1 arg2", NULL);
+    err = ksharg_parse_str(inst, "arg1 arg2");
     ASSERT_EQ(err, KSHARG_ERR_TOO_MANY_POSARGS);
 
     ksharg_free_parser_inst(inst);
@@ -142,11 +142,11 @@ TEST_F(KshargTest, OnePosArg_Opt_Given) {
     }});
 
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_str(inst, "given", NULL);
+    err = ksharg_parse_str(inst, "given");
     EXPECT_EQ(err, KSHARG_ERR_NONE);
     EXPECT_STREQ(inst->posargs[0].val.val_str, "given");
 
@@ -164,11 +164,11 @@ TEST_F(KshargTest, OnePosArg_Opt_Missing) {
     }});
 
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_list(inst, &empty_list, NULL);
+    err = ksharg_parse_list(inst, &empty_list);
     EXPECT_EQ(err, KSHARG_ERR_NONE);
     EXPECT_STREQ(inst->posargs[0].val.val_str, "default");
 
@@ -195,11 +195,11 @@ TEST_F(KshargTest, TwoPosArgs_ReqReq_GivenGiven) {
     });
 
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_str(inst, "val1 val2", NULL);
+    err = ksharg_parse_str(inst, "val1 val2");
     EXPECT_EQ(err, KSHARG_ERR_NONE);
     EXPECT_STREQ(inst->posargs[0].val.val_str, "val1");
     EXPECT_STREQ(inst->posargs[1].val.val_str, "val2");
@@ -226,7 +226,7 @@ TEST_F(KshargTest, TwoPosArgs_OptReq) {
     });
 
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     EXPECT_EQ(err, KSHARG_ERR_REQUIRED_FOLLOWS_OPTIONAL);
     EXPECT_EQ(inst, nullptr);
 }
@@ -250,11 +250,11 @@ TEST_F(KshargTest, TwoPosArgs_ReqOpt_GivenGiven) {
     });
 
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_str(inst, "val1 val2", NULL);
+    err = ksharg_parse_str(inst, "val1 val2");
     EXPECT_EQ(err, KSHARG_ERR_NONE);
     EXPECT_STREQ(inst->posargs[0].val.val_str, "val1");
     EXPECT_STREQ(inst->posargs[1].val.val_str, "val2");
@@ -282,11 +282,11 @@ TEST_F(KshargTest, TwoPosArgs_ReqOpt_GivenMissing) {
     });
 
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_str(inst, "val1", NULL);
+    err = ksharg_parse_str(inst, "val1");
     EXPECT_EQ(err, KSHARG_ERR_NONE);
     EXPECT_STREQ(inst->posargs[0].val.val_str, "val1");
     EXPECT_STREQ(inst->posargs[1].val.val_str, "default2");
@@ -307,11 +307,11 @@ TEST_F(KshargTest, OneFlag_Short_Given) {
     }});
 
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_str(inst, "-f", NULL);
+    err = ksharg_parse_str(inst, "-f");
     EXPECT_EQ(err, KSHARG_ERR_NONE);
     EXPECT_STREQ(inst->flags[0].given_str, "f");
 
@@ -330,11 +330,11 @@ TEST_F(KshargTest, OneFlag_Long_Given) {
     }});
 
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_str(inst, "--flag", NULL);
+    err = ksharg_parse_str(inst, "--flag");
     EXPECT_EQ(err, KSHARG_ERR_NONE);
     EXPECT_STREQ(inst->flags[0].given_str, "--flag");
 
@@ -373,11 +373,11 @@ TEST_F(KshargTest, FlagSeq_ABC) {
     });
 
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_str(inst, "-abc", NULL);
+    err = ksharg_parse_str(inst, "-abc");
     EXPECT_EQ(err, KSHARG_ERR_NONE);
 
     ksharg_flag_inst_t *flag = nullptr;
@@ -432,11 +432,11 @@ TEST_F(KshargTest, FlagSeq_CBA) {
     });
 
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_str(inst, "-cba", NULL);
+    err = ksharg_parse_str(inst, "-cba");
     EXPECT_EQ(err, KSHARG_ERR_NONE);
 
     ksharg_flag_inst_t *flag = nullptr;
@@ -473,11 +473,11 @@ TEST_F(KshargTest, FlagSeq_Unrecognized) {
     });
 
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_str(inst, "-axy", NULL);
+    err = ksharg_parse_str(inst, "-axy");
     EXPECT_EQ(err, KSHARG_ERR_UNRECOGNIZED_FLAG);
 
     ksharg_free_parser_inst(inst);
@@ -506,11 +506,11 @@ TEST_F(KshargTest, FlagSeq_WithVal_Ok) {
     });
 
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_str(inst, "-av val1", NULL);
+    err = ksharg_parse_str(inst, "-av val1");
     EXPECT_EQ(err, KSHARG_ERR_NONE);
 
     ksharg_flag_inst_t *flag = nullptr;
@@ -547,11 +547,11 @@ TEST_F(KshargTest, FlagSeq_WithVal_BadOrder) {
     });
 
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_str(inst, "-va val1", NULL);
+    err = ksharg_parse_str(inst, "-va val1");
     EXPECT_EQ(err, KSHARG_ERR_SHORT_FLAG_WITH_ARG_NOT_LAST);
 
     ksharg_free_parser_inst(inst);
@@ -580,11 +580,11 @@ TEST_F(KshargTest, FlagWithValSkipsVal) {
     });
 
     ksharg_parser_inst_t *inst = nullptr;
-    err = ksharg_inst_parser(&desc, &inst, NULL);
+    err = ksharg_inst_parser(&desc, &inst);
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(inst, nullptr);
 
-    err = ksharg_parse_str(inst, "-v val1 posarg1", NULL);
+    err = ksharg_parse_str(inst, "-v val1 posarg1");
     EXPECT_EQ(err, KSHARG_ERR_NONE);
 
     ksharg_posarg_inst_t *posarg = nullptr;
