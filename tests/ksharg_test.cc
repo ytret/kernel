@@ -8,7 +8,7 @@ extern "C" {
 class KshargTest : public testing::Test {
   protected:
     void SetUp() override {
-        list_init(&empty_list);
+        list_init(&empty_list, NULL);
 
         desc.num_posargs = 0;
         desc.num_flags = 0;
