@@ -35,7 +35,7 @@
  * `struct container` values.
  */
 #define LIST_NODE_TO_STRUCT(p_node, struct_type, node_name_in_struct)          \
-    ((struct_type *)(((uint8_t *)(p_node)) -                                   \
+    ((struct_type *)(((unsigned char *)(p_node)) -                             \
                      offsetof(struct_type, node_name_in_struct)))
 
 /**
