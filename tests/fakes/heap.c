@@ -14,5 +14,9 @@ void *heap_alloc(size_t num_bytes) {
 }
 
 void heap_free(void *p_addr) {
+    if (!p_addr) {
+        fprintf(stderr, "fake heap_free: p_addr = NULL\n");
+        abort();
+    }
     free(p_addr);
 }
