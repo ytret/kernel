@@ -42,9 +42,9 @@ struct ksharg_parser_desc {
     const char *epilog;
 
     size_t num_posargs;
-    ksharg_posarg_desc_t *posargs;
+    const ksharg_posarg_desc_t *posargs;
     size_t num_flags;
-    ksharg_flag_desc_t *flags;
+    const ksharg_flag_desc_t *flags;
 };
 
 typedef struct {

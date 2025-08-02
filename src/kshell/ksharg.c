@@ -8,12 +8,12 @@ static ksharg_err_t
 prv_ksharg_check_name(const ksharg_parser_inst_t *parser_inst, const char *name,
                       char **err);
 
-static ksharg_err_t prv_ksharg_inst_posarg(ksharg_parser_inst_t *parser_inst,
-                                           ksharg_posarg_desc_t *posarg_desc,
-                                           ksharg_posarg_inst_t *posarg_inst,
-                                           char **err_str);
+static ksharg_err_t
+prv_ksharg_inst_posarg(ksharg_parser_inst_t *parser_inst,
+                       const ksharg_posarg_desc_t *posarg_desc,
+                       ksharg_posarg_inst_t *posarg_inst, char **err_str);
 static ksharg_err_t prv_ksharg_inst_flag(ksharg_parser_inst_t *parser_inst,
-                                         ksharg_flag_desc_t *flag_desc,
+                                         const ksharg_flag_desc_t *flag_desc,
                                          ksharg_flag_inst_t *flag_inst,
                                          char **err_str);
 
@@ -68,7 +68,8 @@ ksharg_err_t ksharg_inst_parser(const ksharg_parser_desc_t *desc,
 
     bool now_required = true;
     for (size_t idx_posarg = 0; idx_posarg < desc->num_posargs; idx_posarg++) {
-        ksharg_posarg_desc_t *const posarg_desc = &desc->posargs[idx_posarg];
+        const ksharg_posarg_desc_t *const posarg_desc =
+            &desc->posargs[idx_posarg];
         if (posarg_desc->required) {
             if (!now_required) {
                 if (inst->posargs) { heap_free(inst->posargs); }
@@ -90,7 +91,7 @@ ksharg_err_t ksharg_inst_parser(const ksharg_parser_desc_t *desc,
         }
     }
     for (size_t idx_flag = 0; idx_flag < desc->num_flags; idx_flag++) {
-        ksharg_flag_desc_t *const flag_desc = &desc->flags[idx_flag];
+        const ksharg_flag_desc_t *const flag_desc = &desc->flags[idx_flag];
         ksharg_flag_inst_t *const flag_inst = &inst->flags[idx_flag];
         err = prv_ksharg_inst_flag(inst, flag_desc, flag_inst, err_str);
         if (err != KSHARG_ERR_NONE) {
@@ -233,10 +234,10 @@ ksharg_err_t ksharg_get_flag_inst(ksharg_parser_inst_t *inst, const char *name,
     return KSHARG_ERR_FLAG_NOT_FOUND;
 }
 
-static ksharg_err_t prv_ksharg_inst_posarg(ksharg_parser_inst_t *parser_inst,
-                                           ksharg_posarg_desc_t *posarg_desc,
-                                           ksharg_posarg_inst_t *posarg_inst,
-                                           char **err_str) {
+static ksharg_err_t
+prv_ksharg_inst_posarg(ksharg_parser_inst_t *parser_inst,
+                       const ksharg_posarg_desc_t *posarg_desc,
+                       ksharg_posarg_inst_t *posarg_inst, char **err_str) {
     if (!posarg_desc->name || string_len(posarg_desc->name) == 0) {
         return KSHARG_ERR_NO_POSARG_NAME_GIVEN;
     }
@@ -251,7 +252,7 @@ static ksharg_err_t prv_ksharg_inst_posarg(ksharg_parser_inst_t *parser_inst,
 }
 
 static ksharg_err_t prv_ksharg_inst_flag(ksharg_parser_inst_t *parser_inst,
-                                         ksharg_flag_desc_t *flag_desc,
+                                         const ksharg_flag_desc_t *flag_desc,
                                          ksharg_flag_inst_t *flag_inst,
                                          char **err_str) {
     ksharg_err_t err;
