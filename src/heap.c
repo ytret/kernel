@@ -1,5 +1,6 @@
 #include <stdbool.h>
 
+#include "assert.h"
 #include "heap.h"
 #include "kmutex.h"
 #include "kprintf.h"
@@ -147,6 +148,7 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
 }
 
 void heap_free(void *p_addr) {
+    ASSERT(p_addr);
     mutex_acquire(&g_heap_mutex);
 
     tag_t *p_tag = (tag_t *)((uint32_t)p_addr - TAG_SIZE);
