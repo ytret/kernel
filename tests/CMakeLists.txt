@@ -35,6 +35,7 @@ target_include_directories(common PUBLIC ${SRCDIR})
 
 add_library(fakes STATIC
     fakes/heap.c
+    fakes/kprintf.c
     fakes/kstring.c
     fakes/memfun.c
 )
