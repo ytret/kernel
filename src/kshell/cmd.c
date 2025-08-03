@@ -8,6 +8,7 @@
 #include "kprintf.h"
 #include "kshell/cmd.h"
 #include "kshell/cmd/ksh_mbi.h"
+#include "kshell/cmd/ksh_taskmgr.h"
 #include "kshell/cmd/ksh_vasview.h"
 #include "kshell/kshscan.h"
 #include "kstring.h"
@@ -34,6 +35,8 @@ void kshell_cmd_parse(const char *p_cmd) {
 
     if (string_equals(arg0_str, "mbi")) {
         ksh_mbi(&arg_list);
+    } else if (string_equals(arg0_str, "taskmgr")) {
+        ksh_taskmgr(&arg_list);
     } else if (string_equals(arg0_str, "vasview")) {
         ksh_vasview(&arg_list);
     } else {
