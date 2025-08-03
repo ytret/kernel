@@ -506,7 +506,36 @@ TEST_F(KshargTest, FlagSeq_WithVal_BadOrder) {
     ksharg_free_parser_inst(inst);
 }
 
-TEST_F(KshargTest, FlagWithValSkipsVal) {
+TEST_F(KshargTest, FlagSeq_WithVal_NoVal) {
+    set_flags({
+        ksharg_flag_desc_t{
+            .short_name = "a",
+            .long_name = nullptr,
+            .help_str = nullptr,
+            .val_name = nullptr,
+            .def_val_str = nullptr,
+        },
+        ksharg_flag_desc_t{
+            .short_name = "v",
+            .long_name = nullptr,
+            .help_str = nullptr,
+            .val_name = "VAL",
+            .def_val_str = nullptr,
+        },
+    });
+
+    ksharg_parser_inst_t *inst = nullptr;
+    err = ksharg_inst_parser(&desc, &inst);
+    ASSERT_EQ(err, KSHARG_ERR_NONE);
+    ASSERT_NE(inst, nullptr);
+
+    err = ksharg_parse_str(inst, "-va");
+    EXPECT_EQ(err, KSHARG_ERR_FLAG_REQUIRES_ARG);
+
+    ksharg_free_parser_inst(inst);
+}
+
+TEST_F(KshargTest, FlagWithValSkipsArg) {
     set_posargs({
         ksharg_posarg_desc_t{
             .name = "posarg",

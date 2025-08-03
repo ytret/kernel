@@ -438,15 +438,19 @@ prv_ksharg_parse_short_flag(ksharg_parser_inst_t *parser_inst, char flag_ch,
     flag->given_str = string_dup(flag_str);
 
     if (flag->desc->val_name) {
-        if (last_in_seq) {
-            flag->val_str = string_dup(next_arg);
-            *out_skip_next = true;
-        } else {
+        if (!next_arg) {
+            kprintf("ksharg: flag '%s' requires an argument\n",
+                    flag->find_name);
+            return KSHARG_ERR_FLAG_REQUIRES_ARG;
+        }
+        if (!last_in_seq) {
             kprintf("ksharg: flag '%s' requires an argument, but is not last "
                     "in the flag sequence\n",
                     flag->find_name);
             return KSHARG_ERR_SHORT_FLAG_WITH_ARG_NOT_LAST;
         }
+        flag->val_str = string_dup(next_arg);
+        *out_skip_next = true;
     } else {
         flag->val_str = NULL;
     }
