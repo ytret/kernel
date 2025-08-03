@@ -71,12 +71,10 @@ TEST_F(KshargTest, NoArgs_ButOneGiven) {
 }
 
 TEST_F(KshargTest, OnePosArg_Req_Given) {
-    set_posargs({{
+    set_posargs({ksharg_posarg_desc_t{
         .name = "posarg",
         .help_str = nullptr,
-        .val_type = KSHARG_VAL_STR,
-        .default_val = {.val_str = nullptr},
-        .required = true,
+        .def_val_str = nullptr,
     }});
 
     ksharg_parser_inst_t *inst = nullptr;
@@ -86,18 +84,16 @@ TEST_F(KshargTest, OnePosArg_Req_Given) {
 
     err = ksharg_parse_str(inst, "argval");
     ASSERT_EQ(err, KSHARG_ERR_NONE);
-    ASSERT_STREQ(inst->posargs[0].val.val_str, "argval");
+    ASSERT_STREQ(inst->posargs[0].given_str, "argval");
 
     ksharg_free_parser_inst(inst);
 }
 
 TEST_F(KshargTest, OnePosArg_Req_Missing) {
-    set_posargs({{
+    set_posargs({ksharg_posarg_desc_t{
         .name = "posarg",
         .help_str = nullptr,
-        .val_type = KSHARG_VAL_STR,
-        .default_val = {.val_str = nullptr},
-        .required = true,
+        .def_val_str = nullptr,
     }});
 
     ksharg_parser_inst_t *inst = nullptr;
@@ -107,18 +103,16 @@ TEST_F(KshargTest, OnePosArg_Req_Missing) {
 
     err = ksharg_parse_list(inst, &empty_list);
     EXPECT_EQ(err, KSHARG_ERR_MISSING_REQUIRED_POSARG);
-    EXPECT_EQ(inst->posargs[0].val.val_str, nullptr);
+    EXPECT_EQ(inst->posargs[0].given_str, nullptr);
 
     ksharg_free_parser_inst(inst);
 }
 
 TEST_F(KshargTest, OnePosArg_Req_ButTwoGiven) {
-    set_posargs({{
+    set_posargs({ksharg_posarg_desc_t{
         .name = "posarg",
         .help_str = nullptr,
-        .val_type = KSHARG_VAL_STR,
-        .default_val = {.val_str = nullptr},
-        .required = true,
+        .def_val_str = nullptr,
     }});
 
     ksharg_parser_inst_t *inst = nullptr;
@@ -133,12 +127,10 @@ TEST_F(KshargTest, OnePosArg_Req_ButTwoGiven) {
 }
 
 TEST_F(KshargTest, OnePosArg_Opt_Given) {
-    set_posargs({{
+    set_posargs({ksharg_posarg_desc_t{
         .name = "posarg",
         .help_str = nullptr,
-        .val_type = KSHARG_VAL_STR,
-        .default_val = {.val_str = strdup("default")},
-        .required = true,
+        .def_val_str = strdup("default"),
     }});
 
     ksharg_parser_inst_t *inst = nullptr;
@@ -148,19 +140,17 @@ TEST_F(KshargTest, OnePosArg_Opt_Given) {
 
     err = ksharg_parse_str(inst, "given");
     EXPECT_EQ(err, KSHARG_ERR_NONE);
-    EXPECT_STREQ(inst->posargs[0].val.val_str, "given");
+    EXPECT_STREQ(inst->posargs[0].given_str, "given");
 
     ksharg_free_parser_inst(inst);
-    free(desc.posargs[0].default_val.val_str);
+    free(desc.posargs[0].def_val_str);
 }
 
 TEST_F(KshargTest, OnePosArg_Opt_Missing) {
-    set_posargs({{
+    set_posargs({ksharg_posarg_desc_t{
         .name = "posarg",
         .help_str = nullptr,
-        .val_type = KSHARG_VAL_STR,
-        .default_val = {.val_str = strdup("default")},
-        .required = false,
+        .def_val_str = strdup("default"),
     }});
 
     ksharg_parser_inst_t *inst = nullptr;
@@ -170,27 +160,23 @@ TEST_F(KshargTest, OnePosArg_Opt_Missing) {
 
     err = ksharg_parse_list(inst, &empty_list);
     EXPECT_EQ(err, KSHARG_ERR_NONE);
-    EXPECT_STREQ(inst->posargs[0].val.val_str, "default");
+    EXPECT_STREQ(inst->posargs[0].given_str, "default");
 
     ksharg_free_parser_inst(inst);
-    free(desc.posargs[0].default_val.val_str);
+    free(desc.posargs[0].def_val_str);
 }
 
 TEST_F(KshargTest, TwoPosArgs_ReqReq_GivenGiven) {
     set_posargs({
-        {
+        ksharg_posarg_desc_t{
             .name = "arg1",
             .help_str = nullptr,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
-            .required = true,
+            .def_val_str = nullptr,
         },
-        {
+        ksharg_posarg_desc_t{
             .name = "arg2",
             .help_str = nullptr,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
-            .required = true,
+            .def_val_str = nullptr,
         },
     });
 
@@ -201,27 +187,23 @@ TEST_F(KshargTest, TwoPosArgs_ReqReq_GivenGiven) {
 
     err = ksharg_parse_str(inst, "val1 val2");
     EXPECT_EQ(err, KSHARG_ERR_NONE);
-    EXPECT_STREQ(inst->posargs[0].val.val_str, "val1");
-    EXPECT_STREQ(inst->posargs[1].val.val_str, "val2");
+    EXPECT_STREQ(inst->posargs[0].given_str, "val1");
+    EXPECT_STREQ(inst->posargs[1].given_str, "val2");
 
     ksharg_free_parser_inst(inst);
 }
 
 TEST_F(KshargTest, TwoPosArgs_OptReq) {
     set_posargs({
-        {
+        ksharg_posarg_desc_t{
             .name = "arg1",
             .help_str = nullptr,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
-            .required = false,
+            .def_val_str = strdup("ARG1"),
         },
-        {
+        ksharg_posarg_desc_t{
             .name = "arg2",
             .help_str = nullptr,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
-            .required = true,
+            .def_val_str = nullptr,
         },
     });
 
@@ -229,23 +211,21 @@ TEST_F(KshargTest, TwoPosArgs_OptReq) {
     err = ksharg_inst_parser(&desc, &inst);
     EXPECT_EQ(err, KSHARG_ERR_REQUIRED_FOLLOWS_OPTIONAL);
     EXPECT_EQ(inst, nullptr);
+
+    free(desc.posargs[0].def_val_str);
 }
 
 TEST_F(KshargTest, TwoPosArgs_ReqOpt_GivenGiven) {
     set_posargs({
-        {
+        ksharg_posarg_desc_t{
             .name = "arg1",
             .help_str = nullptr,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
-            .required = true,
+            .def_val_str = nullptr,
         },
-        {
+        ksharg_posarg_desc_t{
             .name = "arg2",
             .help_str = nullptr,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = strdup("default2")},
-            .required = false,
+            .def_val_str = strdup("default2"),
         },
     });
 
@@ -256,28 +236,24 @@ TEST_F(KshargTest, TwoPosArgs_ReqOpt_GivenGiven) {
 
     err = ksharg_parse_str(inst, "val1 val2");
     EXPECT_EQ(err, KSHARG_ERR_NONE);
-    EXPECT_STREQ(inst->posargs[0].val.val_str, "val1");
-    EXPECT_STREQ(inst->posargs[1].val.val_str, "val2");
+    EXPECT_STREQ(inst->posargs[0].given_str, "val1");
+    EXPECT_STREQ(inst->posargs[1].given_str, "val2");
 
     ksharg_free_parser_inst(inst);
-    free(desc.posargs[1].default_val.val_str);
+    free(desc.posargs[1].def_val_str);
 }
 
 TEST_F(KshargTest, TwoPosArgs_ReqOpt_GivenMissing) {
     set_posargs({
-        {
+        ksharg_posarg_desc_t{
             .name = "arg1",
             .help_str = nullptr,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
-            .required = true,
+            .def_val_str = nullptr,
         },
-        {
+        ksharg_posarg_desc_t{
             .name = "arg2",
             .help_str = nullptr,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = strdup("default2")},
-            .required = false,
+            .def_val_str = strdup("default2"),
         },
     });
 
@@ -288,11 +264,11 @@ TEST_F(KshargTest, TwoPosArgs_ReqOpt_GivenMissing) {
 
     err = ksharg_parse_str(inst, "val1");
     EXPECT_EQ(err, KSHARG_ERR_NONE);
-    EXPECT_STREQ(inst->posargs[0].val.val_str, "val1");
-    EXPECT_STREQ(inst->posargs[1].val.val_str, "default2");
+    EXPECT_STREQ(inst->posargs[0].given_str, "val1");
+    EXPECT_STREQ(inst->posargs[1].given_str, "default2");
 
     ksharg_free_parser_inst(inst);
-    free(desc.posargs[1].default_val.val_str);
+    free(desc.posargs[1].def_val_str);
 }
 
 TEST_F(KshargTest, OneFlag_Short_Given) {
@@ -300,10 +276,8 @@ TEST_F(KshargTest, OneFlag_Short_Given) {
         .short_name = "f",
         .long_name = nullptr,
         .help_str = nullptr,
-        .has_val = false,
-        .val_type = KSHARG_VAL_STR,
-        .default_val = {.val_str = nullptr},
         .val_name = nullptr,
+        .def_val_str = nullptr,
     }});
 
     ksharg_parser_inst_t *inst = nullptr;
@@ -323,10 +297,8 @@ TEST_F(KshargTest, OneFlag_Long_Given) {
         .short_name = nullptr,
         .long_name = "flag",
         .help_str = nullptr,
-        .has_val = false,
-        .val_type = KSHARG_VAL_STR,
-        .default_val = {.val_str = nullptr},
         .val_name = nullptr,
+        .def_val_str = nullptr,
     }});
 
     ksharg_parser_inst_t *inst = nullptr;
@@ -347,28 +319,22 @@ TEST_F(KshargTest, FlagSeq_ABC) {
             .short_name = "a",
             .long_name = nullptr,
             .help_str = nullptr,
-            .has_val = false,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
             .val_name = nullptr,
+            .def_val_str = nullptr,
         },
         ksharg_flag_desc_t{
             .short_name = "b",
             .long_name = nullptr,
             .help_str = nullptr,
-            .has_val = false,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
             .val_name = nullptr,
+            .def_val_str = nullptr,
         },
         ksharg_flag_desc_t{
             .short_name = "c",
             .long_name = nullptr,
             .help_str = nullptr,
-            .has_val = false,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
             .val_name = nullptr,
+            .def_val_str = nullptr,
         },
     });
 
@@ -406,28 +372,22 @@ TEST_F(KshargTest, FlagSeq_CBA) {
             .short_name = "a",
             .long_name = nullptr,
             .help_str = nullptr,
-            .has_val = false,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
             .val_name = nullptr,
+            .def_val_str = nullptr,
         },
         ksharg_flag_desc_t{
             .short_name = "b",
             .long_name = nullptr,
             .help_str = nullptr,
-            .has_val = false,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
             .val_name = nullptr,
+            .def_val_str = nullptr,
         },
         ksharg_flag_desc_t{
             .short_name = "c",
             .long_name = nullptr,
             .help_str = nullptr,
-            .has_val = false,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
             .val_name = nullptr,
+            .def_val_str = nullptr,
         },
     });
 
@@ -465,10 +425,8 @@ TEST_F(KshargTest, FlagSeq_Unrecognized) {
             .short_name = "a",
             .long_name = nullptr,
             .help_str = nullptr,
-            .has_val = false,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
             .val_name = nullptr,
+            .def_val_str = nullptr,
         },
     });
 
@@ -489,19 +447,15 @@ TEST_F(KshargTest, FlagSeq_WithVal_Ok) {
             .short_name = "a",
             .long_name = nullptr,
             .help_str = nullptr,
-            .has_val = false,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
             .val_name = nullptr,
+            .def_val_str = nullptr,
         },
         ksharg_flag_desc_t{
             .short_name = "v",
             .long_name = nullptr,
             .help_str = nullptr,
-            .has_val = true,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
-            .val_name = nullptr,
+            .val_name = "VAL",
+            .def_val_str = nullptr,
         },
     });
 
@@ -519,7 +473,6 @@ TEST_F(KshargTest, FlagSeq_WithVal_Ok) {
     ASSERT_NE(flag, nullptr);
     EXPECT_STREQ(flag->given_str, "v");
     EXPECT_STREQ(flag->val_str, "val1");
-    EXPECT_STREQ(flag->val.val_str, "val1");
 
     ksharg_free_parser_inst(inst);
 }
@@ -530,19 +483,15 @@ TEST_F(KshargTest, FlagSeq_WithVal_BadOrder) {
             .short_name = "a",
             .long_name = nullptr,
             .help_str = nullptr,
-            .has_val = false,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
             .val_name = nullptr,
+            .def_val_str = nullptr,
         },
         ksharg_flag_desc_t{
             .short_name = "v",
             .long_name = nullptr,
             .help_str = nullptr,
-            .has_val = true,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
-            .val_name = nullptr,
+            .val_name = "VAL",
+            .def_val_str = nullptr,
         },
     });
 
@@ -562,9 +511,7 @@ TEST_F(KshargTest, FlagWithValSkipsVal) {
         ksharg_posarg_desc_t{
             .name = "posarg",
             .help_str = nullptr,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
-            .required = true,
+            .def_val_str = nullptr,
         },
     });
     set_flags({
@@ -572,10 +519,8 @@ TEST_F(KshargTest, FlagWithValSkipsVal) {
             .short_name = "v",
             .long_name = nullptr,
             .help_str = nullptr,
-            .has_val = true,
-            .val_type = KSHARG_VAL_STR,
-            .default_val = {.val_str = nullptr},
-            .val_name = nullptr,
+            .val_name = "VAL",
+            .def_val_str = nullptr,
         },
     });
 
@@ -592,7 +537,6 @@ TEST_F(KshargTest, FlagWithValSkipsVal) {
     ASSERT_EQ(err, KSHARG_ERR_NONE);
     ASSERT_NE(posarg, nullptr);
     EXPECT_STREQ(posarg->given_str, "posarg1");
-    EXPECT_STREQ(posarg->val.val_str, "posarg1");
 
     ksharg_flag_inst_t *flag = nullptr;
     err = ksharg_get_flag_inst(inst, "v", &flag);
@@ -600,7 +544,6 @@ TEST_F(KshargTest, FlagWithValSkipsVal) {
     ASSERT_NE(flag, nullptr);
     EXPECT_STREQ(flag->given_str, "v");
     EXPECT_STREQ(flag->val_str, "val1");
-    EXPECT_STREQ(flag->val.val_str, "val1");
 
     ksharg_free_parser_inst(inst);
 }

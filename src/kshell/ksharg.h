@@ -7,22 +7,10 @@
 typedef struct ksharg_parser_desc ksharg_parser_desc_t;
 typedef struct ksharg_parser_inst ksharg_parser_inst_t;
 
-typedef enum {
-    KSHARG_VAL_STR,
-} ksharg_val_type_t;
-
-typedef union {
-    int val_int;
-    char *val_str;
-    ksharg_parser_inst_t *val_parser;
-} ksharg_val_t;
-
 typedef struct {
     const char *name;
     const char *help_str;
-    ksharg_val_type_t val_type;
-    ksharg_val_t default_val;
-    bool required;
+    char *def_val_str;
 } ksharg_posarg_desc_t;
 
 typedef struct {
@@ -30,10 +18,8 @@ typedef struct {
     const char *long_name;
     const char *help_str;
 
-    bool has_val;
-    ksharg_val_type_t val_type;
-    ksharg_val_t default_val;
     const char *val_name;
+    const char *def_val_str;
 } ksharg_flag_desc_t;
 
 struct ksharg_parser_desc {
@@ -49,16 +35,12 @@ struct ksharg_parser_desc {
 
 typedef struct {
     const ksharg_posarg_desc_t *desc;
-    ksharg_val_t val;
-
     char *given_str;
 } ksharg_posarg_inst_t;
 
 typedef struct {
     const ksharg_flag_desc_t *desc;
     char *find_name;
-    ksharg_val_t val;
-
     char *given_str;
     char *val_str;
 } ksharg_flag_inst_t;

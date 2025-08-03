@@ -37,10 +37,6 @@ static ksharg_err_t prv_ksharg_find_flag(ksharg_parser_inst_t *parser_inst,
                                          const char *name,
                                          ksharg_flag_inst_t **out_flag_inst);
 
-static ksharg_err_t prv_ksharg_parse_typed_val(const char *str,
-                                               ksharg_val_type_t val_type,
-                                               ksharg_val_t *val);
-
 ksharg_err_t ksharg_inst_parser(const ksharg_parser_desc_t *desc,
                                 ksharg_parser_inst_t **out_inst) {
     ksharg_err_t err;
@@ -66,7 +62,7 @@ ksharg_err_t ksharg_inst_parser(const ksharg_parser_desc_t *desc,
     for (size_t idx_posarg = 0; idx_posarg < desc->num_posargs; idx_posarg++) {
         const ksharg_posarg_desc_t *const posarg_desc =
             &desc->posargs[idx_posarg];
-        if (posarg_desc->required) {
+        if (!posarg_desc->def_val_str) {
             if (!now_required) {
                 if (inst->posargs) { heap_free(inst->posargs); }
                 if (inst->flags) { heap_free(inst->flags); }
@@ -108,13 +104,6 @@ ksharg_err_t ksharg_inst_parser(const ksharg_parser_desc_t *desc,
 void ksharg_free_parser_inst(ksharg_parser_inst_t *inst) {
     for (size_t idx = 0; idx < inst->num_posargs; idx++) {
         ksharg_posarg_inst_t *const posarg = &inst->posargs[idx];
-
-        switch (posarg->desc->val_type) {
-        case KSHARG_VAL_STR:
-            if (posarg->val.val_str) { heap_free(posarg->val.val_str); }
-            break;
-        }
-
         if (posarg->given_str) { heap_free(posarg->given_str); }
     }
 
@@ -123,16 +112,7 @@ void ksharg_free_parser_inst(ksharg_parser_inst_t *inst) {
 
         if (flag->find_name) { heap_free(flag->find_name); }
         if (flag->given_str) { heap_free(flag->given_str); }
-
-        if (flag->desc->has_val) {
-            if (flag->val_str) { heap_free(flag->val_str); }
-
-            switch (flag->desc->val_type) {
-            case KSHARG_VAL_STR:
-                if (flag->val.val_str) { heap_free(flag->val.val_str); }
-                break;
-            }
-        }
+        if (flag->val_str) { heap_free(flag->val_str); }
     }
 
     if (inst->num_posargs > 0) { heap_free(inst->posargs); }
@@ -160,9 +140,8 @@ void ksharg_print_help(const ksharg_parser_desc_t *desc) {
                 &desc->posargs[idx_posarg];
             if (posarg->name) { kprintf("  %s\n", posarg->name); }
             if (posarg->help_str) { kprintf("    %s\n", posarg->help_str); }
-            if (posarg->default_val.val_str) {
-                kprintf("    Default value: '%s'.\n",
-                        posarg->default_val.val_str);
+            if (posarg->def_val_str) {
+                kprintf("    Default value: '%s'.\n", posarg->def_val_str);
             }
         }
     }
@@ -178,9 +157,7 @@ void ksharg_print_help(const ksharg_parser_desc_t *desc) {
             } else if (flag->long_name) {
                 kprintf("  --%s", flag->long_name);
             }
-            if (flag->has_val) {
-                kprintf(" %s", flag->val_name ? flag->val_name : "VALUE");
-            }
+            if (flag->val_name) { kprintf(" %s", flag->val_name); }
             kprintf("\n");
             if (flag->help_str) { kprintf("    %s\n", flag->help_str); }
         }
@@ -247,7 +224,7 @@ ksharg_err_t ksharg_parse_list(ksharg_parser_inst_t *inst,
 
     for (size_t idx = 0; idx < inst->num_posargs; idx++) {
         const ksharg_posarg_inst_t *posarg = &inst->posargs[idx];
-        if (posarg->desc->required && posarg->given_str == NULL) {
+        if (!posarg->desc->def_val_str && posarg->given_str == NULL) {
             kprintf("ksharg: missing required positional argument '%s'\n",
                     posarg->desc->name);
             return KSHARG_ERR_MISSING_REQUIRED_POSARG;
@@ -299,11 +276,8 @@ prv_ksharg_inst_posarg(ksharg_parser_inst_t *parser_inst,
     if (err != KSHARG_ERR_NONE) { return err; }
 
     posarg_inst->desc = posarg_desc;
-    if (!posarg_desc->required && posarg_desc->val_type == KSHARG_VAL_STR &&
-        posarg_desc->default_val.val_str) {
-        posarg_inst->val.val_str = string_dup(posarg_desc->default_val.val_str);
-    } else {
-        posarg_inst->val = posarg_desc->default_val;
+    if (posarg_desc->def_val_str) {
+        posarg_inst->given_str = string_dup(posarg_desc->def_val_str);
     }
     return KSHARG_ERR_NONE;
 }
@@ -338,11 +312,8 @@ static ksharg_err_t prv_ksharg_inst_flag(ksharg_parser_inst_t *parser_inst,
     }
 
     flag_inst->desc = flag_desc;
-    if (flag_desc->has_val && flag_desc->val_type == KSHARG_VAL_STR &&
-        flag_desc->default_val.val_str) {
-        flag_inst->val.val_str = string_dup(flag_desc->default_val.val_str);
-    } else {
-        flag_inst->val = flag_desc->default_val;
+    if (flag_desc->val_name && flag_desc->def_val_str) {
+        flag_inst->val_str = string_dup(flag_desc->def_val_str);
     }
     return KSHARG_ERR_NONE;
 }
@@ -384,9 +355,10 @@ prv_ksharg_check_name(const ksharg_parser_inst_t *parser_inst,
 static ksharg_err_t
 prv_ksharg_parse_posarg_str(ksharg_posarg_inst_t *posarg_inst,
                             const char *arg_str) {
-    ksharg_err_t err = prv_ksharg_parse_typed_val(
-        arg_str, posarg_inst->desc->val_type, &posarg_inst->val);
-    if (err != KSHARG_ERR_NONE) { return err; }
+    if (posarg_inst->given_str) {
+        // prv_ksharg_inst_posarg() has duplicated the default value string.
+        heap_free(posarg_inst->given_str);
+    }
     posarg_inst->given_str = string_dup(arg_str);
     return KSHARG_ERR_NONE;
 }
@@ -434,11 +406,8 @@ prv_ksharg_parse_long_flag(ksharg_parser_inst_t *parser_inst,
     }
     flag->given_str = string_dup(arg_str);
 
-    if (flag->desc->has_val) {
+    if (flag->desc->val_name) {
         if (next_arg) {
-            err = prv_ksharg_parse_typed_val(next_arg, flag->desc->val_type,
-                                             &flag->val);
-            if (err != KSHARG_ERR_NONE) { return err; }
             flag->val_str = string_dup(next_arg);
             *out_skip_next = true;
         } else {
@@ -470,11 +439,8 @@ prv_ksharg_parse_short_flag(ksharg_parser_inst_t *parser_inst, char flag_ch,
     }
     flag->given_str = string_dup(flag_str);
 
-    if (flag->desc->has_val) {
+    if (flag->desc->val_name) {
         if (last_in_seq) {
-            err = prv_ksharg_parse_typed_val(next_arg, flag->desc->val_type,
-                                             &flag->val);
-            if (err != KSHARG_ERR_NONE) { return err; }
             flag->val_str = string_dup(next_arg);
             *out_skip_next = true;
         } else {
@@ -515,15 +481,4 @@ static ksharg_err_t prv_ksharg_find_flag(ksharg_parser_inst_t *parser_inst,
 
     kprintf("ksharg: unrecognized flag '%s'\n", name);
     return KSHARG_ERR_UNRECOGNIZED_FLAG;
-}
-
-static ksharg_err_t prv_ksharg_parse_typed_val(const char *str,
-                                               ksharg_val_type_t val_type,
-                                               ksharg_val_t *val) {
-    switch (val_type) {
-    case KSHARG_VAL_STR:
-        val->val_str = string_dup(str);
-        break;
-    }
-    return KSHARG_ERR_NONE;
 }
