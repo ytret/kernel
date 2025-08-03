@@ -223,11 +223,15 @@ ksharg_err_t ksharg_parse_list(ksharg_parser_inst_t *inst,
     }
 
     for (size_t idx = 0; idx < inst->num_posargs; idx++) {
-        const ksharg_posarg_inst_t *posarg = &inst->posargs[idx];
-        if (!posarg->desc->def_val_str && posarg->given_str == NULL) {
-            kprintf("ksharg: missing required positional argument '%s'\n",
-                    posarg->desc->name);
-            return KSHARG_ERR_MISSING_REQUIRED_POSARG;
+        ksharg_posarg_inst_t *posarg = &inst->posargs[idx];
+        if (posarg->given_str == NULL) {
+            if (posarg->desc->def_val_str) {
+                posarg->given_str = string_dup(posarg->desc->def_val_str);
+            } else {
+                kprintf("ksharg: missing required positional argument '%s'\n",
+                        posarg->desc->name);
+                return KSHARG_ERR_MISSING_REQUIRED_POSARG;
+            }
         }
     }
 
@@ -276,9 +280,8 @@ prv_ksharg_inst_posarg(ksharg_parser_inst_t *parser_inst,
     if (err != KSHARG_ERR_NONE) { return err; }
 
     posarg_inst->desc = posarg_desc;
-    if (posarg_desc->def_val_str) {
-        posarg_inst->given_str = string_dup(posarg_desc->def_val_str);
-    }
+    // The default value, if there is any, is copied during the argument list
+    // parsing.
     return KSHARG_ERR_NONE;
 }
 
@@ -312,9 +315,8 @@ static ksharg_err_t prv_ksharg_inst_flag(ksharg_parser_inst_t *parser_inst,
     }
 
     flag_inst->desc = flag_desc;
-    if (flag_desc->val_name && flag_desc->def_val_str) {
-        flag_inst->val_str = string_dup(flag_desc->def_val_str);
-    }
+    // The default value, if there is any, is copied during the argument list
+    // parsing.
     return KSHARG_ERR_NONE;
 }
 
@@ -355,10 +357,6 @@ prv_ksharg_check_name(const ksharg_parser_inst_t *parser_inst,
 static ksharg_err_t
 prv_ksharg_parse_posarg_str(ksharg_posarg_inst_t *posarg_inst,
                             const char *arg_str) {
-    if (posarg_inst->given_str) {
-        // prv_ksharg_inst_posarg() has duplicated the default value string.
-        heap_free(posarg_inst->given_str);
-    }
     posarg_inst->given_str = string_dup(arg_str);
     return KSHARG_ERR_NONE;
 }
