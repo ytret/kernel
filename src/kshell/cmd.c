@@ -31,7 +31,11 @@ void kshell_cmd_parse(const char *p_cmd) {
     const char *const arg0_str =
         LIST_NODE_TO_STRUCT(arg0_node, kshscan_arg_t, list_node)->arg_str;
 
-    kprintf("kshell: unrecognized command '%s'\n", arg0_str);
+    if (string_equals(arg0_str, "mbi")) {
+        ksh_mbi(&arg_list);
+    } else {
+        kprintf("kshell: unrecognized command '%s'\n", arg0_str);
+    }
 
     kshscan_free_arg_list(&arg_list);
 }
