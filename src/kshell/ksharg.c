@@ -141,6 +141,54 @@ void ksharg_free_parser_inst(ksharg_parser_inst_t *inst) {
     heap_free(inst);
 }
 
+void ksharg_print_help(const ksharg_parser_desc_t *desc) {
+    kprintf("Usage: %s%s", desc->name ? desc->name : "(null)",
+            desc->num_flags > 0 ? " [options]" : "");
+
+    for (size_t idx_posarg = 0; idx_posarg < desc->num_posargs; idx_posarg++) {
+        kprintf(" %s", desc->posargs[idx_posarg].name);
+    }
+    kprintf("\n");
+
+    if (desc->description) { kprintf("\n%s\n", desc->description); }
+
+    if (desc->num_posargs > 0) {
+        kprintf("\nPositional arguments:\n");
+        for (size_t idx_posarg = 0; idx_posarg < desc->num_posargs;
+             idx_posarg++) {
+            const ksharg_posarg_desc_t *const posarg =
+                &desc->posargs[idx_posarg];
+            if (posarg->name) { kprintf("  %s\n", posarg->name); }
+            if (posarg->help_str) { kprintf("    %s\n", posarg->help_str); }
+            if (posarg->default_val.val_str) {
+                kprintf("    Default value: '%s'.\n",
+                        posarg->default_val.val_str);
+            }
+        }
+    }
+
+    if (desc->num_flags > 0) {
+        kprintf("\nOptions:\n");
+        for (size_t idx_flag = 0; idx_flag < desc->num_flags; idx_flag++) {
+            const ksharg_flag_desc_t *const flag = &desc->flags[idx_flag];
+            if (flag->short_name && flag->long_name) {
+                kprintf("  -%s, --%s", flag->short_name, flag->long_name);
+            } else if (flag->short_name) {
+                kprintf("  -%s", flag->short_name);
+            } else if (flag->long_name) {
+                kprintf("  --%s", flag->long_name);
+            }
+            if (flag->has_val) {
+                kprintf(" %s", flag->val_name ? flag->val_name : "VALUE");
+            }
+            kprintf("\n");
+            if (flag->help_str) { kprintf("    %s\n", flag->help_str); }
+        }
+    }
+
+    if (desc->epilog) { kprintf("\n%s\n", desc->epilog); }
+}
+
 ksharg_err_t ksharg_parse_str(ksharg_parser_inst_t *inst, const char *arg_str) {
     list_t arg_list;
     list_init(&arg_list, NULL);
