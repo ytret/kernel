@@ -3,7 +3,7 @@
 set -euo pipefail
 shopt -s inherit_errexit
 
-source "$(dirname $0)/bash/prelude.sh"
+source "$(dirname "$(readlink "$0")")/bash/prelude.sh"
 
 declare -r DEFAULT_BUILD_DIR="$REPO_DIR/build"
 declare OPT_BUILD_DIR="$DEFAULT_BUILD_DIR"
