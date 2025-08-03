@@ -111,11 +111,11 @@ void ksharg_free_parser_inst(ksharg_parser_inst_t *inst) {
 
         switch (posarg->desc->val_type) {
         case KSHARG_VAL_STR:
-            if (posarg->given_str) { heap_free(posarg->val.val_str); }
+            if (posarg->val.val_str) { heap_free(posarg->val.val_str); }
             break;
         }
 
-        heap_free(posarg->given_str);
+        if (posarg->given_str) { heap_free(posarg->given_str); }
     }
 
     for (size_t idx = 0; idx < inst->num_flags; idx++) {
