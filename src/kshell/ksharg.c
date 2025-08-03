@@ -251,7 +251,12 @@ prv_ksharg_inst_posarg(ksharg_parser_inst_t *parser_inst,
     if (err != KSHARG_ERR_NONE) { return err; }
 
     posarg_inst->desc = posarg_desc;
-    posarg_inst->val = posarg_desc->default_val;
+    if (!posarg_desc->required && posarg_desc->val_type == KSHARG_VAL_STR &&
+        posarg_desc->default_val.val_str) {
+        posarg_inst->val.val_str = string_dup(posarg_desc->default_val.val_str);
+    } else {
+        posarg_inst->val = posarg_desc->default_val;
+    }
     return KSHARG_ERR_NONE;
 }
 
@@ -285,7 +290,12 @@ static ksharg_err_t prv_ksharg_inst_flag(ksharg_parser_inst_t *parser_inst,
     }
 
     flag_inst->desc = flag_desc;
-    flag_inst->val = flag_desc->default_val;
+    if (flag_desc->has_val && flag_desc->val_type == KSHARG_VAL_STR &&
+        flag_desc->default_val.val_str) {
+        flag_inst->val.val_str = string_dup(flag_desc->default_val.val_str);
+    } else {
+        flag_inst->val = flag_desc->default_val;
+    }
     return KSHARG_ERR_NONE;
 }
 
