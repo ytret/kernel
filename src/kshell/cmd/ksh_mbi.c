@@ -8,9 +8,7 @@ static ksharg_posarg_desc_t g_ksh_mbi_posargs[] = {
     {
         .name = "type",
         .help_str = "Type of information to show (one of: help, map, mod).",
-        .val_type = KSHARG_VAL_STR,
-        .default_val = {.val_str = "help"},
-        .required = false,
+        .def_val_str = "help",
     },
 };
 
@@ -19,7 +17,7 @@ static ksharg_flag_desc_t g_ksh_mbi_flags[] = {
         .short_name = "h",
         .long_name = "help",
         .help_str = "Print this message and exit.",
-        .has_val = false,
+        .val_name = NULL,
     },
 };
 
@@ -64,7 +62,7 @@ void ksh_mbi(list_t *arg_list) {
         return;
     }
 
-    const char *type_str = arg_type->val.val_str;
+    const char *type_str = arg_type->given_str;
 
     ksharg_flag_inst_t *flag_help;
     err = ksharg_get_flag_inst(parser, "help", &flag_help);

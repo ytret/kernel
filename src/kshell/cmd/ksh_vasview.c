@@ -9,9 +9,7 @@ static ksharg_posarg_desc_t g_ksh_vasview_posargs[] = {
     {
         .name = "pagedir",
         .help_str = "Virtual address of a page directory to traverse.",
-        .val_type = KSHARG_VAL_STR,
-        .default_val = {.val_str = "kernel"},
-        .required = false,
+        .def_val_str = "kernel",
     },
 };
 
@@ -20,7 +18,7 @@ static ksharg_flag_desc_t g_ksh_vasview_flags[] = {
         .short_name = "h",
         .long_name = "help",
         .help_str = "Print this message and exit.",
-        .has_val = false,
+        .val_name = NULL,
     },
 };
 
@@ -76,23 +74,23 @@ void ksh_vasview(list_t *arg_list) {
         return;
     }
 
+    const char *const pagedir_str = arg_pagedir->given_str;
     uint32_t pagedir;
 
-    if (string_equals(arg_pagedir->val.val_str, "kernel")) {
+    if (string_equals(pagedir_str, "kernel")) {
         pagedir = (uint32_t)vmm_kvas_dir();
     } else {
-        const char *arg_num_str = arg_pagedir->val.val_str;
+        const char *arg_num_str = pagedir_str;
         int arg_base = 10;
-        if (string_len(arg_pagedir->val.val_str) > 2 &&
-            arg_pagedir->val.val_str[0] == '0' &&
-            arg_pagedir->val.val_str[1] == 'x') {
-            arg_num_str = &arg_pagedir->val.val_str[2];
+        if (string_len(pagedir_str) > 2 && pagedir_str[0] == '0' &&
+            pagedir_str[1] == 'x') {
+            arg_num_str = &pagedir_str[2];
             arg_base = 16;
         }
 
         if (!string_to_uint32(arg_num_str, &pagedir, arg_base)) {
             kprintf("ksh_vasview: invalid page directory address '%s'\n",
-                    arg_pagedir->val.val_str);
+                    pagedir_str);
             ksharg_free_parser_inst(parser);
             return;
         }
