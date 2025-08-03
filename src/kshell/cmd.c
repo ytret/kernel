@@ -9,23 +9,22 @@
 #include "kprintf.h"
 #include "kshell/cmd.h"
 #include "kshell/cmd/ksh_devmgr.h"
+#include "kshell/cmd/ksh_help.h"
 #include "kshell/cmd/ksh_mbi.h"
 #include "kshell/cmd/ksh_taskmgr.h"
 #include "kshell/cmd/ksh_vasview.h"
 #include "kshell/kshscan.h"
 #include "kstring.h"
 
-typedef struct {
-    const char *name;
-    void (*f_handler)(list_t *arg_list);
-} kshell_cmd_t;
-
 static const kshell_cmd_t g_kshell_cmds[] = {
     // clang-format off
-    {"devmgr", ksh_devmgr},
-    {"mbi", ksh_mbi},
-    {"taskmgr", ksh_taskmgr},
-    {"vasview", ksh_vasview},
+    // NOTE: these should be sorted alphabetically, so that the 'help' command
+    // lists them in alphabetical order.
+    {"devmgr", ksh_devmgr, "device manager"},
+    {"help", ksh_help, "kshell help"},
+    {"mbi", ksh_mbi, "view the Multiboot Information structure"},
+    {"taskmgr", ksh_taskmgr, "task manager"},
+    {"vasview", ksh_vasview, "inspect virtual address spaces"},
     // clang-format on
 };
 
@@ -60,6 +59,13 @@ void kshell_cmd_parse(const char *p_cmd) {
     }
 
     kshscan_free_arg_list(&arg_list);
+}
+
+void kshell_get_cmds(const kshell_cmd_t **out_cmds, size_t *out_num_cmds) {
+    if (out_cmds) { *out_cmds = g_kshell_cmds; }
+    if (out_num_cmds) {
+        *out_num_cmds = sizeof(g_kshell_cmds) / sizeof(g_kshell_cmds[0]);
+    }
 }
 
 static const kshell_cmd_t *prv_kshell_cmd_find(const char *name) {
