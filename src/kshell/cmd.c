@@ -8,6 +8,7 @@
 #include "assert.h"
 #include "kprintf.h"
 #include "kshell/cmd.h"
+#include "kshell/cmd/ksh_clear.h"
 #include "kshell/cmd/ksh_devmgr.h"
 #include "kshell/cmd/ksh_help.h"
 #include "kshell/cmd/ksh_mbi.h"
@@ -21,6 +22,7 @@ static const kshell_cmd_t g_kshell_cmds[] = {
     // NOTE: these should be sorted alphabetically, so that the 'help' command
     // lists them in alphabetical order.
     {"devmgr", ksh_devmgr, "device manager"},
+    {"clear", ksh_clear, "clear the terminal"},
     {"help", ksh_help, "kshell help"},
     {"mbi", ksh_mbi, "view the Multiboot Information structure"},
     {"taskmgr", ksh_taskmgr, "task manager"},

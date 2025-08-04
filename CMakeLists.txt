@@ -64,6 +64,7 @@ add_executable(kernel
     src/vmm.s
 
     src/kshell/cmd.c
+    src/kshell/cmd/ksh_clear.c
     src/kshell/cmd/ksh_devmgr.c
     src/kshell/cmd/ksh_help.c
     src/kshell/cmd/ksh_mbi.c
