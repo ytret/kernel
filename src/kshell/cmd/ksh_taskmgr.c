@@ -165,7 +165,7 @@ static void prv_ksh_taskmgr_kill(const char *id_str) {
 
     uint32_t id;
     if (!string_to_uint32(id_str, &id, 10)) {
-        kprintf("ksh_taskmgr: bad integer '%u'\n", id_str);
+        kprintf("ksh_taskmgr: bad integer '%s'\n", id_str);
         return;
     }
 

@@ -164,7 +164,7 @@ static void prv_ksh_devmgr_list_pci(void) {
 static void prv_ksh_devmgr_dump_pci(const char *id_str) {
     uint32_t id;
     if (!string_to_uint32(id_str, &id, 10)) {
-        kprintf("ksh_devmgr: bad integer '%u'\n", id_str);
+        kprintf("ksh_devmgr: bad integer '%s'\n", id_str);
         return;
     }
 
