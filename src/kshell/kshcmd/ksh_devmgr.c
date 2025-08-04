@@ -1,7 +1,7 @@
 #include "devmgr.h"
 #include "kprintf.h"
-#include "kshell/cmd/ksh_devmgr.h"
 #include "kshell/ksharg.h"
+#include "kshell/kshcmd/ksh_devmgr.h"
 #include "kstring.h"
 #include "pci.h"
 

@@ -1,7 +1,6 @@
-#include "heap.h"
 #include "kbd.h"
 #include "kprintf.h"
-#include "kshell/cmd.h"
+#include "kshell/kshcmd/kshcmd.h"
 #include "kshell/kshell.h"
 #include "panic.h"
 #include "term.h"
@@ -32,7 +31,7 @@ void kshell(void) {
     for (;;) {
         kprintf("> ");
         char const *p_cmd = read_cmd();
-        kshell_cmd_parse(p_cmd);
+        kshcmd_parse(p_cmd);
     }
 }
 

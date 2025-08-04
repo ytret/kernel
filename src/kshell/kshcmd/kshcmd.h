@@ -10,5 +10,5 @@ typedef struct {
     const char *help_str;
 } kshell_cmd_t;
 
-void kshell_cmd_parse(char const *p_cmd);
-void kshell_get_cmds(const kshell_cmd_t **out_cmds, size_t *out_num_cmds);
+void kshcmd_parse(char const *p_cmd);
+void kshcmd_get_cmds(const kshell_cmd_t **out_cmds, size_t *out_num_cmds);

@@ -1,7 +1,7 @@
 #include "kprintf.h"
-#include "ksh_help.h"
-#include "kshell/cmd.h"
 #include "kshell/ksharg.h"
+#include "kshell/kshcmd/ksh_help.h"
+#include "kshell/kshcmd/kshcmd.h"
 
 static ksharg_posarg_desc_t g_ksh_help_posargs[] = {};
 
@@ -71,7 +71,7 @@ static void prv_ksh_help_builtins(void) {
 
     const kshell_cmd_t *cmds;
     size_t num_cmds;
-    kshell_get_cmds(&cmds, &num_cmds);
+    kshcmd_get_cmds(&cmds, &num_cmds);
 
     for (size_t idx = 0; idx < num_cmds; idx++) {
         const kshell_cmd_t *const cmd = &cmds[idx];

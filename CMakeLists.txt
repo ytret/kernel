@@ -63,15 +63,15 @@ add_executable(kernel
     src/taskmgr.s
     src/vmm.s
 
-    src/kshell/cmd.c
-    src/kshell/cmd/ksh_clear.c
-    src/kshell/cmd/ksh_devmgr.c
-    src/kshell/cmd/ksh_help.c
-    src/kshell/cmd/ksh_mbi.c
-    src/kshell/cmd/ksh_taskmgr.c
-    src/kshell/cmd/ksh_vasview.c
     src/kshell/kbdlog.c
     src/kshell/ksharg.c
+    src/kshell/kshcmd/ksh_clear.c
+    src/kshell/kshcmd/kshcmd.c
+    src/kshell/kshcmd/ksh_devmgr.c
+    src/kshell/kshcmd/ksh_help.c
+    src/kshell/kshcmd/ksh_mbi.c
+    src/kshell/kshcmd/ksh_taskmgr.c
+    src/kshell/kshcmd/ksh_vasview.c
     src/kshell/kshell.c
     src/kshell/kshscan.c
     src/kshell/vasview.c

@@ -1,6 +1,6 @@
 #include "kprintf.h"
-#include "kshell/cmd/ksh_vasview.h"
 #include "kshell/ksharg.h"
+#include "kshell/kshcmd/ksh_vasview.h"
 #include "kshell/vasview.h"
 #include "kstring.h"
 #include "vmm.h"

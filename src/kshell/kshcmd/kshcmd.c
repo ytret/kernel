@@ -1,5 +1,5 @@
 /**
- * @file cmd.c
+ * @file kshcmd.c
  * Command handling for kshell.
  */
 
@@ -7,13 +7,13 @@
 
 #include "assert.h"
 #include "kprintf.h"
-#include "kshell/cmd.h"
-#include "kshell/cmd/ksh_clear.h"
-#include "kshell/cmd/ksh_devmgr.h"
-#include "kshell/cmd/ksh_help.h"
-#include "kshell/cmd/ksh_mbi.h"
-#include "kshell/cmd/ksh_taskmgr.h"
-#include "kshell/cmd/ksh_vasview.h"
+#include "kshell/kshcmd/ksh_clear.h"
+#include "kshell/kshcmd/ksh_devmgr.h"
+#include "kshell/kshcmd/ksh_help.h"
+#include "kshell/kshcmd/ksh_mbi.h"
+#include "kshell/kshcmd/ksh_taskmgr.h"
+#include "kshell/kshcmd/ksh_vasview.h"
+#include "kshell/kshcmd/kshcmd.h"
 #include "kshell/kshscan.h"
 #include "kstring.h"
 
@@ -32,7 +32,7 @@ static const kshell_cmd_t g_kshell_cmds[] = {
 
 static const kshell_cmd_t *prv_kshell_cmd_find(const char *name);
 
-void kshell_cmd_parse(const char *p_cmd) {
+void kshcmd_parse(const char *p_cmd) {
     list_t arg_list;
     list_init(&arg_list, NULL);
 
@@ -63,7 +63,7 @@ void kshell_cmd_parse(const char *p_cmd) {
     kshscan_free_arg_list(&arg_list);
 }
 
-void kshell_get_cmds(const kshell_cmd_t **out_cmds, size_t *out_num_cmds) {
+void kshcmd_get_cmds(const kshell_cmd_t **out_cmds, size_t *out_num_cmds) {
     if (out_cmds) { *out_cmds = g_kshell_cmds; }
     if (out_num_cmds) {
         *out_num_cmds = sizeof(g_kshell_cmds) / sizeof(g_kshell_cmds[0]);

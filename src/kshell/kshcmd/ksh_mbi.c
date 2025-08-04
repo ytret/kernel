@@ -1,6 +1,6 @@
 #include "kprintf.h"
-#include "kshell/cmd/ksh_mbi.h"
 #include "kshell/ksharg.h"
+#include "kshell/kshcmd/ksh_mbi.h"
 #include "kstring.h"
 #include "mbi.h"
 
