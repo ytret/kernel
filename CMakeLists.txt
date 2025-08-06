@@ -32,6 +32,7 @@ add_executable(kernel
     src/devmgr.c
     src/elf.c
     src/framebuf.c
+    src/fs/ramfs.c
     src/gdt.c
     src/heap.c
     src/idt.c
@@ -52,6 +53,7 @@ add_executable(kernel
     src/stack.c
     src/taskmgr.c
     src/term.c
+    src/vfs/vfs.c
     src/vga.c
     src/vmm.c
 
