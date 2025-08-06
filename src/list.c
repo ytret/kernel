@@ -65,3 +65,12 @@ list_node_t *list_pop_first(list_t *p_list) {
 bool list_is_empty(list_t *p_list) {
     return p_list->p_first_node == NULL;
 }
+
+size_t list_count(list_t *p_list) {
+    size_t cnt = 0;
+    for (list_node_t *p_node = p_list->p_first_node; p_node != NULL;
+         p_node = p_node->p_next) {
+        cnt++;
+    }
+    return cnt;
+}

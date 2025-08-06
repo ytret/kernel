@@ -6,6 +6,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 
 /**
  * Converts @a p_node to a pointer to its container type @a struct_type.
@@ -146,3 +147,9 @@ list_node_t *list_pop_first(list_t *p_list);
  * @param p_list List pointer.
  */
 bool list_is_empty(list_t *p_list);
+
+/**
+ * Returns the number of elements in a list.
+ * @param p_list List pointer.
+ */
+size_t list_count(list_t *p_list);
