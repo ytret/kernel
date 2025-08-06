@@ -177,3 +177,17 @@ TEST_F(VfsPathTest, JustAboveMaxNameLen) {
     err = vfs_path_from_str(path_str.c_str(), &path);
     ASSERT_EQ(err, VFS_ERR_PATH_PART_TOO_LONG);
 }
+
+TEST_F(VfsPathTest, TooManyParts) {
+    std::vector<std::string> parts;
+    for (size_t idx = 0; idx < VFS_PATH_MAX_PARTS + 1; idx++) {
+        parts.push_back("abc");
+    }
+    std::string path_str;
+    for (auto part : parts) {
+        path_str += "/" + part;
+    }
+
+    err = vfs_path_from_str(path_str.c_str(), &path);
+    ASSERT_EQ(err, VFS_ERR_PATH_TOO_MANY_PARTS);
+}
