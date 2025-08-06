@@ -28,22 +28,6 @@ size_t string_len(char const *p_str) {
     return len;
 }
 
-/*
- * Splits string p_str using ch as separator char.
- *
- * Arguments:
- *   p_str          - string to split
- *   ch             - separator char
- *   b_ignore_empty - if true, empty substrings are ignored
- *   pp_res         - allocated array (+p) of strings (+p)
- *   res_len        - maximum number of strings in ppp_res
- *
- * After this function returns, p_str can be freed * without ppp_res strings
- * being corrupt.
- *
- * NOTE: returns the number of elements written to pp_res array (may be zero) or
- * (res_len + 1), if there are more substrings than pp_res can contain.
- */
 size_t string_split(char const *p_str, char ch, bool b_ignore_empty,
                     char **pp_res, size_t res_len) {
     size_t res_idx = 0; // next ptr in pp_res to be set
