@@ -62,3 +62,4 @@ endfunction()
 
 add_unit_test(kshscan_test ${SRCDIR}/kshell/kshscan.c "")
 add_unit_test(ksharg_test ${SRCDIR}/kshell/ksharg.c ${SRCDIR}/kshell/kshscan.c)
+add_unit_test(vfspath_test ${SRCDIR}/vfs/vfs_path.c "")

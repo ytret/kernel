@@ -11,6 +11,7 @@ typedef enum {
     VFS_ERR_NODE_NO_FS,
     VFS_ERR_NODE_NO_DATA,
 
+    VFS_ERR_PATH_EMPTY,
     VFS_ERR_PATH_TOO_MANY_PARTS,
     VFS_ERR_PATH_PART_TOO_LONG,
 } vfs_err_t;

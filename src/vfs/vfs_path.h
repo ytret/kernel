@@ -7,6 +7,7 @@
 
 typedef struct {
     list_t parts;
+    bool is_absolute;
 } vfs_path_t;
 
 typedef struct {
