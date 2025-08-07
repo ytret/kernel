@@ -47,6 +47,7 @@ extern uint32_t ld_vmm_kernel_end;
 
 static uint32_t find_heap_start(void);
 
+static tag_t *prv_heap_tag_from_addr(void *p_addr);
 static void print_tag(tag_t const *p_tag);
 static void check_tags(void);
 
@@ -151,10 +152,7 @@ void heap_free(void *p_addr) {
     ASSERT(p_addr);
     mutex_acquire(&g_heap_mutex);
 
-    tag_t *p_tag = (tag_t *)((uint32_t)p_addr - TAG_SIZE);
-    while ((uint32_t)p_tag->p_next == PADDING_DWORD) {
-        p_tag = (tag_t *)((uint32_t)p_tag - 4);
-    }
+    tag_t *const p_tag = prv_heap_tag_from_addr(p_addr);
     p_tag->b_used = false;
     check_tags();
 
@@ -196,6 +194,14 @@ static uint32_t find_heap_start(void) {
     uint32_t heap_start =
         (last_used_addr + ((4 * 1024 * 1024) - 1)) & ~((4 * 1024 * 1024) - 1);
     return heap_start;
+}
+
+static tag_t *prv_heap_tag_from_addr(void *p_addr) {
+    tag_t *p_tag = (tag_t *)((uint32_t)p_addr - TAG_SIZE);
+    while ((uint32_t)p_tag->p_next == PADDING_DWORD) {
+        p_tag = (tag_t *)((uint32_t)p_tag - 4);
+    }
+    return p_tag;
 }
 
 static void print_tag(tag_t const *p_tag) {
