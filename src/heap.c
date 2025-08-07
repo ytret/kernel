@@ -5,6 +5,7 @@
 #include "kmutex.h"
 #include "kprintf.h"
 #include "mbi.h"
+#include "memfun.h"
 #include "panic.h"
 
 #define HEAP_SIZE (12 * 1024 * 1024)
@@ -148,8 +149,18 @@ void *heap_alloc_aligned(size_t num_bytes, size_t align) {
     return (void *)((uint32_t)p_found + TAG_SIZE + num_padding);
 }
 
+void *heap_realloc(void *p_addr, size_t num_bytes, size_t align) {
+    tag_t *const p_old_tag = prv_heap_tag_from_addr(p_addr);
+    const size_t copy_size =
+        num_bytes >= p_old_tag->size ? p_old_tag->size : num_bytes;
+
+    void *const new_addr = heap_alloc_aligned(num_bytes, align);
+    kmemcpy(new_addr, p_addr, copy_size);
+    heap_free(p_addr);
+    return new_addr;
+}
+
 void heap_free(void *p_addr) {
-    ASSERT(p_addr);
     mutex_acquire(&g_heap_mutex);
 
     tag_t *const p_tag = prv_heap_tag_from_addr(p_addr);
@@ -197,6 +208,8 @@ static uint32_t find_heap_start(void) {
 }
 
 static tag_t *prv_heap_tag_from_addr(void *p_addr) {
+    ASSERT(p_addr);
+
     tag_t *p_tag = (tag_t *)((uint32_t)p_addr - TAG_SIZE);
     while ((uint32_t)p_tag->p_next == PADDING_DWORD) {
         p_tag = (tag_t *)((uint32_t)p_tag - 4);
