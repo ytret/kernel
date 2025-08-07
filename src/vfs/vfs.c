@@ -1,5 +1,4 @@
 #include "heap.h"
-#include "kstring.h"
 #include "memfun.h"
 #include "vfs/vfs.h"
 
@@ -15,4 +14,10 @@ void vfs_init(void) {
 
 vfs_node_t *vfs_root_node(void) {
     return g_vfs.root_node;
+}
+
+vfs_node_t *vfs_alloc_node(void) {
+    vfs_node_t *const node = heap_alloc(sizeof(*node));
+    kmemset(node, 0, sizeof(*node));
+    return node;
 }
