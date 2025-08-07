@@ -4,6 +4,7 @@
  */
 
 #include "acpi/lapic.h"
+#include "assert.h"
 #include "blkdev/blkdev.h"
 #include "devmgr.h"
 #include "fs/ramfs.h"
@@ -40,6 +41,26 @@ void init_bsp_task(void) {
 
     vfs_err_t err = fs_ramfs->f_mount(ramfs, vfs_root_node());
     kprintf("err = %u\n", err);
+    ASSERT(err == VFS_ERR_NONE);
+
+    vfs_node_t *new_node;
+    err = vfs_root_node()->ops->f_mknode(vfs_root_node(), &new_node, "abc",
+                                         VFS_NODE_FILE);
+    kprintf("err = %u\n", err);
+    ASSERT(err == VFS_ERR_NONE);
+
+    vfs_dirent_t dirents[10];
+    size_t num_dirents;
+    err = vfs_root_node()->ops->f_readdir(vfs_root_node(), dirents,
+                                          sizeof(dirents) / sizeof(dirents[0]),
+                                          &num_dirents);
+    kprintf("err = %u\n", err);
+    ASSERT(err == VFS_ERR_NONE);
+
+    for (size_t idx = 0; idx < num_dirents; idx++) {
+        vfs_dirent_t *dirent = &dirents[idx];
+        kprintf("%u. %s\n", idx, dirent->name);
+    }
 
     kshell();
 
