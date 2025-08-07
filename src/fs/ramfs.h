@@ -21,5 +21,5 @@ vfs_err_t ramfs_unmount(void *v_ctx, vfs_node_t *node);
 
 vfs_err_t ramfs_node_mknode(vfs_node_t *dir_node, vfs_node_t **out_node,
                             const char *name, vfs_node_type_t node_type);
-vfs_err_t ramfs_node_readdir(vfs_node_t *node, void *dirent_buf,
-                             size_t buf_size, size_t *out_size);
+vfs_err_t ramfs_node_readdir(vfs_node_t *node, void *dirent_buf, size_t buf_len,
+                             size_t *out_len);

@@ -19,7 +19,7 @@ struct ramfs_data {
         } file_data;
         struct {
             vfs_dirent_t *dirents;
-            size_t dirents_size;
+            size_t dirents_len;
         } dir_data;
     };
 };
@@ -129,12 +129,12 @@ vfs_err_t ramfs_node_mknode(vfs_node_t *dir_node, vfs_node_t **out_node,
     return VFS_ERR_NONE;
 }
 
-vfs_err_t ramfs_node_readdir(vfs_node_t *node, void *dirent_buf,
-                             size_t buf_size, size_t *out_size) {
+vfs_err_t ramfs_node_readdir(vfs_node_t *node, void *dirent_buf, size_t buf_len,
+                             size_t *out_len) {
     if (!node) { return VFS_ERR_NODE_BAD_ARGS; }
     if (!dirent_buf) { return VFS_ERR_NODE_BAD_ARGS; }
-    if (buf_size == 0) { return VFS_ERR_NODE_BAD_ARGS; }
-    if (!out_size) { return VFS_ERR_NODE_BAD_ARGS; }
+    if (buf_len == 0) { return VFS_ERR_NODE_BAD_ARGS; }
+    if (!out_len) { return VFS_ERR_NODE_BAD_ARGS; }
 
     if (node->type != VFS_NODE_DIR) { return VFS_ERR_NODE_NOT_DIR; }
 
@@ -143,11 +143,12 @@ vfs_err_t ramfs_node_readdir(vfs_node_t *node, void *dirent_buf,
     if (!ctx) { return VFS_ERR_NODE_NO_FS; }
     if (!data) { return VFS_ERR_NODE_NO_DATA; }
 
-    const size_t copy_size = data->dir_data.dirents_size <= buf_size
-                                 ? data->dir_data.dirents_size
-                                 : buf_size;
-    kmemcpy(dirent_buf, data->dir_data.dirents, copy_size);
-    *out_size = copy_size;
+    const size_t copy_len = data->dir_data.dirents_len <= buf_len
+                                ? data->dir_data.dirents_len
+                                : buf_len;
+    kmemcpy(dirent_buf, data->dir_data.dirents,
+            copy_len * sizeof(vfs_dirent_t));
+    *out_len = copy_len;
 
     return VFS_ERR_NONE;
 }
@@ -168,8 +169,7 @@ static ramfs_data_t *prv_ramfs_alloc_data(ramfs_ctx_t *ctx,
 
 static bool prv_ramfs_is_name_taken(vfs_node_t *dir_node, const char *name) {
     ramfs_data_t *const data = dir_node->fs_data;
-    for (size_t idx = 0;
-         idx < data->dir_data.dirents_size / sizeof(vfs_dirent_t); idx++) {
+    for (size_t idx = 0; idx < data->dir_data.dirents_len; idx++) {
         const vfs_dirent_t *const dirent = &data->dir_data.dirents[idx];
         if (string_equals(name, dirent->name)) { return true; }
     }
@@ -179,10 +179,9 @@ static bool prv_ramfs_is_name_taken(vfs_node_t *dir_node, const char *name) {
 static void prv_ramfs_add_dirent(ramfs_data_t *dir_data, const char *name) {
     ASSERT(dir_data->type == RAMFS_DATA_DIR);
 
-    const size_t new_idx =
-        dir_data->dir_data.dirents_size / sizeof(vfs_dirent_t);
+    const size_t new_idx = dir_data->dir_data.dirents_len;
     const size_t new_size =
-        dir_data->dir_data.dirents_size + sizeof(vfs_dirent_t);
+        (dir_data->dir_data.dirents_len + 1) * sizeof(vfs_dirent_t);
 
     if (dir_data->dir_data.dirents) {
         dir_data->dir_data.dirents =
@@ -192,5 +191,5 @@ static void prv_ramfs_add_dirent(ramfs_data_t *dir_data, const char *name) {
     }
     kmemcpy(dir_data->dir_data.dirents[new_idx].name, name,
             string_len(name) + 1);
-    dir_data->dir_data.dirents_size = new_size;
+    dir_data->dir_data.dirents_len = new_idx + 1;
 }
