@@ -13,6 +13,7 @@
 #include "kshell/kshcmd/ksh_mbi.h"
 #include "kshell/kshcmd/ksh_taskmgr.h"
 #include "kshell/kshcmd/ksh_vasview.h"
+#include "kshell/kshcmd/ksh_vfs.h"
 #include "kshell/kshcmd/kshcmd.h"
 #include "kshell/kshscan.h"
 #include "kstring.h"
@@ -27,6 +28,7 @@ static const kshell_cmd_t g_kshell_cmds[] = {
     {"mbi", ksh_mbi, "view the Multiboot Information structure"},
     {"taskmgr", ksh_taskmgr, "task manager"},
     {"vasview", ksh_vasview, "inspect virtual address spaces"},
+    {"vfs", ksh_vfs, "manipulate the virtual file system"},
     // clang-format on
 };
 
