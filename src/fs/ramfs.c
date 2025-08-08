@@ -54,6 +54,7 @@ ramfs_ctx_t *ramfs_init(size_t num_bytes) {
     ctx->size = num_bytes;
 
     ctx->root = prv_ramfs_alloc_data(ctx, RAMFS_DATA_DIR);
+    ctx->root->parent_data = ctx->root;
 
     return ctx;
 }
