@@ -120,3 +120,31 @@ TEST_F(ListTest, TestPopFirstThreeTimes) {
     EXPECT_EQ(list_count(&list), 0);
     exp_nodes({});
 }
+
+TEST_F(ListTest, TestPopLastEmpty) {
+    list_pop_last(&list);
+    EXPECT_TRUE(list_is_empty(&list));
+    EXPECT_EQ(list_count(&list), 0);
+}
+TEST_F(ListTest, TestPopLastOneTime) {
+    add_nodes({&node1, &node2, &node3});
+    list_pop_last(&list);
+    EXPECT_EQ(list_count(&list), 2);
+    exp_nodes({&node1, &node2});
+}
+TEST_F(ListTest, TestPopLastTwoTimes) {
+    add_nodes({&node1, &node2, &node3});
+    list_pop_last(&list);
+    list_pop_last(&list);
+    EXPECT_EQ(list_count(&list), 1);
+    exp_nodes({&node1});
+}
+TEST_F(ListTest, TestPopLastThreeTimes) {
+    add_nodes({&node1, &node2, &node3});
+    list_pop_last(&list);
+    list_pop_last(&list);
+    list_pop_last(&list);
+    EXPECT_TRUE(list_is_empty(&list));
+    EXPECT_EQ(list_count(&list), 0);
+    exp_nodes({});
+}

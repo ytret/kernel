@@ -144,6 +144,15 @@ bool list_remove(list_t *p_list, list_node_t *p_node);
 list_node_t *list_pop_first(list_t *p_list);
 
 /**
+ * Removes the last node from @a p_list and returns it.
+ * @param p_list List pointer.
+ * @returns
+ * - Last node from the list if it had any.
+ * - `NULL` if the list is empty.
+ */
+list_node_t *list_pop_last(list_t *p_list);
+
+/**
  * Returns `true` if @a p_list is empty (has no nodes).
  * @param p_list List pointer.
  */

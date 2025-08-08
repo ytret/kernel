@@ -74,6 +74,22 @@ list_node_t *list_pop_first(list_t *p_list) {
     return p_node;
 }
 
+list_node_t *list_pop_last(list_t *p_list) {
+    list_node_t *p_node = NULL;
+    if (p_list->p_last_node) {
+        p_node = p_list->p_last_node;
+        list_node_t *const p_prev = p_node->p_prev;
+
+        p_list->p_last_node = p_prev;
+        if (p_prev) { p_prev->p_next = NULL; }
+
+        p_node->p_prev = NULL;
+
+        if (p_list->p_first_node == p_node) { p_list->p_first_node = NULL; }
+    }
+    return p_node;
+}
+
 bool list_is_empty(list_t *p_list) {
     return p_list->p_first_node == NULL;
 }
