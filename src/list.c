@@ -1,6 +1,6 @@
 /**
  * @file list.c
- * Double-ended linked list implementation.
+ * Doubly ended linked list implementation.
  */
 
 #include <stddef.h>
@@ -13,7 +13,10 @@ void list_init(list_t *p_list, list_node_t *p_init_node) {
     p_list->p_first_node = p_init_node;
     p_list->p_last_node = p_init_node;
 
-    if (p_init_node) { p_list->p_first_node->p_next = NULL; }
+    if (p_init_node) {
+        p_list->p_first_node->p_prev = NULL;
+        p_list->p_first_node->p_next = NULL;
+    }
 }
 
 void list_clear(list_t *p_list) {
@@ -27,8 +30,9 @@ void list_append(list_t *p_list, list_node_t *p_node) {
     } else {
         p_list->p_last_node->p_next = p_node;
     }
-    p_list->p_last_node = p_node;
+    p_node->p_prev = p_list->p_last_node;
     p_node->p_next = NULL;
+    p_list->p_last_node = p_node;
 }
 
 bool list_remove(list_t *p_list, list_node_t *p_node) {
@@ -41,7 +45,11 @@ bool list_remove(list_t *p_list, list_node_t *p_node) {
             } else {
                 p_list->p_first_node = p_iter->p_next;
             }
-            if (!p_iter->p_next) { p_list->p_last_node = p_prev; }
+            if (p_iter->p_next) {
+                p_iter->p_next->p_prev = p_prev;
+            } else {
+                p_list->p_last_node = p_prev;
+            }
             return true;
         }
         p_prev = p_iter;
@@ -54,7 +62,11 @@ list_node_t *list_pop_first(list_t *p_list) {
     list_node_t *p_node = NULL;
     if (p_list->p_first_node) {
         p_node = p_list->p_first_node;
-        p_list->p_first_node = p_list->p_first_node->p_next;
+        list_node_t *const p_next = p_node->p_next;
+
+        p_list->p_first_node = p_next;
+        if (p_next) { p_next->p_prev = NULL; }
+
         p_node->p_next = NULL;
 
         if (p_list->p_last_node == p_node) { p_list->p_last_node = NULL; }

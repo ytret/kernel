@@ -1,6 +1,6 @@
 /**
  * @file list.h
- * Double-ended linked list.
+ * Doubly ended linked list.
  */
 
 #pragma once
@@ -97,6 +97,7 @@
 struct list_node;
 
 typedef struct list_node {
+    struct list_node *p_prev;
     struct list_node *p_next;
 } list_node_t;
 
