@@ -35,6 +35,7 @@ static const vfs_fs_desc_t g_ramfs_desc = {
 static const vfs_node_ops_t g_ramfs_node_ops = {
     .f_mknode = ramfs_node_mknode,
     .f_readdir = ramfs_node_readdir,
+    .f_lookup = ramfs_node_lookup,
 };
 
 static ramfs_data_t *prv_ramfs_alloc_data(ramfs_ctx_t *ctx,
