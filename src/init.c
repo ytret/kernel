@@ -38,15 +38,16 @@ void init_bsp_task(void) {
     vfs_init();
     const vfs_fs_desc_t *const fs_ramfs = ramfs_get_desc();
     ramfs_ctx_t *const ramfs = ramfs_init(1024);
+    ASSERT(ramfs);
 
     vfs_err_t err = fs_ramfs->f_mount(ramfs, vfs_root_node());
-    kprintf("err = %u\n", err);
+    kprintf("mount err = %u\n", err);
     ASSERT(err == VFS_ERR_NONE);
 
     vfs_node_t *new_node;
     err = vfs_root_node()->ops->f_mknode(vfs_root_node(), &new_node, "abc",
                                          VFS_NODE_FILE);
-    kprintf("err = %u\n", err);
+    kprintf("mknode err = %u\n", err);
     ASSERT(err == VFS_ERR_NONE);
 
     vfs_dirent_t dirents[10];
@@ -54,7 +55,7 @@ void init_bsp_task(void) {
     err = vfs_root_node()->ops->f_readdir(vfs_root_node(), dirents,
                                           sizeof(dirents) / sizeof(dirents[0]),
                                           &num_dirents);
-    kprintf("err = %u\n", err);
+    kprintf("readdir err = %u\n", err);
     ASSERT(err == VFS_ERR_NONE);
 
     for (size_t idx = 0; idx < num_dirents; idx++) {
