@@ -21,5 +21,7 @@ typedef enum {
     VFS_ERR_PATH_TOO_MANY_PARTS,
     VFS_ERR_PATH_PART_TOO_LONG,
 
+    VFS_ERR_PATH_MUST_BE_ABSOLUTE,
+
     VFS_ERR_NAME_TAKEN,
 } vfs_err_t;

@@ -54,6 +54,7 @@ add_executable(kernel
     src/taskmgr.c
     src/term.c
     src/vfs/vfs.c
+    src/vfs/vfs_path.c
     src/vga.c
     src/vmm.c
 
