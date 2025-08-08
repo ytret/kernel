@@ -95,6 +95,8 @@ vfs_err_t ramfs_unmount(void *v_ctx, vfs_node_t *node) {
     node->fs_ctx = NULL;
     node->fs_data = NULL;
 
+    ctx->root->vfs_node = NULL;
+
     return VFS_ERR_NONE;
 }
 
