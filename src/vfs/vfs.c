@@ -21,3 +21,7 @@ vfs_node_t *vfs_alloc_node(void) {
     kmemset(node, 0, sizeof(*node));
     return node;
 }
+
+void vfs_free_node(vfs_node_t *node) {
+    heap_free(node);
+}

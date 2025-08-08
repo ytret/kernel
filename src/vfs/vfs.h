@@ -8,4 +8,6 @@ typedef struct {
 
 void vfs_init(void);
 vfs_node_t *vfs_root_node(void);
+
 vfs_node_t *vfs_alloc_node(void);
+void vfs_free_node(vfs_node_t *node);
