@@ -25,3 +25,5 @@ typedef enum {
 
     VFS_ERR_NAME_TAKEN,
 } vfs_err_t;
+
+const char *vfs_err_str(vfs_err_t err);
