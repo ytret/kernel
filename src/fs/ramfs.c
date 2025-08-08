@@ -47,16 +47,22 @@ static vfs_err_t prv_ramfs_add_child(ramfs_ctx_t *ctx, ramfs_data_t *dir_data,
                                      const char *name, ramfs_data_type_t type);
 
 ramfs_ctx_t *ramfs_init(size_t num_bytes) {
+    if (num_bytes < sizeof(ramfs_ctx_t)) { return NULL; }
+
     ramfs_ctx_t *const ctx = heap_alloc(sizeof(*ctx));
     kmemset(ctx, 0, sizeof(*ctx));
 
-    ctx->bytes_used = 0;
+    ctx->bytes_used = sizeof(ramfs_ctx_t);
     ctx->size = num_bytes;
 
     ctx->root = prv_ramfs_alloc_data(ctx, RAMFS_DATA_DIR);
-    ctx->root->parent_data = ctx->root;
-
-    return ctx;
+    if (ctx->root) {
+        ctx->root->parent_data = ctx->root;
+        return ctx;
+    } else {
+        heap_free(ctx);
+        return NULL;
+    }
 }
 
 void ramfs_free(ramfs_ctx_t *ctx) {
