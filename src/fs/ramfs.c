@@ -190,7 +190,7 @@ vfs_err_t ramfs_node_readdir(vfs_node_t *node, void *dirent_buf, size_t buf_len,
 vfs_err_t ramfs_node_lookup(vfs_node_t *node, vfs_node_t **out_node,
                             const char *name) {
     if (!node) { return VFS_ERR_NODE_BAD_ARGS; }
-    if (node->type != VFS_NODE_DIR) { return VFS_ERR_NODE_BAD_ARGS; }
+    if (node->type != VFS_NODE_DIR) { return VFS_ERR_NODE_NOT_DIR; }
     if (!out_node) { return VFS_ERR_NODE_BAD_ARGS; }
     if (!name) { return VFS_ERR_NODE_BAD_ARGS; }
 
