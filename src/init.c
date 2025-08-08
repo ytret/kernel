@@ -44,17 +44,20 @@ void init_bsp_task(void) {
     kprintf("mount err = %u\n", err);
     ASSERT(err == VFS_ERR_NONE);
 
+    vfs_node_t *res_node;
+    err = vfs_resolve_path_str("/", &res_node);
+    kprintf("resolve err = %u\n", err);
+    ASSERT(err == VFS_ERR_NONE);
+
     vfs_node_t *new_node;
-    err = vfs_root_node()->ops->f_mknode(vfs_root_node(), &new_node, "abc",
-                                         VFS_NODE_FILE);
+    err = res_node->ops->f_mknode(res_node, &new_node, "abc", VFS_NODE_FILE);
     kprintf("mknode err = %u\n", err);
     ASSERT(err == VFS_ERR_NONE);
 
     vfs_dirent_t dirents[10];
     size_t num_dirents;
-    err = vfs_root_node()->ops->f_readdir(vfs_root_node(), dirents,
-                                          sizeof(dirents) / sizeof(dirents[0]),
-                                          &num_dirents);
+    err = res_node->ops->f_readdir(
+        res_node, dirents, sizeof(dirents) / sizeof(dirents[0]), &num_dirents);
     kprintf("readdir err = %u\n", err);
     ASSERT(err == VFS_ERR_NONE);
 
