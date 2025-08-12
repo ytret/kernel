@@ -128,16 +128,13 @@ vfs_err_t ramfs_node_mknode(vfs_node_t *dir_node, vfs_node_t **out_node,
     if (prv_ramfs_find_child(data, name, NULL)) { return VFS_ERR_NAME_TAKEN; }
 
     vfs_err_t err;
-    ramfs_data_t *new_data;
+    ramfs_data_t *new_data = NULL;
     if (node_type == VFS_NODE_FILE) {
         new_data = prv_ramfs_alloc_data(ctx, RAMFS_DATA_FILE);
         if (!new_data) { return VFS_ERR_FS_NO_SPACE; }
     } else if (node_type == VFS_NODE_DIR) {
         err = prv_ramfs_make_dir_data(ctx, data, &new_data);
-        if (err != VFS_ERR_NONE) {
-            prv_ramfs_free_data(ctx, new_data);
-            return err;
-        }
+        if (err != VFS_ERR_NONE) { return err; }
     } else {
         return VFS_ERR_NODE_BAD_ARGS;
     }
