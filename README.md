@@ -70,9 +70,9 @@ Optionally, pass `-GNinja` to `cmake` to use Ninja instead of GNU make.
     > t  # change the partition type
     >> F0516EBC-2D9E-4206-ABFC-B14EC7A626CE
     > w  # write changes and exit
-    $ sudo losetup -P loop0 hd.img
+    $ ./tools/loop-hd-image.sh
     $ sudo mkfs.ext4 /dev/loop0p1
-    $ sudo losetup -d loop0
+    $ sudo losetup -d /dev/loop0
     ```
 
 3. Run QEMU:
