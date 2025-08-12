@@ -3,7 +3,7 @@
 set -euo pipefail
 shopt -s inherit_errexit
 
-source "$(dirname "$(readlink "$0")")/bash/prelude.sh"
+source "$(dirname "$(readlink -f "$0")")/bash/prelude.sh"
 
 ISO_PATH="$REPO_DIR/build/kernel.iso"
 HD_PATH="$REPO_DIR/hd.img"

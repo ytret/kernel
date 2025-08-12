@@ -4,7 +4,7 @@
 set -euo pipefail
 shopt -s inherit_errexit
 
-source "$(dirname "$(readlink "$0")")/bash/prelude.sh"
+source "$(dirname "$(readlink -f "$0")")/bash/prelude.sh"
 
 declare -r DEFAULT_IMG_FILE="$REPO_DIR/hd.img"
 
