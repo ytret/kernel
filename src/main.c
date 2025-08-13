@@ -21,7 +21,11 @@
 
 #define MULTIBOOT_MAGIC_NUM 0x2BADB002
 
+// See link.ld.
+extern uint32_t ld_vmm_kernel_end;
+
 static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr);
+static uint32_t prv_main_find_heap_start(void);
 
 void main(uint32_t magic_num, uint32_t mbi_addr) {
     mbi_init(mbi_addr);
@@ -37,7 +41,8 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     idt_init();
 
-    heap_init();
+    const uint32_t heap_start = prv_main_find_heap_start();
+    heap_init(heap_start);
     mbi_save_on_heap();
 
     term_init_history();
@@ -90,4 +95,17 @@ static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr) {
                 MULTIBOOT_MAGIC_NUM);
         panic("booted by an unknown bootloader");
     }
+}
+
+static uint32_t prv_main_find_heap_start(void) {
+    const uint32_t kernel_end = (uint32_t)&ld_vmm_kernel_end;
+
+    uint32_t last_used_addr;
+    const mbi_mod_t *const last_mod = mbi_last_mod();
+    if (last_mod) { last_used_addr = last_mod->mod_end; }
+    if (!last_mod || kernel_end > last_used_addr) {
+        last_used_addr = kernel_end;
+    }
+
+    return (last_used_addr + 0x3FFFFF) & ~(0X3FFFFF);
 }

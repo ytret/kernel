@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-void heap_init(void);
+void heap_init(uint32_t start);
 uint32_t heap_end(void);
 
 void *heap_alloc(size_t num_bytes);

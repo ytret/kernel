@@ -4,7 +4,6 @@
 #include "heap.h"
 #include "kmutex.h"
 #include "kprintf.h"
-#include "mbi.h"
 #include "memfun.h"
 #include "panic.h"
 
@@ -46,18 +45,14 @@ static task_mutex_t g_heap_mutex;
 // See link.ld.
 extern uint32_t ld_vmm_kernel_end;
 
-static uint32_t find_heap_start(void);
-
 static tag_t *prv_heap_tag_from_addr(void *p_addr);
 static void print_tag(tag_t const *p_tag);
 static void check_tags(void);
 
-void heap_init(void) {
+void heap_init(uint32_t start) {
     mutex_init(&g_heap_mutex);
 
-    uint32_t heap_start = find_heap_start();
-
-    gp_heap_start = ((tag_t *)heap_start);
+    gp_heap_start = ((tag_t *)start);
     __builtin_memset(gp_heap_start, 0, TAG_SIZE);
     gp_heap_start->b_used = false;
     gp_heap_start->size = HEAP_SIZE - TAG_SIZE;
@@ -189,22 +184,6 @@ void heap_dump_tags(void) {
     }
 
     mutex_release(&g_heap_mutex);
-}
-
-static uint32_t find_heap_start(void) {
-    uint32_t last_used_addr;
-
-    mbi_mod_t const *p_last_mod = mbi_last_mod();
-    if (p_last_mod) {
-        last_used_addr = p_last_mod->mod_end;
-    } else {
-        last_used_addr = (uint32_t)&ld_vmm_kernel_end;
-    }
-
-    // Align to the next 4 MiB region.
-    uint32_t heap_start =
-        (last_used_addr + ((4 * 1024 * 1024) - 1)) & ~((4 * 1024 * 1024) - 1);
-    return heap_start;
 }
 
 static tag_t *prv_heap_tag_from_addr(void *p_addr) {
