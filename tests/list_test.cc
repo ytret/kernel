@@ -66,6 +66,25 @@ TEST_F(ListTest, TestAppendTwo) {
     exp_nodes({&node1, &node2});
 }
 
+TEST_F(ListTest, TestInsertAtStart) {
+    add_nodes({&node1, &node2});
+    list_insert(&list, NULL, &node3);
+    EXPECT_EQ(list_count(&list), 3);
+    exp_nodes({&node3, &node1, &node2});
+}
+TEST_F(ListTest, TestInsertAtMiddle) {
+    add_nodes({&node1, &node2});
+    list_insert(&list, &node1, &node3);
+    EXPECT_EQ(list_count(&list), 3);
+    exp_nodes({&node1, &node3, &node2});
+}
+TEST_F(ListTest, TestInsertAtEnd) {
+    add_nodes({&node1, &node2});
+    list_insert(&list, &node2, &node3);
+    EXPECT_EQ(list_count(&list), 3);
+    exp_nodes({&node1, &node2, &node3});
+}
+
 TEST_F(ListTest, TestClear) {
     add_nodes({&node1, &node2});
     list_clear(&list);
