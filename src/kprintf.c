@@ -15,10 +15,15 @@
 static void print_field(char const *p_field, size_t field_width,
                         bool b_zero_pad, bool b_left_just);
 
-void kprintf(char const *restrict p_format, ...) {
+int kprintf(char const *restrict p_format, ...) {
     va_list args;
     va_start(args, p_format);
+    const int ret = kvprintf(p_format, args);
+    va_end(args);
+    return ret;
+}
 
+int kvprintf(char const *restrict p_format, va_list args) {
     bool b_release_mutex = false;
     if (!term_owns_mutex()) {
         term_acquire_mutex();
@@ -137,7 +142,8 @@ void kprintf(char const *restrict p_format, ...) {
 
     if (b_release_mutex) { term_release_mutex(); }
 
-    va_end(args);
+    // FIXME: return the number of chars written to the terminal.
+    return 0;
 }
 
 static void print_field(char const *p_field, size_t field_width,
