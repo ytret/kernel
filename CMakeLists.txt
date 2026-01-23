@@ -15,6 +15,19 @@ set(CMAKE_C_FLAGS_DEBUG "-O0 -g")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -g")
 
 
+##################
+## Dependencies ##
+##################
+include(FetchContent)
+FetchContent_Declare(
+    ytalloc
+    GIT_REPOSITORY https://github.com/ytret/ytalloc.git
+    GIT_TAG adebde69cff4524f736c4454748873b75be39600
+    GIT_PROGRESS ON
+)
+FetchContent_MakeAvailable(ytalloc)
+
+
 ############
 ## Kernel ##
 ############
@@ -96,6 +109,7 @@ target_link_options(kernel PRIVATE
     ${OPTIMIZATION_FLAGS}
     -T${CMAKE_SOURCE_DIR}/src/link.ld
 )
+target_link_libraries(kernel ytalloc)
 set_target_properties(kernel PROPERTIES
     C_EXTENSIONS ON
     LINK_DEPENDS ${CMAKE_SOURCE_DIR}/src/link.ld
