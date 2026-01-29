@@ -24,6 +24,8 @@
 // See link.ld.
 extern uint32_t ld_vmm_kernel_end;
 
+static pmm_mmap_t g_mmap;
+
 static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr);
 static uint32_t prv_main_find_heap_start(void);
 
@@ -63,7 +65,11 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     }
 
     vmm_init();
-    pmm_init();
+
+    if (!mbi_fill_mmap(mbi_ptr(), &g_mmap)) {
+        panic("failed to fill the memory map");
+    }
+    pmm_init(&g_mmap);
 
     lapic_map_pages();
     ioapic_map_pages();

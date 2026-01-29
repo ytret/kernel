@@ -2,12 +2,9 @@
 
 #include "heap.h"
 #include "kprintf.h"
-#include "mbi.h"
 #include "panic.h"
 #include "pmm.h"
 #include "stack.h"
-
-#define MMAP_ENTRY_AVAILABLE 1
 
 // First free page.
 //
@@ -22,22 +19,11 @@ extern uint32_t ld_vmm_kernel_end;
 
 static stack_t g_page_stack;
 
-static void parse_mmap(uint32_t addr, uint32_t len);
-static void add_region(uint32_t start, uint32_t num_bytes);
+static void prv_pmm_add_region(uint32_t start, uint32_t num_bytes);
+static void prv_pmm_print_usage(void);
 
-static void print_usage(void);
-
-void pmm_init(void) {
-    mbi_t const *p_mbi = mbi_ptr();
-
-    if (!(p_mbi->flags & MBI_FLAG_MMAP)) {
-        panic_enter();
-        kprintf("pmm: memory map is not present in multiboot info struct\n");
-        panic("memory map unavailable");
-    }
-
-    kprintf("pmm: mmap_length = %d\n", p_mbi->mmap_length);
-    kprintf("pmm: mmap_addr = 0x%X\n", p_mbi->mmap_addr);
+void pmm_init(const pmm_mmap_t *mmap) {
+    kprintf("pmm: memory map entries: %d\n", mmap->num_entries);
 
     // Determine the first free page.
     g_first_free_page = ((heap_end() + 0xFFF) & ~0xFFF);
@@ -49,10 +35,32 @@ void pmm_init(void) {
     stack_new(&g_page_stack, &ld_pmm_stack_bottom, stack_size);
 
     // Parse the memory map, pushing available pages onto the stack.
-    parse_mmap(p_mbi->mmap_addr, p_mbi->mmap_length);
+    for (size_t idx = 0; idx < mmap->num_entries; idx++) {
+        const pmm_region_t *const region = &mmap->entries[idx];
+
+        if (region->start > UINT32_MAX) { continue; }
+        if (region->end_incl > UINT32_MAX) { continue; }
+
+        kprintf("pmm: region 0x%08X..0x%08X, type = %d\n",
+                (uint32_t)region->start, (uint32_t)region->end_incl,
+                region->type);
+
+        if (region->type != PMM_REGION_AVAILABLE) { continue; }
+
+        if (region->end_incl >= g_first_free_page) {
+            uint32_t start = region->start;
+            uint32_t len = region->end_incl - region->start + 1;
+            while (start < g_first_free_page) {
+                start += 4096;
+                len -= 4096;
+            }
+
+            prv_pmm_add_region((uint32_t)region->start, len);
+        }
+    }
 
     // Print how much of the stack is used.
-    print_usage();
+    prv_pmm_print_usage();
 }
 
 void pmm_push_page(uint32_t addr) {
@@ -81,42 +89,7 @@ uint32_t pmm_pop_page(void) {
     return stack_pop(&g_page_stack);
 }
 
-static void parse_mmap(uint32_t addr, uint32_t map_len) {
-    uint32_t byte = 0;
-    while (byte < map_len) {
-        uint32_t const *p_entry = ((uint32_t const *)(addr + byte));
-
-        uint32_t size = *(p_entry + 0);
-        uint64_t base_addr = *((uint64_t const *)(p_entry + 1));
-        uint64_t length = *((uint64_t const *)(p_entry + 3));
-        uint32_t type = *(p_entry + 5);
-
-        uint64_t end = (base_addr + length);
-
-        kprintf("pmm: size = %d, addr = 0x%X, end = 0x%X, type = %d\n", size,
-                ((uint32_t)base_addr), ((uint32_t)end), type);
-
-        if ((base_addr > ((uint64_t)UINT_MAX)) ||
-            (length > ((uint64_t)UINT_MAX)) || (end > ((uint64_t)UINT_MAX))) {
-            kprintf("pmm: region lies outside of 4 GiB memory, ignoring it\n");
-        } else if (MMAP_ENTRY_AVAILABLE == type) {
-            if (end < g_first_free_page) {
-                kprintf("pmm: region is below the first free page, ignoring"
-                        " it\n");
-            } else {
-                while (base_addr < g_first_free_page) {
-                    base_addr += 4096;
-                    length -= 4096;
-                }
-                add_region(((uint32_t)base_addr), ((uint32_t)length));
-            }
-        }
-
-        byte += (4 + size);
-    }
-}
-
-static void add_region(uint32_t start, uint32_t num_bytes) {
+static void prv_pmm_add_region(uint32_t start, uint32_t num_bytes) {
     for (uint32_t page = start; page < (start + num_bytes); page += 4096) {
         pmm_push_page(page);
     }
@@ -124,7 +97,7 @@ static void add_region(uint32_t start, uint32_t num_bytes) {
     kprintf("pmm: added %u bytes starting at 0x%X\n", num_bytes, start);
 }
 
-static void print_usage(void) {
+static void prv_pmm_print_usage(void) {
     uint32_t used_perc =
         (100 * ((uint32_t)(g_page_stack.p_top_max - g_page_stack.p_top)) /
          ((uint32_t)(g_page_stack.p_top_max - g_page_stack.p_bottom)));

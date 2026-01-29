@@ -57,6 +57,42 @@ mbi_t const *mbi_ptr(void) {
     return gp_mbi;
 }
 
+bool mbi_fill_mmap(const mbi_t *mbi, pmm_mmap_t *mmap) {
+    if (!(mbi->flags & MBI_FLAG_MMAP)) { return false; }
+
+    const uint32_t map_addr = mbi->mmap_addr;
+    const uint32_t map_len = mbi->mmap_length;
+
+    uint32_t offset = 0;
+    size_t pmm_idx = 0;
+    while (offset < map_len && pmm_idx < PMM_MMAP_MAX_ENTRIES) {
+        const mbi_mmap_entry_t *const mbi_entry =
+            (const mbi_mmap_entry_t *)(map_addr + offset);
+        pmm_region_t *const pmm_entry = &mmap->entries[pmm_idx];
+
+        pmm_region_type_t pmm_type;
+        switch (mbi_entry->type) {
+        case MBI_MMAP_AVAILABLE:
+            pmm_type = PMM_REGION_AVAILABLE;
+            break;
+        default:
+            pmm_type = PMM_REGION_RESERVED;
+            break;
+        }
+
+        pmm_entry->type = pmm_type;
+        pmm_entry->start = mbi_entry->base_addr;
+        pmm_entry->end_incl = (mbi_entry->base_addr - 1) + mbi_entry->length;
+
+        offset += 4 + mbi_entry->size;
+        pmm_idx++;
+    }
+
+    mmap->num_entries = pmm_idx;
+
+    return true;
+}
+
 size_t mbi_num_mods(void) {
     if (gp_mbi->flags & MBI_FLAG_MODS) {
         return gp_mbi->mods_count;

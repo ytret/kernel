@@ -3,6 +3,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "pmm.h"
+
 #define MBI_FLAG_CMDLINE  (1 << 2)
 #define MBI_FLAG_MODS     (1 << 3)
 #define MBI_FLAG_MMAP     (1 << 6)
@@ -73,10 +75,26 @@ typedef struct [[gnu::packed]] {
     uint32_t reserved;
 } mbi_mod_t;
 
+typedef enum {
+    MBI_MMAP_AVAILABLE = 1,
+    MBI_MMAP_ACPI_USABLE = 3,
+    MBI_MMAP_RESERVED = 4,
+    MBI_MMAP_DEFECTIVE = 5,
+} mbi_mmap_type_t;
+
+typedef struct {
+    uint32_t size;
+    uint64_t base_addr;
+    uint64_t length;
+    uint32_t type;
+} mbi_mmap_entry_t;
+
 void mbi_init(uint32_t mbi_addr);
 void mbi_save_on_heap(void);
 
 mbi_t const *mbi_ptr(void);
+
+bool mbi_fill_mmap(const mbi_t *mbi, pmm_mmap_t *mmap);
 
 size_t mbi_num_mods(void);
 mbi_mod_t const *mbi_nth_mod(size_t idx);
