@@ -69,7 +69,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     if (!mbi_fill_mmap(mbi_ptr(), &g_mmap)) {
         panic("failed to fill the memory map");
     }
-    pmm_init(&g_mmap);
+    pmm_init(&g_mmap, heap_end());
 
     lapic_map_pages();
     ioapic_map_pages();

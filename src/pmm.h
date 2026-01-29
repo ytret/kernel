@@ -21,7 +21,7 @@ typedef struct {
     pmm_region_t entries[PMM_MMAP_MAX_ENTRIES];
 } pmm_mmap_t;
 
-void pmm_init(const pmm_mmap_t *mmap);
+void pmm_init(const pmm_mmap_t *mmap, uint32_t first_free_page);
 
 void pmm_push_page(uint32_t addr);
 uint32_t pmm_pop_page(void);
