@@ -159,8 +159,8 @@ static void prv_pmm_print_mmap(const pmm_mmap_t *mmap) {
         pmm_region_t *const region =
             LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
 
-        kprintf("pmm: entry %u: [0x%08x_%08x; 0x%08x_%08x) type '%s'\n",
-                idx, (uint32_t)(region->start >> 32), (uint32_t)region->start,
+        kprintf("pmm: entry %u: [0x%08x_%08x; 0x%08x_%08x) type '%s'\n", idx,
+                (uint32_t)(region->start >> 32), (uint32_t)region->start,
                 (uint32_t)(region->end_incl >> 32), (uint32_t)region->end_incl,
                 prv_pmm_region_type_name(region->type));
     }
@@ -194,6 +194,8 @@ static const char *prv_pmm_region_type_name(pmm_region_type_t region_type) {
 static void prv_pmm_reserve_lower_memory(pmm_mmap_t *mmap) {
     if (PMM_RESERVE_LOWER_BYTES == 0) { return; }
 
+    size_t cnt_prev_available = 0;
+
     // Find the last region that crosses the boundary at
     // PMM_RESERVE_LOWER_BYTES.
     pmm_region_t *last_region;
@@ -212,17 +214,22 @@ static void prv_pmm_reserve_lower_memory(pmm_mmap_t *mmap) {
         pmm_region_t *const region =
             LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
         if (region->type == PMM_REGION_AVAILABLE) {
+#if 0
             kprintf(
                 "pmm: region 0x%08x_%08x .. 0x%08x_%08x available, reserving\n",
                 (uint32_t)(region->start >> 32), (uint32_t)region->start,
                 (uint32_t)(region->end_incl >> 32), (uint32_t)region->end_incl);
+#endif
             region->type = PMM_REGION_KERNEL_RESERVED;
+            cnt_prev_available += region->end_incl - region->start + 1;
         } else {
+#if 0
             kprintf("pmm: region 0x%08x_%08x .. 0x%08x_%08x already not "
                     "available, skipping\n",
                     (uint32_t)(region->start >> 32), (uint32_t)region->start,
                     (uint32_t)(region->end_incl >> 32),
                     (uint32_t)region->end_incl);
+#endif
             continue;
         }
     }
@@ -240,9 +247,12 @@ static void prv_pmm_reserve_lower_memory(pmm_mmap_t *mmap) {
 
         last_region->end_incl = PMM_RESERVE_LOWER_BYTES - 1;
         last_region->type = PMM_REGION_KERNEL_RESERVED;
+        cnt_prev_available += last_region->end_incl - last_region->start + 1;
     }
 
-    kprintf("pmm: reserved lower %u bytes\n", PMM_RESERVE_LOWER_BYTES);
+    kprintf(
+        "pmm: reserved lower %u bytes, %u of which were previously available\n",
+        PMM_RESERVE_LOWER_BYTES, cnt_prev_available);
 }
 
 static void prv_pmm_count_available_memory(pmm_ctx_t *pmm) {
