@@ -22,12 +22,16 @@
 #define MULTIBOOT_MAGIC_NUM 0x2BADB002
 
 // See link.ld.
+extern uint32_t ld_vmm_kernel_start;
 extern uint32_t ld_vmm_kernel_end;
 
 static pmm_mmap_t g_mmap;
+static pmm_region_t g_kernel_region;
 
 static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr);
-static uint32_t prv_main_find_heap_start(void);
+static uint32_t prv_main_find_first_free_page(void);
+static void prv_main_add_kernel_region(pmm_mmap_t *mmap, uintptr_t region_start,
+                                       uintptr_t region_end);
 
 void main(uint32_t magic_num, uint32_t mbi_addr) {
     mbi_init(mbi_addr);
@@ -43,12 +47,24 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     idt_init();
 
-    const uint32_t heap_start = prv_main_find_heap_start();
+    const uint32_t heap_start = prv_main_find_first_free_page();
     heap_init(heap_start);
     mbi_save_on_heap();
 
     term_init_history();
-    // term_clear();
+    term_clear();
+
+    if (!mbi_fill_mmap(mbi_ptr(), &g_mmap)) {
+        panic("failed to fill the memory map");
+    }
+    prv_main_add_kernel_region(&g_mmap, (uint32_t)&ld_vmm_kernel_start,
+                               prv_main_find_first_free_page());
+    pmm_init(&g_mmap);
+
+    kprintf("main: intentional halt\n");
+    for (;;) {
+        __asm__("hlt");
+    }
 
     acpi_init();
     lapic_init(true);
@@ -65,11 +81,6 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     }
 
     vmm_init();
-
-    if (!mbi_fill_mmap(mbi_ptr(), &g_mmap)) {
-        panic("failed to fill the memory map");
-    }
-    pmm_init(&g_mmap, heap_end());
 
     lapic_map_pages();
     ioapic_map_pages();
@@ -103,7 +114,7 @@ static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr) {
     }
 }
 
-static uint32_t prv_main_find_heap_start(void) {
+static uint32_t prv_main_find_first_free_page(void) {
     const uint32_t kernel_end = (uint32_t)&ld_vmm_kernel_end;
 
     uint32_t last_used_addr;
@@ -114,4 +125,57 @@ static uint32_t prv_main_find_heap_start(void) {
     }
 
     return (last_used_addr + 0x3FFFFF) & ~(0X3FFFFF);
+}
+
+static void prv_main_add_kernel_region(pmm_mmap_t *mmap, uintptr_t region_start,
+                                       uintptr_t region_end_excl) {
+    if (region_end_excl == 0) {
+        panic("argument 'region_end_excl' value must not be 0");
+    }
+
+    const uintptr_t region_end_incl = region_end_excl - 1;
+
+    // It is assumed that [region_start, region_end_excl) are residing in a
+    // single memory map entry. Otherwise this function will fail.
+    pmm_region_t *found_region;
+    LIST_FIND(&mmap->entry_list, found_region, pmm_region_t, node,
+              region->start <= region_start &&
+                  region_end_incl <= region->end_incl,
+              region);
+    if (!found_region) {
+        kprintf("main: could not find a single region that covers [0x%08x; "
+                "0x%08x)\n",
+                region_start, region_end_excl);
+        panic("not implemented");
+    }
+
+    g_kernel_region.start = region_start;
+    g_kernel_region.end_incl = region_end_incl;
+    g_kernel_region.type = PMM_REGION_KERNEL_AND_MODS;
+
+    kprintf("main: added kernel region 0x%08x_%08x .. 0x%08x_%08x\n",
+            (uint32_t)(g_kernel_region.start >> 32),
+            (uint32_t)g_kernel_region.start,
+            (uint32_t)(g_kernel_region.end_incl >> 32),
+            (uint32_t)g_kernel_region.end_incl);
+
+    if (found_region->start < region_start) {
+        // [original region]
+        //    [   kernel   ]
+        found_region->end_incl = region_start - 1;
+        list_insert(&mmap->entry_list, &found_region->node,
+                    &g_kernel_region.node);
+    } else if (found_region->end_incl > region_end_incl) {
+        // [original region]
+        // [kernel]
+        found_region->start = region_end_excl;
+        list_insert(&mmap->entry_list, found_region->node.p_prev,
+                    &g_kernel_region.node);
+    } else {
+        // [original region]
+        // [    kernel     ]
+        list_insert(&mmap->entry_list, &found_region->node,
+                    &g_kernel_region.node);
+        list_remove(&mmap->entry_list, &found_region->node);
+    }
 }

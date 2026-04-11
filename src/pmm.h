@@ -3,25 +3,36 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define PMM_MMAP_MAX_ENTRIES 20
+#include "list.h"
 
 typedef enum {
     PMM_REGION_AVAILABLE,
     PMM_REGION_RESERVED,
+
+    PMM_REGION_KERNEL_RESERVED,
+    PMM_REGION_KERNEL_AND_MODS,
+    PMM_REGION_STATIC_HEAP,
 } pmm_region_type_t;
 
 typedef struct {
+    list_node_t node;
     pmm_region_type_t type;
     uint64_t start;
     uint64_t end_incl;
+
+    void *v_pools;
+    size_t num_pools;
 } pmm_region_t;
 
 typedef struct {
-    size_t num_entries;
-    pmm_region_t entries[PMM_MMAP_MAX_ENTRIES];
+    list_t entry_list;
 } pmm_mmap_t;
 
-void pmm_init(const pmm_mmap_t *mmap, uint32_t first_free_page);
+void pmm_init(const pmm_mmap_t *mmap);
+void pmm_print_mmap(void);
+
+void *pmm_alloc_pages(size_t num_pages);
+void pmm_free_pages(void *ptr, size_t num_pages);
 
 void pmm_push_page(uint32_t addr);
 uint32_t pmm_pop_page(void);

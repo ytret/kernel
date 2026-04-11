@@ -5,6 +5,8 @@
 
 #include "pmm.h"
 
+#define MBI_PMM_MMAP_MAX_ENTRIES 20
+
 #define MBI_FLAG_CMDLINE  (1 << 2)
 #define MBI_FLAG_MODS     (1 << 3)
 #define MBI_FLAG_MMAP     (1 << 6)

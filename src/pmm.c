@@ -1,102 +1,434 @@
 #include "kprintf.h"
+#include "memfun.h"
 #include "panic.h"
 #include "pmm.h"
-#include "stack.h"
+#include "ytalloc/ytalloc.h"
 
-// Variables from the linker script.
-extern uint32_t ld_pmm_stack_bottom;
-extern uint32_t ld_pmm_stack_top;
-extern uint32_t ld_vmm_kernel_end;
+#define PMM_PAGE_SIZE 4096
 
-static stack_t g_page_stack;
+#define PMM_RESERVE_LOWER_BYTES (4U * 1024U * 1024U)
 
-static void prv_pmm_add_region(uint32_t start, uint32_t num_bytes);
-static void prv_pmm_print_usage(void);
+#define PMM_BUDDY_MAX_ORDERS     20
+#define PMM_LOG2_MIN_POOL_SIZE   22 // log2 of 4 MiB
+#define PMM_MIN_POOL_SIZE        (1 << PMM_LOG2_MIN_POOL_SIZE)
+#define PMM_MAX_POOLS_PER_REGION 16
 
-void pmm_init(const pmm_mmap_t *mmap, uint32_t first_free_page) {
-    kprintf("pmm: memory map entries: %d\n", mmap->num_entries);
+typedef struct {
+    uint32_t start_addr;
+    size_t size;
+    alloc_buddy_t *heap;
+} pmm_buddy_pool_t;
 
-    // Prepare the free page stack.
-    const size_t stack_size = ((size_t)(((uintptr_t)&ld_pmm_stack_top) -
-                                        ((uintptr_t)&ld_pmm_stack_bottom)));
-    stack_new(&g_page_stack, &ld_pmm_stack_bottom, stack_size);
+typedef struct {
+    size_t available_ram_size;
+    alloc_static_t static_heap;
 
-    // Parse the memory map, pushing available pages onto the stack.
-    for (size_t idx = 0; idx < mmap->num_entries; idx++) {
-        const pmm_region_t *const region = &mmap->entries[idx];
+    pmm_mmap_t mmap;
+    /// Same as #mmap, but consists only of available RAM regions.
+    pmm_mmap_t alloc_mmap;
+} pmm_ctx_t;
 
-        if (region->start > UINT32_MAX) { continue; }
-        if (region->end_incl > UINT32_MAX) { continue; }
+static pmm_ctx_t g_pmm;
+static pmm_region_t g_pmm_first_region_after_lower_mem;
+static pmm_region_t pmm_static_heap_region;
 
-        kprintf("pmm: region 0x%08X..0x%08X, type = %d\n",
-                (uint32_t)region->start, (uint32_t)region->end_incl,
-                region->type);
+static void prv_pmm_print_mmap(const pmm_mmap_t *mmap);
+static void prv_pmm_reserve_lower_memory(pmm_mmap_t *mmap);
+static void prv_pmm_count_available_memory(pmm_ctx_t *pmm);
+static void prv_pmm_init_static_heap(pmm_ctx_t *pmm);
+static void prv_pmm_init_alloc_mmap(pmm_ctx_t *pmm);
+static void prv_pmm_init_pools(pmm_ctx_t *pmm);
+static void prv_pmm_build_region_pools(pmm_ctx_t *pmm, pmm_region_t *region);
+static void prv_pmm_partition_region_pools(pmm_ctx_t *pmm, pmm_region_t *region,
+                                           uint32_t start, uint32_t size);
+static alloc_buddy_t *prv_pmm_create_pool(pmm_ctx_t *pmm, uint32_t start,
+                                          size_t size, uint32_t *out_start,
+                                          uint32_t *out_size);
 
-        if (region->type != PMM_REGION_AVAILABLE) { continue; }
+static void *prv_pmm_alloc_in_region(pmm_region_t *region, size_t num_pages);
+static void *prv_pmm_alloc_in_pool(alloc_buddy_t *pool, size_t num_pages);
 
-        if (region->end_incl >= first_free_page) {
-            uint32_t start = region->start;
-            uint32_t len = region->end_incl - region->start + 1;
-            while (start < first_free_page) {
-                start += 4096;
-                len -= 4096;
-            }
+static size_t prv_pmm_calc_log2(size_t num) {
+    size_t log2 = 0;
+    while (num >>= 1) {
+        log2++;
+    }
+    return log2;
+}
 
-            prv_pmm_add_region((uint32_t)region->start, len);
-        }
+void pmm_init(const pmm_mmap_t *mmap) {
+    // NOTE: this is a shallow copy, the list nodes are not copied.
+    kmemcpy(&g_pmm.mmap, mmap, sizeof(*mmap));
+
+    prv_pmm_reserve_lower_memory(&g_pmm.mmap);
+    prv_pmm_count_available_memory(&g_pmm);
+    prv_pmm_init_static_heap(&g_pmm);
+    prv_pmm_init_alloc_mmap(&g_pmm);
+    prv_pmm_init_pools(&g_pmm);
+
+    kprintf("pmm: memory map upon init exit:\n");
+    pmm_print_mmap();
+
+    kprintf("pmm: static heap has %u bytes left\n",
+            g_pmm.static_heap.end - g_pmm.static_heap.next);
+}
+
+void pmm_print_mmap(void) {
+    prv_pmm_print_mmap(&g_pmm.mmap);
+}
+
+void *pmm_alloc_pages(size_t num_pages) {
+    for (list_node_t *node = g_pmm.alloc_mmap.entry_list.p_first_node;
+         node != NULL; node = node->p_next) {
+        pmm_region_t *const region =
+            LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
+
+        void *const ptr = prv_pmm_alloc_in_region(region, num_pages);
+        if (ptr) { return ptr; }
     }
 
-    // Print how much of the stack is used.
-    prv_pmm_print_usage();
+    kprintf("pmm: failed to allocate %u pages\n", num_pages);
+    panic("out of memory");
+}
+
+void pmm_free_pages(void *ptr, size_t num_pages) {
+    (void)ptr;
+    (void)num_pages;
+    panic("not implemented");
 }
 
 void pmm_push_page(uint32_t addr) {
-    if (addr & 0xFFF) {
-        panic_enter();
-        kprintf("pmm: cannot push page: addr is not page-aligned\n");
-        panic("unexpected behavior");
-    }
-
-    if (stack_is_full(&g_page_stack)) {
-        // Cannot push the page - the stack is full.
-        return;
-    }
-
-    stack_push(&g_page_stack, addr);
+    (void)addr;
+    panic("not implemented");
 }
 
 uint32_t pmm_pop_page(void) {
-    if (stack_is_empty(&g_page_stack)) {
-        // Cannot pop the page - the stack is empty.
-        panic_enter();
-        kprintf("pmm: cannot pop page: stack is empty\n");
-        panic("no free memory");
-    }
-
-    return stack_pop(&g_page_stack);
+    panic("not implemented");
+    return 0;
 }
 
-static void prv_pmm_add_region(uint32_t start, uint32_t num_bytes) {
-    for (uint32_t page = start; page < (start + num_bytes); page += 4096) {
-        pmm_push_page(page);
-    }
+static void prv_pmm_print_mmap(const pmm_mmap_t *mmap) {
+    size_t idx = 0;
+    for (list_node_t *node = mmap->entry_list.p_first_node; node != NULL;
+         node = node->p_next, idx++) {
+        pmm_region_t *const region =
+            LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
 
-    kprintf("pmm: added %u bytes starting at 0x%X\n", num_bytes, start);
+        kprintf("pmm: entry %u: start 0x%08x_%08x end 0x%08x_%08x type %u\n",
+                idx, (uint32_t)(region->start >> 32), (uint32_t)region->start,
+                (uint32_t)(region->end_incl >> 32), (uint32_t)region->end_incl,
+                region->type);
+    }
 }
 
-static void prv_pmm_print_usage(void) {
-    uint32_t used_perc =
-        (100 * ((uint32_t)(g_page_stack.p_top_max - g_page_stack.p_top)) /
-         ((uint32_t)(g_page_stack.p_top_max - g_page_stack.p_bottom)));
-    kprintf("pmm: stack is %u%% used", used_perc);
+/**
+ * Types the lower memory as #PMM_REGION_KERNEL_RESERVED.
+ *
+ * If some memory was already typed as something other than
+ * #PMM_REGION_AVAILABLE, it leaves it be.
+ *
+ * See #PMM_RESERVE_LOWER_BYTES.
+ */
+static void prv_pmm_reserve_lower_memory(pmm_mmap_t *mmap) {
+    if (PMM_RESERVE_LOWER_BYTES == 0) { return; }
 
-    uint32_t num_bytes =
-        (4096 * ((uint32_t)(g_page_stack.p_top_max - g_page_stack.p_top)));
-    if (num_bytes < 10 * 1024) {
-        kprintf(", holding %u bytes\n", num_bytes);
-    } else if (num_bytes <= (10 * 1024 * 1024)) {
-        kprintf(", holding %u KiB\n", (num_bytes / 1024));
-    } else {
-        kprintf(", holding %u MiB\n", (num_bytes / (1024 * 1024)));
+    // Find the last region that crosses the boundary at
+    // PMM_RESERVE_LOWER_BYTES.
+    pmm_region_t *last_region;
+    LIST_FIND(&mmap->entry_list, last_region, pmm_region_t, node,
+              region->end_incl >= PMM_RESERVE_LOWER_BYTES - 1, region);
+    if (!last_region) {
+        kprintf("pmm: could not find the region that crosses byte 0x%08x\n",
+                PMM_RESERVE_LOWER_BYTES);
+        panic("unexpected behavior");
     }
+
+    // Iterate backwards from `last_region` and mark every available RAM region
+    // as kernel reserved.
+    for (list_node_t *node = last_region->node.p_prev; node != NULL;
+         node = node->p_prev) {
+        pmm_region_t *const region =
+            LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
+        if (region->type == PMM_REGION_AVAILABLE) {
+            kprintf(
+                "pmm: region 0x%08x_%08x .. 0x%08x_%08x available, reserving\n",
+                (uint32_t)(region->start >> 32), (uint32_t)region->start,
+                (uint32_t)(region->end_incl >> 32), (uint32_t)region->end_incl);
+            region->type = PMM_REGION_KERNEL_RESERVED;
+        } else {
+            kprintf("pmm: region 0x%08x_%08x .. 0x%08x_%08x already not "
+                    "available, skipping\n",
+                    (uint32_t)(region->start >> 32), (uint32_t)region->start,
+                    (uint32_t)(region->end_incl >> 32),
+                    (uint32_t)region->end_incl);
+            continue;
+        }
+    }
+
+    if (last_region->type == PMM_REGION_AVAILABLE) {
+        // Split `last_region` into two parts: kernel reserved and available.
+        if (last_region->end_incl != PMM_RESERVE_LOWER_BYTES - 1) {
+            g_pmm_first_region_after_lower_mem.start = PMM_RESERVE_LOWER_BYTES;
+            g_pmm_first_region_after_lower_mem.end_incl = last_region->end_incl;
+            g_pmm_first_region_after_lower_mem.type = PMM_REGION_AVAILABLE;
+
+            list_insert(&mmap->entry_list, &last_region->node,
+                        &g_pmm_first_region_after_lower_mem.node);
+        }
+
+        last_region->end_incl = PMM_RESERVE_LOWER_BYTES - 1;
+        last_region->type = PMM_REGION_KERNEL_RESERVED;
+    }
+
+    kprintf("pmm: reserved lower %u bytes\n", PMM_RESERVE_LOWER_BYTES);
+}
+
+static void prv_pmm_count_available_memory(pmm_ctx_t *pmm) {
+    size_t available_ram_size = 0;
+
+    for (list_node_t *node = pmm->mmap.entry_list.p_first_node; node != NULL;
+         node = node->p_next) {
+        pmm_region_t *const region =
+            LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
+        const size_t region_size = region->end_incl - region->start + 1;
+
+        if (region->type == PMM_REGION_AVAILABLE) {
+            available_ram_size += region_size;
+        }
+    }
+
+    pmm->available_ram_size = available_ram_size;
+
+    const size_t available_ram_size_kib = available_ram_size / 1024;
+    const size_t available_ram_size_mib = available_ram_size_kib / 1024;
+    const size_t available_ram_size_gib = available_ram_size_mib / 1024;
+    kprintf("pmm: available RAM size = %u B or %u KiB or %u MiB or %u GiB\n",
+            available_ram_size, available_ram_size_kib, available_ram_size_mib,
+            available_ram_size_gib);
+}
+
+static void prv_pmm_init_static_heap(pmm_ctx_t *pmm) {
+    /*
+     * For each available physical memory region there could be several buddy
+     * allocator pools. If the order 0 block is a single page (4 KiB), we need
+     * 20 orders to cover 4 GiB.
+     *
+     * A single buddy allocator pool requires (on a 64-bit system):
+     * - alloc_buddy_t (64 bytes on a 64-bit system),
+     * - free head pointers array (given 20 orders, 20 * 8 = 160 bytes),
+     * - usage bitmap (num_order0_blocks / 8 1/B =
+     *                 = region_size / (4 KiB * 8 1/B)).
+     *
+     * The final formula for the static heap size required for these structures:
+     * 224 B + region_size / 32 KiB/B.
+     *
+     * Approximation of the static heap size required for these structures:
+     * - If the RAM size is 16 MiB: 224 B + 16 MiB / 32 KiB/B =~ 0.7 KiB
+     *   (0.004%).
+     * - 128 MiB: 128 MiB / 32 KiB/B =~ 4 KiB (0.003%).
+     * - 4 GiB: 4 GiB / 32 KiB/B =~ 128 KiB (0.003%).
+     * - x B: x * 0.003%
+     *
+     * So we use 0.01% of the available RAM for the static heap.
+     */
+
+    size_t static_heap_size = pmm->available_ram_size / 10000;
+    if (static_heap_size < 1024) { static_heap_size = 1024; }
+
+    pmm_region_t *found_region;
+    LIST_FIND(&pmm->mmap.entry_list, found_region, pmm_region_t, node,
+              (region->type == PMM_REGION_AVAILABLE &&
+               (region->end_incl - region->start + 1) >= static_heap_size),
+              region);
+    if (!found_region) {
+        kprintf("pmm: could not find an available RAM region for a static heap "
+                "of size %u\n",
+                static_heap_size);
+        panic("out of memory");
+    }
+
+    pmm_static_heap_region.start = found_region->start;
+    pmm_static_heap_region.end_incl =
+        found_region->start + static_heap_size - 1;
+    pmm_static_heap_region.type = PMM_REGION_STATIC_HEAP;
+
+    found_region->start += static_heap_size;
+
+    list_insert(&pmm->mmap.entry_list, found_region->node.p_prev,
+                &pmm_static_heap_region.node);
+
+    kprintf("pmm: static heap region: 0x%08x_%08x .. 0x%08x_%08x\n",
+            (uint32_t)(pmm_static_heap_region.start >> 32),
+            (uint32_t)pmm_static_heap_region.start,
+            (uint32_t)(pmm_static_heap_region.end_incl >> 32),
+            (uint32_t)pmm_static_heap_region.end_incl);
+
+    if (pmm_static_heap_region.end_incl > UINT32_MAX) {
+        kprintf("pmm: static heap region end is larger than UINT32_MAX\n");
+        panic("not implemented");
+    }
+
+    alloc_static_init(&pmm->static_heap,
+                      (void *)(uintptr_t)pmm_static_heap_region.start,
+                      static_heap_size);
+}
+
+/**
+ * Initialize the available RAM memory map.
+ *
+ * See #pmm_ctx_t.alloc_mmap.
+ */
+static void prv_pmm_init_alloc_mmap(pmm_ctx_t *pmm) {
+    for (list_node_t *node = pmm->mmap.entry_list.p_first_node; node != NULL;
+         node = node->p_next) {
+        pmm_region_t *const region =
+            LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
+        if (region->type != PMM_REGION_AVAILABLE) { continue; }
+
+        pmm_region_t *const alloc_region =
+            alloc_static(&pmm->static_heap, sizeof(pmm_region_t));
+        if (!alloc_region) {
+            kprintf("pmm: failed to statically allocate %u bytes for "
+                    "pmm_region_t\n",
+                    sizeof(pmm_region_t));
+            panic("out of memory");
+        }
+
+        kmemcpy(alloc_region, region, sizeof(*region));
+        kmemset(&alloc_region->node, 0, sizeof(list_node_t));
+
+        list_append(&pmm->alloc_mmap.entry_list, &alloc_region->node);
+    }
+}
+
+static void prv_pmm_init_pools(pmm_ctx_t *pmm) {
+    for (list_node_t *node = pmm->alloc_mmap.entry_list.p_first_node;
+         node != NULL; node = node->p_next) {
+        pmm_region_t *const region =
+            LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
+
+        if (region->end_incl > UINT32_MAX) {
+            // TODO: print something?
+            continue;
+        }
+
+        prv_pmm_build_region_pools(pmm, region);
+        kprintf("pmm: region 0x%08x .. 0x%08x has %u buddy pools\n",
+                (uint32_t)region->start, (uint32_t)region->end_incl,
+                region->num_pools);
+    }
+}
+
+static void prv_pmm_build_region_pools(pmm_ctx_t *pmm, pmm_region_t *region) {
+    const size_t array_size = PMM_MAX_POOLS_PER_REGION * sizeof(void *);
+    region->num_pools = 0;
+    region->v_pools = alloc_static(&pmm->static_heap, array_size);
+    if (!region->v_pools) {
+        kprintf("pmm: failed to statically allocate %u bytes for the pool "
+                "pointers array\n",
+                array_size);
+        panic("out of memory");
+    }
+
+    prv_pmm_partition_region_pools(pmm, region, region->start,
+                                   region->end_incl + 1);
+}
+
+static void prv_pmm_partition_region_pools(pmm_ctx_t *pmm, pmm_region_t *region,
+                                           uint32_t start, uint32_t end_excl) {
+    const size_t size = end_excl - start;
+    if (size < PMM_MIN_POOL_SIZE) { return; }
+    if (region->num_pools >= PMM_MAX_POOLS_PER_REGION) { return; }
+
+#if 0
+    kprintf("pmm: init pools for region 0x%08x .. 0x%08x\n", start,
+            start + size - 1);
+#endif
+
+    uint32_t used_start;
+    uint32_t used_size;
+    alloc_buddy_t *const pool =
+        prv_pmm_create_pool(pmm, start, size, &used_start, &used_size);
+
+    alloc_buddy_t **const pools = region->v_pools;
+    pools[region->num_pools] = pool;
+    region->num_pools++;
+
+    prv_pmm_partition_region_pools(pmm, region, start, used_start);
+    prv_pmm_partition_region_pools(pmm, region, used_start + used_size,
+                                   end_excl);
+}
+
+static alloc_buddy_t *prv_pmm_create_pool(pmm_ctx_t *pmm, uint32_t region_start,
+                                          size_t region_size,
+                                          uint32_t *used_start,
+                                          uint32_t *used_size) {
+    const uint32_t end = region_start + region_size;
+
+    size_t aligned_start = 0;
+    size_t block_size = 0;
+    size_t log2_size = prv_pmm_calc_log2(region_size);
+    if (log2_size < PMM_LOG2_MIN_POOL_SIZE) { return NULL; }
+    while (log2_size >= PMM_LOG2_MIN_POOL_SIZE) {
+        block_size = 1 << log2_size;
+        aligned_start = (region_start + (block_size - 1)) & ~(block_size - 1);
+        if (aligned_start + block_size <= end) { break; }
+        log2_size--;
+    }
+
+    if (used_start) { *used_start = aligned_start; }
+    if (used_size) { *used_size = block_size; }
+
+    alloc_buddy_t *const heap = alloc_static(&pmm->static_heap, sizeof(*heap));
+    if (!heap) {
+        kprintf("pmm: failed to statically allocate %u bytes for "
+                "alloc_buddy_t\n",
+                sizeof(*heap));
+        panic("out of memory");
+    }
+
+    const size_t free_heads_size = PMM_BUDDY_MAX_ORDERS * sizeof(uintptr_t);
+    void *const free_heads = alloc_static(&pmm->static_heap, free_heads_size);
+    if (!free_heads) {
+        kprintf("pmm: failed to statically allocate %u bytes for free "
+                "heads buffer\n",
+                free_heads_size);
+        panic("out of memory");
+    }
+
+    const size_t num_order0_blocks = block_size / YTALLOC_BUDDY_MIN_BLOCK_SIZE;
+    const size_t bitmap_size = ((num_order0_blocks + 7) & ~7) / 8;
+    void *const bitmap = alloc_static(&pmm->static_heap, bitmap_size);
+    if (!bitmap) {
+        kprintf("pmm: failed to statically allocate %u bytes for bitmap "
+                "buffer\n",
+                bitmap_size);
+        panic("out of memory");
+    }
+
+#if 0
+    kprintf("pmm: init pool at 0x%08x size 0x%08x\n", aligned_start,
+            block_size);
+#endif
+    alloc_buddy_init(heap, (void *)aligned_start, block_size, free_heads,
+                     free_heads_size, bitmap, bitmap_size);
+
+    return heap;
+}
+
+static void *prv_pmm_alloc_in_region(pmm_region_t *region, size_t num_pages) {
+    alloc_buddy_t **const pools = region->v_pools;
+
+    for (size_t idx = 0; idx < region->num_pools; idx++) {
+        alloc_buddy_t *const pool = pools[idx];
+        void *const ptr = prv_pmm_alloc_in_pool(pool, num_pages);
+        if (ptr) { return ptr; }
+    }
+
+    return NULL;
+}
+
+static void *prv_pmm_alloc_in_pool(alloc_buddy_t *pool, size_t num_pages) {
+    const size_t size = PMM_PAGE_SIZE * num_pages;
+    return alloc_buddy(pool, size);
 }

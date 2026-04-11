@@ -4,8 +4,10 @@
 #include "mbi.h"
 #include "memfun.h"
 #include "panic.h"
+#include "pmm.h"
 
 static mbi_t *gp_mbi;
+static pmm_region_t g_mbi_pmm_regions[MBI_PMM_MMAP_MAX_ENTRIES];
 
 /*
  * Sets the internal MBI struct pointer for the mbi_* functions to use.
@@ -65,10 +67,10 @@ bool mbi_fill_mmap(const mbi_t *mbi, pmm_mmap_t *mmap) {
 
     uint32_t offset = 0;
     size_t pmm_idx = 0;
-    while (offset < map_len && pmm_idx < PMM_MMAP_MAX_ENTRIES) {
+    while (offset < map_len && pmm_idx < MBI_PMM_MMAP_MAX_ENTRIES) {
         const mbi_mmap_entry_t *const mbi_entry =
             (const mbi_mmap_entry_t *)(map_addr + offset);
-        pmm_region_t *const pmm_entry = &mmap->entries[pmm_idx];
+        pmm_region_t *const pmm_region = &g_mbi_pmm_regions[pmm_idx];
 
         pmm_region_type_t pmm_type;
         switch (mbi_entry->type) {
@@ -80,15 +82,15 @@ bool mbi_fill_mmap(const mbi_t *mbi, pmm_mmap_t *mmap) {
             break;
         }
 
-        pmm_entry->type = pmm_type;
-        pmm_entry->start = mbi_entry->base_addr;
-        pmm_entry->end_incl = (mbi_entry->base_addr - 1) + mbi_entry->length;
+        pmm_region->type = pmm_type;
+        pmm_region->start = mbi_entry->base_addr;
+        pmm_region->end_incl = (mbi_entry->base_addr - 1) + mbi_entry->length;
+
+        list_append(&mmap->entry_list, &g_mbi_pmm_regions[pmm_idx].node);
 
         offset += 4 + mbi_entry->size;
         pmm_idx++;
     }
-
-    mmap->num_entries = pmm_idx;
 
     return true;
 }
