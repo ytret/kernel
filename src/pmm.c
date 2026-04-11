@@ -1,8 +1,10 @@
+#include <ytalloc/ytalloc.h>
+
+#include "heap.h"
 #include "kprintf.h"
 #include "memfun.h"
 #include "panic.h"
 #include "pmm.h"
-#include "ytalloc/ytalloc.h"
 
 #define PMM_RESERVE_LOWER_BYTES (4U * 1024U * 1024U)
 
@@ -19,7 +21,7 @@ typedef struct {
 
 typedef struct {
     size_t available_ram_size;
-    alloc_static_t static_heap;
+    alloc_static_t *static_heap;
 
     pmm_mmap_t mmap;
     /// Same as #mmap, but consists only of available RAM regions.
@@ -66,6 +68,8 @@ void pmm_init(const pmm_mmap_t *mmap) {
     // NOTE: this is a shallow copy, the list nodes are not copied.
     kmemcpy(&g_pmm.mmap, mmap, sizeof(*mmap));
 
+    g_pmm.static_heap = heap_get_static_heap();
+
     prv_pmm_reserve_lower_memory(&g_pmm.mmap);
     prv_pmm_count_available_memory(&g_pmm);
     prv_pmm_init_static_heap(&g_pmm);
@@ -75,8 +79,9 @@ void pmm_init(const pmm_mmap_t *mmap) {
     kprintf("pmm: memory map upon init exit:\n");
     pmm_print_mmap();
 
-    const size_t static_size = g_pmm.static_heap.end - g_pmm.static_heap.start;
-    const size_t static_left = g_pmm.static_heap.end - g_pmm.static_heap.next;
+    const size_t static_size =
+        g_pmm.static_heap->end - g_pmm.static_heap->start;
+    const size_t static_left = g_pmm.static_heap->end - g_pmm.static_heap->next;
     kprintf("pmm: static heap has %u bytes left (%u %%)\n", static_left,
             100 * static_left / static_size);
 }
@@ -340,7 +345,7 @@ static void prv_pmm_init_static_heap(pmm_ctx_t *pmm) {
         panic("not implemented");
     }
 
-    alloc_static_init(&pmm->static_heap,
+    alloc_static_init(pmm->static_heap,
                       (void *)(uintptr_t)pmm_static_heap_region.start,
                       static_heap_size);
 }
@@ -358,7 +363,7 @@ static void prv_pmm_init_alloc_mmap(pmm_ctx_t *pmm) {
         if (region->type != PMM_REGION_AVAILABLE) { continue; }
 
         pmm_region_t *const alloc_region =
-            alloc_static(&pmm->static_heap, sizeof(pmm_region_t));
+            alloc_static(pmm->static_heap, sizeof(pmm_region_t));
         if (!alloc_region) {
             kprintf("pmm: failed to statically allocate %u bytes for "
                     "pmm_region_t\n",
@@ -406,7 +411,7 @@ static void prv_pmm_init_pools(pmm_ctx_t *pmm) {
 static void prv_pmm_build_region_pools(pmm_ctx_t *pmm, pmm_region_t *region) {
     const size_t array_size = PMM_MAX_POOLS_PER_REGION * sizeof(void *);
     region->num_pools = 0;
-    region->v_pools = alloc_static(&pmm->static_heap, array_size);
+    region->v_pools = alloc_static(pmm->static_heap, array_size);
     if (!region->v_pools) {
         kprintf("pmm: failed to statically allocate %u bytes for the pool "
                 "pointers array\n",
@@ -487,7 +492,7 @@ static alloc_buddy_t *prv_pmm_create_pool(pmm_ctx_t *pmm, uint32_t start,
     if (used_start) { *used_start = aligned_start; }
     if (used_size) { *used_size = block_size; }
 
-    alloc_buddy_t *const heap = alloc_static(&pmm->static_heap, sizeof(*heap));
+    alloc_buddy_t *const heap = alloc_static(pmm->static_heap, sizeof(*heap));
     if (!heap) {
         kprintf("pmm: failed to statically allocate %u bytes for "
                 "alloc_buddy_t\n",
@@ -496,7 +501,7 @@ static alloc_buddy_t *prv_pmm_create_pool(pmm_ctx_t *pmm, uint32_t start,
     }
 
     const size_t free_heads_size = PMM_BUDDY_MAX_ORDERS * sizeof(uintptr_t);
-    void *const free_heads = alloc_static(&pmm->static_heap, free_heads_size);
+    void *const free_heads = alloc_static(pmm->static_heap, free_heads_size);
     if (!free_heads) {
         kprintf("pmm: failed to statically allocate %u bytes for free "
                 "heads buffer\n",
@@ -506,7 +511,7 @@ static alloc_buddy_t *prv_pmm_create_pool(pmm_ctx_t *pmm, uint32_t start,
 
     const size_t num_order0_blocks = block_size / YTALLOC_BUDDY_MIN_BLOCK_SIZE;
     const size_t bitmap_size = ((num_order0_blocks + 7) & ~7) / 8;
-    void *const bitmap = alloc_static(&pmm->static_heap, bitmap_size);
+    void *const bitmap = alloc_static(pmm->static_heap, bitmap_size);
     if (!bitmap) {
         kprintf("pmm: failed to statically allocate %u bytes for bitmap "
                 "buffer\n",

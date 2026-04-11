@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <ytalloc/ytalloc.h>
 
 #include "assert.h"
 #include "heap.h"
@@ -42,12 +43,18 @@ typedef struct tag {
 static tag_t *gp_heap_start;
 static task_mutex_t g_heap_mutex;
 
+static alloc_static_t g_heap_static;
+
 // See link.ld.
 extern uint32_t ld_vmm_kernel_end;
 
 static tag_t *prv_heap_tag_from_addr(void *p_addr);
 static void print_tag(tag_t const *p_tag);
 static void check_tags(void);
+
+void *heap_get_static_heap(void) {
+    return &g_heap_static;
+}
 
 void heap_init(uint32_t start) {
     mutex_init(&g_heap_mutex);
