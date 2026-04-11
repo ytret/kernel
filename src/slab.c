@@ -70,6 +70,21 @@ void slab_free(void *v_slab, void *ptr) {
     }
 }
 
+size_t slab_item_size(const void *v_slab) {
+    if (!v_slab) {
+        kprintf("slab: v_slab = NULL\n");
+        panic("invalid argument");
+    }
+
+    const slab_t *const slab = v_slab;
+    if (!slab->cache) {
+        kprintf("slab: cache is NULL\n");
+        panic("unexpected behavior");
+    }
+
+    return slab->cache->item_size;
+}
+
 void slab_print_stats(slab_cache_t *cache) {
     kprintf("slab: cache 0x%08x (item size %u) stats:\n", (uintptr_t)cache,
             cache->item_size);
