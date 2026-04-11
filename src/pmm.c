@@ -301,6 +301,12 @@ static void prv_pmm_init_alloc_mmap(pmm_ctx_t *pmm) {
     }
 }
 
+/**
+ * Initialize allocation pools for each region.
+ *
+ * Each region may have several allocation pools, the number depending on the
+ * region alignment and size.
+ */
 static void prv_pmm_init_pools(pmm_ctx_t *pmm) {
     for (list_node_t *node = pmm->alloc_mmap.entry_list.p_first_node;
          node != NULL; node = node->p_next) {
@@ -319,6 +325,12 @@ static void prv_pmm_init_pools(pmm_ctx_t *pmm) {
     }
 }
 
+/**
+ * Build allocation pools for the specified region.
+ *
+ * @warning
+ * It is assumed that @a region has the type #PMM_REGION_AVAILABLE.
+ */
 static void prv_pmm_build_region_pools(pmm_ctx_t *pmm, pmm_region_t *region) {
     const size_t array_size = PMM_MAX_POOLS_PER_REGION * sizeof(void *);
     region->num_pools = 0;
@@ -334,6 +346,13 @@ static void prv_pmm_build_region_pools(pmm_ctx_t *pmm, pmm_region_t *region) {
                                    region->end_incl + 1);
 }
 
+/**
+ * Partition the region into several pools.
+ *
+ * This is a recursive function. It uses #prv_pmm_create_pool() to create a
+ * single pool covering some part in the specified range `[start; end_excl)`,
+ * and then calls itself two times for the remaining two parts of the range.
+ */
 static void prv_pmm_partition_region_pools(pmm_ctx_t *pmm, pmm_region_t *region,
                                            uint32_t start, uint32_t end_excl) {
     const size_t size = end_excl - start;
@@ -359,19 +378,36 @@ static void prv_pmm_partition_region_pools(pmm_ctx_t *pmm, pmm_region_t *region,
                                    end_excl);
 }
 
-static alloc_buddy_t *prv_pmm_create_pool(pmm_ctx_t *pmm, uint32_t region_start,
-                                          size_t region_size,
-                                          uint32_t *used_start,
+/**
+ * Create a pool in the specified range.
+ *
+ * @param       pmm             PMM context struct.
+ * @param       start           Lower address limit for the pool to be created.
+ * @param       size            Size limit for the pool to be created.
+ * @param[out]  used_start      Created pool start address.
+ * @param[out]  used_size       Created pool size.
+ *
+ * @returns A pointer to the created buddy allocator, if it could fit into the
+ * specified memory range and be larger than #PMM_MIN_POOL_SIZE, otherwise
+ * `NULL`.
+ *
+ * @note
+ * Because the underlying allocator library requires the pool start address to
+ * be aligned at its size, the used start address and the used size are almost
+ * always different from @a start and @a size.
+ */
+static alloc_buddy_t *prv_pmm_create_pool(pmm_ctx_t *pmm, uint32_t start,
+                                          size_t size, uint32_t *used_start,
                                           uint32_t *used_size) {
-    const uint32_t end = region_start + region_size;
+    const uint32_t end = start + size;
 
     size_t aligned_start = 0;
     size_t block_size = 0;
-    size_t log2_size = prv_pmm_calc_log2(region_size);
+    size_t log2_size = prv_pmm_calc_log2(size);
     if (log2_size < PMM_LOG2_MIN_POOL_SIZE) { return NULL; }
     while (log2_size >= PMM_LOG2_MIN_POOL_SIZE) {
         block_size = 1 << log2_size;
-        aligned_start = (region_start + (block_size - 1)) & ~(block_size - 1);
+        aligned_start = (start + (block_size - 1)) & ~(block_size - 1);
         if (aligned_start + block_size <= end) { break; }
         log2_size--;
     }

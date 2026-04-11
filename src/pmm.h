@@ -31,6 +31,14 @@ typedef struct {
 void pmm_init(const pmm_mmap_t *mmap);
 void pmm_print_mmap(void);
 
+/**
+ * Allocate contiguous physical memory pages.
+ *
+ * @returns Address to the allocated range (never `NULL`).
+ *
+ * @warning
+ * This function panics if there is not enough physical memory.
+ */
 void *pmm_alloc_pages(size_t num_pages);
 void pmm_free_pages(void *ptr, size_t num_pages);
 
