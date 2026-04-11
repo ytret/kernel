@@ -6,13 +6,7 @@
 void *heap_get_static_heap(void);
 void *heap_alloc_static(size_t size);
 
-void heap2_init(void);
-void *heap2_alloc(size_t size);
-void *heap2_alloc_aligned(size_t size, size_t align);
-void heap2_free(void *ptr);
-void *heap2_realloc(void *ptr, size_t size, size_t align);
-
-void heap_init(uint32_t start);
+void heap_init(void);
 uint32_t heap_end(void);
 
 void *heap_alloc(size_t num_bytes);

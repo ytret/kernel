@@ -47,10 +47,6 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     idt_init();
 
-    const uint32_t heap_start = prv_main_find_first_free_page();
-    heap_init(heap_start);
-    mbi_save_on_heap();
-
     term_init_history();
     term_clear();
 
@@ -61,27 +57,8 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
                                prv_main_find_first_free_page());
     pmm_init(&g_mmap);
 
-    heap2_init();
-
-    heap2_alloc(4);
-
-    kprintf(">> alloc 1 << \n");
-    heap2_alloc_aligned(4096, 1);
-    kprintf(">> alloc 2 << \n");
-    heap2_alloc_aligned(4096, 4 * 4096);
-    kprintf(">> alloc 3 << \n");
-    heap2_alloc_aligned(4096, 1);
-    kprintf(">> alloc 4 << \n");
-    heap2_alloc_aligned(4096, 1);
-    kprintf(">> alloc 5 << \n");
-    heap2_alloc_aligned(4096, 1);
-    kprintf(">> alloc 6 << \n");
-    heap2_alloc_aligned(4096, 1);
-
-    kprintf("main: intentional halt\n");
-    for (;;) {
-        __asm__("hlt");
-    }
+    heap_init();
+    mbi_save_on_heap();
 
     acpi_init();
     lapic_init(true);

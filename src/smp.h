@@ -27,7 +27,7 @@ bool smp_is_active(void);
  * @name Processor initialization synchronization functions
  *
  * Due to the blocking nature of mutexes, which are used in various sensitive
- * kernel modules (e.g., #g_kvas_lock, #g_heap_mutex), there must not be a state
+ * kernel modules (e.g., #g_kvas_lock, #heap_t.lock), there must not be a state
  * where only _some_ of the processors have a running task manager. Otherwise,
  * if #mutex_acquire() sees that there is no task manager on the running
  * processor, but the mutex is locked by some task, it panics.

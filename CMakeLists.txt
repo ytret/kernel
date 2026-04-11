@@ -47,7 +47,6 @@ add_executable(kernel
     src/framebuf.c
     src/fs/ramfs.c
     src/gdt.c
-    src/heap2.c
     src/heap.c
     src/idt.c
     src/init.c

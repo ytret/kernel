@@ -1,56 +1,42 @@
-#include <stdbool.h>
 #include <ytalloc/ytalloc.h>
 
-#include "assert.h"
 #include "heap.h"
 #include "kmutex.h"
 #include "kprintf.h"
 #include "memfun.h"
 #include "panic.h"
+#include "pmm.h"
+#include "slab.h"
 
-#define HEAP_SIZE (12 * 1024 * 1024)
+#if 1
+#define debugf(...) kprintf(__VA_ARGS__);
+#else
+#define debugf(...)                                                            \
+    do {                                                                       \
+    } while (0);
+#endif
 
-#define MIN_ALIGN 4
+#define HEAP_MIN_SLAB_ORDER  3  // log2 of 8
+#define HEAP_MAX_SLAB_ORDER  11 // log2 of 2048
+#define HEAP_NUM_SLAB_ORDERS (HEAP_MAX_SLAB_ORDER - HEAP_MIN_SLAB_ORDER + 1)
 
-#define TAG_SIZE (sizeof(tag_t))
+#define HEAP_MIN_SLAB_SIZE (1 << HEAP_MIN_SLAB_ORDER)
+#define HEAP_MAX_SLAB_SIZE (1 << HEAP_MAX_SLAB_ORDER)
 
-#define CHUNK_SIZE_MIN   64
-#define CHUNK_SIZE_ALIGN 4
+static_assert(HEAP_MAX_SLAB_ORDER >= HEAP_MIN_SLAB_ORDER);
 
-#define PADDING_BYTE 0xFF
-#define PADDING_DWORD                                                          \
-    ((uint32_t)((PADDING_BYTE << 24) | (PADDING_BYTE << 16) |                  \
-                (PADDING_BYTE << 8) | PADDING_BYTE))
-static_assert(PADDING_BYTE != 0x00, "padding byte must not be a zero");
+typedef struct {
+    task_mutex_t lock;
+    slab_cache_t *slab_caches;
+    size_t num_slab_caches;
+} heap_t;
 
-/*
- * Both MIN_ALIGN and CHUNK_SIZE_ALIGN must be powers of two and not less than
- * 4, so that each tag address is aligned at 4 bytes, too.
- */
-static_assert((MIN_ALIGN & (MIN_ALIGN - 1)) == 0,
-              "MIN_ALIGN must be a power of two");
-static_assert((CHUNK_SIZE_ALIGN & (CHUNK_SIZE_ALIGN - 1)) == 0,
-              "CHUNK_SIZE_ALIGN must be a power of two");
-static_assert(MIN_ALIGN >= 4, "MIN_ALIGN must be more than 4");
-static_assert(CHUNK_SIZE_ALIGN >= 4, "CHUNK_SIZE_ALIGN must be more than 4");
+typedef struct {
+    size_t num_pages;
+} heap_large_alloc_t;
 
-typedef struct tag {
-    bool b_used;
-    size_t size;
-    struct tag *p_next;
-} tag_t;
-
-static tag_t *gp_heap_start;
-static task_mutex_t g_heap_mutex;
-
+static heap_t g_heap;
 static alloc_static_t g_heap_static;
-
-// See link.ld.
-extern uint32_t ld_vmm_kernel_end;
-
-static tag_t *prv_heap_tag_from_addr(void *p_addr);
-static void print_tag(tag_t const *p_tag);
-static void check_tags(void);
 
 void *heap_get_static_heap(void) {
     return &g_heap_static;
@@ -75,209 +61,163 @@ void *heap_alloc_static(size_t size) {
     return ptr;
 }
 
-void heap_init(uint32_t start) {
-    mutex_init(&g_heap_mutex);
+void heap_init(void) {
+    mutex_init(&g_heap.lock);
 
-    gp_heap_start = ((tag_t *)start);
-    __builtin_memset(gp_heap_start, 0, TAG_SIZE);
-    gp_heap_start->b_used = false;
-    gp_heap_start->size = HEAP_SIZE - TAG_SIZE;
-    gp_heap_start->p_next = NULL;
+    g_heap.num_slab_caches = HEAP_NUM_SLAB_ORDERS;
+    g_heap.slab_caches =
+        heap_alloc_static(g_heap.num_slab_caches * sizeof(slab_cache_t));
 
-    kprintf("heap: start at %P, size is %u bytes\n", gp_heap_start, HEAP_SIZE);
+    for (size_t idx = 0; idx < g_heap.num_slab_caches; idx++) {
+        const size_t item_size = 1 << (HEAP_MIN_SLAB_ORDER + idx);
+        slab_init_cache(&g_heap.slab_caches[idx], item_size);
+    }
 }
 
 uint32_t heap_end(void) {
-    return (uint32_t)gp_heap_start + HEAP_SIZE;
+    panic("heap_end not implemented");
 }
 
-void *heap_alloc(size_t num_bytes) {
-    return heap_alloc_aligned(num_bytes, MIN_ALIGN);
+void *heap_alloc(size_t size) {
+    return heap_alloc_aligned(size, 1);
 }
 
-void *heap_alloc_aligned(size_t num_bytes, size_t align) {
-    mutex_acquire(&g_heap_mutex);
-
-    if (num_bytes == 0) {
-        panic_enter();
-        kprintf("heap: heap_alloc_aligned: num_bytes is zero\n");
+void *heap_alloc_aligned(size_t size, size_t align) {
+    if ((align & (align - 1)) != 0) {
+        kprintf("heap: alignment %u is not a power of two\n", align);
         panic("invalid argument");
     }
 
-    if (align < MIN_ALIGN) {
-        align = MIN_ALIGN;
-    } else if ((align & (align - 1)) != 0) {
-        panic_enter();
-        kprintf("heap: heap_alloc_aligned: align must be a power of two\n");
-        panic("invalid argument");
+    mutex_acquire(&g_heap.lock);
+
+    void *ret_ptr;
+    if (size <= HEAP_MAX_SLAB_SIZE) {
+        // Items of size `align` will have the alignment of `align` - that's the
+        // property of the slab allocator.
+        const size_t eff_size = size >= align ? size : align;
+
+        // TODO: calculate the order more efficiently.
+        size_t idx;
+        for (idx = 0; idx < g_heap.num_slab_caches; idx++) {
+            if (g_heap.slab_caches[idx].item_size >= eff_size) { break; }
+        }
+
+        ret_ptr = slab_alloc(&g_heap.slab_caches[idx]);
+        if (!ret_ptr) {
+            kprintf("heap: failed to allocate %u bytes aligned at %u bytes "
+                    "(effective size %u)\n",
+                    size, align, eff_size);
+            panic("out of memory");
+        }
+    } else {
+        if (align < PMM_PAGE_SIZE) { align = PMM_PAGE_SIZE; }
+        if (align & (PMM_PAGE_SIZE - 1)) {
+            kprintf("pmm: alignment %u must be a multiple of page size (%u) "
+                    "for allocations larger than %u\n",
+                    align, PMM_PAGE_SIZE, HEAP_MAX_SLAB_SIZE);
+            panic("invalid argument");
+        }
+
+        const size_t aligned_size =
+            (size + (PMM_PAGE_SIZE - 1)) & ~(PMM_PAGE_SIZE - 1);
+        const size_t num_pages = aligned_size / PMM_PAGE_SIZE;
+        const size_t align_pages = align / PMM_PAGE_SIZE;
+        const paddr_t addr = pmm_alloc_aligned_pages(num_pages, align_pages);
+        // FIXME: physical to virtual?
+
+        heap_large_alloc_t *const large = heap_alloc(sizeof(*large));
+        // This static_assert prevents infinite recursion.
+        static_assert(sizeof(*large) <= HEAP_MAX_SLAB_SIZE);
+        large->num_pages = num_pages;
+
+        for (paddr_t i_addr = addr; i_addr < addr + aligned_size;
+             i_addr += PMM_PAGE_SIZE) {
+            pmm_page_t *const metadata = pmm_paddr_to_page(i_addr);
+            metadata->type = PMM_PAGE_LARGE;
+            metadata->large = large;
+            debugf("heap: mark page 0x%08x as a large allocation\n", i_addr);
+        }
+
+        ret_ptr = (void *)addr;
     }
 
-    if (!gp_heap_start) {
-        panic_enter();
-        kprintf("heap: heap_alloc_aligned: heap is not initialized\n");
+    mutex_release(&g_heap.lock);
+    return ret_ptr;
+}
+
+void heap_free(void *ptr) {
+    if (!ptr) { return; }
+
+    mutex_acquire(&g_heap.lock);
+
+    const paddr_t addr = (paddr_t)ptr; // FIXME
+    pmm_page_t *const metadata = pmm_paddr_to_page(addr);
+    heap_large_alloc_t *large;
+
+    switch (metadata->type) {
+    case PMM_PAGE_FREE:
+        debugf("heap: free: PMM_PAGE_FREE\n");
+        kprintf("heap: tried to free a free page 0x%08x\n", addr);
+        panic("unexpected behavior");
+
+    case PMM_PAGE_SLAB:
+        debugf("heap: free: PMM_PAGE_SLAB\n");
+        debugf("heap: slab = 0x%08x\n", metadata->slab);
+        slab_free(metadata->slab, ptr);
+        break;
+
+    case PMM_PAGE_LARGE:
+        debugf("heap: free: PMM_PAGE_LARGE\n");
+        large = metadata->large;
+        debugf("heap: large->num_pages = %u\n", large->num_pages);
+        pmm_free_pages(addr, large->num_pages);
+        break;
+
+    default:
+        kprintf("heap: unrecognized value of page 0x%08x type (%u)\n", addr,
+                metadata->type);
         panic("unexpected behavior");
     }
 
-    check_tags();
-
-    // Make the size aligned.
-    num_bytes = (num_bytes + (CHUNK_SIZE_ALIGN - 1)) & ~(CHUNK_SIZE_ALIGN - 1);
-
-    // Traverse the tag list and find a suitable chunk.
-    tag_t *p_found = NULL;
-    uint32_t chunk_aligned;
-    uint32_t num_padding = 0;
-    for (tag_t *p_tag = gp_heap_start; p_tag != NULL; p_tag = p_tag->p_next) {
-        if (p_tag->b_used) { continue; }
-
-        uint32_t chunk = (uint32_t)p_tag + TAG_SIZE;
-        chunk_aligned = (chunk + (align - 1)) & ~(align - 1);
-        num_padding = chunk_aligned - chunk;
-
-        if ((chunk_aligned + num_bytes) <= (chunk + p_tag->size)) {
-            p_found = p_tag;
-            break;
-        }
-    }
-
-    if (!p_found) {
-        panic_enter();
-        kprintf("heap: heap_alloc_aligned: no suitable chunk\n");
-        panic("allocation failed");
-    }
-
-    __builtin_memset((void *)((uint32_t)p_found + TAG_SIZE), PADDING_BYTE,
-                     num_padding);
-
-    // Divide the chunk if appropriate.
-    if (p_found->size - num_bytes - num_padding > TAG_SIZE + CHUNK_SIZE_MIN) {
-        tag_t *p_new_tag =
-            (tag_t *)((uint32_t)p_found + TAG_SIZE + num_padding + num_bytes);
-
-        p_new_tag->b_used = false;
-        p_new_tag->size = p_found->size - (num_padding + num_bytes + TAG_SIZE);
-        p_new_tag->p_next = p_found->p_next;
-
-        p_found->size = num_padding + num_bytes;
-        p_found->p_next = p_new_tag;
-    }
-
-    p_found->b_used = true;
-
-    check_tags();
-
-    mutex_release(&g_heap_mutex);
-    return (void *)((uint32_t)p_found + TAG_SIZE + num_padding);
+    mutex_release(&g_heap.lock);
 }
 
-void *heap_realloc(void *p_addr, size_t num_bytes, size_t align) {
-    tag_t *const p_old_tag = prv_heap_tag_from_addr(p_addr);
-    const size_t copy_size =
-        num_bytes >= p_old_tag->size ? p_old_tag->size : num_bytes;
+void *heap_realloc(void *ptr, size_t size, size_t align) {
+    if (!ptr) { return heap_alloc_aligned(size, align); }
 
-    void *const new_addr = heap_alloc_aligned(num_bytes, align);
-    kmemcpy(new_addr, p_addr, copy_size);
-    heap_free(p_addr);
-    return new_addr;
-}
+    const paddr_t addr = (paddr_t)ptr; // FIXME
+    pmm_page_t *const metadata = pmm_paddr_to_page(addr);
+    heap_large_alloc_t *large;
 
-void heap_free(void *p_addr) {
-    mutex_acquire(&g_heap_mutex);
+    size_t old_size;
+    switch (metadata->type) {
+    case PMM_PAGE_FREE:
+        debugf("heap: realloc: PMM_PAGE_FREE\n");
+        kprintf("heap: tried to realloc a free page 0x%08x\n", addr);
+        panic("unexpected behavior");
 
-    tag_t *const p_tag = prv_heap_tag_from_addr(p_addr);
-    p_tag->b_used = false;
-    check_tags();
+    case PMM_PAGE_SLAB:
+        debugf("heap: realloc: PMM_PAGE_SLAB\n");
+        debugf("heap: slab = 0x%08x\n", metadata->slab);
+        old_size = slab_item_size(metadata->slab);
+        break;
 
-    mutex_release(&g_heap_mutex);
-}
+    case PMM_PAGE_LARGE:
+        debugf("heap: realloc: PMM_PAGE_LARGE\n");
+        large = metadata->large;
+        old_size = PMM_PAGE_SIZE * large->num_pages;
+        break;
 
-void heap_dump_tags(void) {
-    mutex_acquire(&g_heap_mutex);
-
-    if (NULL == gp_heap_start) { kprintf("heap: heap_dump_tags: no tags\n"); }
-
-    for (tag_t const *p_tag = gp_heap_start; p_tag != NULL;
-         p_tag = p_tag->p_next) {
-        if (p_tag >= gp_heap_start &&
-            ((uint32_t)p_tag < (uint32_t)gp_heap_start + HEAP_SIZE)) {
-            print_tag(p_tag);
-        } else {
-            // This tag is outside the heap and invalid. Do not print its
-            // "fields" because the memory may be inaccessible.
-            mutex_release(&g_heap_mutex);
-            return;
-        }
+    default:
+        kprintf("heap: unrecognized value of page 0x%08x type (%u)\n", addr,
+                metadata->type);
+        panic("unexpected behavior");
     }
 
-    mutex_release(&g_heap_mutex);
-}
+    const size_t copy_size = size <= old_size ? size : old_size;
 
-static tag_t *prv_heap_tag_from_addr(void *p_addr) {
-    ASSERT(p_addr);
-
-    tag_t *p_tag = (tag_t *)((uint32_t)p_addr - TAG_SIZE);
-    while ((uint32_t)p_tag->p_next == PADDING_DWORD) {
-        p_tag = (tag_t *)((uint32_t)p_tag - 4);
-    }
-    return p_tag;
-}
-
-static void print_tag(tag_t const *p_tag) {
-    if (!p_tag) {
-        panic_enter();
-        kprintf("heap: print_tag: p_tag is NULL\n");
-        panic("invalid argument");
-    }
-
-    kprintf("heap: tag at %P: ", p_tag);
-
-    if (p_tag->b_used) {
-        kprintf("used, ");
-    } else {
-        kprintf("free, ");
-    }
-
-    kprintf("size = %u bytes\n", p_tag->size);
-}
-
-static void check_tags(void) {
-    bool b_panic = false;
-
-    tag_t const *p_prev = NULL;
-    for (tag_t const *p_tag = gp_heap_start; p_tag != NULL;
-         p_prev = p_tag, p_tag = p_tag->p_next) {
-        if (p_prev && p_tag <= p_prev) {
-            panic_enter();
-            kprintf("heap: check_tags: tag %P is below its previous tag %P\n",
-                    p_tag, p_prev);
-            b_panic = true;
-            break;
-        }
-
-        if ((uint32_t)p_tag < (uint32_t)gp_heap_start) {
-            panic_enter();
-            kprintf("heap: check_tags: tag %P is below heap\n", p_tag);
-            b_panic = true;
-            break;
-        }
-
-        if ((uint32_t)p_tag >= (uint32_t)gp_heap_start + HEAP_SIZE) {
-            panic_enter();
-            kprintf("heap: check_tags: tag %P is above heap\n", p_tag);
-            b_panic = true;
-            break;
-        }
-
-        if ((uint32_t)p_tag + TAG_SIZE + p_tag->size >
-            (uint32_t)gp_heap_start + HEAP_SIZE) {
-            panic_enter();
-            kprintf("heap: check_tags: chunk of tag %P ends beyond heap at"
-                    " 0x%08X\n",
-                    p_tag, (((uint32_t)p_tag) + sizeof(*p_tag) + p_tag->size));
-            b_panic = true;
-            break;
-        }
-    }
-
-    if (b_panic) { panic("invalid heap state"); }
+    void *const new_ptr = heap_alloc_aligned(size, align);
+    kmemcpy(new_ptr, ptr, copy_size);
+    heap_free(ptr);
+    return new_ptr;
 }
