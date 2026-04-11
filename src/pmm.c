@@ -304,8 +304,8 @@ static void prv_pmm_init_static_heap(pmm_ctx_t *pmm) {
      * So we use 0.01% of the available RAM for the static heap.
      */
 
-    size_t static_heap_size = pmm->available_ram_size / 10000;
-    if (static_heap_size < 1024) { static_heap_size = 1024; }
+    const size_t static_heap_size =
+        (pmm->available_ram_size / 10000 + 0xFFF) & ~0xFFF;
 
     pmm_region_t *found_region;
     LIST_FIND(&pmm->mmap.entry_list, found_region, pmm_region_t, node,
