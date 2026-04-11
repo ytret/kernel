@@ -125,7 +125,7 @@ static void update_info(void) {
                 ((entry & FLAG_PRESENT) ? "    yes" : "     no"));
     } else {
         // FIXME: only works if identity mapped.
-        const char *alloc_type_name = "<unknown>";
+        const char *alloc_type_name = "unkwn";
         pmm_page_t *const metadata = pmm_paddr_to_page(start_addr);
         switch (metadata->type) {
         case PMM_ALLOC_NONE:
@@ -139,12 +139,33 @@ static void update_info(void) {
             break;
         }
 
-        kprintf("   ADDRESS  FLAGS     DPL  R/W  PRESENT  ALLOC\n");
-        kprintf("  %08x    %03x  %s  %s  %s  %s", (entry & ~0xFFF),
+        const char *region_type_name = "unkwn";
+        pmm_region_t *const region = pmm_find_region_by_addr(start_addr);
+        switch (region->type) {
+        case PMM_REGION_AVAILABLE:
+            region_type_name = "  available RAM";
+            break;
+        case PMM_REGION_RESERVED:
+            region_type_name = "   reserved RAM";
+            break;
+        case PMM_REGION_KERNEL_RESERVED:
+            region_type_name = "kernel reserved";
+            break;
+        case PMM_REGION_KERNEL_AND_MODS:
+            region_type_name = "kernel and mods";
+            break;
+        case PMM_REGION_STATIC_HEAP:
+            region_type_name = "    static heap";
+            break;
+        }
+
+        kprintf("   ADDRESS  FLAGS     DPL  R/W  PRESENT  ALLOC           "
+                "REGION\n");
+        kprintf("  %08x    %03x  %s  %s  %s  %s  %s", (entry & ~0xFFF),
                 (entry & 0xFFF), ((entry & FLAG_ANY_DPL) ? "   any" : "kernel"),
                 ((entry & FLAG_WRITABLE) ? "yes" : " no"),
                 ((entry & FLAG_PRESENT) ? "    yes" : "     no"),
-                alloc_type_name);
+                alloc_type_name, region_type_name);
     }
 }
 
