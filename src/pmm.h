@@ -17,6 +17,12 @@ typedef enum {
     PMM_REGION_STATIC_HEAP,
 } pmm_region_type_t;
 
+typedef enum {
+    PMM_PAGE_FREE,  //!< This page is not owned by anyone.
+    PMM_PAGE_SLAB,  //!< This page is owned by a slab allocator.
+    PMM_PAGE_LARGE, //!< This page is a part of a larger contiguous allocation.
+} pmm_page_type_t;
+
 typedef struct {
     list_node_t node;
     pmm_region_type_t type;
@@ -25,11 +31,22 @@ typedef struct {
 
     void *v_pools;
     size_t num_pools;
+
+    size_t page_metadata_offset;
 } pmm_region_t;
 
 typedef struct {
     list_t entry_list;
 } pmm_mmap_t;
+
+typedef struct {
+    pmm_page_type_t type;
+    union {
+        void *reserved; //!< Not used for free pages.
+        void *slab;     //!< Slab allocator.
+        void *large;    //!< Large allocation metadata.
+    };
+} pmm_page_t;
 
 void pmm_init(const pmm_mmap_t *mmap);
 void pmm_print_mmap(void);
@@ -68,6 +85,8 @@ paddr_t pmm_alloc_aligned_pages(size_t num_pages, size_t align_pages);
  * #pmm_alloc_pages(), this function may either panic or corrupt memory.
  */
 void pmm_free_pages(paddr_t addr, size_t num_pages);
+
+pmm_page_t *pmm_paddr_to_page(paddr_t addr);
 
 void pmm_push_page(uint32_t addr);
 uint32_t pmm_pop_page(void);

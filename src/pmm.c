@@ -21,7 +21,10 @@ typedef struct {
 
 typedef struct {
     size_t available_ram_size;
+    size_t available_ram_pages;
     alloc_static_t *static_heap;
+
+    pmm_page_t *page_metadata;
 
     pmm_mmap_t mmap;
     /// Same as #mmap, but consists only of available RAM regions.
@@ -39,6 +42,7 @@ static void prv_pmm_reserve_lower_memory(pmm_mmap_t *mmap);
 static void prv_pmm_count_available_memory(pmm_ctx_t *pmm);
 static void prv_pmm_init_static_heap(pmm_ctx_t *pmm);
 static void prv_pmm_init_alloc_mmap(pmm_ctx_t *pmm);
+static void prv_pmm_init_page_metadata(pmm_ctx_t *pmm);
 static void prv_pmm_init_pools(pmm_ctx_t *pmm);
 static void prv_pmm_build_region_pools(pmm_ctx_t *pmm, pmm_region_t *region);
 static void prv_pmm_partition_region_pools(pmm_ctx_t *pmm, pmm_region_t *region,
@@ -74,6 +78,7 @@ void pmm_init(const pmm_mmap_t *mmap) {
     prv_pmm_count_available_memory(&g_pmm);
     prv_pmm_init_static_heap(&g_pmm);
     prv_pmm_init_alloc_mmap(&g_pmm);
+    prv_pmm_init_page_metadata(&g_pmm);
     prv_pmm_init_pools(&g_pmm);
 
     kprintf("pmm: memory map upon init exit:\n");
@@ -95,6 +100,10 @@ paddr_t pmm_alloc_pages(size_t num_pages) {
 }
 
 paddr_t pmm_alloc_aligned_pages(size_t num_pages, size_t align_pages) {
+    if (num_pages == 0) {
+        kprintf("pmm: requested number of pages is zero\n");
+        panic("invalid argument");
+    }
     if (align_pages == 0 || (align_pages & (align_pages - 1)) != 0) {
         kprintf("pmm: requested alignment of %u pages is not a power of two\n",
                 align_pages);
@@ -145,6 +154,25 @@ void pmm_free_pages(paddr_t addr, size_t num_pages) {
     }
 
     alloc_buddy_free(pool, (void *)addr, PMM_PAGE_SIZE * num_pages);
+}
+
+pmm_page_t *pmm_paddr_to_page(paddr_t addr) {
+    const size_t aligned_addr = addr & ~(PMM_PAGE_SIZE - 1);
+
+    const pmm_region_t *const region =
+        prv_pmm_find_region_by_addr(&g_pmm, addr);
+    if (!region) {
+        kprintf("pmm: could not find the region of address 0x%08x\n", addr);
+        panic("unexpected behavior");
+    }
+
+    const size_t rel_idx = (aligned_addr - region->start) / PMM_PAGE_SIZE;
+    const size_t idx = region->page_metadata_offset + rel_idx;
+
+#if 0
+    kprintf("pmm: page 0x%08x metadata idx %u\n", addr, idx);
+#endif
+    return &g_pmm.page_metadata[idx];
 }
 
 void pmm_push_page(uint32_t addr) {
@@ -275,13 +303,15 @@ static void prv_pmm_count_available_memory(pmm_ctx_t *pmm) {
     }
 
     pmm->available_ram_size = available_ram_size;
+    pmm->available_ram_pages = available_ram_size / PMM_PAGE_SIZE;
 
     const size_t available_ram_size_kib = available_ram_size / 1024;
     const size_t available_ram_size_mib = available_ram_size_kib / 1024;
     const size_t available_ram_size_gib = available_ram_size_mib / 1024;
-    kprintf("pmm: available RAM size = %u B or %u KiB or %u MiB or %u GiB\n",
+    kprintf("pmm: available RAM size: %u B or %u KiB or %u MiB or %u GiB or "
+            "%u pages\n",
             available_ram_size, available_ram_size_kib, available_ram_size_mib,
-            available_ram_size_gib);
+            available_ram_size_gib, pmm->available_ram_pages);
 }
 
 static void prv_pmm_init_static_heap(pmm_ctx_t *pmm) {
@@ -306,11 +336,21 @@ static void prv_pmm_init_static_heap(pmm_ctx_t *pmm) {
      * - 4 GiB: 4 GiB / 32 KiB/B =~ 128 KiB (0.003%).
      * - x B: x * 0.003%
      *
-     * So we use 0.01% of the available RAM for the static heap.
+     * So we use at least 0.01% of the available RAM for storing these
+     * structures.
+     *
+     * Besides that, the static heap is used for page metadata. Each available
+     * RAM page requires a metadata structure. So that adds:
+     *
+     *   RAM size / 4 KiB * sizeof(pmm_page_t)
      */
 
+    const size_t buddies_size = pmm->available_ram_size / 10000;
+    const size_t page_metadata_size =
+        pmm->available_ram_pages * sizeof(pmm_page_t);
     const size_t static_heap_size =
-        (pmm->available_ram_size / 10000 + 0xFFF) & ~0xFFF;
+        (buddies_size + page_metadata_size + PMM_PAGE_SIZE - 1) &
+        ~(PMM_PAGE_SIZE - 1);
 
     pmm_region_t *found_region;
     LIST_FIND(&pmm->mmap.entry_list, found_region, pmm_region_t, node,
@@ -375,6 +415,58 @@ static void prv_pmm_init_alloc_mmap(pmm_ctx_t *pmm) {
         kmemset(&alloc_region->node, 0, sizeof(list_node_t));
 
         list_append(&pmm->alloc_mmap.entry_list, &alloc_region->node);
+    }
+}
+
+/**
+ * Initializes page metadata.
+ *
+ * For every available RAM page, there is a metadata structure. This function
+ * allocates the storage used by these metadata structures.
+ */
+static void prv_pmm_init_page_metadata(pmm_ctx_t *pmm) {
+    const size_t metadata_size = pmm->available_ram_pages * sizeof(pmm_page_t);
+    pmm->page_metadata = alloc_static(pmm->static_heap, metadata_size);
+    if (!pmm->page_metadata) {
+        kprintf(
+            "pmm: failed to statically allocate %u bytes for page metadata\n",
+            metadata_size);
+        panic("out of memory");
+    }
+
+    kprintf("pmm: initializing page metadata\n");
+    for (size_t idx = 0; idx < pmm->available_ram_pages; idx++) {
+        pmm->page_metadata[idx].type = PMM_PAGE_FREE;
+        pmm->page_metadata[idx].reserved = NULL;
+    }
+
+    size_t offset = 0;
+    for (list_node_t *node = pmm->alloc_mmap.entry_list.p_first_node;
+         node != NULL; node = node->p_next) {
+        pmm_region_t *const region =
+            LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
+
+        if (region->start & (PMM_PAGE_SIZE - 1)) {
+            kprintf("pmm: region 0x%08x_%08x .. 0x%08x_%08x start is not "
+                    "page-aligned\n",
+                    (uint32_t)(region->start >> 32), (uint32_t)region->start,
+                    (uint32_t)(region->start >> 32), (uint32_t)region->start);
+            panic("not implemented");
+        }
+        if ((region->end_incl + 1) & (PMM_PAGE_SIZE - 1)) {
+            kprintf("pmm: region 0x%08x_%08x .. 0x%08x_%08x end is not "
+                    "page-aligned\n",
+                    (uint32_t)(region->start >> 32), (uint32_t)region->start,
+                    (uint32_t)(region->end_incl >> 32),
+                    (uint32_t)region->end_incl);
+            panic("not implemented");
+        }
+
+        const size_t region_size = region->end_incl - region->start + 1;
+        const size_t region_num_pages = region_size / PMM_PAGE_SIZE;
+
+        region->page_metadata_offset = offset;
+        offset += region_num_pages;
     }
 }
 
