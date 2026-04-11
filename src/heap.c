@@ -27,6 +27,8 @@ static_assert(HEAP_MAX_SLAB_ORDER >= HEAP_MIN_SLAB_ORDER);
 
 typedef struct {
     task_mutex_t lock;
+    size_t nested_lock_cnt;
+
     slab_cache_t *slab_caches;
     size_t num_slab_caches;
 } heap_t;
@@ -37,6 +39,9 @@ typedef struct {
 
 static heap_t g_heap;
 static alloc_static_t g_heap_static;
+
+static void prv_heap_lock(void);
+static void prv_heap_unlock(void);
 
 void *heap_get_static_heap(void) {
     return &g_heap_static;
@@ -88,7 +93,7 @@ void *heap_alloc_aligned(size_t size, size_t align) {
         panic("invalid argument");
     }
 
-    mutex_acquire(&g_heap.lock);
+    prv_heap_lock();
 
     void *ret_ptr;
     if (size <= HEAP_MAX_SLAB_SIZE) {
@@ -141,14 +146,14 @@ void *heap_alloc_aligned(size_t size, size_t align) {
         ret_ptr = (void *)addr;
     }
 
-    mutex_release(&g_heap.lock);
+    prv_heap_unlock();
     return ret_ptr;
 }
 
 void heap_free(void *ptr) {
     if (!ptr) { return; }
 
-    mutex_acquire(&g_heap.lock);
+    prv_heap_lock();
 
     const paddr_t addr = (paddr_t)ptr; // FIXME
     pmm_page_t *const metadata = pmm_paddr_to_page(addr);
@@ -179,7 +184,7 @@ void heap_free(void *ptr) {
         panic("unexpected behavior");
     }
 
-    mutex_release(&g_heap.lock);
+    prv_heap_unlock();
 }
 
 void *heap_realloc(void *ptr, size_t size, size_t align) {
@@ -220,4 +225,18 @@ void *heap_realloc(void *ptr, size_t size, size_t align) {
     kmemcpy(new_ptr, ptr, copy_size);
     heap_free(ptr);
     return new_ptr;
+}
+
+static void prv_heap_lock(void) {
+    g_heap.nested_lock_cnt++;
+    if (!mutex_caller_owns(&g_heap.lock)) { mutex_acquire(&g_heap.lock); }
+}
+
+static void prv_heap_unlock(void) {
+    if (g_heap.nested_lock_cnt == 0) {
+        kprintf("heap: nested lock counter is zero during unlock\n");
+        panic("unexpected behavior");
+    }
+    g_heap.nested_lock_cnt--;
+    if (g_heap.nested_lock_cnt == 0) { mutex_release(&g_heap.lock); }
 }
