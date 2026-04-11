@@ -8,6 +8,8 @@
 #include "vga.h"
 
 typedef struct {
+    void (*p_map_iomem)(void);
+
     void (*p_put_char_at)(size_t row, size_t col, char ch);
     void (*p_put_cursor_at)(size_t row, size_t col);
     void (*p_clear_rows)(size_t start_row, size_t num_rows);
@@ -75,6 +77,8 @@ void term_init(void) {
         g_max_row = vga_height_chars();
         g_max_col = vga_width_chars();
 
+        g_output_impl.p_map_iomem = vga_map_iomem;
+
         g_output_impl.p_put_char_at = vga_put_char_at;
         g_output_impl.p_put_cursor_at = vga_put_cursor_at;
         g_output_impl.p_clear_rows = vga_clear_rows;
@@ -93,6 +97,10 @@ void term_init(void) {
 
 void term_init_history(void) {
     if (g_output_impl.p_init_history) { g_output_impl.p_init_history(); }
+}
+
+void term_map_iomem(void) {
+    if (g_output_impl.p_map_iomem) { g_output_impl.p_map_iomem(); }
 }
 
 [[gnu::noreturn]]

@@ -7,6 +7,7 @@
 
 void term_init(void);
 void term_init_history(void);
+void term_map_iomem(void);
 [[gnu::noreturn]] void term_task(void);
 
 /* Output-related functions */
