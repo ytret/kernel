@@ -61,6 +61,22 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
                                prv_main_find_first_free_page());
     pmm_init(&g_mmap);
 
+    heap2_init();
+
+    kprintf(">> alloc 1 << \n");
+    void *const ptr1 = heap2_alloc(2047);
+    kprintf(">> alloc 2 << \n");
+    void *const ptr2 = heap2_alloc(2047);
+    kprintf(">> alloc 3 << \n");
+    void *const ptr3 = heap2_alloc(2047);
+
+    kprintf(">> free 2 << \n");
+    heap2_free(ptr2);
+    kprintf(">> free 1 << \n");
+    heap2_free(ptr1);
+    kprintf(">> free 3 << \n");
+    heap2_free(ptr3);
+
     kprintf("main: intentional halt\n");
     for (;;) {
         __asm__("hlt");

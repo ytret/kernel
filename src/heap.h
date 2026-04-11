@@ -6,6 +6,10 @@
 void *heap_get_static_heap(void);
 void *heap_alloc_static(size_t size);
 
+void heap2_init(void);
+void *heap2_alloc(size_t size);
+void heap2_free(void *ptr);
+
 void heap_init(uint32_t start);
 uint32_t heap_end(void);
 
