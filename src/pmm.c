@@ -547,7 +547,6 @@ static paddr_t prv_pmm_alloc_in_pool(alloc_buddy_t *pool, size_t num_pages,
                                      size_t align_pages) {
     const size_t size = PMM_PAGE_SIZE * num_pages;
     const size_t align = PMM_PAGE_SIZE * align_pages;
-    kprintf("size = %u, align = %u\n", size, align);
     return (paddr_t)alloc_buddy_aligned(pool, size, align);
 }
 
