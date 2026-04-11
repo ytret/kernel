@@ -125,26 +125,26 @@ static void update_info(void) {
                 ((entry & FLAG_PRESENT) ? "    yes" : "     no"));
     } else {
         // FIXME: only works if identity mapped.
-        const char *page_owner_name = "<unknown>";
+        const char *alloc_type_name = "<unknown>";
         pmm_page_t *const metadata = pmm_paddr_to_page(start_addr);
         switch (metadata->type) {
-        case PMM_PAGE_FREE:
-            page_owner_name = " free";
+        case PMM_ALLOC_NONE:
+            alloc_type_name = " none";
             break;
-        case PMM_PAGE_SLAB:
-            page_owner_name = " slab";
+        case PMM_ALLOC_SLAB:
+            alloc_type_name = " slab";
             break;
-        case PMM_PAGE_LARGE:
-            page_owner_name = "large";
+        case PMM_ALLOC_LARGE:
+            alloc_type_name = "large";
             break;
         }
 
-        kprintf("   ADDRESS  FLAGS     DPL  R/W  PRESENT  OWNER\n");
+        kprintf("   ADDRESS  FLAGS     DPL  R/W  PRESENT  ALLOC\n");
         kprintf("  %08x    %03x  %s  %s  %s  %s", (entry & ~0xFFF),
                 (entry & 0xFFF), ((entry & FLAG_ANY_DPL) ? "   any" : "kernel"),
                 ((entry & FLAG_WRITABLE) ? "yes" : " no"),
                 ((entry & FLAG_PRESENT) ? "    yes" : "     no"),
-                page_owner_name);
+                alloc_type_name);
     }
 }
 

@@ -138,7 +138,7 @@ void *heap_alloc_aligned(size_t size, size_t align) {
         for (paddr_t i_addr = addr; i_addr < addr + aligned_size;
              i_addr += PMM_PAGE_SIZE) {
             pmm_page_t *const metadata = pmm_paddr_to_page(i_addr);
-            metadata->type = PMM_PAGE_LARGE;
+            metadata->type = PMM_ALLOC_LARGE;
             metadata->large = large;
             debugf("heap: mark page 0x%08x as a large allocation\n", i_addr);
         }
@@ -160,19 +160,19 @@ void heap_free(void *ptr) {
     heap_large_alloc_t *large;
 
     switch (metadata->type) {
-    case PMM_PAGE_FREE:
-        debugf("heap: free: PMM_PAGE_FREE\n");
+    case PMM_ALLOC_NONE:
+        debugf("heap: free: PMM_ALLOC_FREE\n");
         kprintf("heap: tried to free a free page 0x%08x\n", addr);
         panic("unexpected behavior");
 
-    case PMM_PAGE_SLAB:
-        debugf("heap: free: PMM_PAGE_SLAB\n");
+    case PMM_ALLOC_SLAB:
+        debugf("heap: free: PMM_ALLOC_SLAB\n");
         debugf("heap: slab = 0x%08x\n", metadata->slab);
         slab_free(metadata->slab, ptr);
         break;
 
-    case PMM_PAGE_LARGE:
-        debugf("heap: free: PMM_PAGE_LARGE\n");
+    case PMM_ALLOC_LARGE:
+        debugf("heap: free: PMM_ALLOC_LARGE\n");
         large = metadata->large;
         debugf("heap: large->num_pages = %u\n", large->num_pages);
         pmm_free_pages(addr, large->num_pages);
@@ -196,19 +196,19 @@ void *heap_realloc(void *ptr, size_t size, size_t align) {
 
     size_t old_size;
     switch (metadata->type) {
-    case PMM_PAGE_FREE:
-        debugf("heap: realloc: PMM_PAGE_FREE\n");
+    case PMM_ALLOC_NONE:
+        debugf("heap: realloc: PMM_ALLOC_FREE\n");
         kprintf("heap: tried to realloc a free page 0x%08x\n", addr);
         panic("unexpected behavior");
 
-    case PMM_PAGE_SLAB:
-        debugf("heap: realloc: PMM_PAGE_SLAB\n");
+    case PMM_ALLOC_SLAB:
+        debugf("heap: realloc: PMM_ALLOC_SLAB\n");
         debugf("heap: slab = 0x%08x\n", metadata->slab);
         old_size = slab_item_size(metadata->slab);
         break;
 
-    case PMM_PAGE_LARGE:
-        debugf("heap: realloc: PMM_PAGE_LARGE\n");
+    case PMM_ALLOC_LARGE:
+        debugf("heap: realloc: PMM_ALLOC_LARGE\n");
         large = metadata->large;
         old_size = PMM_PAGE_SIZE * large->num_pages;
         break;

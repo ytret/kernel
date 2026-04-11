@@ -170,7 +170,7 @@ static slab_t *prv_slab_new(slab_cache_t *cache, size_t min_items) {
                addr, cache->item_size, (uintptr_t)slab);
 
         pmm_page_t *const metadata = pmm_paddr_to_page(addr);
-        metadata->type = PMM_PAGE_SLAB;
+        metadata->type = PMM_ALLOC_SLAB;
         metadata->slab = slab;
     }
 

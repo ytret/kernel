@@ -18,9 +18,9 @@ typedef enum {
 } pmm_region_type_t;
 
 typedef enum {
-    PMM_PAGE_FREE,  //!< This page is not owned by anyone.
-    PMM_PAGE_SLAB,  //!< This page is owned by a slab allocator.
-    PMM_PAGE_LARGE, //!< This page is a part of a larger contiguous allocation.
+    PMM_ALLOC_NONE,  //!< This page is not allocated by anyone.
+    PMM_ALLOC_SLAB,  //!< This page is owned by a slab allocator.
+    PMM_ALLOC_LARGE, //!< This page is a part of a larger contiguous allocation.
 } pmm_page_type_t;
 
 typedef struct {

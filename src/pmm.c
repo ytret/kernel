@@ -499,7 +499,7 @@ static void prv_pmm_init_page_metadata(pmm_ctx_t *pmm) {
 
     kprintf("pmm: initializing page metadata\n");
     for (size_t idx = 0; idx < pmm->available_ram_pages; idx++) {
-        pmm->page_metadata[idx].type = PMM_PAGE_FREE;
+        pmm->page_metadata[idx].type = PMM_ALLOC_NONE;
         pmm->page_metadata[idx].reserved = NULL;
     }
 
