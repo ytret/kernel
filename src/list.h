@@ -73,10 +73,6 @@
  * @param node_name_in_struct Name of the node field in @a struct_type.
  * @param found_expr          Test expression.
  * @param var_in_expr         Container identifier in @a found_expr.
- *
- * @returns
- * - Pointer to the container that satisfies the expression @a found_expr.
- * - `NULL` if no such container has been found.
  */
 #define LIST_FIND(p_list, p_found_struct, struct_type, node_name_in_struct,    \
                   found_expr, var_in_expr)                                     \
