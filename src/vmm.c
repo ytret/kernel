@@ -5,9 +5,9 @@
 #include "kmutex.h"
 #include "kprintf.h"
 #include "mbi.h"
-#include "memfun.h"
 #include "panic.h"
 #include "smp.h"
+#include "term.h"
 #include "vmm.h"
 
 #define VMM_ADDR_DIR_IDX(addr) (((addr) >> 22) & 0x3FF)
@@ -34,51 +34,22 @@ static task_mutex_t g_kvas_lock;
 static void prv_vmm_lock_kvas(void);
 static void prv_vmm_unlock_kvas(void);
 
+static void prv_vmm_identity_map_ram(void);
+
 static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
                      uint32_t flags);
 static void unmap_page(uint32_t *p_dir, uint32_t virt);
 
 void vmm_init(void) {
-    mbi_t const *p_mbi = mbi_ptr();
-
     gp_kvas_dir = heap_alloc_aligned(4096, 4096);
     __builtin_memset(gp_kvas_dir, 0, 4096);
     kprintf("vmm: kernel page dir is at %P\n", gp_kvas_dir);
 
-    // Identity map everything from the first page to heap end.
-    uint32_t map_start = 0x1000;
-    uint32_t map_end = (heap_end() + 0xFFF) & ~0xFFF;
-    for (uint32_t page = map_start; page < map_end; page += 4096) {
-        vmm_map_kernel_page(page, page);
-    }
+    prv_vmm_identity_map_ram();
 
-    // If the framebuffer is still not mapped, map it.
-    if ((p_mbi->flags & MBI_FLAG_FRAMEBUF) &&
-        (p_mbi->framebuffer_type != MBI_FRAMEBUF_EGA)) {
-        size_t size = (p_mbi->framebuffer_height * p_mbi->framebuffer_pitch);
-        uint64_t framebuf_end = (p_mbi->framebuffer_addr + size);
-        if (framebuf_end > 0x100000000) {
-            // We allow framebuf_end to be at 0x1_0000_000, but not past that
-            // point.
-            panic_enter();
-            kprintf("vmm: vmm_init: framebuffer end is beyond 4 GiBs at"
-                    " 0x%08X_%08X\n",
-                    ((uint32_t)(framebuf_end >> 32)), ((uint32_t)framebuf_end));
-            panic("framebuffer is too large");
-        }
+    term_map_iomem();
 
-        for (uint32_t virt = p_mbi->framebuffer_addr; virt < framebuf_end;
-             virt += 4096) {
-            uint32_t phys = virt;
-            vmm_map_kernel_page(virt, phys);
-        }
-    }
-
-    // Enable paging.
     vmm_load_dir(gp_kvas_dir);
-
-    kprintf("vmm: memory range %P..%P is identity mapped\n", map_start,
-            map_end);
 }
 
 uint32_t const *vmm_kvas_dir(void) {
@@ -119,6 +90,41 @@ void vmm_invlpg(uint32_t virt) {
                      : /* no outputs */
                      : "r"(virt)
                      : "memory");
+}
+
+static void prv_vmm_identity_map_ram(void) {
+    const pmm_mmap_t *const physmem_map = pmm_get_mmap();
+
+    for (list_node_t *node = physmem_map->entry_list.p_first_node; node != NULL;
+         node = node->p_next) {
+        pmm_region_t *const region =
+            LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
+
+        if (region->type != PMM_REGION_AVAILABLE &&
+            region->type != PMM_REGION_KERNEL_RESERVED &&
+            region->type != PMM_REGION_KERNEL_AND_MODS &&
+            region->type != PMM_REGION_STATIC_HEAP) {
+            continue;
+        }
+
+        if (region->end_incl >= UINT32_MAX) {
+            kprintf("vmm: skip region 0x%08x_%08x .. 0x%08x_%08x\n",
+                    (uint32_t)(region->start >> 32), (uint32_t)region->start,
+                    (uint32_t)(region->end_incl >> 32),
+                    (uint32_t)region->end_incl);
+            continue;
+        }
+
+        const uint32_t map_start = region->start & ~(PMM_PAGE_SIZE - 1);
+        const uint32_t map_end =
+            ((region->end_incl + 1) + (PMM_PAGE_SIZE - 1)) &
+            ~(PMM_PAGE_SIZE - 1);
+
+        kprintf("vmm: identity map range %P .. %P\n", map_start, map_end);
+        for (uint32_t page = map_start; page < map_end; page += 4096) {
+            vmm_map_kernel_page(page, page);
+        }
+    }
 }
 
 static void prv_vmm_lock_kvas(void) {
