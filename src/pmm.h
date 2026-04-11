@@ -49,6 +49,7 @@ typedef struct {
 } pmm_page_t;
 
 void pmm_init(const pmm_mmap_t *mmap);
+const pmm_mmap_t *pmm_get_mmap(void);
 void pmm_print_mmap(void);
 
 /**

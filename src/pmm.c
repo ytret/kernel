@@ -91,6 +91,10 @@ void pmm_init(const pmm_mmap_t *mmap) {
             100 * static_left / static_size);
 }
 
+const pmm_mmap_t *pmm_get_mmap(void) {
+    return &g_pmm.mmap;
+}
+
 void pmm_print_mmap(void) {
     prv_pmm_print_mmap(&g_pmm.mmap);
 }
