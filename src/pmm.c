@@ -8,6 +8,14 @@
 
 #define PMM_RESERVE_LOWER_BYTES (4U * 1024U * 1024U)
 
+/**
+ * Maximum number of patch regions.
+ *
+ * A patch region is constructed to cover an empty range in the memory map. If
+ * this number is too low to cover every memory map hole, the kernel panics.
+ */
+#define PMM_MAX_PATCH_REGIONS 16
+
 #define PMM_BUDDY_MAX_ORDERS     20
 #define PMM_LOG2_MIN_POOL_SIZE   22 // log2 of 4 MiB
 #define PMM_MIN_POOL_SIZE        (1 << PMM_LOG2_MIN_POOL_SIZE)
@@ -34,10 +42,13 @@ typedef struct {
 static pmm_ctx_t g_pmm;
 static pmm_region_t g_pmm_first_region_after_lower_mem;
 static pmm_region_t pmm_static_heap_region;
+static pmm_region_t g_pmm_patch_regions[PMM_MAX_PATCH_REGIONS];
+static size_t g_pmm_patch_region_cnt;
 
 static void prv_pmm_print_mmap(const pmm_mmap_t *mmap);
 static const char *prv_pmm_region_type_name(pmm_region_type_t region_type);
 
+static void prv_pmm_patch_mmap_holes(pmm_mmap_t *mmap);
 static void prv_pmm_reserve_lower_memory(pmm_mmap_t *mmap);
 static void prv_pmm_count_available_memory(pmm_ctx_t *pmm);
 static void prv_pmm_init_static_heap(pmm_ctx_t *pmm);
@@ -74,6 +85,7 @@ void pmm_init(const pmm_mmap_t *mmap) {
 
     g_pmm.static_heap = heap_get_static_heap();
 
+    prv_pmm_patch_mmap_holes(&g_pmm.mmap);
     prv_pmm_reserve_lower_memory(&g_pmm.mmap);
     prv_pmm_count_available_memory(&g_pmm);
     prv_pmm_init_static_heap(&g_pmm);
@@ -217,6 +229,53 @@ static const char *prv_pmm_region_type_name(pmm_region_type_t region_type) {
         return "static heap";
     default:
         return "<unknown>";
+    }
+}
+
+static void prv_pmm_patch_mmap_holes(pmm_mmap_t *mmap) {
+    while (true) {
+        // We cannot use a single for loop to iterate over the list, because the
+        // list changes if there are holes being patched.
+
+        bool is_first_region = true;
+        uint64_t last_end_incl = 0;
+        bool has_no_holes = true;
+
+        for (list_node_t *node = mmap->entry_list.p_first_node; node != NULL;
+             node = node->p_next) {
+            pmm_region_t *const region =
+                LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
+
+            if (!is_first_region && region->start > last_end_incl + 1) {
+                const uint64_t hole_start = last_end_incl + 1;
+                const uint64_t hole_end_incl = region->start - 1;
+                kprintf(
+                    "pmm: found memory map hole 0x%08x_%08x .. 0x%08x_%08x\n",
+                    hole_start, hole_end_incl);
+
+                if (g_pmm_patch_region_cnt >= PMM_MAX_PATCH_REGIONS) {
+                    kprintf("pmm: too many holes in the memory map (%u > %u)\n",
+                            g_pmm_patch_region_cnt, PMM_MAX_PATCH_REGIONS);
+                    panic("unexpected behavior");
+                }
+
+                pmm_region_t *const patch =
+                    &g_pmm_patch_regions[g_pmm_patch_region_cnt++];
+                patch->start = hole_start;
+                patch->end_incl = hole_end_incl;
+                patch->type = PMM_REGION_RESERVED;
+
+                list_insert(&mmap->entry_list, node->p_prev, &patch->node);
+
+                has_no_holes = false;
+                break;
+            }
+
+            is_first_region = false;
+            last_end_incl = region->end_incl;
+        }
+
+        if (has_no_holes) { break; }
     }
 }
 
@@ -647,8 +706,8 @@ static paddr_t prv_pmm_alloc_in_pool(alloc_buddy_t *pool, size_t num_pages,
 }
 
 static pmm_region_t *prv_pmm_find_region_by_addr(pmm_ctx_t *pmm, paddr_t addr) {
-    for (list_node_t *node = pmm->alloc_mmap.entry_list.p_first_node;
-         node != NULL; node = node->p_next) {
+    for (list_node_t *node = pmm->mmap.entry_list.p_first_node; node != NULL;
+         node = node->p_next) {
         pmm_region_t *const region =
             LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
 
