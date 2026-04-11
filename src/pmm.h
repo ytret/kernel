@@ -6,6 +6,8 @@
 #include "list.h"
 #include "types.h"
 
+#define PMM_PAGE_SIZE 4096
+
 typedef enum {
     PMM_REGION_AVAILABLE,
     PMM_REGION_RESERVED,
@@ -35,12 +37,25 @@ void pmm_print_mmap(void);
 /**
  * Allocate contiguous physical memory pages.
  *
- * @returns Address to the allocated range (never `NULL`).
+ * @returns Physical address to the allocated range (never `0`).
  *
  * @warning
  * This function panics if there is not enough physical memory.
  */
 paddr_t pmm_alloc_pages(size_t num_pages);
+
+/**
+ * Allocate a contiguous aligned memory region.
+ *
+ * @param num_pages   Allocation size in pages.
+ * @param align_pages Alignment in pages.
+ *
+ * @returns Physical address to the allocated range (never `0`).
+ *
+ * @warning
+ * This function panics if the allocation could not be made.
+ */
+paddr_t pmm_alloc_aligned_pages(size_t num_pages, size_t align_pages);
 
 /**
  * Free previously allocated physical memory.

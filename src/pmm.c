@@ -4,8 +4,6 @@
 #include "pmm.h"
 #include "ytalloc/ytalloc.h"
 
-#define PMM_PAGE_SIZE 4096
-
 #define PMM_RESERVE_LOWER_BYTES (4U * 1024U * 1024U)
 
 #define PMM_BUDDY_MAX_ORDERS     20
@@ -45,8 +43,10 @@ static alloc_buddy_t *prv_pmm_create_pool(pmm_ctx_t *pmm, uint32_t start,
                                           size_t size, uint32_t *out_start,
                                           uint32_t *out_size);
 
-static paddr_t prv_pmm_alloc_in_region(pmm_region_t *region, size_t num_pages);
-static paddr_t prv_pmm_alloc_in_pool(alloc_buddy_t *pool, size_t num_pages);
+static paddr_t prv_pmm_alloc_in_region(pmm_region_t *region, size_t num_pages,
+                                       size_t align_pages);
+static paddr_t prv_pmm_alloc_in_pool(alloc_buddy_t *pool, size_t num_pages,
+                                     size_t align_pages);
 
 static pmm_region_t *prv_pmm_find_region_by_addr(pmm_ctx_t *pmm, paddr_t addr);
 static alloc_buddy_t *prv_pmm_find_pool_by_addr(pmm_region_t *region,
@@ -73,8 +73,10 @@ void pmm_init(const pmm_mmap_t *mmap) {
     kprintf("pmm: memory map upon init exit:\n");
     pmm_print_mmap();
 
-    kprintf("pmm: static heap has %u bytes left\n",
-            g_pmm.static_heap.end - g_pmm.static_heap.next);
+    const size_t static_size = g_pmm.static_heap.end - g_pmm.static_heap.start;
+    const size_t static_left = g_pmm.static_heap.end - g_pmm.static_heap.next;
+    kprintf("pmm: static heap has %u bytes left (%u %%)\n", static_left,
+            100 * static_left / static_size);
 }
 
 void pmm_print_mmap(void) {
@@ -82,17 +84,38 @@ void pmm_print_mmap(void) {
 }
 
 paddr_t pmm_alloc_pages(size_t num_pages) {
+    return pmm_alloc_aligned_pages(num_pages, 1);
+}
+
+paddr_t pmm_alloc_aligned_pages(size_t num_pages, size_t align_pages) {
+    if (align_pages == 0 || (align_pages & (align_pages - 1)) != 0) {
+        kprintf("pmm: requested alignment of %u pages is not a power of two\n",
+                align_pages);
+        panic("invalid argument");
+    }
+
     for (list_node_t *node = g_pmm.alloc_mmap.entry_list.p_first_node;
          node != NULL; node = node->p_next) {
         pmm_region_t *const region =
             LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
 
-        const paddr_t addr = prv_pmm_alloc_in_region(region, num_pages);
-        if (addr != 0) { return addr; }
+        const paddr_t addr =
+            prv_pmm_alloc_in_region(region, num_pages, align_pages);
+        if (addr != 0) {
+            // Do an extra check in case ytalloc is buggy.
+            if (addr % (PMM_PAGE_SIZE * align_pages) != 0) {
+                kprintf("pmm: internal error: returned address 0x%08x is not "
+                        "aligned at %u pages\n",
+                        addr, align_pages);
+                panic("unexpected behavior");
+            }
+            return addr;
+        }
     }
 
-    kprintf("pmm: failed to allocate %u pages\n", num_pages);
-    panic("out of memory");
+    kprintf("pmm: failed to allocate %u pages aligned at %u pages\n", num_pages,
+            align_pages);
+    panic("physical memory allocation failed");
 }
 
 void pmm_free_pages(paddr_t addr, size_t num_pages) {
@@ -472,21 +495,26 @@ static alloc_buddy_t *prv_pmm_create_pool(pmm_ctx_t *pmm, uint32_t start,
     return heap;
 }
 
-static paddr_t prv_pmm_alloc_in_region(pmm_region_t *region, size_t num_pages) {
+static paddr_t prv_pmm_alloc_in_region(pmm_region_t *region, size_t num_pages,
+                                       size_t align_pages) {
     alloc_buddy_t **const pools = region->v_pools;
 
     for (size_t idx = 0; idx < region->num_pools; idx++) {
         alloc_buddy_t *const pool = pools[idx];
-        const paddr_t addr = prv_pmm_alloc_in_pool(pool, num_pages);
+        const paddr_t addr =
+            prv_pmm_alloc_in_pool(pool, num_pages, align_pages);
         if (addr != 0) { return addr; }
     }
 
     return 0;
 }
 
-static paddr_t prv_pmm_alloc_in_pool(alloc_buddy_t *pool, size_t num_pages) {
+static paddr_t prv_pmm_alloc_in_pool(alloc_buddy_t *pool, size_t num_pages,
+                                     size_t align_pages) {
     const size_t size = PMM_PAGE_SIZE * num_pages;
-    return (paddr_t)alloc_buddy(pool, size);
+    const size_t align = PMM_PAGE_SIZE * align_pages;
+    kprintf("size = %u, align = %u\n", size, align);
+    return (paddr_t)alloc_buddy_aligned(pool, size, align);
 }
 
 static pmm_region_t *prv_pmm_find_region_by_addr(pmm_ctx_t *pmm, paddr_t addr) {
