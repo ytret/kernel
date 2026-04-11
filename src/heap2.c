@@ -2,6 +2,7 @@
 
 #include "heap.h"
 #include "kprintf.h"
+#include "memfun.h"
 #include "panic.h"
 #include "pmm.h"
 #include "slab.h"
@@ -138,4 +139,44 @@ void heap2_free(void *ptr) {
                 metadata->type);
         panic("unexpected behavior");
     }
+}
+
+void *heap2_realloc(void *ptr, size_t size, size_t align) {
+    if (!ptr) { return heap2_alloc_aligned(size, align); }
+
+    const paddr_t addr = (paddr_t)ptr; // FIXME
+    pmm_page_t *const metadata = pmm_paddr_to_page(addr);
+    heap_large_alloc_t *large;
+
+    size_t old_size;
+    switch (metadata->type) {
+    case PMM_PAGE_FREE:
+        debugf("heap: realloc: PMM_PAGE_FREE\n");
+        kprintf("heap: tried to realloc a free page 0x%08x\n", addr);
+        panic("unexpected behavior");
+
+    case PMM_PAGE_SLAB:
+        debugf("heap: realloc: PMM_PAGE_SLAB\n");
+        debugf("heap: slab = 0x%08x\n", metadata->slab);
+        old_size = slab_item_size(metadata->slab);
+        break;
+
+    case PMM_PAGE_LARGE:
+        debugf("heap: realloc: PMM_PAGE_LARGE\n");
+        large = metadata->large;
+        old_size = PMM_PAGE_SIZE * large->num_pages;
+        break;
+
+    default:
+        kprintf("heap: unrecognized value of page 0x%08x type (%u)\n", addr,
+                metadata->type);
+        panic("unexpected behavior");
+    }
+
+    const size_t copy_size = size <= old_size ? size : old_size;
+
+    void *const new_ptr = heap2_alloc_aligned(size, align);
+    kmemcpy(new_ptr, ptr, copy_size);
+    heap2_free(ptr);
+    return new_ptr;
 }
