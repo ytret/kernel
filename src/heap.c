@@ -8,7 +8,7 @@
 #include "pmm.h"
 #include "slab.h"
 
-#if 1
+#if 0
 #define debugf(...) kprintf(__VA_ARGS__);
 #else
 #define debugf(...)                                                            \
