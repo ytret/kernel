@@ -46,24 +46,48 @@ void heap2_init(void) {
 }
 
 void *heap2_alloc(size_t size) {
+    return heap2_alloc_aligned(size, 1);
+}
+
+void *heap2_alloc_aligned(size_t size, size_t align) {
+    if ((align & (align - 1)) != 0) {
+        kprintf("heap: alignment %u is not a power of two\n", align);
+        panic("invalid argument");
+    }
+
     if (size <= HEAP_MAX_SLAB_SIZE) {
+        // Items of size `align` will have the alignment of `align` - that's the
+        // property of the slab allocator.
+        const size_t eff_size = size >= align ? size : align;
+
         // TODO: calculate the order more efficiently.
         size_t idx;
         for (idx = 0; idx < g_heap.num_slab_caches; idx++) {
-            if (g_heap.slab_caches[idx].item_size >= size) { break; }
+            if (g_heap.slab_caches[idx].item_size >= eff_size) { break; }
         }
 
         void *const ptr = slab_alloc(&g_heap.slab_caches[idx]);
         if (!ptr) {
-            kprintf("heap: failed to allocate %u bytes\n", size);
+            kprintf("heap: failed to allocate %u bytes aligned at %u bytes "
+                    "(effective size %u)\n",
+                    size, align, eff_size);
             panic("out of memory");
         }
         return ptr;
     } else {
+        if (align < PMM_PAGE_SIZE) { align = PMM_PAGE_SIZE; }
+        if (align & (PMM_PAGE_SIZE - 1)) {
+            kprintf("pmm: alignment %u must be a multiple of page size (%u) "
+                    "for allocations larger than %u\n",
+                    align, PMM_PAGE_SIZE, HEAP_MAX_SLAB_SIZE);
+            panic("invalid argument");
+        }
+
         const size_t aligned_size =
             (size + (PMM_PAGE_SIZE - 1)) & ~(PMM_PAGE_SIZE - 1);
         const size_t num_pages = aligned_size / PMM_PAGE_SIZE;
-        const paddr_t addr = pmm_alloc_pages(num_pages);
+        const size_t align_pages = align / PMM_PAGE_SIZE;
+        const paddr_t addr = pmm_alloc_aligned_pages(num_pages, align_pages);
         // FIXME: physical to virtual?
 
         heap_large_alloc_t *const large = heap2_alloc(sizeof(*large));

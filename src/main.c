@@ -63,19 +63,20 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     heap2_init();
 
-    kprintf(">> alloc 1 << \n");
-    void *const ptr1 = heap2_alloc(2047);
-    kprintf(">> alloc 2 << \n");
-    void *const ptr2 = heap2_alloc(2047);
-    kprintf(">> alloc 3 << \n");
-    void *const ptr3 = heap2_alloc(2047);
+    heap2_alloc(4);
 
-    kprintf(">> free 2 << \n");
-    heap2_free(ptr2);
-    kprintf(">> free 1 << \n");
-    heap2_free(ptr1);
-    kprintf(">> free 3 << \n");
-    heap2_free(ptr3);
+    kprintf(">> alloc 1 << \n");
+    heap2_alloc_aligned(4096, 1);
+    kprintf(">> alloc 2 << \n");
+    heap2_alloc_aligned(4096, 4 * 4096);
+    kprintf(">> alloc 3 << \n");
+    heap2_alloc_aligned(4096, 1);
+    kprintf(">> alloc 4 << \n");
+    heap2_alloc_aligned(4096, 1);
+    kprintf(">> alloc 5 << \n");
+    heap2_alloc_aligned(4096, 1);
+    kprintf(">> alloc 6 << \n");
+    heap2_alloc_aligned(4096, 1);
 
     kprintf("main: intentional halt\n");
     for (;;) {
