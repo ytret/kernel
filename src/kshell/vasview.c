@@ -1,11 +1,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "heap.h"
 #include "kbd.h"
 #include "kprintf.h"
 #include "kshell/vasview.h"
 #include "panic.h"
+#include "pmm.h"
 #include "term.h"
 
 #define VIEW_START_ROW 2
@@ -117,11 +117,35 @@ static void update_info(void) {
             ((0 == end_addr) ? "1" : ""), // HACK: prepend 1 to 00000000
             end_addr);
 
-    kprintf("   ADDRESS  FLAGS     DPL  R/W  PRESENT\n");
-    kprintf("  %08x    %03x  %s  %s  %s", (entry & ~0xFFF), (entry & 0xFFF),
-            ((entry & FLAG_ANY_DPL) ? "   any" : "kernel"),
-            ((entry & FLAG_WRITABLE) ? "yes" : " no"),
-            ((entry & FLAG_PRESENT) ? "    yes" : "     no"));
+    if (VIEW_DIR == g_view) {
+        kprintf("   ADDRESS  FLAGS     DPL  R/W  PRESENT\n");
+        kprintf("  %08x    %03x  %s  %s  %s", (entry & ~0xFFF), (entry & 0xFFF),
+                ((entry & FLAG_ANY_DPL) ? "   any" : "kernel"),
+                ((entry & FLAG_WRITABLE) ? "yes" : " no"),
+                ((entry & FLAG_PRESENT) ? "    yes" : "     no"));
+    } else {
+        // FIXME: only works if identity mapped.
+        const char *page_owner_name = "<unknown>";
+        pmm_page_t *const metadata = pmm_paddr_to_page(start_addr);
+        switch (metadata->type) {
+        case PMM_PAGE_FREE:
+            page_owner_name = " free";
+            break;
+        case PMM_PAGE_SLAB:
+            page_owner_name = " slab";
+            break;
+        case PMM_PAGE_LARGE:
+            page_owner_name = "large";
+            break;
+        }
+
+        kprintf("   ADDRESS  FLAGS     DPL  R/W  PRESENT  OWNER\n");
+        kprintf("  %08x    %03x  %s  %s  %s  %s", (entry & ~0xFFF),
+                (entry & 0xFFF), ((entry & FLAG_ANY_DPL) ? "   any" : "kernel"),
+                ((entry & FLAG_WRITABLE) ? "yes" : " no"),
+                ((entry & FLAG_PRESENT) ? "    yes" : "     no"),
+                page_owner_name);
+    }
 }
 
 static void update_cursor(void) {
