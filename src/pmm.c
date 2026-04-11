@@ -31,6 +31,8 @@ static pmm_region_t g_pmm_first_region_after_lower_mem;
 static pmm_region_t pmm_static_heap_region;
 
 static void prv_pmm_print_mmap(const pmm_mmap_t *mmap);
+static const char *prv_pmm_region_type_name(pmm_region_type_t region_type);
+
 static void prv_pmm_reserve_lower_memory(pmm_mmap_t *mmap);
 static void prv_pmm_count_available_memory(pmm_ctx_t *pmm);
 static void prv_pmm_init_static_heap(pmm_ctx_t *pmm);
@@ -157,10 +159,27 @@ static void prv_pmm_print_mmap(const pmm_mmap_t *mmap) {
         pmm_region_t *const region =
             LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
 
-        kprintf("pmm: entry %u: start 0x%08x_%08x end 0x%08x_%08x type %u\n",
+        kprintf("pmm: entry %u: [0x%08x_%08x; 0x%08x_%08x) type '%s'\n",
                 idx, (uint32_t)(region->start >> 32), (uint32_t)region->start,
                 (uint32_t)(region->end_incl >> 32), (uint32_t)region->end_incl,
-                region->type);
+                prv_pmm_region_type_name(region->type));
+    }
+}
+
+static const char *prv_pmm_region_type_name(pmm_region_type_t region_type) {
+    switch (region_type) {
+    case PMM_REGION_AVAILABLE:
+        return "available RAM";
+    case PMM_REGION_RESERVED:
+        return "reserved";
+    case PMM_REGION_KERNEL_RESERVED:
+        return "kernel reserved";
+    case PMM_REGION_KERNEL_AND_MODS:
+        return "kernel and mods";
+    case PMM_REGION_STATIC_HEAP:
+        return "static heap";
+    default:
+        return "<unknown>";
     }
 }
 
