@@ -19,6 +19,7 @@
 #include "memfun.h"
 #include "port.h"
 #include "vga.h"
+#include "vmm.h"
 
 #define NUM_ROWS 25
 #define NUM_COLS 80
@@ -32,20 +33,22 @@
 #define PORT_CRTC_ADDR ((uint16_t)0x03D4)
 #define PORT_CRTC_DATA ((uint16_t)0x03D5)
 
-/*
- * Hardware defines.
+/**
+ * @{
+ * @name Hardware defines
  */
-#define VGA_MEMORY_ADDR 0xB8000
-
-#define REG_CRTC_MAX_SCAN_LINE ((uint8_t)0x09)
-#define REG_CRTC_CURSOR_START  ((uint8_t)0x0A)
-#define REG_CRTC_CURSOR_END    ((uint8_t)0x0B)
-#define REG_CRTC_CURSOR_LOC_HI ((uint8_t)0x0E)
-#define REG_CRTC_CURSOR_LOC_LO ((uint8_t)0x0F)
-
+#define VGA_MMIO_START           0xB8000
+#define VGA_MMIO_SIZE            (NUM_ROWS * PITCH)
+#define VGA_MMIO_END             (VGA_MMIO_START + VGA_MMIO_SIZE)
+#define REG_CRTC_MAX_SCAN_LINE   ((uint8_t)0x09)
+#define REG_CRTC_CURSOR_START    ((uint8_t)0x0A)
+#define REG_CRTC_CURSOR_END      ((uint8_t)0x0B)
+#define REG_CRTC_CURSOR_LOC_HI   ((uint8_t)0x0E)
+#define REG_CRTC_CURSOR_LOC_LO   ((uint8_t)0x0F)
 #define REG_CRTC_CURSOR_START_CD (1 << 5)
+/// @}
 
-static uint16_t *const gp_vga_buf = (uint16_t *)VGA_MEMORY_ADDR;
+static uint16_t *const gp_vga_buf = (uint16_t *)VGA_MMIO_START;
 static uint16_t gp_shadow_buf[NUM_ROWS * NUM_COLS * SHADOW_SCREENS];
 static size_t g_vga_start_at_sh_row;
 
@@ -59,6 +62,12 @@ static void copy_shadow_to_vga(void);
 
 void vga_init(void) {
     enable_cursor();
+}
+
+void vga_map_iomem(void) {
+    for (uint32_t page = VGA_MMIO_START; page < VGA_MMIO_END; page += 4096) {
+        vmm_map_kernel_page(page, page);
+    }
 }
 
 size_t vga_height_chars(void) {

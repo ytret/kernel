@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 void vga_init(void);
+void vga_map_iomem(void);
 
 size_t vga_height_chars(void);
 size_t vga_width_chars(void);
