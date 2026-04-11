@@ -22,7 +22,7 @@ include(FetchContent)
 FetchContent_Declare(
     ytalloc
     GIT_REPOSITORY https://github.com/ytret/ytalloc.git
-    GIT_TAG b3f2211e71740ca61eed69ff5c64759cf682c841
+    GIT_TAG e78d9ca22c20d8526136bd14019293983f221dc8
     GIT_PROGRESS ON
 )
 FetchContent_MakeAvailable(ytalloc)
