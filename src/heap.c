@@ -56,6 +56,25 @@ void *heap_get_static_heap(void) {
     return &g_heap_static;
 }
 
+void *heap_alloc_static(size_t size) {
+    if (g_heap_static.start == 0) {
+        kprintf("heap: static heap is not yet initialized\n");
+        panic("unexpected behavior");
+    }
+
+    void *const ptr = alloc_static(&g_heap_static, size);
+    if (!ptr) {
+        const size_t bytes_used = g_heap_static.next - g_heap_static.start;
+        const size_t bytes_total = g_heap_static.end - g_heap_static.start;
+        kprintf("heap: could not statically allocate %u bytes\n", size);
+        kprintf("heap: static heap usage: %u out of %u bytes\n", bytes_used,
+                bytes_total);
+        panic("out of memory");
+    }
+
+    return ptr;
+}
+
 void heap_init(uint32_t start) {
     mutex_init(&g_heap_mutex);
 
