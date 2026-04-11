@@ -88,6 +88,7 @@ paddr_t pmm_alloc_aligned_pages(size_t num_pages, size_t align_pages);
 void pmm_free_pages(paddr_t addr, size_t num_pages);
 
 pmm_page_t *pmm_paddr_to_page(paddr_t addr);
+pmm_region_t *pmm_find_region_by_addr(paddr_t addr);
 
 void pmm_push_page(uint32_t addr);
 uint32_t pmm_pop_page(void);

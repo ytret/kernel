@@ -67,7 +67,6 @@ static paddr_t prv_pmm_alloc_in_region(pmm_region_t *region, size_t num_pages,
 static paddr_t prv_pmm_alloc_in_pool(alloc_buddy_t *pool, size_t num_pages,
                                      size_t align_pages);
 
-static pmm_region_t *prv_pmm_find_region_by_addr(pmm_ctx_t *pmm, paddr_t addr);
 static alloc_buddy_t *prv_pmm_find_pool_by_addr(pmm_region_t *region,
                                                 paddr_t addr, size_t num_pages);
 
@@ -153,7 +152,7 @@ paddr_t pmm_alloc_aligned_pages(size_t num_pages, size_t align_pages) {
 void pmm_free_pages(paddr_t addr, size_t num_pages) {
     if (addr == 0) { return; }
 
-    pmm_region_t *const region = prv_pmm_find_region_by_addr(&g_pmm, addr);
+    pmm_region_t *const region = pmm_find_region_by_addr(addr);
     if (!region) {
         kprintf("pmm: could not find a region by address 0x%08x\n",
                 (uint32_t)addr);
@@ -175,8 +174,7 @@ void pmm_free_pages(paddr_t addr, size_t num_pages) {
 pmm_page_t *pmm_paddr_to_page(paddr_t addr) {
     const size_t aligned_addr = addr & ~(PMM_PAGE_SIZE - 1);
 
-    const pmm_region_t *const region =
-        prv_pmm_find_region_by_addr(&g_pmm, addr);
+    const pmm_region_t *const region = pmm_find_region_by_addr(addr);
     if (!region) {
         kprintf("pmm: could not find the region of address 0x%08x\n", addr);
         panic("unexpected behavior");
@@ -189,6 +187,21 @@ pmm_page_t *pmm_paddr_to_page(paddr_t addr) {
     kprintf("pmm: page 0x%08x metadata idx %u\n", addr, idx);
 #endif
     return &g_pmm.page_metadata[idx];
+}
+
+pmm_region_t *pmm_find_region_by_addr(paddr_t addr) {
+    for (list_node_t *node = g_pmm.mmap.entry_list.p_first_node; node != NULL;
+         node = node->p_next) {
+        pmm_region_t *const region =
+            LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
+
+        if (region->start <= (uint64_t)addr &&
+            (uint64_t)addr <= region->end_incl) {
+            return region;
+        }
+    }
+
+    return NULL;
 }
 
 void pmm_push_page(uint32_t addr) {
@@ -703,21 +716,6 @@ static paddr_t prv_pmm_alloc_in_pool(alloc_buddy_t *pool, size_t num_pages,
     const size_t size = PMM_PAGE_SIZE * num_pages;
     const size_t align = PMM_PAGE_SIZE * align_pages;
     return (paddr_t)alloc_buddy_aligned(pool, size, align);
-}
-
-static pmm_region_t *prv_pmm_find_region_by_addr(pmm_ctx_t *pmm, paddr_t addr) {
-    for (list_node_t *node = pmm->mmap.entry_list.p_first_node; node != NULL;
-         node = node->p_next) {
-        pmm_region_t *const region =
-            LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
-
-        if (region->start <= (uint64_t)addr &&
-            (uint64_t)addr <= region->end_incl) {
-            return region;
-        }
-    }
-
-    return NULL;
 }
 
 static alloc_buddy_t *prv_pmm_find_pool_by_addr(pmm_region_t *region,
