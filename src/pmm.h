@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "list.h"
+#include "types.h"
 
 typedef enum {
     PMM_REGION_AVAILABLE,
@@ -39,19 +40,19 @@ void pmm_print_mmap(void);
  * @warning
  * This function panics if there is not enough physical memory.
  */
-void *pmm_alloc_pages(size_t num_pages);
+paddr_t pmm_alloc_pages(size_t num_pages);
 
 /**
  * Free previously allocated physical memory.
  *
- * @param ptr       Pointer returned by #pmm_alloc_pages() or `NULL`.
+ * @param addr      Address returned by #pmm_alloc_pages() or `NULL`.
  * @param num_pages Number of pages passed to #pmm_alloc_pages().
  *
  * @warning
- * If `ptr` and/or `num_pages` are not what was returned from or passed to
+ * If @a addr and/or @a num_pages are not what was returned from or passed to
  * #pmm_alloc_pages(), this function may either panic or corrupt memory.
  */
-void pmm_free_pages(void *ptr, size_t num_pages);
+void pmm_free_pages(paddr_t addr, size_t num_pages);
 
 void pmm_push_page(uint32_t addr);
 uint32_t pmm_pop_page(void);

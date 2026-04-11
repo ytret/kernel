@@ -7,3 +7,5 @@
 typedef volatile uint8_t IO8;
 typedef volatile uint16_t IO16;
 typedef volatile uint32_t IO32;
+
+typedef uintptr_t paddr_t;
