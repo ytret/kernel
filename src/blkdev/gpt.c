@@ -11,9 +11,11 @@
 #include "heap.h"
 #include "kprintf.h"
 #include "kstring.h"
+#include "log.h"
 #include "memfun.h"
 
-#define GPT_SIGNATURE 0x5452415020494645 // "EFI PART"
+#define GPT_SIGNATURE    0x5452415020494645 // "EFI PART"
+#define GPT_GUID_STR_LEN 30
 
 /**
  * GPT Header structure.
@@ -63,23 +65,24 @@ static constexpr uint8_t gp_root_guid[16] = {
 };
 
 static bool prv_gpt_is_gpe_used(const gpt_gpe_t *gpe);
-static void prv_gpt_print_guid(const uint8_t guid[16]);
+static void prv_gpt_snprint_guid(char *buf, size_t size,
+                                 const uint8_t guid[16]);
 
 bool gpt_probe_signature(blkdev_dev_t *dev) {
     uint8_t *const sector1 = heap_alloc(512);
     if (!blkdev_sync_read(dev, 1, 1, sector1)) {
-        kprintf("gpt: failed to read sector 1\n");
+        LOG_ERROR("failed to read sector 1");
         heap_free(sector1);
         return false;
     }
 
     const gpt_hdr_t *const gpt_hdr = (const gpt_hdr_t *)sector1;
     if (gpt_hdr->signature == GPT_SIGNATURE) {
-        kprintf("gpt: found a valid GPT signature\n");
+        LOG_INFO("found a valid GPT signature");
         heap_free(sector1);
         return true;
     } else {
-        kprintf("gpt: no valid GPT signature\n");
+        LOG_INFO("no valid GPT signature");
         heap_free(sector1);
         return false;
     }
@@ -88,44 +91,44 @@ bool gpt_probe_signature(blkdev_dev_t *dev) {
 bool gpt_parse(blkdev_dev_t *dev, gpt_disk_t **out_gpt_disk) {
     uint8_t *const sector1 = heap_alloc(512);
     if (!blkdev_sync_read(dev, 1, 1, sector1)) {
-        kprintf("gpt: failed to read sector 1\n");
+        LOG_ERROR("failed to read sector 1");
         heap_free(sector1);
         return false;
     }
 
     const gpt_hdr_t *const gpt_hdr = (const gpt_hdr_t *)sector1;
     if (gpt_hdr->signature != GPT_SIGNATURE) {
-        kprintf("gpt: invalid GPT signature: 0x%08X%08X\n",
-                (uint32_t)(gpt_hdr->signature >> 32),
-                (uint32_t)gpt_hdr->signature);
+        LOG_ERROR("invalid GPT signature: 0x%08X%08X",
+                  (uint32_t)(gpt_hdr->signature >> 32),
+                  (uint32_t)gpt_hdr->signature);
         heap_free(sector1);
         return false;
     }
     // TODO: check everything listed on page 118.
 
-    kprintf("gpt: Signature '%s'\n", (const char *)&gpt_hdr->signature);
-    kprintf("gpt: GPT Revision 0x%08x\n", gpt_hdr->revision);
-    kprintf("gpt: Header Size %u\n", gpt_hdr->header_size);
-    kprintf("gpt: Header CRC32 0x%08x\n", gpt_hdr->header_crc32);
-    kprintf("gpt: My LBA %u\n", gpt_hdr->my_lba);
-    kprintf("gpt: Alternate LBA %u\n", gpt_hdr->alternate_lba);
-    kprintf("gpt: First Usable LBA %u\n", gpt_hdr->first_usable_lba);
-    kprintf("gpt: Last Usable LBA %u\n", gpt_hdr->last_usable_lba);
-    kprintf("gpt: Disk GUID ");
-    prv_gpt_print_guid(gpt_hdr->disk_guid);
-    kprintf("\n");
-    kprintf("gpt: GPE Array starts at LBA %u\n", gpt_hdr->gpes_lba);
-    kprintf("gpt: GPE Array length %u entries\n", gpt_hdr->gpes_num);
-    kprintf("gpt: GPE Size %u\n", gpt_hdr->gpe_size);
-    kprintf("gpt: GPE Array CRC32 0x%08x\n", gpt_hdr->gpes_crc32);
+    char *const guid_str = heap_alloc(GPT_GUID_STR_LEN + 1);
+    prv_gpt_snprint_guid(guid_str, GPT_GUID_STR_LEN + 1, gpt_hdr->disk_guid);
+    LOG_DEBUG("Signature '%s'", (const char *)&gpt_hdr->signature);
+    LOG_DEBUG("GPT Revision 0x%08x", gpt_hdr->revision);
+    LOG_DEBUG("Header Size %u", gpt_hdr->header_size);
+    LOG_DEBUG("Header CRC32 0x%08x", gpt_hdr->header_crc32);
+    LOG_DEBUG("My LBA %u", gpt_hdr->my_lba);
+    LOG_DEBUG("Alternate LBA %u", gpt_hdr->alternate_lba);
+    LOG_DEBUG("First Usable LBA %u", gpt_hdr->first_usable_lba);
+    LOG_DEBUG("Last Usable LBA %u", gpt_hdr->last_usable_lba);
+    LOG_DEBUG("Disk GUID %s", guid_str);
+    LOG_DEBUG("GPE Array starts at LBA %u", gpt_hdr->gpes_lba);
+    LOG_DEBUG("GPE Array length %u entries", gpt_hdr->gpes_num);
+    LOG_DEBUG("GPE Size %u", gpt_hdr->gpe_size);
+    LOG_DEBUG("GPE Array CRC32 0x%08x", gpt_hdr->gpes_crc32);
+    heap_free(guid_str);
 
     const size_t gpes_sectors =
         ((gpt_hdr->gpe_size * gpt_hdr->gpes_num) + 511) / 512;
     uint8_t *const gpes_buf = heap_alloc(512 * gpes_sectors);
     if (!blkdev_sync_read(dev, gpt_hdr->gpes_lba, gpes_sectors, gpes_buf)) {
-        kprintf(
-            "gpt: failed to read GUID Partition Entry Array (sectors %u..%u)\n",
-            gpt_hdr->gpes_lba, gpt_hdr->gpes_lba + gpes_sectors);
+        LOG_ERROR("failed to read GUID Partition Entry Array (sectors %u..%u)",
+                  gpt_hdr->gpes_lba, gpt_hdr->gpes_lba + gpes_sectors);
         heap_free(sector1);
         heap_free(gpes_buf);
         return false;
@@ -182,17 +185,22 @@ static bool prv_gpt_is_gpe_used(const gpt_gpe_t *gpe) {
     return kmemcmp(gpe->type_guid, unused_type_guid, 16) != 0;
 }
 
-static void prv_gpt_print_guid(const uint8_t guid[16]) {
+static void prv_gpt_snprint_guid(char *buf, size_t size,
+                                 const uint8_t guid[16]) {
     uint32_t *p_one = (uint32_t *)&guid[0];   // 0..3
     uint16_t *p_two = (uint16_t *)&guid[4];   // 4..5
     uint16_t *p_three = (uint16_t *)&guid[6]; // 6..7
     uint8_t *p_four = (uint8_t *)&guid[8];    // 8
     uint8_t *p_five = (uint8_t *)&guid[9];    // 9
 
-    kprintf("%08X-%04X-%04X-%02X%02X-", *p_one, *p_two, *p_three, *p_four,
-            *p_five);
+    size_t offset = ksnprintf(buf, size, "%08X-%04X-%04X-%02X%02X-", *p_one,
+                              *p_two, *p_three, *p_four, *p_five);
+    if (offset >= size) { return; }
 
     for (size_t idx = 10; idx < 16; idx++) {
-        kprintf("%02X", guid[idx]);
+        size_t add_offset =
+            ksnprintf(&buf[offset], size - offset, "%02X", guid[idx]);
+        if (offset + add_offset >= size - offset) { return; }
+        offset += add_offset;
     }
 }
