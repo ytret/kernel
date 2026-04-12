@@ -6,6 +6,7 @@
 #include "isrs.h"
 #include "kprintf.h"
 #include "ksyscall.h"
+#include "log.h"
 #include "panic.h"
 #include "smp.h"
 #include "taskmgr.h"
@@ -35,8 +36,8 @@ static void fill_desc(uint8_t *p_desc, void const *p_idt, uint16_t idt_size);
 static void fill_entry(entry_t *p_entry, void (*p_handler)(void));
 static void fill_user_entry(entry_t *p_entry, void (*p_handler)(void));
 
-static void print_entry(entry_t const *p_entry);
-static void print_stack_frame(isr_stack_frame_t const *p_stack_frame);
+static void snprint_entry(char *buf, size_t size, entry_t const *p_entry);
+static void dump_stack_frame(isr_stack_frame_t const *p_stack_frame);
 
 void idt_init(void) {
     fill_entry(&gp_idt[0], isr_0);
@@ -177,21 +178,21 @@ void idt_dummy_exception_handler(uint32_t exc_num, uint32_t err_code,
         p_name = "reserved";
     }
 
-    kprintf("idt: exception: %d (%s)\n", exc_num, p_name);
+    LOG_ERROR("exception: %d (%s)", exc_num, p_name);
     if (p_running_task) {
-        kprintf("idt: running task ID: %u\n", p_running_task->id);
+        LOG_ERROR("running task ID: %u", p_running_task->id);
     } else {
-        kprintf("idt: running task ID: none\n");
+        LOG_ERROR("running task ID: none");
     }
-    kprintf("idt: error code: %d\n", err_code);
-    print_stack_frame(p_stack_frame);
+    LOG_ERROR("error code: %d", err_code);
+    dump_stack_frame(p_stack_frame);
     panic("no handler defined");
 }
 
 void idt_dummy_handler(isr_stack_frame_t *p_stack_frame) {
     panic_enter();
-    kprintf("idt: idt_dummy_handler()\n");
-    print_stack_frame(p_stack_frame);
+    LOG_ERROR("idt_dummy_handler()");
+    dump_stack_frame(p_stack_frame);
     panic("no handler defined");
 }
 
@@ -200,15 +201,15 @@ void idt_page_fault_handler(uint32_t addr, uint32_t err_code,
     task_t *const p_running_task = taskmgr_local_running_task();
 
     panic_enter();
-    kprintf("idt: page fault exception\n");
+    LOG_ERROR("page fault exception");
     if (p_running_task) {
-        kprintf("idt: running task ID: %u\n", p_running_task->id);
+        LOG_ERROR("running task ID: %u", p_running_task->id);
     } else {
-        kprintf("idt: running task ID: none\n");
+        LOG_ERROR("running task ID: none");
     }
-    kprintf("idt: virtual address: 0x%08X\n", addr);
-    kprintf("idt: Error code: %d\n", err_code);
-    print_stack_frame(p_stack_frame);
+    LOG_ERROR("virtual address: 0x%08X", addr);
+    LOG_ERROR("error code: %d", err_code);
+    dump_stack_frame(p_stack_frame);
     panic("unresolved page fault");
 }
 
@@ -244,19 +245,20 @@ static void fill_user_entry(entry_t *p_entry, void (*p_handler)(void)) {
 }
 
 [[maybe_unused]]
-static void print_entry(entry_t const *p_entry) {
-    kprintf("idt: offset=%P, P=%d, DPL=%d, type=0x%X, selector=0x%X (%X %X)\n",
-            ((p_entry->offset_31_16 << 16) | p_entry->offset_15_0),
-            ((p_entry->present_dpl_type >> 7) & 1),
-            ((p_entry->present_dpl_type >> 5) & 3),
-            (p_entry->present_dpl_type & 0xF), p_entry->selector,
-            ((uint32_t const *)p_entry)[0], ((uint32_t const *)p_entry)[1]);
+static void snprint_entry(char *buf, size_t size, entry_t const *p_entry) {
+    ksnprintf(buf, size,
+              "offset=%P, P=%d, DPL=%d, type=0x%X, selector=0x%X (%X %X)",
+              ((p_entry->offset_31_16 << 16) | p_entry->offset_15_0),
+              ((p_entry->present_dpl_type >> 7) & 1),
+              ((p_entry->present_dpl_type >> 5) & 3),
+              (p_entry->present_dpl_type & 0xF), p_entry->selector,
+              ((uint32_t const *)p_entry)[0], ((uint32_t const *)p_entry)[1]);
 }
 
 [[maybe_unused]]
-static void print_stack_frame(isr_stack_frame_t const *p_stack_frame) {
-    kprintf("idt: stack frame is at %P:\n", p_stack_frame);
-    kprintf("idt:    eip = 0x%X\n", p_stack_frame->eip);
-    kprintf("idt:     cs = 0x%X\n", p_stack_frame->cs);
-    kprintf("idt: eflags = 0x%X\n", p_stack_frame->eflags);
+static void dump_stack_frame(isr_stack_frame_t const *p_stack_frame) {
+    LOG_DEBUG("stack frame is at %P:", p_stack_frame);
+    LOG_DEBUG("   eip = 0x%X", p_stack_frame->eip);
+    LOG_DEBUG("    cs = 0x%X", p_stack_frame->cs);
+    LOG_DEBUG("eflags = 0x%X", p_stack_frame->eflags);
 }
