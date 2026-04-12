@@ -8,8 +8,8 @@
 #include "heap.h"
 #include "idt.h"
 #include "init.h"
-#include "kprintf.h"
 #include "kspinlock.h"
+#include "log.h"
 #include "memfun.h"
 #include "panic.h"
 #include "pit.h"
@@ -64,7 +64,7 @@ void smp_init(void) {
 
     const uint8_t num_procs = acpi_num_procs();
     const uint8_t bsp_lapic = lapic_get_id();
-    kprintf("smp: BSP's Local APIC ID = 0x%02X\n", bsp_lapic);
+    LOG_DEBUG("BSP's Local APIC ID = 0x%02X", bsp_lapic);
 
     // Allocate the processor context array for the total number of processors.
     // Some of them may be unusable, but for simplicity we allocate for them,
@@ -145,8 +145,8 @@ void smp_init(void) {
         while (!g_smp_curr_ap_done) {
             __asm__ volatile("pause" ::: "memory");
         }
-        kprintf("smp: AP UID %u (LAPIC ID %u) is up and running\n",
-                acpi_proc->proc_uid, acpi_proc->lapic_id);
+        LOG_INFO("AP UID %u (LAPIC ID %u) is up and running",
+                 acpi_proc->proc_uid, acpi_proc->lapic_id);
     }
 
     gdt_load(&smp_get_running_proc()->gdtr);
@@ -241,18 +241,17 @@ void smp_ap_trampoline_c(void) {
 
     vmm_load_dir(vmm_kvas_dir());
 
-    kprintf(
-        "smp: Hello, World! from AP kernel num %u UID %u with LAPIC ID %u\n",
-        smp_get_running_proc()->proc_num,
-        smp_get_running_proc()->acpi->proc_uid,
-        smp_get_running_proc()->acpi->lapic_id);
+    LOG_DEBUG("Hello, World! from AP kernel num %u UID %u with LAPIC ID %u",
+              smp_get_running_proc()->proc_num,
+              smp_get_running_proc()->acpi->proc_uid,
+              smp_get_running_proc()->acpi->lapic_id);
     idt_load(idt_get_desc());
     lapic_init(false);
 
     taskmgr_local_init(init_ap_task);
 
     panic_enter();
-    panic("End of smp_ap_trampoline_c\n");
+    panic("End of smp_ap_trampoline_c");
 }
 
 static void prv_smp_init_trampoline(const gdtr_t *gdtr) {
