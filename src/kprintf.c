@@ -4,8 +4,8 @@
 #include <ytprintf.h>
 
 #include "kprintf.h"
-#include "term.h"
 #include "serial.h"
+#include "term.h"
 
 #define KPRINTF_BUF_SIZE 256
 
@@ -42,6 +42,28 @@ int kvprintf(char const *restrict fmt, va_list ap) {
     term_print_str(g_kprintf_buf);
 
     if (b_release_mutex) { term_release_mutex(); }
+
+    va_end(ap_copy);
+    return ret;
+}
+
+int ksnprintf(char *str, size_t size, const char *fmt, ...) {
+    int ret;
+    va_list ap;
+
+    va_start(ap, fmt);
+    ret = kvsnprintf(str, size, fmt, ap);
+    va_end(ap);
+
+    return ret;
+}
+
+int kvsnprintf(char *str, size_t size, const char *fmt, va_list ap) {
+    int ret;
+    va_list ap_copy;
+
+    va_copy(ap_copy, ap);
+    ret = yt_vsnprintf(str, size, fmt, ap_copy);
 
     va_end(ap_copy);
     return ret;
