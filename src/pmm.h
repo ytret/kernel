@@ -50,7 +50,7 @@ typedef struct {
 
 void pmm_init(const pmm_mmap_t *mmap);
 const pmm_mmap_t *pmm_get_mmap(void);
-void pmm_print_mmap(void);
+void pmm_dump_mmap(void);
 
 /**
  * Allocate contiguous physical memory pages.
