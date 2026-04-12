@@ -1,6 +1,6 @@
 #include "blkdev/blkpart.h"
 #include "heap.h"
-#include "kprintf.h"
+#include "log.h"
 #include "memfun.h"
 #include "panic.h"
 
@@ -12,8 +12,8 @@ blkpart_ctx_t *blkpart_init(blkdev_dev_t *parent_dev, gpt_part_t *part) {
     const uint64_t num_sectors_u64 = part->ending_lba - part->starting_lba;
     if ((num_sectors_u64 >> 32) != 0) {
         panic_enter();
-        kprintf("blkpart_init: partition is too big: 0x%08X%08X sectors\n",
-                (uint32_t)(num_sectors_u64 >> 32), (uint32_t)num_sectors_u64);
+        LOG_ERROR("partition is too big: 0x%08X%08X sectors",
+                  (uint32_t)(num_sectors_u64 >> 32), (uint32_t)num_sectors_u64);
         panic("blkpart_init failed");
     }
 
