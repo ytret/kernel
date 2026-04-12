@@ -14,4 +14,4 @@ void *slab_alloc(slab_cache_t *cache);
 void slab_free(void *v_slab, void *ptr);
 size_t slab_item_size(const void *v_slab);
 
-void slab_print_stats(slab_cache_t *cache);
+void slab_dump_stats(slab_cache_t *cache);

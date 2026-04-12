@@ -1,20 +1,14 @@
 #include <ytalloc/ytalloc.h>
 
+#define LOG_LEVEL LOG_LEVEL_DEBUG
+
 #include "assert.h"
-#include "kprintf.h"
+#include "log.h"
 #include "memfun.h"
 #include "pmm.h"
 #include "slab.h"
 
 #define SLAB_MIN_ITEMS_PER_SLAB 2
-
-#if 0
-#define debugf(...) kprintf(__VA_ARGS__);
-#else
-#define debugf(...)                                                            \
-    do {                                                                       \
-    } while (0);
-#endif
 
 typedef struct {
     list_node_t node;
@@ -42,13 +36,13 @@ void *slab_alloc(slab_cache_t *cache) {
 
 void slab_free(void *v_slab, void *ptr) {
     if (!v_slab) {
-        kprintf("slab: v_slab = NULL\n");
+        LOG_ERROR("v_slab = NULL");
         panic("invalid argument");
     }
     if (!ptr) { return; }
 
-    debugf("slab: free item at 0x%08x of slab 0x%08x\n", (uintptr_t)ptr,
-           (uintptr_t)v_slab);
+    LOG_FLOW("free item at 0x%08x of slab 0x%08x", (uintptr_t)ptr,
+             (uintptr_t)v_slab);
 
     slab_t *const slab = v_slab;
     alloc_slab_free(&slab->alloc, ptr);
@@ -57,14 +51,14 @@ void slab_free(void *v_slab, void *ptr) {
     const size_t used_items = alloc_slab_num_used(&slab->alloc);
     if (used_items == slab->alloc.num_items - 1) {
         // full -> partial
-        debugf("slab: cache %u slab 0x%08x move full -> partial\n",
-               cache->item_size, (uintptr_t)slab);
+        LOG_FLOW("cache %u slab 0x%08x move full -> partial", cache->item_size,
+                 (uintptr_t)slab);
         list_remove(&cache->full, &slab->node);
         list_append(&cache->partial, &slab->node);
     } else if (used_items == 0) {
         // partial -> free
-        debugf("slab: cache %u slab 0x%08x move partial -> free\n",
-               cache->item_size, (uintptr_t)slab);
+        LOG_FLOW("cache %u slab 0x%08x move partial -> free", cache->item_size,
+                 (uintptr_t)slab);
         list_remove(&cache->partial, &slab->node);
         list_append(&cache->free, &slab->node);
     }
@@ -72,37 +66,37 @@ void slab_free(void *v_slab, void *ptr) {
 
 size_t slab_item_size(const void *v_slab) {
     if (!v_slab) {
-        kprintf("slab: v_slab = NULL\n");
+        LOG_ERROR("v_slab = NULL");
         panic("invalid argument");
     }
 
     const slab_t *const slab = v_slab;
     if (!slab->cache) {
-        kprintf("slab: cache is NULL\n");
+        LOG_ERROR("cache is NULL");
         panic("unexpected behavior");
     }
 
     return slab->cache->item_size;
 }
 
-void slab_print_stats(slab_cache_t *cache) {
-    kprintf("slab: cache 0x%08x (item size %u) stats:\n", (uintptr_t)cache,
-            cache->item_size);
-    kprintf("slab: free list count: %u\n", list_count(&cache->free));
-    kprintf("slab: partial list count: %u\n", list_count(&cache->partial));
-    kprintf("slab: full list count: %u\n", list_count(&cache->full));
+void slab_dump_stats(slab_cache_t *cache) {
+    LOG_DEBUG("cache 0x%08x (item size %u) stats:", (uintptr_t)cache,
+              cache->item_size);
+    LOG_DEBUG("free list count: %u", list_count(&cache->free));
+    LOG_DEBUG("partial list count: %u", list_count(&cache->partial));
+    LOG_DEBUG("full list count: %u", list_count(&cache->full));
 }
 
 static slab_t *prv_slab_get_for_alloc(slab_cache_t *cache) {
     slab_t *slab = NULL;
 
     if (list_is_empty(&cache->partial)) {
-        debugf("slab: cache %u list partial is empty\n", cache->item_size);
+        LOG_FLOW("cache %u list partial is empty", cache->item_size);
         if (list_is_empty(&cache->free)) {
-            debugf("slab: cache %u list free is empty\n", cache->item_size);
+            LOG_FLOW("cache %u list free is empty", cache->item_size);
             slab = prv_slab_new(cache, SLAB_MIN_ITEMS_PER_SLAB);
         } else {
-            debugf("slab: cache %u list free is not empty\n", cache->item_size);
+            LOG_FLOW("cache %u list free is not empty", cache->item_size);
             list_node_t *const slab_node = list_pop_first(&cache->free);
             slab = LIST_NODE_TO_STRUCT(slab_node, slab_t, node);
         }
@@ -112,19 +106,19 @@ static slab_t *prv_slab_get_for_alloc(slab_cache_t *cache) {
             list_append(&cache->partial, &slab->node);
         }
     } else {
-        debugf("slab: cache %u list partial is not empty\n", cache->item_size);
+        LOG_FLOW("cache %u list partial is not empty", cache->item_size);
         list_node_t *const slab_node = cache->partial.p_first_node;
         slab = LIST_NODE_TO_STRUCT(slab_node, slab_t, node);
         if (alloc_slab_num_free(&slab->alloc) == 1) {
-            debugf("slab: cache %u slab 0x%08x move partial -> full\n",
-                   cache->item_size, (uintptr_t)slab);
+            LOG_FLOW("cache %u slab 0x%08x move partial -> full",
+                     cache->item_size, (uintptr_t)slab);
             list_pop_first(&cache->partial);
             list_append(&cache->full, slab_node);
         }
     }
 
     if (!slab) {
-        kprintf("slab: internal error: slab = NULL\n");
+        LOG_ERROR("internal error: slab = NULL");
         panic("unexpected behavior");
     }
 
@@ -140,7 +134,7 @@ static slab_t *prv_slab_new(slab_cache_t *cache, size_t min_items) {
     // memory range.
     const size_t pool_pages = pool_size / PMM_PAGE_SIZE;
 
-    debugf("slab: allocate a new slab for cache %u\n", item_size);
+    LOG_FLOW("allocate a new slab for cache %u", item_size);
 
     const paddr_t pool_start = pmm_alloc_pages(pool_pages);
     void *const v_pool = (void *)pool_start; // FIXME
@@ -159,15 +153,15 @@ static slab_t *prv_slab_new(slab_cache_t *cache, size_t min_items) {
     alloc_slab_init(&slab->alloc, (void *)alloc_start, pool_size - lost_size,
                     item_size);
 
-    debugf("slab: new cache %u slab 0x%08x max items: %u\n", cache->item_size,
-           (uintptr_t)slab, slab->alloc.num_items);
+    LOG_FLOW("new cache %u slab 0x%08x max items: %u", cache->item_size,
+             (uintptr_t)slab, slab->alloc.num_items);
 
     // Mark the pages as being owned by the new slab.
     for (paddr_t addr = pool_start;
          addr < pool_start + pool_pages * PMM_PAGE_SIZE;
          addr += PMM_PAGE_SIZE) {
-        debugf("slab: mark page 0x%08x as owned by cache %u slab 0x%08x\n",
-               addr, cache->item_size, (uintptr_t)slab);
+        LOG_FLOW("mark page 0x%08x as owned by cache %u slab 0x%08x", addr,
+                 cache->item_size, (uintptr_t)slab);
 
         pmm_page_t *const metadata = pmm_paddr_to_page(addr);
         metadata->type = PMM_ALLOC_SLAB;
