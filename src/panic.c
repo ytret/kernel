@@ -1,7 +1,7 @@
 #include <stdbool.h>
 
 #include "acpi/lapic.h"
-#include "kprintf.h"
+#include "log.h"
 #include "panic.h"
 #include "smp.h"
 #include "taskmgr.h"
@@ -18,8 +18,8 @@ void panic_enter(void) {
     if (smp_get_running_taskmgr()) { taskmgr_local_lock_scheduler(); }
     term_enter_panic_mode();
 
-    term_print_str("\n");
-    kprintf("==== KERNEL PANIC ====\n");
+    LOG_ERROR("");
+    LOG_ERROR("==== KERNEL PANIC ====");
 }
 
 [[gnu::noreturn]]
@@ -27,7 +27,7 @@ void panic(char const *p_msg) {
     if (b_in_panic) { panic_silent(); }
 
     b_in_panic = true;
-    kprintf("Kernel panic: %s. Halting.\n", p_msg);
+    LOG_ERROR("Kernel panic: %s. Halting.", p_msg);
 
     __asm__ volatile("cli");
     for (;;) {
