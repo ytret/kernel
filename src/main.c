@@ -9,7 +9,7 @@
 #include "idt.h"
 #include "init.h"
 #include "kbd.h"
-#include "kprintf.h"
+#include "log.h"
 #include "mbi.h"
 #include "panic.h"
 #include "pit.h"
@@ -40,7 +40,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     serial_init();
     term_init();
 
-    kprintf("main: Hello, world!\n");
+    LOG_INFO("Hello, World!");
     check_bootloader(magic_num, mbi_addr);
 
     gdtr_t gdtr;
@@ -84,7 +84,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     taskmgr_global_init();
 
     __asm__ volatile("sti");
-    kprintf("main: interrupts enabled\n");
+    LOG_DEBUG("interrupts enabled");
 
     lapic_calib_tim();
 
@@ -95,17 +95,17 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     devmgr_init();
 
     taskmgr_local_init(init_bsp_task);
-    kprintf("main: end of main\n");
+    LOG_ERROR("end of main");
 }
 
 static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr) {
     if (MULTIBOOT_MAGIC_NUM == magic_num) {
-        kprintf("main: booted by a multiboot-compliant bootloader\n");
-        kprintf("main: multiboot information structure is at %P\n", mbi_addr);
+        LOG_INFO("booted by a multiboot-compliant bootloader");
+        LOG_DEBUG("multiboot information structure is at %P", mbi_addr);
     } else {
         panic_enter();
-        kprintf("main: magic number: 0x%X, expected: 0x%X\n", magic_num,
-                MULTIBOOT_MAGIC_NUM);
+        LOG_ERROR("main: magic number: 0x%X, expected: 0x%X", magic_num,
+                  MULTIBOOT_MAGIC_NUM);
         panic("booted by an unknown bootloader");
     }
 }
@@ -139,9 +139,8 @@ static void prv_main_add_kernel_region(pmm_mmap_t *mmap, uintptr_t region_start,
                   region_end_incl <= region->end_incl,
               region);
     if (!found_region) {
-        kprintf("main: could not find a single region that covers [0x%08x; "
-                "0x%08x)\n",
-                region_start, region_end_excl);
+        LOG_ERROR("could not find a single region that covers [0x%08x; 0x%08x)",
+                  region_start, region_end_excl);
         panic("not implemented");
     }
 
@@ -149,11 +148,11 @@ static void prv_main_add_kernel_region(pmm_mmap_t *mmap, uintptr_t region_start,
     g_kernel_region.end_incl = region_end_incl;
     g_kernel_region.type = PMM_REGION_KERNEL_AND_MODS;
 
-    kprintf("main: added kernel region 0x%08x_%08x .. 0x%08x_%08x\n",
-            (uint32_t)(g_kernel_region.start >> 32),
-            (uint32_t)g_kernel_region.start,
-            (uint32_t)(g_kernel_region.end_incl >> 32),
-            (uint32_t)g_kernel_region.end_incl);
+    LOG_DEBUG("added kernel region 0x%08x_%08x .. 0x%08x_%08x",
+              (uint32_t)(g_kernel_region.start >> 32),
+              (uint32_t)g_kernel_region.start,
+              (uint32_t)(g_kernel_region.end_incl >> 32),
+              (uint32_t)g_kernel_region.end_incl);
 
     if (found_region->start < region_start) {
         // [original region]
