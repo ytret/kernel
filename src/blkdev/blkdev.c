@@ -6,7 +6,7 @@
 #include "blkdev/blkdev.h"
 #include "heap.h"
 #include "kmutex.h"
-#include "kprintf.h"
+#include "log.h"
 #include "panic.h"
 #include "queue.h"
 
@@ -48,7 +48,7 @@ bool blkdev_sync_read(blkdev_dev_t *dev, uint64_t start_sector,
     semaphore_init(&req->sem_done);
 
     if (!blkdev_enqueue_req(req)) {
-        kprintf("blkdev: blkdev_sync_read: failed to enqueue a request\n");
+        LOG_ERROR("blkdev_sync_read: failed to enqueue a request");
         heap_free(req);
         return false;
     }
@@ -73,16 +73,15 @@ void blkdev_task_entry(void) {
         // Check the request.
         // FIXME: increase semaphore with error field set?
         if (!req->dev) {
-            kprintf("blkdev: bad request: dev = NULL\n");
+            LOG_ERROR("bad request: dev = NULL");
             continue;
         }
         if (!req->dev->driver_intf.f_is_busy) {
-            kprintf("blkdev: bad request: dev->driver_intf.f_is_busy = NULL\n");
+            LOG_ERROR("bad request: dev->driver_intf.f_is_busy = NULL");
             continue;
         }
         if (!req->dev->driver_intf.f_submit_req) {
-            kprintf(
-                "blkdev: bad request: dev->driver_intf.f_submit_req = NULL\n");
+            LOG_ERROR("bad request: dev->driver_intf.f_submit_req = NULL");
             continue;
         }
 
@@ -95,7 +94,7 @@ void blkdev_task_entry(void) {
         req->dev->driver_intf.f_submit_req(req);
     }
 
-    kprintf("blkdev: reached task end\n");
+    LOG_ERROR("reached task end");
     panic("unexpected behavior");
 }
 
