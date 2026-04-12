@@ -16,7 +16,7 @@
 #include "memfun.h"
 
 #define GPT_SIGNATURE    0x5452415020494645 // "EFI PART"
-#define GPT_GUID_STR_LEN 30
+#define GPT_GUID_STR_LEN 36
 
 /**
  * GPT Header structure.
@@ -200,7 +200,7 @@ static void prv_gpt_snprint_guid(char *buf, size_t size,
     for (size_t idx = 10; idx < 16; idx++) {
         size_t add_offset =
             ksnprintf(&buf[offset], size - offset, "%02X", guid[idx]);
-        if (offset + add_offset >= size - offset) { return; }
+        if (offset + add_offset >= size) { return; }
         offset += add_offset;
     }
 }
