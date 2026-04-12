@@ -1,162 +1,48 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdint.h>
+#include <ytprintf.h>
 
 #include "kprintf.h"
-#include "kstring.h"
 #include "term.h"
+#include "serial.h"
 
-// Maximum lengths of unsigned and signed ints in base 10 and/or base 16.
-#define MAX_INT_LEN_10  11
-#define MAX_UINT_LEN_10 10
-#define MAX_UINT_LEN_16 8
+#define KPRINTF_BUF_SIZE 256
 
-static void print_field(char const *p_field, size_t field_width,
-                        bool b_zero_pad, bool b_left_just);
+static char g_kprintf_buf[KPRINTF_BUF_SIZE];
 
-int kprintf(char const *restrict p_format, ...) {
-    va_list args;
-    va_start(args, p_format);
-    const int ret = kvprintf(p_format, args);
-    va_end(args);
+int kprintf(char const *restrict fmt, ...) {
+    int ret;
+    va_list ap;
+
+    va_start(ap, fmt);
+    ret = kvprintf(fmt, ap);
+    va_end(ap);
+
     return ret;
 }
 
-int kvprintf(char const *restrict p_format, va_list args) {
+int kvprintf(char const *restrict fmt, va_list ap) {
     bool b_release_mutex = false;
+    int ret;
+    va_list ap_copy;
+
+    // NOTE: it is important to copy `ap`, otherwise the internal argument
+    // pointer/counter is never advanced.
+    va_copy(ap_copy, ap);
+
     if (!term_owns_mutex()) {
         term_acquire_mutex();
         b_release_mutex = true;
     }
 
-    // A string not containing '%'.
-    char const *p_pure_str = p_format;
-    size_t pure_str_len = 0;
+    ret = yt_vsnprintf(g_kprintf_buf, KPRINTF_BUF_SIZE, fmt, ap_copy);
+    if (ret > KPRINTF_BUF_SIZE) { ret = KPRINTF_BUF_SIZE; }
 
-    // Next character is a special one (it is preceded by a '%').
-    bool b_next_spec = false;
-
-    // Length of this specifier.
-    size_t spec_len = 0;
-
-    // Field width (0 if unspecified).
-    uint32_t field_width = 0;
-
-    // Zero padding.
-    bool b_zero_pad = false;
-
-    // Left or right justification.
-    bool b_left_just = false;
-
-    while ((*p_format) != 0) {
-        if (b_next_spec) {
-            // A special character.
-            spec_len++;
-
-            // True if the next character is not special.
-            bool b_spec_done = true;
-
-            if ('%' == (*p_format)) {
-                term_print_str("%");
-            } else if ('s' == (*p_format)) {
-                char const *p_arg_str = va_arg(args, char const *);
-                print_field(p_arg_str, field_width, false, b_left_just);
-            } else if ('d' == (*p_format)) {
-                int arg_num = va_arg(args, int);
-                char p_itoa_str[MAX_INT_LEN_10 + 1];
-                string_itoa(arg_num, true, p_itoa_str, 10);
-                print_field(p_itoa_str, field_width, b_zero_pad, b_left_just);
-            } else if ('u' == (*p_format)) {
-                unsigned int arg_num = va_arg(args, unsigned int);
-                char p_itoa_str[MAX_UINT_LEN_10 + 1];
-                string_itoa(arg_num, false, p_itoa_str, 10);
-                print_field(p_itoa_str, field_width, b_zero_pad, b_left_just);
-            } else if (('x' == (*p_format)) || ('X' == (*p_format))) {
-                unsigned int arg_num = va_arg(args, unsigned int);
-                char p_itoa_str[MAX_UINT_LEN_16 + 1];
-                string_itoa(arg_num, false, p_itoa_str, 16);
-
-                if ('X' == (*p_format)) { string_to_upper(p_itoa_str); }
-
-                print_field(p_itoa_str, field_width, b_zero_pad, b_left_just);
-            } else if (('p' == (*p_format)) || ('P' == (*p_format))) {
-                term_print_str("0x");
-
-                void const *p_ptr = va_arg(args, void const *);
-                char p_itoa_str[MAX_UINT_LEN_16 + 1];
-                string_itoa((unsigned int)p_ptr, false, p_itoa_str, 16);
-
-                if ('P' == (*p_format)) { string_to_upper(p_itoa_str); }
-
-                print_field(p_itoa_str, 8, true, false);
-            } else if ((0 == field_width) && ('0' == (*p_format))) {
-                b_zero_pad = true;
-                b_spec_done = false;
-            } else if (('0' <= (*p_format)) && ((*p_format) <= '9')) {
-                field_width *= 10;
-                field_width += ((*p_format) - '0');
-                b_spec_done = false;
-            } else if ('-' == (*p_format)) {
-                b_left_just = true;
-                b_spec_done = false;
-            } else {
-                // Unknown special character, just print it with the '%' sign.
-                char const *p_spec_str = (p_format - (spec_len - 1));
-                term_print_str_len(p_spec_str, spec_len);
-            }
-
-            if (b_spec_done) {
-                p_pure_str = (p_format + 1);
-                pure_str_len = 0;
-
-                b_next_spec = false;
-                spec_len = 0;
-                field_width = 0;
-                b_zero_pad = false;
-                b_left_just = false;
-            }
-        } else if ((*p_format) == '%') {
-            // A percent sign possibly followed by a special character.
-            b_next_spec = true;
-            spec_len++;
-
-            // Print the preceding non-special characters, if there were any.
-            if (pure_str_len > 0) {
-                term_print_str_len(p_pure_str, pure_str_len);
-            }
-        } else {
-            pure_str_len++;
-        }
-
-        p_format++;
-    }
-
-    // If the format string ends with '%', print it.
-    if (b_next_spec) {
-        term_print_str("%");
-    } else if (pure_str_len > 0) {
-        // Otherwise, print the last sequence of non-special characters.
-        term_print_str_len(p_pure_str, pure_str_len);
-    }
+    term_print_str(g_kprintf_buf);
 
     if (b_release_mutex) { term_release_mutex(); }
 
-    // FIXME: return the number of chars written to the terminal.
-    return 0;
-}
-
-static void print_field(char const *p_field, size_t field_width,
-                        bool b_zero_pad, bool b_left_just) {
-    if (b_left_just) { term_print_str(p_field); }
-
-    if (string_len(p_field) < field_width) {
-        char *p_filler = " ";
-        if (b_zero_pad) { p_filler = "0"; }
-        for (size_t idx = 0; idx < (field_width - string_len(p_field)); idx++) {
-            term_print_str(p_filler);
-        }
-    }
-
-    if (!b_left_just) { term_print_str(p_field); }
+    va_end(ap_copy);
+    return ret;
 }

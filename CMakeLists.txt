@@ -26,6 +26,13 @@ FetchContent_Declare(
     GIT_PROGRESS ON
 )
 FetchContent_MakeAvailable(ytalloc)
+FetchContent_Declare(
+    ytprintf
+    GIT_REPOSITORY https://github.com/ytret/ytprintf.git
+    GIT_TAG 050ffdaefd7af83f0eaec83e81be315d7afc92b5
+    GIT_PROGRESS ON
+)
+FetchContent_MakeAvailable(ytprintf)
 
 
 ############
@@ -111,7 +118,7 @@ target_link_options(kernel PRIVATE
     ${OPTIMIZATION_FLAGS}
     -T${CMAKE_SOURCE_DIR}/src/link.ld
 )
-target_link_libraries(kernel ytalloc)
+target_link_libraries(kernel ytalloc ytprintf gcc)
 set_target_properties(kernel PROPERTIES
     C_EXTENSIONS ON
     LINK_DEPENDS ${CMAKE_SOURCE_DIR}/src/link.ld
