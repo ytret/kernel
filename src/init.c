@@ -9,8 +9,8 @@
 #include "devmgr.h"
 #include "fs/ramfs.h"
 #include "init.h"
-#include "kprintf.h"
 #include "kshell/kshell.h"
+#include "log.h"
 #include "panic.h"
 #include "smp.h"
 #include "taskmgr.h"
@@ -29,9 +29,9 @@ void init_bsp_task(void) {
     taskmgr_local_new_kernel_task("term", (uint32_t)term_task);
     taskmgr_local_new_kernel_task("blkdev", (uint32_t)blkdev_task_entry);
 
-    kprintf("init_bsp_task: waiting for blkdev...\n");
+    LOG_FLOW("waiting for blkdev...");
     while (!blkdev_is_ready()) {}
-    kprintf("init_bsp_task: blkdev task is ready for requests\n");
+    LOG_FLOW("blkdev task is ready for requests");
 
     devmgr_init_blkdev_parts();
 
@@ -41,35 +41,35 @@ void init_bsp_task(void) {
     ASSERT(ramfs);
 
     vfs_err_t err = fs_ramfs->f_mount(ramfs, vfs_root_node());
-    kprintf("mount err = %u\n", err);
+    LOG_FLOW("mount err = %u", err);
     ASSERT(err == VFS_ERR_NONE);
 
     vfs_node_t *res_node;
     err = vfs_resolve_path_str("/", &res_node);
-    kprintf("resolve err = %u\n", err);
+    LOG_FLOW("resolve err = %u", err);
     ASSERT(err == VFS_ERR_NONE);
 
     vfs_node_t *new_node;
     err = res_node->ops->f_mknode(res_node, &new_node, "abc", VFS_NODE_FILE);
-    kprintf("mknode err = %u\n", err);
+    LOG_FLOW("mknode err = %u", err);
     ASSERT(err == VFS_ERR_NONE);
 
     vfs_dirent_t dirents[10];
     size_t num_dirents;
     err = res_node->ops->f_readdir(
         res_node, dirents, sizeof(dirents) / sizeof(dirents[0]), &num_dirents);
-    kprintf("readdir err = %u\n", err);
+    LOG_FLOW("readdir err = %u", err);
     ASSERT(err == VFS_ERR_NONE);
 
     for (size_t idx = 0; idx < num_dirents; idx++) {
         vfs_dirent_t *dirent = &dirents[idx];
-        kprintf("%u. %s\n", idx, dirent->name);
+        LOG_FLOW("%u. %s", idx, dirent->name);
     }
 
     kshell();
 
     panic_enter();
-    kprintf("init: init_bsp_task: kshell returned\n");
+    LOG_ERROR("kshell returned");
     panic("unexpected behavior");
 }
 
