@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdarg.h>
+
 #define LOG_LEVEL_NONE  0
 #define LOG_LEVEL_ERROR 1
 #define LOG_LEVEL_INFO  2
@@ -37,5 +39,7 @@
 #define LOG_FLOW(...) (void)0
 #endif
 
-void log_printf(const char *file, const char *func, int line, int level,
-                const char *fmt, ...) __attribute__((format(printf, 5, 6)));
+int log_printf(const char *file, const char *func, int line, int level,
+               const char *fmt, ...) __attribute__((format(printf, 5, 6)));
+int log_vprintf(const char *file, const char *func, int line, int level,
+                const char *fmt, va_list ap);

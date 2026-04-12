@@ -22,18 +22,19 @@ include(FetchContent)
 FetchContent_Declare(
     ytalloc
     GIT_REPOSITORY https://github.com/ytret/ytalloc.git
-    GIT_TAG 51759f89b01866dbff441d8b112e1679a7449cb5
+    GIT_TAG ff110bd471fb9fb7f905676f82c16728f682de64
     GIT_PROGRESS ON
 )
-FetchContent_MakeAvailable(ytalloc)
 FetchContent_Declare(
     ytprintf
     GIT_REPOSITORY https://github.com/ytret/ytprintf.git
-    GIT_TAG 125032ebc25a941e5f16f23bedb3618dc3a025a7
+    GIT_TAG 9787c519e30abe3a5f988e43b91dfc76a2e9d38d
     GIT_PROGRESS ON
 )
+FetchContent_MakeAvailable(ytalloc)
 FetchContent_MakeAvailable(ytprintf)
-
+target_include_directories(ytalloc PRIVATE libc-shim/include)
+target_include_directories(ytprintf PRIVATE libc-shim/include)
 
 ############
 ## Kernel ##
@@ -61,6 +62,7 @@ add_executable(kernel
     src/kprintf.c
     src/kstring.c
     src/ksyscall.c
+    src/libshim.c
     src/log.c
     src/mbi.c
     src/memfun.c
@@ -109,6 +111,7 @@ add_executable(kernel
     src/kspinlock.c
     src/list.c
     src/queue.c
+
 )
 target_compile_options(kernel PRIVATE
     -Wall -Wextra -Wmissing-prototypes

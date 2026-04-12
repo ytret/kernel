@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <ytalloc/ytalloc.h>
 
 #include "acpi/acpi.h"
 #include "acpi/ioapic.h"
@@ -10,6 +11,7 @@
 #include "init.h"
 #include "kbd.h"
 #include "kinttypes.h"
+#include "libshim.h"
 #include "log.h"
 #include "mbi.h"
 #include "panic.h"
@@ -36,6 +38,8 @@ static void prv_main_add_kernel_region(pmm_mmap_t *mmap, uintptr_t region_start,
                                        uintptr_t region_end);
 
 void main(uint32_t magic_num, uint32_t mbi_addr) {
+    libshim_init();
+
     mbi_init(mbi_addr);
 
     serial_init();
