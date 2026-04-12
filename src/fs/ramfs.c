@@ -1,8 +1,8 @@
 #include "assert.h"
 #include "fs/ramfs.h"
 #include "heap.h"
-#include "kprintf.h"
 #include "kstring.h"
+#include "log.h"
 #include "memfun.h"
 #include "vfs/vfs.h"
 
@@ -63,7 +63,7 @@ ramfs_ctx_t *ramfs_init(size_t num_bytes) {
 
     vfs_err_t err = prv_ramfs_make_dir_data(ctx, NULL, &ctx->root);
     if (err != VFS_ERR_NONE) {
-        kprintf("ramfs_init: failed to create root dir data: %u\n", err);
+        LOG_ERROR("failed to create root dir data: %u", err);
         return NULL;
     }
 
