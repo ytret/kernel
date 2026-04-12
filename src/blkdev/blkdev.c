@@ -38,7 +38,9 @@ bool blkdev_enqueue_req(blkdev_req_t *req) {
 
 bool blkdev_sync_read(blkdev_dev_t *dev, uint64_t start_sector,
                       uint32_t num_sectors, void *buf) {
+    bool ret;
     blkdev_req_t *const req = heap_alloc(sizeof(*req));
+
     req->state = BLKDEV_REQ_INACTIVE;
     req->op = BLKDEV_OP_READ;
     req->start_sector = start_sector;
@@ -54,8 +56,11 @@ bool blkdev_sync_read(blkdev_dev_t *dev, uint64_t start_sector,
     }
 
     semaphore_decrease(&req->sem_done);
+
+    ret = req->state == BLKDEV_REQ_SUCCESS;
     heap_free(req);
-    return req->state == BLKDEV_REQ_SUCCESS;
+
+    return ret;
 }
 
 [[gnu::noreturn]]
