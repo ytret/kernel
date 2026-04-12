@@ -14,6 +14,7 @@
 #include "panic.h"
 #include "pit.h"
 #include "pmm.h"
+#include "serial.h"
 #include "smp.h"
 #include "taskmgr.h"
 #include "term.h"
@@ -36,6 +37,7 @@ static void prv_main_add_kernel_region(pmm_mmap_t *mmap, uintptr_t region_start,
 void main(uint32_t magic_num, uint32_t mbi_addr) {
     mbi_init(mbi_addr);
 
+    serial_init();
     term_init();
 
     kprintf("main: Hello, world!\n");

@@ -62,6 +62,7 @@ add_executable(kernel
     src/pit.c
     src/pmm.c
     src/psf.c
+    src/serial.c
     src/slab.c
     src/smp.c
     src/stack.c
