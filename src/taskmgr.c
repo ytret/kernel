@@ -10,9 +10,9 @@
 #include "cpu.h"
 #include "gdt.h"
 #include "heap.h"
-#include "kprintf.h"
 #include "kstring.h"
 #include "list.h"
+#include "log.h"
 #include "memfun.h"
 #include "panic.h"
 #include "pit.h"
@@ -151,7 +151,7 @@ void taskmgr_local_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
     taskmgr_switch_tasks(NULL, &taskmgr->running_task->tcb, proc->tss);
 
     panic_enter();
-    kprintf("taskmgr: initial task entry has returned\n");
+    LOG_ERROR("initial task entry has returned");
     panic("unexpected behavior");
 }
 
@@ -177,8 +177,7 @@ void taskmgr_local_schedule(void) {
         if (!next_task) {
             if (caller_task->is_blocked) {
                 panic_enter();
-                kprintf(
-                    "taskmgr: no tasks to preempt the blocked running task\n");
+                LOG_ERROR("no tasks to preempt the blocked running task");
                 panic("scheduling failed");
             } else {
                 return;
@@ -270,7 +269,7 @@ void taskmgr_local_sleep_ms(uint32_t duration_ms) {
 
     if (!taskmgr->running_task) {
         panic_enter();
-        kprintf("taskmgr: taskmgr_sleep: no running task\n");
+        LOG_ERROR("taskmgr_sleep: no running task");
         panic("taskmgr_sleep failed");
     }
 
@@ -303,8 +302,7 @@ void taskmgr_terminate_task(task_t *task) {
         // 1) it always marks itself as blocked before rescheduling,
         // 2) it cannot free its own stack.
         panic_enter();
-        kprintf("taskmgr: deleter task (ID %u) cannot delete itself\n",
-                task->id);
+        LOG_ERROR("deleter task (ID %u) cannot delete itself", task->id);
         panic("invalid argument");
     }
 
@@ -449,8 +447,7 @@ static task_t *new_task(const char *name, taskmgr_t *taskmgr,
 static void map_user_stack(uint32_t *p_dir) {
     if (USER_STACK_PAGES != 1) {
         panic_enter();
-        kprintf("taskmgr: map_user_stack: USER_STACK_PAGES != 1 is not"
-                " implemented\n");
+        LOG_ERROR("map_user_stack: USER_STACK_PAGES != 1 is not implemented");
         panic("unimplemented");
     }
 
