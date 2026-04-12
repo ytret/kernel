@@ -135,8 +135,8 @@ void *heap_alloc_aligned(size_t size, size_t align) {
             pmm_page_t *const metadata = pmm_paddr_to_page(i_addr);
             metadata->type = PMM_ALLOC_LARGE;
             metadata->large = large;
-            LOG_FLOW("mark page 0x%08" PRIxPTR " as a large allocation",
-                     i_addr);
+            LOG_FLOW("mark page 0x%08" PRIxPTR " as a large allocation %p",
+                     i_addr, large);
         }
 
         ret_ptr = (void *)addr;
@@ -157,19 +157,20 @@ void heap_free(void *ptr) {
 
     switch (metadata->type) {
     case PMM_ALLOC_NONE:
-        LOG_FLOW("free: PMM_ALLOC_FREE");
+        LOG_FLOW("free %p: PMM_ALLOC_FREE", ptr);
         LOG_ERROR("tried to free a free page 0x%08" PRIxPTR, addr);
         panic("unexpected behavior");
 
     case PMM_ALLOC_SLAB:
-        LOG_FLOW("free: PMM_ALLOC_SLAB");
-        LOG_FLOW("slab = 0x%08" PRIx32, (uint32_t)metadata->slab);
+        LOG_FLOW("free %p: PMM_ALLOC_SLAB 0x%08" PRIxPTR, ptr,
+                 (uintptr_t)metadata->slab);
         slab_free(metadata->slab, ptr);
         break;
 
     case PMM_ALLOC_LARGE:
-        LOG_FLOW("free: PMM_ALLOC_LARGE");
         large = metadata->large;
+        LOG_FLOW("free %p: PMM_ALLOC_LARGE 0x%08" PRIxPTR, ptr,
+                 (uintptr_t)large);
         LOG_FLOW("large->num_pages = %zu", large->num_pages);
         pmm_free_pages(addr, large->num_pages);
         break;
@@ -198,8 +199,8 @@ void *heap_realloc(void *ptr, size_t size, size_t align) {
         panic("unexpected behavior");
 
     case PMM_ALLOC_SLAB:
-        LOG_FLOW("realloc: PMM_ALLOC_SLAB");
-        LOG_FLOW("slab = 0x%08" PRIx32, (uint32_t)metadata->slab);
+        LOG_FLOW("realloc: PMM_ALLOC_SLAB slab = 0x%08" PRIxPTR,
+                 (uintptr_t)metadata->slab);
         old_size = slab_item_size(metadata->slab);
         break;
 
