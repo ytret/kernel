@@ -586,7 +586,7 @@ static void prv_ahci_enumerate_ports(ahci_ctrl_ctx_t *ctrl_ctx) {
     ahci_cap_t ctrl_cap;
     kmemread_v4(&ctrl_cap, &reg_ghc->cap);
 
-    LOG_INFO("%s: port cabaility: %u", ctrl_ctx->name, ctrl_cap.np + 1);
+    LOG_INFO("%s: port capability: %u", ctrl_ctx->name, ctrl_cap.np + 1);
     LOG_INFO("%s: implemented ports: 0x%08" PRIx32, ctrl_ctx->name,
              reg_ghc->pi);
 
