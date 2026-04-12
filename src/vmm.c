@@ -3,9 +3,9 @@
 
 #include "heap.h"
 #include "kmutex.h"
-#include "kprintf.h"
-#include "mbi.h"
+#include "log.h"
 #include "panic.h"
+#include "pmm.h"
 #include "smp.h"
 #include "term.h"
 #include "vmm.h"
@@ -43,7 +43,7 @@ static void unmap_page(uint32_t *p_dir, uint32_t virt);
 void vmm_init(void) {
     gp_kvas_dir = heap_alloc_aligned(4096, 4096);
     __builtin_memset(gp_kvas_dir, 0, 4096);
-    kprintf("vmm: kernel page dir is at %P\n", gp_kvas_dir);
+    LOG_DEBUG("kernel page dir is at %P", gp_kvas_dir);
 
     prv_vmm_identity_map_ram();
 
@@ -108,10 +108,10 @@ static void prv_vmm_identity_map_ram(void) {
         }
 
         if (region->end_incl >= UINT32_MAX) {
-            kprintf("vmm: skip region 0x%08x_%08x .. 0x%08x_%08x\n",
-                    (uint32_t)(region->start >> 32), (uint32_t)region->start,
-                    (uint32_t)(region->end_incl >> 32),
-                    (uint32_t)region->end_incl);
+            LOG_DEBUG("skip region 0x%08x_%08x .. 0x%08x_%08x",
+                      (uint32_t)(region->start >> 32), (uint32_t)region->start,
+                      (uint32_t)(region->end_incl >> 32),
+                      (uint32_t)region->end_incl);
             continue;
         }
 
@@ -120,7 +120,7 @@ static void prv_vmm_identity_map_ram(void) {
             ((region->end_incl + 1) + (PMM_PAGE_SIZE - 1)) &
             ~(PMM_PAGE_SIZE - 1);
 
-        kprintf("vmm: identity map range %P .. %P\n", map_start, map_end);
+        LOG_DEBUG("identity map range %P .. %P", map_start, map_end);
         for (uint32_t page = map_start; page < map_end; page += 4096) {
             vmm_map_kernel_page(page, page);
         }
@@ -139,17 +139,17 @@ static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
                      uint32_t flags) {
     if (!p_dir) {
         panic_enter();
-        kprintf("vmm: map_page: p_dir = NULL\n");
+        LOG_ERROR("map_page: p_dir = NULL");
         panic("invalid argument");
     }
     if (virt & 0xFFF) {
         panic_enter();
-        kprintf("vmm: map_page: virt is not page-aligned\n");
+        LOG_ERROR("map_page: virt is not page-aligned");
         panic("invalid argument");
     }
     if (phys & 0xFFF) {
         panic_enter();
-        kprintf("vmm: map_page: phys is not page-aligned\n");
+        LOG_ERROR("map_page: phys is not page-aligned");
         panic("invalid argument");
     }
 
@@ -160,9 +160,9 @@ static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
     if (p_dir[dir_idx] & VMM_TABLE_PRESENT) {
         if ((p_dir[dir_idx] & VMM_TBL_EQ_FLAGS) != flags) {
             panic_enter();
-            kprintf("vmm: map_page: page table for %P is present, but its"
-                    " checked flags 0x%03x are different from 0x%03x\n",
-                    virt, (p_dir[dir_idx] & VMM_TBL_EQ_FLAGS), flags);
+            LOG_ERROR("map_page: page table for %P is present, but its"
+                      " checked flags 0x%03x are different from 0x%03x",
+                      virt, (p_dir[dir_idx] & VMM_TBL_EQ_FLAGS), flags);
             panic("unexpected behavior");
         }
 
@@ -179,8 +179,8 @@ static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
     if (p_tbl[tbl_idx] != 0) {
         // The table entry is not empty.
         panic_enter();
-        kprintf("vmm: map_page: table entry %u for %P is not empty\n", tbl_idx,
-                ((void *)virt));
+        LOG_ERROR("map_page: table entry %u for %P is not empty", tbl_idx,
+                  ((void *)virt));
         panic("unexpected behavior");
     }
 
@@ -190,7 +190,7 @@ static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
 static void unmap_page(uint32_t *p_dir, uint32_t virt) {
     if (virt & 0xFFF) {
         panic_enter();
-        kprintf("vmm: unmap_page: virt is not page-aligned\n");
+        LOG_ERROR("unmap_page: virt is not page-aligned");
         panic("invalid argument");
     }
 
@@ -199,8 +199,8 @@ static void unmap_page(uint32_t *p_dir, uint32_t virt) {
 
     if (!(p_dir[dir_idx] & VMM_TABLE_PRESENT)) {
         panic_enter();
-        kprintf("vmm: unmap_page: table %u for %P is not present\n", dir_idx,
-                ((void *)virt));
+        LOG_ERROR("unmap_page: table %u for %P is not present", dir_idx,
+                  ((void *)virt));
         panic("unexpected behavior");
     }
 
@@ -208,8 +208,8 @@ static void unmap_page(uint32_t *p_dir, uint32_t virt) {
 
     if (!(p_tbl[tbl_idx] & VMM_PAGE_PRESENT)) {
         panic_enter();
-        kprintf("vmm: unmap_page: page %u for %P is not present\n", tbl_idx,
-                ((void *)virt));
+        LOG_ERROR("unmap_page: page %u for %P is not present", tbl_idx,
+                  ((void *)virt));
         panic("unexpected behavior");
     }
 
