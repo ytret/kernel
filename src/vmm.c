@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "heap.h"
+#include "kinttypes.h"
 #include "kmutex.h"
 #include "log.h"
 #include "panic.h"
@@ -43,7 +44,7 @@ static void unmap_page(uint32_t *p_dir, uint32_t virt);
 void vmm_init(void) {
     gp_kvas_dir = heap_alloc_aligned(4096, 4096);
     __builtin_memset(gp_kvas_dir, 0, 4096);
-    LOG_DEBUG("kernel page dir is at %P", gp_kvas_dir);
+    LOG_DEBUG("kernel page dir is at %p", gp_kvas_dir);
 
     prv_vmm_identity_map_ram();
 
@@ -108,10 +109,8 @@ static void prv_vmm_identity_map_ram(void) {
         }
 
         if (region->end_incl >= UINT32_MAX) {
-            LOG_DEBUG("skip region 0x%08x_%08x .. 0x%08x_%08x",
-                      (uint32_t)(region->start >> 32), (uint32_t)region->start,
-                      (uint32_t)(region->end_incl >> 32),
-                      (uint32_t)region->end_incl);
+            LOG_DEBUG("skip region 0x%016llx .. 0x%016llx", region->start,
+                      region->end_incl);
             continue;
         }
 
@@ -120,7 +119,8 @@ static void prv_vmm_identity_map_ram(void) {
             ((region->end_incl + 1) + (PMM_PAGE_SIZE - 1)) &
             ~(PMM_PAGE_SIZE - 1);
 
-        LOG_DEBUG("identity map range %P .. %P", map_start, map_end);
+        LOG_DEBUG("identity map range %p .. %p", (void *)map_start,
+                  (void *)map_end);
         for (uint32_t page = map_start; page < map_end; page += 4096) {
             vmm_map_kernel_page(page, page);
         }
@@ -160,9 +160,10 @@ static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
     if (p_dir[dir_idx] & VMM_TABLE_PRESENT) {
         if ((p_dir[dir_idx] & VMM_TBL_EQ_FLAGS) != flags) {
             panic_enter();
-            LOG_ERROR("map_page: page table for %P is present, but its"
-                      " checked flags 0x%03x are different from 0x%03x",
-                      virt, (p_dir[dir_idx] & VMM_TBL_EQ_FLAGS), flags);
+            LOG_ERROR("map_page: page table for %p is present, but its"
+                      " checked flags 0x%03" PRIx32
+                      " are different from 0x%03" PRIx32,
+                      (void *)virt, (p_dir[dir_idx] & VMM_TBL_EQ_FLAGS), flags);
             panic("unexpected behavior");
         }
 
@@ -179,7 +180,7 @@ static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
     if (p_tbl[tbl_idx] != 0) {
         // The table entry is not empty.
         panic_enter();
-        LOG_ERROR("map_page: table entry %u for %P is not empty", tbl_idx,
+        LOG_ERROR("map_page: table entry %zu for %p is not empty", tbl_idx,
                   ((void *)virt));
         panic("unexpected behavior");
     }
@@ -199,7 +200,7 @@ static void unmap_page(uint32_t *p_dir, uint32_t virt) {
 
     if (!(p_dir[dir_idx] & VMM_TABLE_PRESENT)) {
         panic_enter();
-        LOG_ERROR("unmap_page: table %u for %P is not present", dir_idx,
+        LOG_ERROR("unmap_page: table %zu for %p is not present", dir_idx,
                   ((void *)virt));
         panic("unexpected behavior");
     }
@@ -208,7 +209,7 @@ static void unmap_page(uint32_t *p_dir, uint32_t virt) {
 
     if (!(p_tbl[tbl_idx] & VMM_PAGE_PRESENT)) {
         panic_enter();
-        LOG_ERROR("unmap_page: page %u for %P is not present", tbl_idx,
+        LOG_ERROR("unmap_page: page %zu for %p is not present", tbl_idx,
                   ((void *)virt));
         panic("unexpected behavior");
     }

@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#include "kinttypes.h"
 #include "log.h"
 #include "panic.h"
 #include "port.h"
@@ -106,7 +107,8 @@ void serial_puts(const char *str) {
 
 static uint8_t prv_serial_read_reg(serial_ctx_t *serial, uint16_t offset) {
     if (g_serial.base == 0) {
-        LOG_ERROR("tried to read register 0x%04x in uninitialized state",
+        LOG_ERROR("tried to read register 0x%04" PRIx32
+                  " in uninitialized state",
                   (uint32_t)offset);
         panic("unexpected behavior");
     }
@@ -116,7 +118,8 @@ static uint8_t prv_serial_read_reg(serial_ctx_t *serial, uint16_t offset) {
 static void prv_serial_write_reg(serial_ctx_t *serial, uint16_t offset,
                                  uint8_t data) {
     if (g_serial.base == 0) {
-        LOG_ERROR("tried to write register 0x%04x in uninitialized state",
+        LOG_ERROR("tried to write register 0x%04" PRIx32
+                  " in uninitialized state",
                   (uint32_t)offset);
         panic("unexpected behavior");
     }

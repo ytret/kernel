@@ -4,6 +4,7 @@
 #include "blkdev/ahci.h"
 #include "idt.h"
 #include "isrs.h"
+#include "kinttypes.h"
 #include "kprintf.h"
 #include "ksyscall.h"
 #include "log.h"
@@ -178,13 +179,13 @@ void idt_dummy_exception_handler(uint32_t exc_num, uint32_t err_code,
         p_name = "reserved";
     }
 
-    LOG_ERROR("exception: %d (%s)", exc_num, p_name);
+    LOG_ERROR("exception: %" PRIu32 " (%s)", exc_num, p_name);
     if (p_running_task) {
-        LOG_ERROR("running task ID: %u", p_running_task->id);
+        LOG_ERROR("running task ID: %" PRIu32, p_running_task->id);
     } else {
         LOG_ERROR("running task ID: none");
     }
-    LOG_ERROR("error code: %d", err_code);
+    LOG_ERROR("error code: %" PRIu32, err_code);
     dump_stack_frame(p_stack_frame);
     panic("no handler defined");
 }
@@ -203,12 +204,12 @@ void idt_page_fault_handler(uint32_t addr, uint32_t err_code,
     panic_enter();
     LOG_ERROR("page fault exception");
     if (p_running_task) {
-        LOG_ERROR("running task ID: %u", p_running_task->id);
+        LOG_ERROR("running task ID: %" PRIu32, p_running_task->id);
     } else {
         LOG_ERROR("running task ID: none");
     }
-    LOG_ERROR("virtual address: 0x%08X", addr);
-    LOG_ERROR("error code: %d", err_code);
+    LOG_ERROR("virtual address: 0x%08" PRIx32 "", addr);
+    LOG_ERROR("error code: %" PRIu32, err_code);
     dump_stack_frame(p_stack_frame);
     panic("unresolved page fault");
 }
@@ -257,8 +258,8 @@ static void snprint_entry(char *buf, size_t size, entry_t const *p_entry) {
 
 [[maybe_unused]]
 static void dump_stack_frame(isr_stack_frame_t const *p_stack_frame) {
-    LOG_DEBUG("stack frame is at %P:", p_stack_frame);
-    LOG_DEBUG("   eip = 0x%X", p_stack_frame->eip);
-    LOG_DEBUG("    cs = 0x%X", p_stack_frame->cs);
-    LOG_DEBUG("eflags = 0x%X", p_stack_frame->eflags);
+    LOG_DEBUG("stack frame is at 0x%08" PRIxPTR ":", (uintptr_t)p_stack_frame);
+    LOG_DEBUG("   eip = 0x%" PRIx32, p_stack_frame->eip);
+    LOG_DEBUG("    cs = 0x%" PRIx32, p_stack_frame->cs);
+    LOG_DEBUG("eflags = 0x%" PRIx32, p_stack_frame->eflags);
 }

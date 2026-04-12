@@ -302,7 +302,7 @@ void taskmgr_terminate_task(task_t *task) {
         // 1) it always marks itself as blocked before rescheduling,
         // 2) it cannot free its own stack.
         panic_enter();
-        LOG_ERROR("deleter task (ID %u) cannot delete itself", task->id);
+        LOG_ERROR("deleter task (ID %zu) cannot delete itself", task->id);
         panic("invalid argument");
     }
 

@@ -3,6 +3,7 @@
 
 #include "elf.h"
 #include "heap.h"
+#include "kinttypes.h"
 #include "kprintf.h"
 #include "log.h"
 #include "pmm.h"
@@ -138,24 +139,24 @@ bool elf_load(uint32_t *p_dir, uint32_t addr, uint32_t *p_entry) {
 
         // Check if the segment is to be loaded in the user part of VAS.
         if (p_phdr->vaddr < VMM_USER_START) {
-            LOG_ERROR("load failed: program header %u vaddr 0x%08X is not in "
-                      "the user part of VAS",
+            LOG_ERROR("load failed: program header %zu vaddr 0x%08" PRIx32
+                      " is not in the user part of VAS",
                       idx, p_phdr->vaddr);
             return false;
         }
 
         // Check that the virtual address is page-aligned.
         if (p_phdr->vaddr & 0xFFF) {
-            LOG_ERROR("load failed: program header %u vaddr 0x%08X is not "
-                      "page-aligned",
+            LOG_ERROR("load failed: program header %zu vaddr 0x%08" PRIx32
+                      " is not page-aligned",
                       idx, p_phdr->vaddr);
             return false;
         }
 
         // Check that the file size is not greater than memory size.
         if (p_phdr->file_size > p_phdr->mem_size) {
-            LOG_ERROR("load failed: program header %u file size %u is greater "
-                      "than memory size %u",
+            LOG_ERROR("load failed: program header %zu file size %" PRIu32
+                      " is greater than memory size %" PRIu32,
                       idx, p_phdr->file_size, p_phdr->mem_size);
             return false;
         }
@@ -199,7 +200,7 @@ void elf_dump(uint32_t addr) {
 
 static bool check_hdr_valid(elf_hdr_t const *p_hdr) {
     if (p_hdr->magic_num != MAGIC_NUM) {
-        LOG_ERROR("invalid magic number: 0x%08X", p_hdr->magic_num);
+        LOG_ERROR("invalid magic number: 0x%08" PRIx32, p_hdr->magic_num);
         return false;
     }
 
@@ -278,12 +279,12 @@ static void dump_general(elf_hdr_t const *p_hdr) {
     }
 
     LOG_DEBUG("ELF %s %s %s %s %s", s_bits, s_arch, s_endian, s_reloc, s_abi);
-    LOG_DEBUG("Entry: 0x%08X", p_hdr->entry);
+    LOG_DEBUG("Entry: 0x%08" PRIx32, p_hdr->entry);
 }
 
 static void dump_prog_hdrs(elf_hdr_t const *p_hdr) {
     if (p_hdr->ph_entry_size != ((uint16_t)sizeof(prog_hdr_t))) {
-        LOG_ERROR("unexpected declared program header size: %u (expected %u)",
+        LOG_ERROR("unexpected declared program header size: %u (expected %zu)",
                   p_hdr->ph_entry_size, sizeof(prog_hdr_t));
         return;
     }
@@ -321,14 +322,15 @@ static void dump_prog_hdr(prog_hdr_t const *p_phdr) {
     s_flags[1] = ((p_phdr->flags & PHDR_FLAG_WRITE) ? 'w' : '-');
     s_flags[2] = ((p_phdr->flags & PHDR_FLAG_EXEC) ? 'x' : '-');
 
-    LOG_DEBUG("%s0x%08x  0x%08x  %10u  %10u  %5u  %5s", s_type, p_phdr->offset,
-              p_phdr->vaddr, p_phdr->file_size, p_phdr->mem_size, p_phdr->align,
-              s_flags);
+    LOG_DEBUG("%s0x%08" PRIx32 "  0x%08" PRIx32 "  %10" PRIu32 "  %10" PRIu32
+              "  %5" PRIu32 "  %5s",
+              s_type, p_phdr->offset, p_phdr->vaddr, p_phdr->file_size,
+              p_phdr->mem_size, p_phdr->align, s_flags);
 }
 
 static void dump_sect_hdrs(elf_hdr_t const *p_hdr) {
     if (p_hdr->sh_entry_size != ((uint16_t)sizeof(sect_hdr_t))) {
-        LOG_ERROR("unexpected declared section header size: %u (expected %u)",
+        LOG_ERROR("unexpected declared section header size: %u (expected %zu)",
                   p_hdr->ph_entry_size, sizeof(prog_hdr_t));
         return;
     }
@@ -376,8 +378,9 @@ static void dump_sect_hdr(elf_hdr_t const *p_hdr, sect_hdr_t const *p_shdr) {
     p_flags[0] = ((p_shdr->flags & SHDR_FLAG_WRITE) ? 'w' : '-');
     p_flags[1] = ((p_shdr->flags & SHDR_FLAG_ALLOC) ? 'a' : '-');
 
-    LOG_DEBUG("%-15s  %8s  0x%08X  %10u  %5u  %5s", p_name, p_type,
-              p_shdr->offset, p_shdr->size, p_shdr->addr_align, p_flags);
+    LOG_DEBUG("%-15s  %8s  0x%08" PRIx32 "  %10" PRIu32 "  %5" PRIu32 "  %5s",
+              p_name, p_type, p_shdr->offset, p_shdr->size, p_shdr->addr_align,
+              p_flags);
 }
 
 static char const *sect_name(elf_hdr_t const *p_hdr, sect_hdr_t const *p_shdr) {

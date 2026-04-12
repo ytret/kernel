@@ -1,4 +1,5 @@
 #include "acpi/lapic.h"
+#include "kinttypes.h"
 #include "log.h"
 #include "panic.h"
 #include "pit.h"
@@ -21,8 +22,8 @@ void pit_init(uint8_t period_ms) {
     uint32_t reload_u32 = BASE_FREQ_KHZ * period_ms;
     if (reload_u32 > 65535) {
         panic_enter();
-        LOG_ERROR("reload value (%u) for period_ms = %u is too big", reload_u32,
-                  period_ms);
+        LOG_ERROR("reload value (%" PRIu32 ") for period_ms = %u is too big",
+                  reload_u32, period_ms);
         LOG_ERROR("it must be less than or equal to 65535");
         panic("pit_init() failed");
     }

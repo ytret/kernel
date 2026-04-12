@@ -48,7 +48,7 @@ bool blkdev_sync_read(blkdev_dev_t *dev, uint64_t start_sector,
     semaphore_init(&req->sem_done);
 
     if (!blkdev_enqueue_req(req)) {
-        LOG_ERROR("blkdev_sync_read: failed to enqueue a request");
+        LOG_ERROR("failed to enqueue a request");
         heap_free(req);
         return false;
     }

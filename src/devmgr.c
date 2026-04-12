@@ -8,6 +8,7 @@
 #include "blkdev/blkpart.h"
 #include "blkdev/gpt.h"
 #include "devmgr.h"
+#include "kinttypes.h"
 #include "log.h"
 #include "memfun.h"
 #include "panic.h"
@@ -211,27 +212,30 @@ static devmgr_dev_t *prv_devmgr_init_ahci(const pci_dev_t *pci_dev) {
 static void prv_devmgr_init_blkparts(devmgr_dev_t *dev) {
     if (dev->dev_class != DEVMGR_CLASS_BLOCK) {
         panic_enter();
-        LOG_ERROR("init blkparts called on a non-blkdev device ID %u", dev->id);
+            LOG_ERROR("init blkparts called on a non-blkdev device ID %" PRIu32,
+                  dev->id);
         panic("unexpected behavior");
     }
 
     if (!gpt_probe_signature(&dev->blkdev_dev)) {
-        LOG_DEBUG("blkdev %u is not GPT-partitioned", dev->id);
+        LOG_DEBUG("blkdev %" PRIu32 " is not GPT-partitioned", dev->id);
         return;
     }
     if (!gpt_parse(&dev->blkdev_dev, &dev->gpt_disk)) {
-        LOG_ERROR("blkdev %u has GPT signature, but could not be parsed",
+        LOG_ERROR("blkdev %" PRIu32
+                  " has GPT signature, but could not be parsed",
                   dev->id);
         return;
     }
 
-    LOG_DEBUG("blkdev %u has %u partitions", dev->id, dev->gpt_disk->num_parts);
+    LOG_DEBUG("blkdev %" PRIu32 " has %zu partitions", dev->id,
+              dev->gpt_disk->num_parts);
 
     for (size_t idx_part = 0; idx_part < dev->gpt_disk->num_parts; idx_part++) {
         devmgr_dev_t *const dev_part = prv_devmgr_init_next_dev();
         if (!dev_part) {
             LOG_ERROR("could not initialize all partitions of device ID "
-                      "%u: no free device slots",
+                      "%" PRIu32 ": no free device slots",
                       dev->id);
             break;
         }

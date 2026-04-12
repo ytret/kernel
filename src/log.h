@@ -38,4 +38,4 @@
 #endif
 
 void log_printf(const char *file, const char *func, int line, int level,
-                const char *fmt, ...);
+                const char *fmt, ...) __attribute__((format(printf, 5, 6)));

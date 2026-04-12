@@ -7,6 +7,7 @@
 
 #include "acpi/lapic.h"
 #include "cpu.h"
+#include "kinttypes.h"
 #include "log.h"
 #include "memfun.h"
 #include "panic.h"
@@ -34,7 +35,7 @@ void lapic_init(bool is_bsp) {
             (lapic_regs_t *)((uint32_t)msr_apic_base.bit.apic_base << 12);
     }
 
-    LOG_DEBUG("Local APIC 0x%02X version %u (%u entries) at %P",
+    LOG_DEBUG("Local APIC 0x%02X version %u (%u entries) at %p",
               g_lapic_regs->lapic_id_bit.apic_id,
               g_lapic_regs->lapic_version_bit.version,
               g_lapic_regs->lapic_version_bit.max_lvt_entry + 1, g_lapic_regs);
@@ -101,7 +102,7 @@ void lapic_send_eoi(void) {
 
 void lapic_calib_tim(void) {
     constexpr uint32_t calib_dur_ms = 100;
-    LOG_DEBUG("calibrating Local APIC Timer for %u ms", calib_dur_ms);
+    LOG_DEBUG("calibrating Local APIC Timer for %" PRIu32 " ms", calib_dur_ms);
 
     const lapic_lvt_tim_t lvt_tim = {
         .vector = LAPIC_VEC_TIM,
@@ -119,7 +120,7 @@ void lapic_calib_tim(void) {
 
     const uint32_t cnt_diff = 0xFFFFFFFF - g_lapic_regs->ccr;
     const uint32_t freq_hz = 1000 / calib_dur_ms * cnt_diff;
-    LOG_DEBUG("timer frequency is %u Hz", freq_hz);
+    LOG_DEBUG("timer frequency is %" PRIu32 " Hz", freq_hz);
 
     g_lapic_tim_freq_hz = freq_hz;
 }
@@ -132,7 +133,8 @@ void lapic_init_tim(uint32_t period_ms) {
     }
 
     const uint32_t init_cnt_val = g_lapic_tim_freq_hz * period_ms / 1000;
-    LOG_DEBUG("LAPIC %u: timer initial count %u, reload frequency %u Hz",
+    LOG_DEBUG("LAPIC %u: timer initial count %" PRIu32
+              ", reload frequency %" PRIu32 " Hz",
               lapic_get_id(), init_cnt_val, g_lapic_tim_freq_hz / init_cnt_val);
     g_lapic_regs->icr = init_cnt_val;
 

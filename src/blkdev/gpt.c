@@ -9,6 +9,7 @@
 #include "blkdev/blkdev.h"
 #include "blkdev/gpt.h"
 #include "heap.h"
+#include "kinttypes.h"
 #include "kprintf.h"
 #include "kstring.h"
 #include "log.h"
@@ -98,9 +99,7 @@ bool gpt_parse(blkdev_dev_t *dev, gpt_disk_t **out_gpt_disk) {
 
     const gpt_hdr_t *const gpt_hdr = (const gpt_hdr_t *)sector1;
     if (gpt_hdr->signature != GPT_SIGNATURE) {
-        LOG_ERROR("invalid GPT signature: 0x%08X%08X",
-                  (uint32_t)(gpt_hdr->signature >> 32),
-                  (uint32_t)gpt_hdr->signature);
+        LOG_ERROR("invalid GPT signature: 0x%016llx", gpt_hdr->signature);
         heap_free(sector1);
         return false;
     }
@@ -109,26 +108,27 @@ bool gpt_parse(blkdev_dev_t *dev, gpt_disk_t **out_gpt_disk) {
     char *const guid_str = heap_alloc(GPT_GUID_STR_LEN + 1);
     prv_gpt_snprint_guid(guid_str, GPT_GUID_STR_LEN + 1, gpt_hdr->disk_guid);
     LOG_DEBUG("Signature '%s'", (const char *)&gpt_hdr->signature);
-    LOG_DEBUG("GPT Revision 0x%08x", gpt_hdr->revision);
-    LOG_DEBUG("Header Size %u", gpt_hdr->header_size);
-    LOG_DEBUG("Header CRC32 0x%08x", gpt_hdr->header_crc32);
-    LOG_DEBUG("My LBA %u", gpt_hdr->my_lba);
-    LOG_DEBUG("Alternate LBA %u", gpt_hdr->alternate_lba);
-    LOG_DEBUG("First Usable LBA %u", gpt_hdr->first_usable_lba);
-    LOG_DEBUG("Last Usable LBA %u", gpt_hdr->last_usable_lba);
+    LOG_DEBUG("GPT Revision 0x%08" PRIx32, gpt_hdr->revision);
+    LOG_DEBUG("Header Size %" PRIu32, gpt_hdr->header_size);
+    LOG_DEBUG("Header CRC32 0x%08" PRIx32, gpt_hdr->header_crc32);
+    LOG_DEBUG("My LBA %llu", gpt_hdr->my_lba);
+    LOG_DEBUG("Alternate LBA %llu", gpt_hdr->alternate_lba);
+    LOG_DEBUG("First Usable LBA %llu", gpt_hdr->first_usable_lba);
+    LOG_DEBUG("Last Usable LBA %llu", gpt_hdr->last_usable_lba);
     LOG_DEBUG("Disk GUID %s", guid_str);
-    LOG_DEBUG("GPE Array starts at LBA %u", gpt_hdr->gpes_lba);
-    LOG_DEBUG("GPE Array length %u entries", gpt_hdr->gpes_num);
-    LOG_DEBUG("GPE Size %u", gpt_hdr->gpe_size);
-    LOG_DEBUG("GPE Array CRC32 0x%08x", gpt_hdr->gpes_crc32);
+    LOG_DEBUG("GPE Array starts at LBA %llu", gpt_hdr->gpes_lba);
+    LOG_DEBUG("GPE Array length %" PRIu32 " entries", gpt_hdr->gpes_num);
+    LOG_DEBUG("GPE Size %" PRIu32, gpt_hdr->gpe_size);
+    LOG_DEBUG("GPE Array CRC32 0x%08" PRIx32, gpt_hdr->gpes_crc32);
     heap_free(guid_str);
 
     const size_t gpes_sectors =
         ((gpt_hdr->gpe_size * gpt_hdr->gpes_num) + 511) / 512;
     uint8_t *const gpes_buf = heap_alloc(512 * gpes_sectors);
     if (!blkdev_sync_read(dev, gpt_hdr->gpes_lba, gpes_sectors, gpes_buf)) {
-        LOG_ERROR("failed to read GUID Partition Entry Array (sectors %u..%u)",
-                  gpt_hdr->gpes_lba, gpt_hdr->gpes_lba + gpes_sectors);
+        LOG_ERROR(
+            "failed to read GUID Partition Entry Array (sectors %llu..%llu)",
+            gpt_hdr->gpes_lba, gpt_hdr->gpes_lba + gpes_sectors);
         heap_free(sector1);
         heap_free(gpes_buf);
         return false;

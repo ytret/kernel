@@ -63,7 +63,7 @@ void init_bsp_task(void) {
 
     for (size_t idx = 0; idx < num_dirents; idx++) {
         vfs_dirent_t *dirent = &dirents[idx];
-        LOG_FLOW("%u. %s", idx, dirent->name);
+        LOG_FLOW("%zu. %s", idx, dirent->name);
     }
 
     kshell();

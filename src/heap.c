@@ -3,6 +3,7 @@
 #define LOG_LEVEL LOG_LEVEL_DEBUG
 
 #include "heap.h"
+#include "kinttypes.h"
 #include "kmutex.h"
 #include "log.h"
 #include "memfun.h"
@@ -14,8 +15,8 @@
 #define HEAP_MAX_SLAB_ORDER  11 // log2 of 2048
 #define HEAP_NUM_SLAB_ORDERS (HEAP_MAX_SLAB_ORDER - HEAP_MIN_SLAB_ORDER + 1)
 
-#define HEAP_MIN_SLAB_SIZE (1 << HEAP_MIN_SLAB_ORDER)
-#define HEAP_MAX_SLAB_SIZE (1 << HEAP_MAX_SLAB_ORDER)
+#define HEAP_MIN_SLAB_SIZE (1U << HEAP_MIN_SLAB_ORDER)
+#define HEAP_MAX_SLAB_SIZE (1U << HEAP_MAX_SLAB_ORDER)
 
 static_assert(HEAP_MAX_SLAB_ORDER >= HEAP_MIN_SLAB_ORDER);
 
@@ -51,8 +52,8 @@ void *heap_alloc_static(size_t size) {
     if (!ptr) {
         const size_t bytes_used = g_heap_static.next - g_heap_static.start;
         const size_t bytes_total = g_heap_static.end - g_heap_static.start;
-        LOG_ERROR("could not statically allocate %u bytes", size);
-        LOG_ERROR("static heap usage: %u out of %u bytes", bytes_used,
+        LOG_ERROR("could not statically allocate %zu bytes", size);
+        LOG_ERROR("static heap usage: %zu out of %zu bytes", bytes_used,
                   bytes_total);
         panic("out of memory");
     }
@@ -83,7 +84,7 @@ void *heap_alloc(size_t size) {
 
 void *heap_alloc_aligned(size_t size, size_t align) {
     if ((align & (align - 1)) != 0) {
-        LOG_ERROR("alignment %u is not a power of two", align);
+        LOG_ERROR("alignment %zu is not a power of two", align);
         panic("invalid argument");
     }
 
@@ -103,15 +104,15 @@ void *heap_alloc_aligned(size_t size, size_t align) {
 
         ret_ptr = slab_alloc(&g_heap.slab_caches[idx]);
         if (!ret_ptr) {
-            LOG_ERROR("failed to allocate %u bytes aligned at %u bytes "
-                      "(effective size %u)",
+            LOG_ERROR("failed to allocate %zu bytes aligned at %zu bytes "
+                      "(effective size %zu)",
                       size, align, eff_size);
             panic("out of memory");
         }
     } else {
         if (align < PMM_PAGE_SIZE) { align = PMM_PAGE_SIZE; }
         if (align & (PMM_PAGE_SIZE - 1)) {
-            LOG_ERROR("pmm: alignment %u must be a multiple of page size (%u) "
+            LOG_ERROR("pmm: alignment %zu must be a multiple of page size (%u) "
                       "for allocations larger than %u",
                       align, PMM_PAGE_SIZE, HEAP_MAX_SLAB_SIZE);
             panic("invalid argument");
@@ -134,7 +135,8 @@ void *heap_alloc_aligned(size_t size, size_t align) {
             pmm_page_t *const metadata = pmm_paddr_to_page(i_addr);
             metadata->type = PMM_ALLOC_LARGE;
             metadata->large = large;
-            LOG_FLOW("mark page 0x%08x as a large allocation", i_addr);
+            LOG_FLOW("mark page 0x%08" PRIxPTR " as a large allocation",
+                     i_addr);
         }
 
         ret_ptr = (void *)addr;
@@ -156,24 +158,24 @@ void heap_free(void *ptr) {
     switch (metadata->type) {
     case PMM_ALLOC_NONE:
         LOG_FLOW("free: PMM_ALLOC_FREE");
-        LOG_ERROR("tried to free a free page 0x%08x", addr);
+        LOG_ERROR("tried to free a free page 0x%08" PRIxPTR, addr);
         panic("unexpected behavior");
 
     case PMM_ALLOC_SLAB:
         LOG_FLOW("free: PMM_ALLOC_SLAB");
-        LOG_FLOW("slab = 0x%08x", metadata->slab);
+        LOG_FLOW("slab = 0x%08" PRIx32, (uint32_t)metadata->slab);
         slab_free(metadata->slab, ptr);
         break;
 
     case PMM_ALLOC_LARGE:
         LOG_FLOW("free: PMM_ALLOC_LARGE");
         large = metadata->large;
-        LOG_FLOW("large->num_pages = %u", large->num_pages);
+        LOG_FLOW("large->num_pages = %zu", large->num_pages);
         pmm_free_pages(addr, large->num_pages);
         break;
 
     default:
-        LOG_ERROR("unrecognized value of page 0x%08x type (%u)", addr,
+        LOG_ERROR("unrecognized value of page 0x%08" PRIxPTR " type (%u)", addr,
                   metadata->type);
         panic("unexpected behavior");
     }
@@ -192,12 +194,12 @@ void *heap_realloc(void *ptr, size_t size, size_t align) {
     switch (metadata->type) {
     case PMM_ALLOC_NONE:
         LOG_FLOW("realloc: PMM_ALLOC_FREE");
-        LOG_ERROR("tried to realloc a free page 0x%08x", addr);
+        LOG_ERROR("tried to realloc a free page 0x%08" PRIxPTR, addr);
         panic("unexpected behavior");
 
     case PMM_ALLOC_SLAB:
         LOG_FLOW("realloc: PMM_ALLOC_SLAB");
-        LOG_FLOW("slab = 0x%08x", metadata->slab);
+        LOG_FLOW("slab = 0x%08" PRIx32, (uint32_t)metadata->slab);
         old_size = slab_item_size(metadata->slab);
         break;
 
@@ -208,7 +210,7 @@ void *heap_realloc(void *ptr, size_t size, size_t align) {
         break;
 
     default:
-        LOG_ERROR("unrecognized value of page 0x%08x type (%u)", addr,
+        LOG_ERROR("unrecognized value of page 0x%08" PRIxPTR " type (%u)", addr,
                   metadata->type);
         panic("unexpected behavior");
     }

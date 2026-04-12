@@ -14,6 +14,7 @@
 #include "blkdev/ahci_regs.h"
 #include "devmgr.h"
 #include "heap.h"
+#include "kinttypes.h"
 #include "kstring.h"
 #include "log.h"
 #include "memfun.h"
@@ -586,7 +587,8 @@ static void prv_ahci_enumerate_ports(ahci_ctrl_ctx_t *ctrl_ctx) {
     kmemread_v4(&ctrl_cap, &reg_ghc->cap);
 
     LOG_INFO("%s: port cabaility: %u", ctrl_ctx->name, ctrl_cap.np + 1);
-    LOG_INFO("%s: implemented ports: 0x%08X", ctrl_ctx->name, reg_ghc->pi);
+    LOG_INFO("%s: implemented ports: 0x%08" PRIx32, ctrl_ctx->name,
+             reg_ghc->pi);
 
     for (size_t port_idx = 0; port_idx < AHCI_PORTS_PER_CTRL; port_idx++) {
         ahci_port_ctx_t *const port_ctx = &ctrl_ctx->ports[port_idx];
@@ -617,8 +619,8 @@ static void prv_ahci_enumerate_ports(ahci_ctrl_ctx_t *ctrl_ctx) {
                 port_ctx->online_sata = true;
                 LOG_INFO("%s: detected SATA_SIG_ATA", port_ctx->name);
             } else {
-                LOG_INFO("%s: unrecognized signature 0x%08X", port_ctx->name,
-                         port_ctx->reg_port->sig);
+                LOG_INFO("%s: unrecognized signature 0x%08" PRIx32,
+                         port_ctx->name, port_ctx->reg_port->sig);
             }
             break;
         case AHCI_SSTS_DET_PHY_OFF:
@@ -743,7 +745,7 @@ static void prv_ahci_identify_port(ahci_port_ctx_t *port_ctx) {
     port_ctx->num_sectors = *((uint32_t *)&p_ident[60]);
 
     LOG_INFO("%s: serial is '%s'", port_ctx->name, port_ctx->serial_str);
-    LOG_INFO("%s: number of sectors: %u", port_ctx->name,
+    LOG_INFO("%s: number of sectors: %zu", port_ctx->name,
              port_ctx->num_sectors);
 
     heap_free(p_ident);
@@ -822,7 +824,7 @@ static bool prv_ahci_send_ata_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd,
     const size_t last_prd_len = (read_size % 0x400000) - 1;
 
     if (num_prds > AHCI_CMD_TABLE_NUM_PRDS) {
-        LOG_ERROR("%s: not enough PRDs to transfer %u bytes", port_ctx->name,
+        LOG_ERROR("%s: not enough PRDs to transfer %zu bytes", port_ctx->name,
                   read_size);
         return false;
     }
@@ -1000,8 +1002,8 @@ static void prv_ahci_port_handle_tfe(ahci_port_ctx_t *port_ctx) {
     const uint32_t ci = port_ctx->reg_port->ci;
     if (ci != (uint32_t)(1 << (port_ctx->req_cmd_slot))) {
         panic_enter();
-        LOG_ERROR("port %s TFE: CI = 0x%08X, request slot = %u", port_ctx->name,
-                  ci, port_ctx->req_cmd_slot);
+        LOG_ERROR("port %s TFE: CI = 0x%08" PRIx32 ", request slot = %zu",
+                  port_ctx->name, ci, port_ctx->req_cmd_slot);
         panic("unexpected AHCI CI register value");
     }
 
@@ -1010,7 +1012,7 @@ static void prv_ahci_port_handle_tfe(ahci_port_ctx_t *port_ctx) {
     while (port_ctx->reg_port->cmd & AHCI_PORT_CMD_CR) {}
 
     // Clear any error bits in PxSERR to enable capturing new errors.
-    LOG_FLOW("port %s TFE: SERR = 0x%08X", port_ctx->name,
+    LOG_FLOW("port %s TFE: SERR = 0x%08" PRIx32, port_ctx->name,
              port_ctx->reg_port->serr);
     port_ctx->reg_port->serr = 0;
 

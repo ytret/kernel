@@ -6,6 +6,7 @@
 
 #include "acpi/acpi.h"
 #include "acpi/ioapic.h"
+#include "kinttypes.h"
 #include "log.h"
 #include "memfun.h"
 #include "pic.h"
@@ -43,8 +44,8 @@ void ioapic_init(void) {
     g_ioapic_version = reg_ver.version;
     g_ioapic_redirs = reg_ver.max_redir_entry + 1;
 
-    LOG_DEBUG("I/O APIC 0x%02X version %u (%u entries) at %P", g_ioapic_id,
-              g_ioapic_version, g_ioapic_redirs, g_ioapic_regs);
+    LOG_DEBUG("I/O APIC 0x%02x version %u (%" PRIu32 " entries) at %p",
+              g_ioapic_id, g_ioapic_version, g_ioapic_redirs, g_ioapic_regs);
 }
 
 void ioapic_map_pages(void) {
@@ -86,21 +87,23 @@ bool ioapic_map_irq(uint8_t irq_num, uint8_t vec_num, uint8_t lapic_id) {
 
 bool ioapic_set_redirect(uint32_t gsi, const ioapic_redir_t *redir) {
     if (!g_ioapic_regs) {
-        LOG_ERROR("cannot set I/O APIC GSI %u: I/O APIC is not initialized",
+        LOG_ERROR("cannot set I/O APIC GSI %" PRIu32
+                  ": I/O APIC is not initialized",
                   gsi);
         return false;
     }
     if (gsi >= g_ioapic_redirs) {
-        LOG_ERROR("cannot set I/O APIC GSI %u: maximum GSI is %u", gsi,
-                  g_ioapic_redirs - 1);
+        LOG_ERROR("cannot set I/O APIC GSI %" PRIu32
+                  ": maximum GSI is %" PRIu32,
+                  gsi, g_ioapic_redirs - 1);
         return false;
     }
 
     ioapic_redir_t prev_val;
     prv_ioapic_read_u64(IOAPIC_REG_REDIR(gsi), &prev_val);
     if (prev_val.intvec != 0) {
-        LOG_ERROR("cannot set I/O APIC GSI %u: already mapped to %u",
-                  prev_val.intvec);
+        LOG_ERROR("cannot set I/O APIC GSI %" PRIu32 ": already mapped to %u",
+                  gsi, prev_val.intvec);
         return false;
     }
 

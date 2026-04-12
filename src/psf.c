@@ -1,3 +1,4 @@
+#include "kinttypes.h"
 #include "log.h"
 #include "psf.h"
 
@@ -35,7 +36,8 @@ bool psf_load(psf_t *p_font, uint32_t addr) {
 
 uint8_t const *psf_glyph(psf_t const *p_psf, char ch) {
     if (((size_t)ch) >= p_psf->num_glyphs) {
-        LOG_ERROR("psf_glyph: glyph for char %u is absent", ((uint32_t)ch));
+        LOG_ERROR("psf_glyph: glyph for char %" PRIu32 " is absent",
+                  ((uint32_t)ch));
     }
 
     size_t offset = (ch * p_psf->glyph_size);

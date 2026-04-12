@@ -6,7 +6,7 @@
 #include "list.h"
 #include "types.h"
 
-#define PMM_PAGE_SIZE 4096
+#define PMM_PAGE_SIZE 4096U
 
 typedef enum {
     PMM_REGION_AVAILABLE,

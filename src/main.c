@@ -9,6 +9,7 @@
 #include "idt.h"
 #include "init.h"
 #include "kbd.h"
+#include "kinttypes.h"
 #include "log.h"
 #include "mbi.h"
 #include "panic.h"
@@ -20,7 +21,7 @@
 #include "term.h"
 #include "vmm.h"
 
-#define MULTIBOOT_MAGIC_NUM 0x2BADB002
+#define MULTIBOOT_MAGIC_NUM 0x2BADB002U
 
 // See link.ld.
 extern uint32_t ld_vmm_kernel_start;
@@ -101,11 +102,12 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr) {
     if (MULTIBOOT_MAGIC_NUM == magic_num) {
         LOG_INFO("booted by a multiboot-compliant bootloader");
-        LOG_DEBUG("multiboot information structure is at %P", mbi_addr);
+        LOG_DEBUG("multiboot information structure is at 0x%08" PRIx32,
+                  mbi_addr);
     } else {
         panic_enter();
-        LOG_ERROR("main: magic number: 0x%X, expected: 0x%X", magic_num,
-                  MULTIBOOT_MAGIC_NUM);
+        LOG_ERROR("main: magic number: 0x%" PRIx32 ", expected: 0x%x",
+                  magic_num, MULTIBOOT_MAGIC_NUM);
         panic("booted by an unknown bootloader");
     }
 }
@@ -139,7 +141,8 @@ static void prv_main_add_kernel_region(pmm_mmap_t *mmap, uintptr_t region_start,
                   region_end_incl <= region->end_incl,
               region);
     if (!found_region) {
-        LOG_ERROR("could not find a single region that covers [0x%08x; 0x%08x)",
+        LOG_ERROR("could not find a single region that covers [0x%08" PRIxPTR
+                  "; 0x%08" PRIxPTR ")",
                   region_start, region_end_excl);
         panic("not implemented");
     }
@@ -148,11 +151,8 @@ static void prv_main_add_kernel_region(pmm_mmap_t *mmap, uintptr_t region_start,
     g_kernel_region.end_incl = region_end_incl;
     g_kernel_region.type = PMM_REGION_KERNEL_AND_MODS;
 
-    LOG_DEBUG("added kernel region 0x%08x_%08x .. 0x%08x_%08x",
-              (uint32_t)(g_kernel_region.start >> 32),
-              (uint32_t)g_kernel_region.start,
-              (uint32_t)(g_kernel_region.end_incl >> 32),
-              (uint32_t)g_kernel_region.end_incl);
+    LOG_DEBUG("added kernel region 0x%016llx .. 0x%016llx",
+              g_kernel_region.start, g_kernel_region.end_incl);
 
     if (found_region->start < region_start) {
         // [original region]

@@ -18,7 +18,7 @@ void panic_enter(void) {
     if (smp_get_running_taskmgr()) { taskmgr_local_lock_scheduler(); }
     term_enter_panic_mode();
 
-    LOG_ERROR("");
+    LOG_ERROR("%s", "");
     LOG_ERROR("==== KERNEL PANIC ====");
 }
 

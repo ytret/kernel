@@ -116,8 +116,8 @@ mbi_mod_t const *mbi_find_mod(char const *p_name) {
 
         if (!p_mod) {
             panic_enter();
-            LOG_ERROR("mbi_nth_mod() returned NULL for index %u < number of "
-                      "modules %u",
+            LOG_ERROR("mbi_nth_mod() returned NULL for index %zu < number of "
+                      "modules %zu",
                       idx, mbi_num_mods());
             panic("unexpected behavior");
         }

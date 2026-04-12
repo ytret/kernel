@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "kinttypes.h"
 #include "log.h"
 #include "panic.h"
 #include "pci.h"
@@ -87,16 +88,16 @@ void pci_dump_dev_header(const pci_dev_t *dev) {
     LOG_DEBUG("latency_timer = 0x%02X", dev->header.common.latency_timer);
     LOG_DEBUG("header_type = 0x%02X", dev->header.common.header_type);
     LOG_DEBUG("bist = 0x%02X", dev->header.common.bist);
-    LOG_DEBUG("bar0 = 0x%08X", dev->header.bar0);
-    LOG_DEBUG("bar1 = 0x%08X", dev->header.bar1);
-    LOG_DEBUG("bar2 = 0x%08X", dev->header.bar2);
-    LOG_DEBUG("bar3 = 0x%08X", dev->header.bar3);
-    LOG_DEBUG("bar4 = 0x%08X", dev->header.bar4);
-    LOG_DEBUG("bar5 = 0x%08X", dev->header.bar5);
-    LOG_DEBUG("cardbus_cis_ptr = 0x%08X", dev->header.cardbus_cis_ptr);
+    LOG_DEBUG("bar0 = 0x%08" PRIx32, dev->header.bar0);
+    LOG_DEBUG("bar1 = 0x%08" PRIx32, dev->header.bar1);
+    LOG_DEBUG("bar2 = 0x%08" PRIx32, dev->header.bar2);
+    LOG_DEBUG("bar3 = 0x%08" PRIx32, dev->header.bar3);
+    LOG_DEBUG("bar4 = 0x%08" PRIx32, dev->header.bar4);
+    LOG_DEBUG("bar5 = 0x%08" PRIx32, dev->header.bar5);
+    LOG_DEBUG("cardbus_cis_ptr = 0x%08" PRIx32, dev->header.cardbus_cis_ptr);
     LOG_DEBUG("subsys_vendor_id = 0x%04X", dev->header.subsys_vendor_id);
     LOG_DEBUG("subsys_id = 0x%04X", dev->header.subsys_id);
-    LOG_DEBUG("expansion_rom_base_addr = 0x%08X",
+    LOG_DEBUG("expansion_rom_base_addr = 0x%08" PRIx32,
               dev->header.expansion_rom_base_addr);
     LOG_DEBUG("cap_ptr = 0x%02X", dev->header.cap_ptr);
     LOG_DEBUG("int_line = 0x%02X", dev->header.int_line);

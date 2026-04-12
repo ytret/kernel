@@ -4,6 +4,7 @@
 #include "acpi/acpi.h"
 #include "acpi/acpi_defs.h"
 #include "heap.h"
+#include "kinttypes.h"
 #include "log.h"
 #include "memfun.h"
 
@@ -84,13 +85,13 @@ static bool prv_acpi_copy_rsdp1(void) {
         LOG_ERROR("could not find RSD PTR");
         return false;
     }
-    LOG_DEBUG("found RSD PTR at 0x%08X", rsdp_addr);
+    LOG_DEBUG("found RSD PTR at 0x%08" PRIx32, rsdp_addr);
     prv_acpi_dump_rsdp1((void *)rsdp_addr);
 
     g_acpi_rsdp1 = heap_alloc(sizeof(*g_acpi_rsdp1));
     kmemcpy(g_acpi_rsdp1, (void *)rsdp_addr, sizeof(*g_acpi_rsdp1));
     if (!prv_acpi_check_sum(g_acpi_rsdp1, sizeof(*g_acpi_rsdp1))) {
-        LOG_ERROR("bad checksum of RSDT at 0x%08x", rsdp_addr);
+        LOG_ERROR("bad checksum of RSDT at 0x%08" PRIx32, rsdp_addr);
         return false;
     }
 
@@ -101,7 +102,8 @@ static bool prv_acpi_copy_rsdt(const acpi_rsdt_t *sys_rsdt) {
     // Check the RSDT's sum and copy the table to the heap.
     prv_acpi_dump_sdt(&sys_rsdt->header);
     if (!prv_acpi_check_sum(sys_rsdt, sys_rsdt->header.length)) {
-        LOG_ERROR("bad checksum of RSDT at 0x%08X", g_acpi_rsdp1->rsdt_addr);
+        LOG_ERROR("bad checksum of RSDT at 0x%08" PRIx32,
+                  g_acpi_rsdp1->rsdt_addr);
         return false;
     }
 
@@ -112,11 +114,11 @@ static bool prv_acpi_copy_rsdt(const acpi_rsdt_t *sys_rsdt) {
     // Dump the RSDT entry tables.
     const uint32_t num_rsdt_entries =
         (g_acpi_rsdt->header.length - sizeof(g_acpi_rsdt->header)) / 4;
-    LOG_DEBUG("number of RSDT entries: %u", num_rsdt_entries);
+    LOG_DEBUG("number of RSDT entries: %" PRIu32, num_rsdt_entries);
     for (uint32_t idx = 0; idx < num_rsdt_entries; idx++) {
         const uint32_t tbl_addr = g_acpi_rsdt->entries[idx];
         const acpi_sdt_hdr_t *const sdt = (void *)tbl_addr;
-        LOG_DEBUG("dump of RSDT entry %u", idx);
+        LOG_DEBUG("dump of RSDT entry %" PRIu32, idx);
         prv_acpi_dump_sdt(sdt);
 
         const char sig_madt[4] = "APIC";
@@ -224,7 +226,7 @@ static bool prv_acpi_copy_madt(const acpi_madt_t *sys_madt) {
         case ACPI_MADT_ICS_INT_SRC_OVR:
             ics_ovr = (const acpi_ic_int_src_ovr_t *)addr_ics;
             if (idx_irq_remap < g_acpi_num_irq_remaps) {
-                LOG_DEBUG("interrupt source override IRQ %u -> GSI %u",
+                LOG_DEBUG("interrupt source override IRQ %u -> GSI %" PRIu32,
                           ics_ovr->source, ics_ovr->gsi);
                 g_acpi_irq_remaps[idx_irq_remap].irq = ics_ovr->source;
                 g_acpi_irq_remaps[idx_irq_remap].gsi = ics_ovr->gsi;
@@ -286,7 +288,7 @@ static void prv_acpi_dump_rsdp1(const acpi_rsdp1_t *rsdp1) {
     kmemcpy(oemid_str, rsdp1->oem_id, sizeof(rsdp1->oem_id));
 
     LOG_DEBUG("RSDP 1.0 at %p: \"%s\", sum 0x%02X, OEM \"%s\" rev. %u, "
-              "RSDT at 0x%08X",
+              "RSDT at 0x%08" PRIx32,
               rsdp1, signature_str, rsdp1->checksum, oemid_str, rsdp1->revision,
               rsdp1->rsdt_addr);
 }
@@ -302,9 +304,9 @@ static void prv_acpi_dump_sdt(const acpi_sdt_hdr_t *sdt_hdr) {
             sizeof(sdt_hdr->oem_table_id));
     kmemcpy(creator_id_str, sdt_hdr->creator_id, sizeof(sdt_hdr->creator_id));
 
-    LOG_DEBUG("SDT at %p: \"%s\", %u bytes, rev. %u, sum 0x%02X, OEM "
-              "\"%s\" table "
-              "\"%s\" rev. %u, creator \"%s\" rev. %u",
+    LOG_DEBUG("SDT at %p: \"%s\", %" PRIu32 " bytes, rev. %u, sum 0x%02X, OEM "
+              "\"%s\" table \"%s\" rev. %" PRIu32
+              ", creator \"%s\" rev. %" PRIu32,
               sdt_hdr, signature_str, sdt_hdr->length, sdt_hdr->revision,
               sdt_hdr->checksum, oem_id_str, oem_table_id_str,
               sdt_hdr->oem_revision, creator_id_str, sdt_hdr->creator_revision);
