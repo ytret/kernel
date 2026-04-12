@@ -1,20 +1,14 @@
 #include <ytalloc/ytalloc.h>
 
+#define LOG_LEVEL LOG_LEVEL_DEBUG
+
 #include "heap.h"
 #include "kmutex.h"
-#include "kprintf.h"
+#include "log.h"
 #include "memfun.h"
 #include "panic.h"
 #include "pmm.h"
 #include "slab.h"
-
-#if 0
-#define debugf(...) kprintf(__VA_ARGS__);
-#else
-#define debugf(...)                                                            \
-    do {                                                                       \
-    } while (0);
-#endif
 
 #define HEAP_MIN_SLAB_ORDER  3  // log2 of 8
 #define HEAP_MAX_SLAB_ORDER  11 // log2 of 2048
@@ -49,7 +43,7 @@ void *heap_get_static_heap(void) {
 
 void *heap_alloc_static(size_t size) {
     if (g_heap_static.start == 0) {
-        kprintf("heap: static heap is not yet initialized\n");
+        LOG_ERROR("static heap is not yet initialized");
         panic("unexpected behavior");
     }
 
@@ -57,9 +51,9 @@ void *heap_alloc_static(size_t size) {
     if (!ptr) {
         const size_t bytes_used = g_heap_static.next - g_heap_static.start;
         const size_t bytes_total = g_heap_static.end - g_heap_static.start;
-        kprintf("heap: could not statically allocate %u bytes\n", size);
-        kprintf("heap: static heap usage: %u out of %u bytes\n", bytes_used,
-                bytes_total);
+        LOG_ERROR("could not statically allocate %u bytes", size);
+        LOG_ERROR("static heap usage: %u out of %u bytes", bytes_used,
+                  bytes_total);
         panic("out of memory");
     }
 
@@ -89,7 +83,7 @@ void *heap_alloc(size_t size) {
 
 void *heap_alloc_aligned(size_t size, size_t align) {
     if ((align & (align - 1)) != 0) {
-        kprintf("heap: alignment %u is not a power of two\n", align);
+        LOG_ERROR("alignment %u is not a power of two", align);
         panic("invalid argument");
     }
 
@@ -109,17 +103,17 @@ void *heap_alloc_aligned(size_t size, size_t align) {
 
         ret_ptr = slab_alloc(&g_heap.slab_caches[idx]);
         if (!ret_ptr) {
-            kprintf("heap: failed to allocate %u bytes aligned at %u bytes "
-                    "(effective size %u)\n",
-                    size, align, eff_size);
+            LOG_ERROR("failed to allocate %u bytes aligned at %u bytes "
+                      "(effective size %u)",
+                      size, align, eff_size);
             panic("out of memory");
         }
     } else {
         if (align < PMM_PAGE_SIZE) { align = PMM_PAGE_SIZE; }
         if (align & (PMM_PAGE_SIZE - 1)) {
-            kprintf("pmm: alignment %u must be a multiple of page size (%u) "
-                    "for allocations larger than %u\n",
-                    align, PMM_PAGE_SIZE, HEAP_MAX_SLAB_SIZE);
+            LOG_ERROR("pmm: alignment %u must be a multiple of page size (%u) "
+                      "for allocations larger than %u",
+                      align, PMM_PAGE_SIZE, HEAP_MAX_SLAB_SIZE);
             panic("invalid argument");
         }
 
@@ -140,7 +134,7 @@ void *heap_alloc_aligned(size_t size, size_t align) {
             pmm_page_t *const metadata = pmm_paddr_to_page(i_addr);
             metadata->type = PMM_ALLOC_LARGE;
             metadata->large = large;
-            debugf("heap: mark page 0x%08x as a large allocation\n", i_addr);
+            LOG_FLOW("mark page 0x%08x as a large allocation", i_addr);
         }
 
         ret_ptr = (void *)addr;
@@ -161,26 +155,26 @@ void heap_free(void *ptr) {
 
     switch (metadata->type) {
     case PMM_ALLOC_NONE:
-        debugf("heap: free: PMM_ALLOC_FREE\n");
-        kprintf("heap: tried to free a free page 0x%08x\n", addr);
+        LOG_FLOW("free: PMM_ALLOC_FREE");
+        LOG_ERROR("tried to free a free page 0x%08x", addr);
         panic("unexpected behavior");
 
     case PMM_ALLOC_SLAB:
-        debugf("heap: free: PMM_ALLOC_SLAB\n");
-        debugf("heap: slab = 0x%08x\n", metadata->slab);
+        LOG_FLOW("free: PMM_ALLOC_SLAB");
+        LOG_FLOW("slab = 0x%08x", metadata->slab);
         slab_free(metadata->slab, ptr);
         break;
 
     case PMM_ALLOC_LARGE:
-        debugf("heap: free: PMM_ALLOC_LARGE\n");
+        LOG_FLOW("free: PMM_ALLOC_LARGE");
         large = metadata->large;
-        debugf("heap: large->num_pages = %u\n", large->num_pages);
+        LOG_FLOW("large->num_pages = %u", large->num_pages);
         pmm_free_pages(addr, large->num_pages);
         break;
 
     default:
-        kprintf("heap: unrecognized value of page 0x%08x type (%u)\n", addr,
-                metadata->type);
+        LOG_ERROR("unrecognized value of page 0x%08x type (%u)", addr,
+                  metadata->type);
         panic("unexpected behavior");
     }
 
@@ -197,25 +191,25 @@ void *heap_realloc(void *ptr, size_t size, size_t align) {
     size_t old_size;
     switch (metadata->type) {
     case PMM_ALLOC_NONE:
-        debugf("heap: realloc: PMM_ALLOC_FREE\n");
-        kprintf("heap: tried to realloc a free page 0x%08x\n", addr);
+        LOG_FLOW("realloc: PMM_ALLOC_FREE");
+        LOG_ERROR("tried to realloc a free page 0x%08x", addr);
         panic("unexpected behavior");
 
     case PMM_ALLOC_SLAB:
-        debugf("heap: realloc: PMM_ALLOC_SLAB\n");
-        debugf("heap: slab = 0x%08x\n", metadata->slab);
+        LOG_FLOW("realloc: PMM_ALLOC_SLAB");
+        LOG_FLOW("slab = 0x%08x", metadata->slab);
         old_size = slab_item_size(metadata->slab);
         break;
 
     case PMM_ALLOC_LARGE:
-        debugf("heap: realloc: PMM_ALLOC_LARGE\n");
+        LOG_FLOW("realloc: PMM_ALLOC_LARGE");
         large = metadata->large;
         old_size = PMM_PAGE_SIZE * large->num_pages;
         break;
 
     default:
-        kprintf("heap: unrecognized value of page 0x%08x type (%u)\n", addr,
-                metadata->type);
+        LOG_ERROR("unrecognized value of page 0x%08x type (%u)", addr,
+                  metadata->type);
         panic("unexpected behavior");
     }
 
@@ -234,7 +228,7 @@ static void prv_heap_lock(void) {
 
 static void prv_heap_unlock(void) {
     if (g_heap.nested_lock_cnt == 0) {
-        kprintf("heap: nested lock counter is zero during unlock\n");
+        LOG_ERROR("nested lock counter is zero during unlock");
         panic("unexpected behavior");
     }
     g_heap.nested_lock_cnt--;
