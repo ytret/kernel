@@ -61,6 +61,7 @@ add_executable(kernel
     src/kprintf.c
     src/kstring.c
     src/ksyscall.c
+    src/log.c
     src/mbi.c
     src/memfun.c
     src/panic.c
