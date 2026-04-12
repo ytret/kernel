@@ -38,8 +38,6 @@ typedef struct {
     pmm_page_t *page_metadata;
 
     pmm_mmap_t mmap;
-    /// Same as #mmap, but consists only of available RAM regions.
-    pmm_mmap_t alloc_mmap;
 } pmm_ctx_t;
 
 static pmm_ctx_t g_pmm;
@@ -55,7 +53,6 @@ static void prv_pmm_patch_mmap_holes(pmm_mmap_t *mmap);
 static void prv_pmm_reserve_lower_mem(pmm_mmap_t *mmap);
 static void prv_pmm_count_avail_ram(pmm_ctx_t *pmm);
 static void prv_pmm_init_static_heap(pmm_ctx_t *pmm);
-static void prv_pmm_init_alloc_mmap(pmm_ctx_t *pmm);
 static void prv_pmm_init_page_metadata(pmm_ctx_t *pmm);
 static void prv_pmm_init_pools(pmm_ctx_t *pmm);
 static void prv_pmm_build_region_pools(pmm_ctx_t *pmm, pmm_region_t *region);
@@ -91,7 +88,6 @@ void pmm_init(const pmm_mmap_t *mmap) {
     prv_pmm_reserve_lower_mem(&g_pmm.mmap);
     prv_pmm_count_avail_ram(&g_pmm);
     prv_pmm_init_static_heap(&g_pmm);
-    prv_pmm_init_alloc_mmap(&g_pmm);
     prv_pmm_init_page_metadata(&g_pmm);
     prv_pmm_init_pools(&g_pmm);
 
@@ -128,10 +124,11 @@ paddr_t pmm_alloc_aligned_pages(size_t num_pages, size_t align_pages) {
         panic("invalid argument");
     }
 
-    for (list_node_t *node = g_pmm.alloc_mmap.entry_list.p_first_node;
-         node != NULL; node = node->p_next) {
+    for (list_node_t *node = g_pmm.mmap.entry_list.p_first_node; node != NULL;
+         node = node->p_next) {
         pmm_region_t *const region =
             LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
+        if (region->type != PMM_REGION_AVAILABLE) { continue; }
 
         const paddr_t addr =
             prv_pmm_alloc_in_region(region, num_pages, align_pages);
@@ -454,34 +451,6 @@ static void prv_pmm_init_static_heap(pmm_ctx_t *pmm) {
 }
 
 /**
- * Initialize the available RAM memory map.
- *
- * See #pmm_ctx_t.alloc_mmap.
- */
-static void prv_pmm_init_alloc_mmap(pmm_ctx_t *pmm) {
-    for (list_node_t *node = pmm->mmap.entry_list.p_first_node; node != NULL;
-         node = node->p_next) {
-        pmm_region_t *const region =
-            LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
-        if (region->type != PMM_REGION_AVAILABLE) { continue; }
-
-        pmm_region_t *const alloc_region =
-            alloc_static(pmm->static_heap, sizeof(pmm_region_t));
-        if (!alloc_region) {
-            LOG_ERROR(
-                "failed to statically allocate %zu bytes for pmm_region_t",
-                sizeof(pmm_region_t));
-            panic("out of memory");
-        }
-
-        kmemcpy(alloc_region, region, sizeof(*region));
-        kmemset(&alloc_region->node, 0, sizeof(list_node_t));
-
-        list_append(&pmm->alloc_mmap.entry_list, &alloc_region->node);
-    }
-}
-
-/**
  * Initializes page metadata.
  *
  * For every available RAM page, there is a metadata structure. This function
@@ -503,10 +472,11 @@ static void prv_pmm_init_page_metadata(pmm_ctx_t *pmm) {
     }
 
     size_t offset = 0;
-    for (list_node_t *node = pmm->alloc_mmap.entry_list.p_first_node;
-         node != NULL; node = node->p_next) {
+    for (list_node_t *node = pmm->mmap.entry_list.p_first_node; node != NULL;
+         node = node->p_next) {
         pmm_region_t *const region =
             LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
+        if (region->type != PMM_REGION_AVAILABLE) { continue; }
 
         if (region->start & (PMM_PAGE_SIZE - 1)) {
             LOG_ERROR("region 0x%016llx .. 0x%016llx start is not page-aligned",
@@ -534,10 +504,11 @@ static void prv_pmm_init_page_metadata(pmm_ctx_t *pmm) {
  * region alignment and size.
  */
 static void prv_pmm_init_pools(pmm_ctx_t *pmm) {
-    for (list_node_t *node = pmm->alloc_mmap.entry_list.p_first_node;
-         node != NULL; node = node->p_next) {
+    for (list_node_t *node = pmm->mmap.entry_list.p_first_node; node != NULL;
+         node = node->p_next) {
         pmm_region_t *const region =
             LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
+        if (region->type != PMM_REGION_AVAILABLE) { continue; }
 
         if (region->end_incl > UINT32_MAX) {
             // TODO: print something?
@@ -695,8 +666,14 @@ static alloc_buddy_t *prv_pmm_find_pool_by_addr(pmm_region_t *region,
     const paddr_t end_excl = addr + PMM_PAGE_SIZE * num_pages;
     alloc_buddy_t **const pools = region->v_pools;
 
+    LOG_FLOW("find addr 0x%08" PRIxPTR
+             " in region 0x%016llx .. 0x%016llx with %zu pools",
+             addr, region->start, region->end_incl, region->num_pools);
+
     for (size_t idx = 0; idx < region->num_pools; idx++) {
         alloc_buddy_t *const pool = pools[idx];
+        LOG_FLOW("pool %zu start 0x%08" PRIxPTR " end 0x%08" PRIxPTR, idx,
+                 pool->start, pool->end);
         if (pool->start <= addr && end_excl <= pool->end) { return pool; }
     }
 
