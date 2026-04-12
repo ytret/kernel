@@ -4,7 +4,7 @@
 #include "acpi/acpi.h"
 #include "acpi/acpi_defs.h"
 #include "heap.h"
-#include "kprintf.h"
+#include "log.h"
 #include "memfun.h"
 
 static acpi_rsdp1_t *g_acpi_rsdp1;
@@ -81,16 +81,16 @@ static bool prv_acpi_copy_rsdp1(void) {
     uint32_t rsdp_addr;
     const bool found_rsdp = prv_acpi_find_rsdp_bios(&rsdp_addr);
     if (!found_rsdp) {
-        kprintf("acpi: could not find RSD PTR\n");
+        LOG_ERROR("could not find RSD PTR");
         return false;
     }
-    kprintf("acpi: found RSD PTR at 0x%08X\n", rsdp_addr);
+    LOG_DEBUG("found RSD PTR at 0x%08X", rsdp_addr);
     prv_acpi_dump_rsdp1((void *)rsdp_addr);
 
     g_acpi_rsdp1 = heap_alloc(sizeof(*g_acpi_rsdp1));
     kmemcpy(g_acpi_rsdp1, (void *)rsdp_addr, sizeof(*g_acpi_rsdp1));
     if (!prv_acpi_check_sum(g_acpi_rsdp1, sizeof(*g_acpi_rsdp1))) {
-        kprintf("acpi: bad checksum of RSDT at 0x%08x\n", rsdp_addr);
+        LOG_ERROR("bad checksum of RSDT at 0x%08x", rsdp_addr);
         return false;
     }
 
@@ -101,8 +101,7 @@ static bool prv_acpi_copy_rsdt(const acpi_rsdt_t *sys_rsdt) {
     // Check the RSDT's sum and copy the table to the heap.
     prv_acpi_dump_sdt(&sys_rsdt->header);
     if (!prv_acpi_check_sum(sys_rsdt, sys_rsdt->header.length)) {
-        kprintf("acpi: bad checksum of RSDT at 0x%08X\n",
-                g_acpi_rsdp1->rsdt_addr);
+        LOG_ERROR("bad checksum of RSDT at 0x%08X", g_acpi_rsdp1->rsdt_addr);
         return false;
     }
 
@@ -113,11 +112,11 @@ static bool prv_acpi_copy_rsdt(const acpi_rsdt_t *sys_rsdt) {
     // Dump the RSDT entry tables.
     const uint32_t num_rsdt_entries =
         (g_acpi_rsdt->header.length - sizeof(g_acpi_rsdt->header)) / 4;
-    kprintf("acpi: number of RSDT entries: %u\n", num_rsdt_entries);
+    LOG_DEBUG("number of RSDT entries: %u", num_rsdt_entries);
     for (uint32_t idx = 0; idx < num_rsdt_entries; idx++) {
         const uint32_t tbl_addr = g_acpi_rsdt->entries[idx];
         const acpi_sdt_hdr_t *const sdt = (void *)tbl_addr;
-        kprintf("acpi: dump of RSDT entry %u\n", idx);
+        LOG_DEBUG("dump of RSDT entry %u", idx);
         prv_acpi_dump_sdt(sdt);
 
         const char sig_madt[4] = "APIC";
@@ -137,7 +136,7 @@ static bool prv_acpi_copy_rsdt(const acpi_rsdt_t *sys_rsdt) {
  */
 static bool prv_acpi_copy_madt(const acpi_madt_t *sys_madt) {
     if (!prv_acpi_check_sum(sys_madt, sys_madt->header.length)) {
-        kprintf("acpi: bad checksum of MADT at %p\n", sys_madt);
+        LOG_ERROR("bad checksum of MADT at %p", sys_madt);
         return false;
     }
 
@@ -163,7 +162,7 @@ static bool prv_acpi_copy_madt(const acpi_madt_t *sys_madt) {
             break;
         case ACPI_MADT_ICS_IOAPIC:
             if (g_acpi_ioapic) {
-                kprintf("acpi: ignoring second I/O APIC\n");
+                LOG_DEBUG("ignoring second I/O APIC");
                 break;
             }
             s_type_str = "I/O APIC";
@@ -186,8 +185,8 @@ static bool prv_acpi_copy_madt(const acpi_madt_t *sys_madt) {
             // don't use 'default' so that when new types are added, the
             // compiler issues a warning
         }
-        kprintf("acpi: MADT: ICS at %p: type 0x%02X %s\n", (void *)addr_ics,
-                s_type, s_type_str);
+        LOG_DEBUG("MADT: ICS at %p: type 0x%02X %s", (void *)addr_ics, s_type,
+                  s_type_str);
 
         addr_ics += s_size;
     }
@@ -212,9 +211,10 @@ static bool prv_acpi_copy_madt(const acpi_madt_t *sys_madt) {
         case ACPI_MADT_ICS_LAPIC:
             ics_lapic = (const acpi_ic_lapic_t *)addr_ics;
             if (idx_proc < g_acpi_num_procs) {
-                kprintf("acpi: processor UID %u, LAPIC ID %u, %s\n",
-                        ics_lapic->proc_uid, ics_lapic->lapic_id,
-                        ics_lapic->flags_bit.enabled ? "enabled" : "disabled");
+                LOG_DEBUG("processor UID %u, LAPIC ID %u, %s",
+                          ics_lapic->proc_uid, ics_lapic->lapic_id,
+                          ics_lapic->flags_bit.enabled ? "enabled"
+                                                       : "disabled");
                 g_acpi_procs[idx_proc].proc_uid = ics_lapic->proc_uid;
                 g_acpi_procs[idx_proc].lapic_id = ics_lapic->lapic_id;
                 g_acpi_procs[idx_proc].enabled = ics_lapic->flags_bit.enabled;
@@ -224,8 +224,8 @@ static bool prv_acpi_copy_madt(const acpi_madt_t *sys_madt) {
         case ACPI_MADT_ICS_INT_SRC_OVR:
             ics_ovr = (const acpi_ic_int_src_ovr_t *)addr_ics;
             if (idx_irq_remap < g_acpi_num_irq_remaps) {
-                kprintf("acpi: interrupt source override IRQ %u -> GSI %u\n",
-                        ics_ovr->source, ics_ovr->gsi);
+                LOG_DEBUG("interrupt source override IRQ %u -> GSI %u",
+                          ics_ovr->source, ics_ovr->gsi);
                 g_acpi_irq_remaps[idx_irq_remap].irq = ics_ovr->source;
                 g_acpi_irq_remaps[idx_irq_remap].gsi = ics_ovr->gsi;
                 idx_irq_remap++;
@@ -285,10 +285,10 @@ static void prv_acpi_dump_rsdp1(const acpi_rsdp1_t *rsdp1) {
     kmemcpy(signature_str, rsdp1->signature, sizeof(rsdp1->signature));
     kmemcpy(oemid_str, rsdp1->oem_id, sizeof(rsdp1->oem_id));
 
-    kprintf("acpi: RSDP 1.0 at %p: \"%s\", sum 0x%02X, OEM \"%s\" rev. %u, "
-            "RSDT at 0x%08X\n",
-            rsdp1, signature_str, rsdp1->checksum, oemid_str, rsdp1->revision,
-            rsdp1->rsdt_addr);
+    LOG_DEBUG("RSDP 1.0 at %p: \"%s\", sum 0x%02X, OEM \"%s\" rev. %u, "
+              "RSDT at 0x%08X",
+              rsdp1, signature_str, rsdp1->checksum, oemid_str, rsdp1->revision,
+              rsdp1->rsdt_addr);
 }
 
 static void prv_acpi_dump_sdt(const acpi_sdt_hdr_t *sdt_hdr) {
@@ -302,10 +302,10 @@ static void prv_acpi_dump_sdt(const acpi_sdt_hdr_t *sdt_hdr) {
             sizeof(sdt_hdr->oem_table_id));
     kmemcpy(creator_id_str, sdt_hdr->creator_id, sizeof(sdt_hdr->creator_id));
 
-    kprintf("acpi: SDT at %p: \"%s\", %u bytes, rev. %u, sum 0x%02X, OEM "
-            "\"%s\" table "
-            "\"%s\" rev. %u, creator \"%s\" rev. %u\n",
-            sdt_hdr, signature_str, sdt_hdr->length, sdt_hdr->revision,
-            sdt_hdr->checksum, oem_id_str, oem_table_id_str,
-            sdt_hdr->oem_revision, creator_id_str, sdt_hdr->creator_revision);
+    LOG_DEBUG("SDT at %p: \"%s\", %u bytes, rev. %u, sum 0x%02X, OEM "
+              "\"%s\" table "
+              "\"%s\" rev. %u, creator \"%s\" rev. %u",
+              sdt_hdr, signature_str, sdt_hdr->length, sdt_hdr->revision,
+              sdt_hdr->checksum, oem_id_str, oem_table_id_str,
+              sdt_hdr->oem_revision, creator_id_str, sdt_hdr->creator_revision);
 }
