@@ -2,7 +2,9 @@
 #include <stddef.h>
 
 #include "elf.h"
+#include "heap.h"
 #include "kprintf.h"
+#include "log.h"
 #include "pmm.h"
 #include "vmm.h"
 
@@ -105,23 +107,23 @@ bool elf_load(uint32_t *p_dir, uint32_t addr, uint32_t *p_entry) {
 
     // Check if the header is loadable.
     if (BITS_32BIT != p_hdr->bits) {
-        kprintf("elf: cannot load a non-32-bit executable\n");
+        LOG_ERROR("cannot load a non-32-bit executable");
         return false;
     }
     if (BYTE_ORDER_LITTLE != p_hdr->byte_order) {
-        kprintf("elf: cannot load a non-little-endian executable\n");
+        LOG_ERROR("cannot load a non-little-endian executable");
         return false;
     }
     if (OS_ABI_SYSV != p_hdr->os_abi) {
-        kprintf("elf: cannot load a non-SYSV-executable\n");
+        LOG_ERROR("cannot load a non-SYSV-executable");
         return false;
     }
 
     // Check the program header table entry size.
     if (p_hdr->ph_entry_size != sizeof(prog_hdr_t)) {
-        kprintf("elf: cannot load an executable with program header size of %u"
-                " bytes\n",
-                p_hdr->ph_entry_size);
+        LOG_ERROR("cannot load an executable with program header size of %u"
+                  " bytes",
+                  p_hdr->ph_entry_size);
         return false;
     }
 
@@ -136,26 +138,25 @@ bool elf_load(uint32_t *p_dir, uint32_t addr, uint32_t *p_entry) {
 
         // Check if the segment is to be loaded in the user part of VAS.
         if (p_phdr->vaddr < VMM_USER_START) {
-            kprintf("elf: load failed: program header %u vaddr 0x%08X is not in"
-                    " the user part of VAS\n",
-                    idx, p_phdr->vaddr);
+            LOG_ERROR("load failed: program header %u vaddr 0x%08X is not in "
+                      "the user part of VAS",
+                      idx, p_phdr->vaddr);
             return false;
         }
 
         // Check that the virtual address is page-aligned.
         if (p_phdr->vaddr & 0xFFF) {
-            kprintf("elf: load failed: program header %u vaddr 0x%08X is not"
-                    " page-aligned\n",
-                    idx, p_phdr->vaddr);
+            LOG_ERROR("load failed: program header %u vaddr 0x%08X is not "
+                      "page-aligned",
+                      idx, p_phdr->vaddr);
             return false;
         }
 
         // Check that the file size is not greater than memory size.
         if (p_phdr->file_size > p_phdr->mem_size) {
-            kprintf(
-                "elf: load failed: program header %u file size %u is greater"
-                " than memory size %u\n",
-                idx, p_phdr->file_size, p_phdr->mem_size);
+            LOG_ERROR("load failed: program header %u file size %u is greater "
+                      "than memory size %u",
+                      idx, p_phdr->file_size, p_phdr->mem_size);
             return false;
         }
 
@@ -198,31 +199,28 @@ void elf_dump(uint32_t addr) {
 
 static bool check_hdr_valid(elf_hdr_t const *p_hdr) {
     if (p_hdr->magic_num != MAGIC_NUM) {
-        kprintf("elf: check_hdr: invalid magic number: 0x%08X\n",
-                p_hdr->magic_num);
+        LOG_ERROR("invalid magic number: 0x%08X", p_hdr->magic_num);
         return false;
     }
 
     if ((p_hdr->bits != BITS_32BIT) && (p_hdr->bits != BITS_64BIT)) {
-        kprintf("elf: check_hdr: invalid field 'bits': %u\n", p_hdr->bits);
+        LOG_ERROR("invalid field 'bits': %u", p_hdr->bits);
         return false;
     }
 
     if ((p_hdr->byte_order != BYTE_ORDER_LITTLE) &&
         (p_hdr->byte_order != BYTE_ORDER_BIG)) {
-        kprintf("elf: check_hdr: invalid field 'byte order': %u\n",
-                p_hdr->byte_order);
+        LOG_ERROR("invalid field 'byte order': %u", p_hdr->byte_order);
         return false;
     }
 
     if (p_hdr->header_version != HEADER_VERSION) {
-        kprintf("elf: check_hdr: unknown header version: %u\n",
-                p_hdr->header_version);
+        LOG_ERROR("unknown header version: %u", p_hdr->header_version);
         return false;
     }
 
     if (p_hdr->os_abi != OS_ABI_SYSV) {
-        kprintf("elf: check_hdr: unknown OS ABI: %u\n", p_hdr->os_abi);
+        LOG_ERROR("unknown OS ABI: %u", p_hdr->os_abi);
         return false;
     }
 
@@ -230,61 +228,69 @@ static bool check_hdr_valid(elf_hdr_t const *p_hdr) {
 }
 
 static void dump_general(elf_hdr_t const *p_hdr) {
-    kprintf("ELF");
+    const char *s_bits;
+    const char *s_arch;
+    const char *s_endian;
+    const char *s_reloc;
+    size_t s_abi_size = 32;
+    char *s_abi = heap_alloc(s_abi_size);
 
     // 32-bit or 64-bit.
     if (BITS_32BIT == p_hdr->bits) {
-        kprintf(" 32-bit");
+        s_bits = "32-bit";
     } else {
-        kprintf(" 64-bit");
+        s_bits = "64-bit";
     }
 
     // CPU architecture.
     if (ARCH_X86 == p_hdr->arch) {
-        kprintf(" x86");
+        s_arch = "x86";
     } else {
-        kprintf(" unknown arch");
+        s_arch = "unknown arch";
     }
 
     // Byte order.
     if (BYTE_ORDER_LITTLE == p_hdr->byte_order) {
-        kprintf(" little-endian");
+        s_endian = "little-endian";
     } else {
-        kprintf(" big-endian");
+        s_endian = "big-endian";
     }
 
     // Executable type.
     if (TYPE_RELOC == p_hdr->elf_type) {
-        kprintf(" relocatable");
+        s_reloc = "relocatable";
     } else if (TYPE_EXEC == p_hdr->elf_type) {
-        kprintf(" executable");
+        s_reloc = "executable";
     } else if (TYPE_SHARED == p_hdr->elf_type) {
-        kprintf(" shared");
+        s_reloc = "shared";
     } else if (TYPE_CORE == p_hdr->elf_type) {
-        kprintf(" core");
+        s_reloc = "core";
+    } else {
+        s_reloc = "unknown reloc";
     }
 
     // ABI.
     if (OS_ABI_SYSV == p_hdr->os_abi) {
-        kprintf(", SYSV ABI (version %u)", p_hdr->abi_version);
+        ksnprintf(s_abi, s_abi_size, "SYSV ABI (version %u)",
+                  p_hdr->abi_version);
+    } else {
+        ksnprintf(s_abi, s_abi_size, "unknown ABI");
     }
 
-    kprintf("\n");
-
-    kprintf("Entry: 0x%08X\n", p_hdr->entry);
+    LOG_DEBUG("ELF %s %s %s %s %s", s_bits, s_arch, s_endian, s_reloc, s_abi);
+    LOG_DEBUG("Entry: 0x%08X", p_hdr->entry);
 }
 
 static void dump_prog_hdrs(elf_hdr_t const *p_hdr) {
     if (p_hdr->ph_entry_size != ((uint16_t)sizeof(prog_hdr_t))) {
-        kprintf(
-            "elf: unexpected declared program header size: %u (expected %u)",
-            p_hdr->ph_entry_size, sizeof(prog_hdr_t));
+        LOG_ERROR("unexpected declared program header size: %u (expected %u)",
+                  p_hdr->ph_entry_size, sizeof(prog_hdr_t));
         return;
     }
 
-    kprintf("Program headers:\n");
-    kprintf("TYPE  OFFSET      VADDR        FILE SIZE    MEM SIZE  ALIGN  FLAGS"
-            "\n");
+    LOG_DEBUG("Program headers:");
+    LOG_DEBUG(
+        "TYPE  OFFSET      VADDR        FILE SIZE    MEM SIZE  ALIGN  FLAGS");
 
     prog_hdr_t const *p_phdrs = offset(p_hdr, p_hdr->ph_offset);
     for (size_t idx = 0; idx < p_hdr->ph_num_entries; idx++) {
@@ -293,43 +299,43 @@ static void dump_prog_hdrs(elf_hdr_t const *p_hdr) {
 }
 
 static void dump_prog_hdr(prog_hdr_t const *p_phdr) {
+    const char *s_type;
+    char s_flags[4];
+
     if (PHDR_TYPE_IGNORE == p_phdr->type) {
-        kprintf("ignore");
+        s_type = "ignore";
         return;
     } else if (PHDR_TYPE_LOAD == p_phdr->type) {
-        kprintf("load  ");
+        s_type = "load  ";
     } else if (PHDR_TYPE_DYNAMIC == p_phdr->type) {
-        kprintf("dyn   ");
+        s_type = "dyn   ";
     } else if (PHDR_TYPE_INTERP == p_phdr->type) {
-        kprintf("intr  ");
+        s_type = "intr  ";
     } else if (PHDR_TYPE_NOTE == p_phdr->type) {
-        kprintf("note  ");
+        s_type = "note  ";
     } else {
-        kprintf("unknown type");
-        return;
+        s_type = "unknown type";
     }
 
-    char p_flags[4] = "   ";
-    p_flags[0] = ((p_phdr->flags & PHDR_FLAG_READ) ? 'r' : '-');
-    p_flags[1] = ((p_phdr->flags & PHDR_FLAG_WRITE) ? 'w' : '-');
-    p_flags[2] = ((p_phdr->flags & PHDR_FLAG_EXEC) ? 'x' : '-');
+    s_flags[0] = ((p_phdr->flags & PHDR_FLAG_READ) ? 'r' : '-');
+    s_flags[1] = ((p_phdr->flags & PHDR_FLAG_WRITE) ? 'w' : '-');
+    s_flags[2] = ((p_phdr->flags & PHDR_FLAG_EXEC) ? 'x' : '-');
 
-    kprintf("0x%08x  0x%08x  %10u  %10u  %5u  %5s\n", p_phdr->offset,
-            p_phdr->vaddr, p_phdr->file_size, p_phdr->mem_size, p_phdr->align,
-            p_flags);
+    LOG_DEBUG("%s0x%08x  0x%08x  %10u  %10u  %5u  %5s", s_type, p_phdr->offset,
+              p_phdr->vaddr, p_phdr->file_size, p_phdr->mem_size, p_phdr->align,
+              s_flags);
 }
 
 static void dump_sect_hdrs(elf_hdr_t const *p_hdr) {
     if (p_hdr->sh_entry_size != ((uint16_t)sizeof(sect_hdr_t))) {
-        kprintf(
-            "elf: unexpected declared section header size: %u (expected %u)",
-            p_hdr->ph_entry_size, sizeof(prog_hdr_t));
+        LOG_ERROR("unexpected declared section header size: %u (expected %u)",
+                  p_hdr->ph_entry_size, sizeof(prog_hdr_t));
         return;
     }
 
-    kprintf("Section headers:\n");
-    kprintf(
-        "NAME                 TYPE      OFFSET        SIZE  ALIGN  FLAGS\n");
+    LOG_DEBUG("Section headers:");
+    LOG_DEBUG(
+        "NAME                 TYPE      OFFSET        SIZE  ALIGN  FLAGS");
 
     sect_hdr_t const *p_shdrs = offset(p_hdr, p_hdr->sh_offset);
     for (size_t idx = 0; idx < p_hdr->sh_num_entries; idx++) {
@@ -339,6 +345,7 @@ static void dump_sect_hdrs(elf_hdr_t const *p_hdr) {
 
 static void dump_sect_hdr(elf_hdr_t const *p_hdr, sect_hdr_t const *p_shdr) {
     char const *p_type = "unknown";
+
     switch (p_shdr->type) {
     case SHDR_TYPE_IGNORE:
         return;
@@ -369,8 +376,8 @@ static void dump_sect_hdr(elf_hdr_t const *p_hdr, sect_hdr_t const *p_shdr) {
     p_flags[0] = ((p_shdr->flags & SHDR_FLAG_WRITE) ? 'w' : '-');
     p_flags[1] = ((p_shdr->flags & SHDR_FLAG_ALLOC) ? 'a' : '-');
 
-    kprintf("%-15s  %8s  0x%08X  %10u  %5u  %5s\n", p_name, p_type,
-            p_shdr->offset, p_shdr->size, p_shdr->addr_align, p_flags);
+    LOG_DEBUG("%-15s  %8s  0x%08X  %10u  %5u  %5s", p_name, p_type,
+              p_shdr->offset, p_shdr->size, p_shdr->addr_align, p_flags);
 }
 
 static char const *sect_name(elf_hdr_t const *p_hdr, sect_hdr_t const *p_shdr) {
