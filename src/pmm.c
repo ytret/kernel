@@ -51,15 +51,15 @@ static void prv_pmm_dump_mmap(const pmm_mmap_t *mmap);
 static const char *prv_pmm_region_type_name(pmm_region_type_t region_type);
 
 static void prv_pmm_patch_mmap_holes(pmm_mmap_t *mmap);
-static void prv_pmm_reserve_lower_memory(pmm_mmap_t *mmap);
-static void prv_pmm_count_available_memory(pmm_ctx_t *pmm);
+static void prv_pmm_reserve_lower_mem(pmm_mmap_t *mmap);
+static void prv_pmm_count_avail_ram(pmm_ctx_t *pmm);
 static void prv_pmm_init_static_heap(pmm_ctx_t *pmm);
 static void prv_pmm_init_alloc_mmap(pmm_ctx_t *pmm);
 static void prv_pmm_init_page_metadata(pmm_ctx_t *pmm);
 static void prv_pmm_init_pools(pmm_ctx_t *pmm);
 static void prv_pmm_build_region_pools(pmm_ctx_t *pmm, pmm_region_t *region);
-static void prv_pmm_partition_region_pools(pmm_ctx_t *pmm, pmm_region_t *region,
-                                           uint32_t start, uint32_t size);
+static void prv_pmm_partition_pools(pmm_ctx_t *pmm, pmm_region_t *region,
+                                    uint32_t start, uint32_t size);
 static alloc_buddy_t *prv_pmm_create_pool(pmm_ctx_t *pmm, uint32_t start,
                                           size_t size, uint32_t *out_start,
                                           uint32_t *out_size);
@@ -87,8 +87,8 @@ void pmm_init(const pmm_mmap_t *mmap) {
     g_pmm.static_heap = heap_get_static_heap();
 
     prv_pmm_patch_mmap_holes(&g_pmm.mmap);
-    prv_pmm_reserve_lower_memory(&g_pmm.mmap);
-    prv_pmm_count_available_memory(&g_pmm);
+    prv_pmm_reserve_lower_mem(&g_pmm.mmap);
+    prv_pmm_count_avail_ram(&g_pmm);
     prv_pmm_init_static_heap(&g_pmm);
     prv_pmm_init_alloc_mmap(&g_pmm);
     prv_pmm_init_page_metadata(&g_pmm);
@@ -299,7 +299,7 @@ static void prv_pmm_patch_mmap_holes(pmm_mmap_t *mmap) {
  *
  * See #PMM_RESERVE_LOWER_BYTES.
  */
-static void prv_pmm_reserve_lower_memory(pmm_mmap_t *mmap) {
+static void prv_pmm_reserve_lower_mem(pmm_mmap_t *mmap) {
     if (PMM_RESERVE_LOWER_BYTES == 0) { return; }
 
     size_t cnt_prev_available = 0;
@@ -358,7 +358,7 @@ static void prv_pmm_reserve_lower_memory(pmm_mmap_t *mmap) {
               PMM_RESERVE_LOWER_BYTES, cnt_prev_available);
 }
 
-static void prv_pmm_count_available_memory(pmm_ctx_t *pmm) {
+static void prv_pmm_count_avail_ram(pmm_ctx_t *pmm) {
     size_t available_ram_size = 0;
 
     for (list_node_t *node = pmm->mmap.entry_list.p_first_node; node != NULL;
@@ -578,8 +578,7 @@ static void prv_pmm_build_region_pools(pmm_ctx_t *pmm, pmm_region_t *region) {
         panic("out of memory");
     }
 
-    prv_pmm_partition_region_pools(pmm, region, region->start,
-                                   region->end_incl + 1);
+    prv_pmm_partition_pools(pmm, region, region->start, region->end_incl + 1);
 }
 
 /**
@@ -589,8 +588,8 @@ static void prv_pmm_build_region_pools(pmm_ctx_t *pmm, pmm_region_t *region) {
  * single pool covering some part in the specified range `[start; end_excl)`,
  * and then calls itself two times for the remaining two parts of the range.
  */
-static void prv_pmm_partition_region_pools(pmm_ctx_t *pmm, pmm_region_t *region,
-                                           uint32_t start, uint32_t end_excl) {
+static void prv_pmm_partition_pools(pmm_ctx_t *pmm, pmm_region_t *region,
+                                    uint32_t start, uint32_t end_excl) {
     const size_t size = end_excl - start;
     if (size < PMM_MIN_POOL_SIZE) { return; }
     if (region->num_pools >= PMM_MAX_POOLS_PER_REGION) { return; }
@@ -607,9 +606,8 @@ static void prv_pmm_partition_region_pools(pmm_ctx_t *pmm, pmm_region_t *region,
     pools[region->num_pools] = pool;
     region->num_pools++;
 
-    prv_pmm_partition_region_pools(pmm, region, start, used_start);
-    prv_pmm_partition_region_pools(pmm, region, used_start + used_size,
-                                   end_excl);
+    prv_pmm_partition_pools(pmm, region, start, used_start);
+    prv_pmm_partition_pools(pmm, region, used_start + used_size, end_excl);
 }
 
 /**
