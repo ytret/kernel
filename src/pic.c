@@ -1,7 +1,7 @@
 #include <stdint.h>
 
 #include "kbd.h"
-#include "kprintf.h"
+#include "log.h"
 #include "pic.h"
 #include "pit.h"
 #include "port.h"
@@ -94,13 +94,13 @@ void pic_spurious_irq_handler(int irq) {
         } else if (isr & (1 << 1)) {
             kbd_irq_handler();
         } else {
-            kprintf("pic: unknown spurious IRQ from master PIC\n");
-            kprintf("pic: ISR = 0x%04X\n", isr);
+            LOG_ERROR("unknown spurious IRQ from master PIC");
+            LOG_ERROR("ISR = 0x%04X", isr);
         }
     } else {
         // Spurious IRQ from slave PIC.
-        kprintf("pic: unknown spurious IRQ from slave PIC\n");
-        kprintf("pic: ISR = 0x%04X\n", isr);
+        LOG_ERROR("unknown spurious IRQ from slave PIC");
+        LOG_ERROR("ISR = 0x%04X", isr);
 
         send_master_cmd(CMD_EOI);
     }
