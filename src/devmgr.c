@@ -8,7 +8,7 @@
 #include "blkdev/blkpart.h"
 #include "blkdev/gpt.h"
 #include "devmgr.h"
-#include "kprintf.h"
+#include "log.h"
 #include "memfun.h"
 #include "panic.h"
 #include "pci.h"
@@ -44,8 +44,7 @@ void devmgr_init(void) {
     const size_t num_devs = pci_num_devs();
     for (size_t idx_dev = 0; idx_dev < num_devs; idx_dev++) {
         if (g_devmgr_num_devs == DEVMGR_MAX_DEVS) {
-            kprintf("devmgr: device limit (%u) has been reached\n",
-                    DEVMGR_MAX_DEVS);
+            LOG_ERROR("device limit (%u) has been reached", DEVMGR_MAX_DEVS);
             break;
         }
         const pci_dev_t *pci_dev = pci_get_dev_const(idx_dev);
@@ -144,25 +143,23 @@ static devmgr_dev_t *prv_devmgr_init_dev(const pci_dev_t *pci_dev) {
     if (pci_header->base_class == PCI_BASE_CLASS_MASS_STORAGE) {
         if (pci_header->sub_class == PCI_MASS_STORAGE_SATA_DPA) {
             if (pci_header->interface == PCI_SATA_INTERFACE_AHCI) {
-                kprintf(
-                    "devmgr: pci %u-%u-%u: SATA DPA, AHBI HBA (major rev. 1)\n",
-                    pci_dev->bus_num, pci_dev->dev_num, pci_dev->fun_num);
+                LOG_INFO("pci %u-%u-%u: SATA DPA, AHBI HBA (major rev. 1)",
+                         pci_dev->bus_num, pci_dev->dev_num, pci_dev->fun_num);
                 dev = prv_devmgr_init_ahci(pci_dev);
             } else {
-                kprintf("devmgr: pci %u-%u-%u: unknown SATA DPA interface %u\n",
-                        pci_dev->bus_num, pci_dev->dev_num, pci_dev->fun_num,
-                        pci_header->interface);
+                LOG_ERROR("pci %u-%u-%u: unknown SATA DPA interface %u",
+                          pci_dev->bus_num, pci_dev->dev_num, pci_dev->fun_num,
+                          pci_header->interface);
             }
 
         } else {
-            kprintf("devmgr: pci %u-%u-%u: unknown mass storage subclass %u\n",
-                    pci_dev->bus_num, pci_dev->dev_num, pci_dev->fun_num,
-                    pci_header->sub_class);
+            LOG_ERROR("pci %u-%u-%u: unknown mass storage subclass %u",
+                      pci_dev->bus_num, pci_dev->dev_num, pci_dev->fun_num,
+                      pci_header->sub_class);
         }
     } else {
-        kprintf("devmgr: pci %u-%u-%u: unknown base class %u\n",
-                pci_dev->bus_num, pci_dev->dev_num, pci_dev->fun_num,
-                pci_header->base_class);
+        LOG_ERROR("pci %u-%u-%u: unknown base class %u", pci_dev->bus_num,
+                  pci_dev->dev_num, pci_dev->fun_num, pci_header->base_class);
     }
 
     return dev;
@@ -177,8 +174,8 @@ static devmgr_dev_t *prv_devmgr_init_ahci(const pci_dev_t *pci_dev) {
 
     ahci_ctrl_ctx_t *const ahci_ctrl = ahci_ctrl_new(pci_dev);
     if (!ahci_ctrl) {
-        kprintf("devmgr: pci %u-%u-%u: failed to initialize ahci driver\n",
-                pci_dev->bus_num, pci_dev->dev_num, pci_dev->fun_num);
+        LOG_ERROR("pci %u-%u-%u: failed to initialize ahci driver",
+                  pci_dev->bus_num, pci_dev->dev_num, pci_dev->fun_num);
         return NULL;
     }
 
@@ -197,8 +194,7 @@ static devmgr_dev_t *prv_devmgr_init_ahci(const pci_dev_t *pci_dev) {
 
         ahci_port_set_int(ahci_port, AHCI_PORT_INT_ALL, true);
 
-        kprintf("devmgr: loaded driver for AHCI Port %s\n",
-                ahci_port_name(ahci_port));
+        LOG_DEBUG("loaded driver for AHCI Port %s", ahci_port_name(ahci_port));
     }
 
     ahci_ctrl_map_irq(ahci_ctrl, AHCI_VEC_GLOBAL);
@@ -215,31 +211,28 @@ static devmgr_dev_t *prv_devmgr_init_ahci(const pci_dev_t *pci_dev) {
 static void prv_devmgr_init_blkparts(devmgr_dev_t *dev) {
     if (dev->dev_class != DEVMGR_CLASS_BLOCK) {
         panic_enter();
-        kprintf("devmgr: init blkparts called on a non-blkdev device ID %u\n",
-                dev->id);
+        LOG_ERROR("init blkparts called on a non-blkdev device ID %u", dev->id);
         panic("unexpected behavior");
     }
 
     if (!gpt_probe_signature(&dev->blkdev_dev)) {
-        kprintf("devmgr: blkdev %u is not GPT-partitioned\n", dev->id);
+        LOG_DEBUG("blkdev %u is not GPT-partitioned", dev->id);
         return;
     }
     if (!gpt_parse(&dev->blkdev_dev, &dev->gpt_disk)) {
-        kprintf(
-            "devmgr: blkdev %u has GPT signature, but could not be parsed\n",
-            dev->id);
+        LOG_ERROR("blkdev %u has GPT signature, but could not be parsed",
+                  dev->id);
         return;
     }
 
-    kprintf("devmgr: blkdev %u has %u partitions\n", dev->id,
-            dev->gpt_disk->num_parts);
+    LOG_DEBUG("blkdev %u has %u partitions", dev->id, dev->gpt_disk->num_parts);
 
     for (size_t idx_part = 0; idx_part < dev->gpt_disk->num_parts; idx_part++) {
         devmgr_dev_t *const dev_part = prv_devmgr_init_next_dev();
         if (!dev_part) {
-            kprintf("devmgr: could not initialize all partitions of device ID "
-                    "%u: no free device slots\n",
-                    dev->id);
+            LOG_ERROR("could not initialize all partitions of device ID "
+                      "%u: no free device slots",
+                      dev->id);
             break;
         }
 
