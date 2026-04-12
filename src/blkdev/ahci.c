@@ -359,7 +359,7 @@ void ahci_port_irq_handler(ahci_port_ctx_t *port_ctx) {
     }
     if (int_status & AHCI_PORT_INT_CPD) {
         port_ctx->reg_port->is = AHCI_PORT_INT_CPD;
-        LOG_FLOW("port irq: AHCI_PORT_INT_CPD", port_ctx->name);
+        LOG_FLOW("port %s irq: AHCI_PORT_INT_CPD", port_ctx->name);
     }
 }
 
@@ -617,11 +617,12 @@ static void prv_ahci_enumerate_ports(ahci_ctrl_ctx_t *ctrl_ctx) {
                 port_ctx->online_sata = true;
                 LOG_INFO("%s: detected SATA_SIG_ATA", port_ctx->name);
             } else {
-                LOG_INFO("%s: unrecognized signature 0x%08X", port_ctx->name);
+                LOG_INFO("%s: unrecognized signature 0x%08X", port_ctx->name,
+                         port_ctx->reg_port->sig);
             }
             break;
         case AHCI_SSTS_DET_PHY_OFF:
-            LOG_INFO("port %u: has device, Phy offline ", port_ctx->name);
+            LOG_INFO("port %s: has device, Phy offline", port_ctx->name);
             break;
         }
     }
@@ -760,7 +761,7 @@ static bool prv_ahci_port_check_sectors(ahci_port_ctx_t *port_ctx,
         return false;
     }
     if (start_sector >= port_ctx->num_sectors) {
-        LOG_ERROR("%s: start sector is past disk end by %u sectors",
+        LOG_ERROR("%s: start sector is past disk end by %llu sectors",
                   port_ctx->name, start_sector - port_ctx->num_sectors);
         return false;
     }
@@ -768,7 +769,8 @@ static bool prv_ahci_port_check_sectors(ahci_port_ctx_t *port_ctx,
     // Check num_sectors.
     if (0 == num_sectors) { return true; }
     if (start_sector + num_sectors > port_ctx->num_sectors) {
-        LOG_ERROR("%s: cannot read past disk end by %u sectors", port_ctx->name,
+        LOG_ERROR("%s: cannot read past disk end by %llu sectors",
+                  port_ctx->name,
                   (start_sector + num_sectors) - port_ctx->num_sectors);
         return false;
     }
@@ -991,7 +993,7 @@ static void prv_ahci_port_handle_tfe(ahci_port_ctx_t *port_ctx) {
     if (!port_ctx->has_blkdev_req ||
         port_ctx->blkdev_req->state != BLKDEV_REQ_ACTIVE) {
         panic_enter();
-        LOG_ERROR("port %s TFE: no active request");
+        LOG_ERROR("port %s TFE: no active request", port_ctx->name);
         panic("unexpected AHCI request state");
     }
 
@@ -1061,7 +1063,7 @@ static void prv_ahci_port_handle_tfe(ahci_port_ctx_t *port_ctx) {
 static void prv_ahci_port_handle_dhr(ahci_port_ctx_t *port_ctx) {
     const ahci_port_state_t port_state = port_ctx->state;
     if (port_state != AHCI_PORT_ACTIVE) {
-        LOG_FLOW("port %s irq: port is not active, ignoring DHR",
+        LOG_FLOW("port %s irq: port is not active (state %u), ignoring DHR",
                  port_ctx->name, port_state);
     }
 
