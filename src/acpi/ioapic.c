@@ -6,7 +6,7 @@
 
 #include "acpi/acpi.h"
 #include "acpi/ioapic.h"
-#include "kprintf.h"
+#include "log.h"
 #include "memfun.h"
 #include "pic.h"
 #include "vmm.h"
@@ -29,8 +29,8 @@ void ioapic_init(void) {
     if (ics_ioapic) {
         g_ioapic_regs = (ioapic_regs_t *)ics_ioapic->ioapic_addr;
     } else {
-        kprintf("ioapic: could not get I/O APIC ICS from acpi, using 0x%08X\n",
-                acpiIOAPIC_FALLBACK_ADDR);
+        LOG_DEBUG("could not get I/O APIC ICS from acpi, using 0x%08X",
+                  acpiIOAPIC_FALLBACK_ADDR);
         g_ioapic_regs = (ioapic_regs_t *)acpiIOAPIC_FALLBACK_ADDR;
     }
 
@@ -43,8 +43,8 @@ void ioapic_init(void) {
     g_ioapic_version = reg_ver.version;
     g_ioapic_redirs = reg_ver.max_redir_entry + 1;
 
-    kprintf("ioapic: I/O APIC 0x%02X version %u (%u entries) at %P\n",
-            g_ioapic_id, g_ioapic_version, g_ioapic_redirs, g_ioapic_regs);
+    LOG_DEBUG("I/O APIC 0x%02X version %u (%u entries) at %P", g_ioapic_id,
+              g_ioapic_version, g_ioapic_redirs, g_ioapic_regs);
 }
 
 void ioapic_map_pages(void) {
@@ -58,9 +58,9 @@ void ioapic_map_pages(void) {
 
 bool ioapic_map_irq(uint8_t irq_num, uint8_t vec_num, uint8_t lapic_id) {
     if (!g_ioapic_regs) {
-        kprintf("ioapic: cannot remap IRQ %u to vector %u: I/O APIC is not "
-                "initialized\n",
-                irq_num, vec_num);
+        LOG_ERROR(
+            "cannot remap IRQ %u to vector %u: I/O APIC is not initialized",
+            irq_num, vec_num);
         return false;
     }
 
@@ -78,30 +78,29 @@ bool ioapic_map_irq(uint8_t irq_num, uint8_t vec_num, uint8_t lapic_id) {
     };
     bool ok = ioapic_set_redirect(gsi_num, &redir);
     if (ok) {
-        kprintf("ioapic: mapped IRQ %u to vector %u of LAPIC ID %u\n", irq_num,
-                vec_num, lapic_id);
+        LOG_DEBUG("mapped IRQ %u to vector %u of LAPIC ID %u", irq_num, vec_num,
+                  lapic_id);
     }
     return ok;
 }
 
 bool ioapic_set_redirect(uint32_t gsi, const ioapic_redir_t *redir) {
     if (!g_ioapic_regs) {
-        kprintf(
-            "ioapic: cannot set I/O APIC GSI %u: I/O APIC is not initialized\n",
-            gsi);
+        LOG_ERROR("cannot set I/O APIC GSI %u: I/O APIC is not initialized",
+                  gsi);
         return false;
     }
     if (gsi >= g_ioapic_redirs) {
-        kprintf("ioapic: cannot set I/O APIC GSI %u: maximum GSI is %u\n", gsi,
-                g_ioapic_redirs - 1);
+        LOG_ERROR("cannot set I/O APIC GSI %u: maximum GSI is %u", gsi,
+                  g_ioapic_redirs - 1);
         return false;
     }
 
     ioapic_redir_t prev_val;
     prv_ioapic_read_u64(IOAPIC_REG_REDIR(gsi), &prev_val);
     if (prev_val.intvec != 0) {
-        kprintf("ioapic: cannot set I/O APIC GSI %u: already mapped to %u\n",
-                prev_val.intvec);
+        LOG_ERROR("cannot set I/O APIC GSI %u: already mapped to %u",
+                  prev_val.intvec);
         return false;
     }
 
