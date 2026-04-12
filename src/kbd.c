@@ -3,7 +3,7 @@
 
 #include "acpi/lapic.h"
 #include "kbd.h"
-#include "kprintf.h"
+#include "log.h"
 #include "panic.h"
 #include "port.h"
 
@@ -61,7 +61,7 @@ static uint8_t read_code(void) {
 static void append_code(uint8_t sc) {
     if (g_kbd_code_buf_pos >= CODE_BUF_LEN) {
         panic_enter();
-        kprintf("kbd: append_code: scancode buffer is full\n");
+        LOG_ERROR("append_code: scancode buffer is full");
         panic("buffer overflow");
     }
 
@@ -449,11 +449,10 @@ static void try_parse_codes(void) {
             b_released = false;
         }
     } else if (num_codes > 6) {
-        kprintf("kbd: discarding unknown sequence: ");
+        LOG_DEBUG("discarding unknown sequence:");
         for (size_t idx = 0; idx < num_codes; idx++) {
-            kprintf("%x ", gp_kbd_code_buf[idx]);
+            LOG_DEBUG("%x ", gp_kbd_code_buf[idx]);
         }
-        kprintf("\n");
 
         // Reset the scancode buffer.
         g_kbd_code_buf_pos = 0;
