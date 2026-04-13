@@ -1,6 +1,5 @@
 #include "acpi/lapic.h"
 #include "kinttypes.h"
-#include "log.h"
 #include "panic.h"
 #include "pit.h"
 #include "port.h"
@@ -21,11 +20,9 @@ void pit_init(uint8_t period_ms) {
     // Calculate the reload value.
     uint32_t reload_u32 = BASE_FREQ_KHZ * period_ms;
     if (reload_u32 > 65535) {
-        panic_enter();
-        LOG_ERROR("reload value (%" PRIu32 ") for period_ms = %u is too big",
-                  reload_u32, period_ms);
-        LOG_ERROR("it must be less than or equal to 65535");
-        panic("pit_init() failed");
+        PANIC("reload value (%" PRIu32
+              ") for period_ms = %u is too big (> 65535)",
+              reload_u32, period_ms);
     }
 
     // Send the mode/command register.
@@ -52,9 +49,7 @@ void pit_delay_ms(uint32_t delay_ms) {
 
 void pit_irq_handler(void) {
     if (!gb_initialized) {
-        panic_enter();
-        LOG_ERROR("IRQ0 handler was called before initialization");
-        panic("unexpected behavior");
+        PANIC("IRQ0 handler was called before initialization");
     }
 
     g_counter_ms += PIT_PERIOD_MS;

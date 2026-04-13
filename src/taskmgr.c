@@ -150,9 +150,7 @@ void taskmgr_local_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
 
     taskmgr_switch_tasks(NULL, &taskmgr->running_task->tcb, proc->tss);
 
-    panic_enter();
-    LOG_ERROR("initial task entry has returned");
-    panic("unexpected behavior");
+    PANIC("initial task entry has returned");
 }
 
 void taskmgr_local_schedule(void) {
@@ -176,9 +174,7 @@ void taskmgr_local_schedule(void) {
         next_task = prv_taskmgr_get_runnable_task(taskmgr);
         if (!next_task) {
             if (caller_task->is_blocked) {
-                panic_enter();
-                LOG_ERROR("no tasks to preempt the blocked running task");
-                panic("scheduling failed");
+                PANIC("no tasks to preempt the blocked running task");
             } else {
                 return;
             }
@@ -208,13 +204,13 @@ void taskmgr_local_reschedule(void) {
 
 void taskmgr_local_lock_scheduler(void) {
     taskmgr_t *const taskmgr = smp_get_running_taskmgr();
-    if (!taskmgr) { panic("running processor has no task manager"); }
+    if (!taskmgr) { PANIC("running processor has no task manager"); }
     taskmgr_lock_scheduler(taskmgr);
 }
 
 void taskmgr_local_unlock_scheduler(void) {
     taskmgr_t *const taskmgr = smp_get_running_taskmgr();
-    if (!taskmgr) { panic("running processor has no task manager"); }
+    if (!taskmgr) { PANIC("running processor has no task manager"); }
     taskmgr_unlock_scheduler(taskmgr);
 }
 
@@ -230,7 +226,7 @@ task_t *taskmgr_local_running_task(void) {
 task_t *taskmgr_local_new_user_task(const char *name, uint32_t *p_dir,
                                     uint32_t entry) {
     taskmgr_t *const taskmgr = smp_get_running_taskmgr();
-    if (!taskmgr) { panic("running processor has no task manager"); }
+    if (!taskmgr) { PANIC("running processor has no task manager"); }
 
     map_user_stack(p_dir);
 
@@ -246,7 +242,7 @@ task_t *taskmgr_local_new_user_task(const char *name, uint32_t *p_dir,
 
 task_t *taskmgr_local_new_kernel_task(const char *name, uint32_t entry) {
     taskmgr_t *const taskmgr = smp_get_running_taskmgr();
-    if (!taskmgr) { panic("running processor has no task manager"); }
+    if (!taskmgr) { PANIC("running processor has no task manager"); }
 
     task_t *const task = new_task(name, taskmgr, entry);
 
@@ -265,13 +261,9 @@ void taskmgr_local_go_usermode(uint32_t entry) {
 
 void taskmgr_local_sleep_ms(uint32_t duration_ms) {
     taskmgr_t *const taskmgr = smp_get_running_proc()->taskmgr;
-    if (!taskmgr) { panic("running processor has no task manager"); }
+    if (!taskmgr) { PANIC("running processor has no task manager"); }
 
-    if (!taskmgr->running_task) {
-        panic_enter();
-        LOG_ERROR("taskmgr_sleep: no running task");
-        panic("taskmgr_sleep failed");
-    }
+    if (!taskmgr->running_task) { PANIC("no running task"); }
 
     if (!taskmgr->running_task->is_terminating) {
         taskmgr->running_task->sleep_until_counter_ms =
@@ -288,7 +280,7 @@ void taskmgr_local_sleep_ms(uint32_t duration_ms) {
 
 void taskmgr_block_running_task(list_t *task_list) {
     taskmgr_t *const taskmgr = smp_get_running_taskmgr();
-    if (!taskmgr) { panic("running processor has no task manager"); }
+    if (!taskmgr) { PANIC("running processor has no task manager"); }
 
     taskmgr_lock_scheduler(taskmgr);
     taskmgr->running_task->is_blocked = true;
@@ -301,9 +293,9 @@ void taskmgr_terminate_task(task_t *task) {
         // Deleter task cannot delete itself because:
         // 1) it always marks itself as blocked before rescheduling,
         // 2) it cannot free its own stack.
-        panic_enter();
-        LOG_ERROR("deleter task (ID %zu) cannot delete itself", task->id);
-        panic("invalid argument");
+        PANIC("invalid argument 'task' value - deleter task (ID %zu) cannot "
+              "delete itself",
+              task->id);
     }
 
     task->is_terminating = true;
@@ -345,7 +337,7 @@ void taskmgr_unblock(task_t *task) {
  */
 static void wake_up_sleeping_tasks(void) {
     taskmgr_t *const taskmgr = smp_get_running_taskmgr();
-    if (!taskmgr) { panic("running processor has no task manager"); }
+    if (!taskmgr) { PANIC("running processor has no task manager"); }
 
     spinlock_acquire(&taskmgr->sleeping_tasks_lock);
 
@@ -446,9 +438,7 @@ static task_t *new_task(const char *name, taskmgr_t *taskmgr,
  */
 static void map_user_stack(uint32_t *p_dir) {
     if (USER_STACK_PAGES != 1) {
-        panic_enter();
-        LOG_ERROR("map_user_stack: USER_STACK_PAGES != 1 is not implemented");
-        panic("unimplemented");
+        PANIC("TODO: USER_STACK_PAGES != 1 is not implemented");
     }
 
     uint32_t phys_page = pmm_pop_page();
@@ -486,7 +476,7 @@ static void idle_task(void) {
 [[gnu::noreturn]]
 static void deleter_task(void) {
     taskmgr_t *const taskmgr = smp_get_running_taskmgr();
-    if (!taskmgr) { panic("running processor has no task manager"); }
+    if (!taskmgr) { PANIC("running processor has no task manager"); }
 
     for (;;) {
         ASSERT(taskmgr->task_to_delete);

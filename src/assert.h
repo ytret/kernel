@@ -4,5 +4,5 @@
 
 #define ASSERT(cond)                                                           \
     do {                                                                       \
-        if (!(cond)) { panic_silent(); }                                       \
+        if (!(cond)) { PANIC("%s", "assertion failed: " #cond); }              \
     } while (0);

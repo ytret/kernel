@@ -67,11 +67,7 @@ static void buf_remove(void) {
  * position.
  */
 static volatile char const *buf_get_cmd(void) {
-    if (g_cmd_buf_pos >= CMD_BUF_SIZE) {
-        panic_enter();
-        kprintf("kshell: command buffer overflow\n");
-        panic("buffer overflow");
-    }
+    if (g_cmd_buf_pos >= CMD_BUF_SIZE) { PANIC("command buffer overflow"); }
 
     gp_cmd_buf[g_cmd_buf_pos] = 0;
     g_cmd_buf_pos = 0;

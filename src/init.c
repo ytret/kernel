@@ -68,9 +68,7 @@ void init_bsp_task(void) {
 
     kshell();
 
-    panic_enter();
-    LOG_ERROR("kshell returned");
-    panic("unexpected behavior");
+    PANIC("kshell returned");
 }
 
 [[gnu::noreturn]]

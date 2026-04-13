@@ -25,7 +25,7 @@ void mutex_init(task_mutex_t *mutex) {
 
 void mutex_acquire(task_mutex_t *mutex) {
     task_t *const caller_task = taskmgr_local_running_task();
-    if (caller_task && mutex->locking_task == caller_task) { panic_silent(); }
+    if (caller_task && mutex->locking_task == caller_task) { panic_nested(); }
 
     // First, fast attempt to get the lock.
     if (__sync_bool_compare_and_swap(&mutex->locking_task, NULL, caller_task)) {
@@ -40,7 +40,7 @@ void mutex_acquire(task_mutex_t *mutex) {
         // is locked by some task, which is only possible if some other
         // processor's task has acquired it. The processors initialization has
         // not been synchronized properly, see @ref smp_sync.
-        panic_silent();
+        panic_nested();
     }
 
     // The mutex is blocked by another task.
@@ -83,7 +83,7 @@ void mutex_release(task_mutex_t *mutex) {
         } else {
             // The locally running task tried to release a kernel mutex that it
             // has not acquired. The kernel code is broken.
-            panic_silent();
+            panic_nested();
         }
     }
 
@@ -91,7 +91,7 @@ void mutex_release(task_mutex_t *mutex) {
     if (waiting_node) {
         if (!caller_task) {
             // There is a task waiting, but no calling task.
-            panic_silent();
+            panic_nested();
         }
 
         // The top waiting task may be assigned to the local task manager or to
@@ -103,7 +103,7 @@ void mutex_release(task_mutex_t *mutex) {
                                           waiting_task)) {
             // Failed to atomically change 'locking_task', even though
             // mutex_acquire() must fail to set 'locking_task' if it's not NULL.
-            panic_silent();
+            panic_nested();
         }
 
         waiting_task->num_owned_mutexes++;

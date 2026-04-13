@@ -39,7 +39,7 @@ static void scroll_new_row(void);
 
 [[gnu::artificial]]
 static inline void assert_owns_mutex(void) {
-    if (!mutex_caller_owns(&g_term_mutex) && !gb_panic_mode) { panic_silent(); }
+    if (!mutex_caller_owns(&g_term_mutex) && !gb_panic_mode) { panic_nested(); }
 }
 
 [[gnu::artificial]]

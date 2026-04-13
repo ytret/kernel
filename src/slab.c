@@ -36,10 +36,7 @@ void *slab_alloc(slab_cache_t *cache) {
 }
 
 void slab_free(void *v_slab, void *ptr) {
-    if (!v_slab) {
-        LOG_ERROR("v_slab = NULL");
-        panic("invalid argument");
-    }
+    if (!v_slab) { PANIC("invalid argument 'v_slab' value NULL"); }
     if (!ptr) { return; }
 
     LOG_FLOW("free item at 0x%08" PRIxPTR " of slab 0x%08" PRIxPTR,
@@ -66,16 +63,10 @@ void slab_free(void *v_slab, void *ptr) {
 }
 
 size_t slab_item_size(const void *v_slab) {
-    if (!v_slab) {
-        LOG_ERROR("v_slab = NULL");
-        panic("invalid argument");
-    }
+    if (!v_slab) { PANIC("invalid argument 'v_slab' value NULL"); }
 
     const slab_t *const slab = v_slab;
-    if (!slab->cache) {
-        LOG_ERROR("cache is NULL");
-        panic("unexpected behavior");
-    }
+    if (!slab->cache) { PANIC("slab %p cache is NULL", slab); }
 
     return slab->cache->item_size;
 }
@@ -118,10 +109,7 @@ static slab_t *prv_slab_get_for_alloc(slab_cache_t *cache) {
         }
     }
 
-    if (!slab) {
-        LOG_ERROR("internal error: slab = NULL");
-        panic("unexpected behavior");
-    }
+    if (!slab) { PANIC("internal error - slab = NULL"); }
 
     return slab;
 }

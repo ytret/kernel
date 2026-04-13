@@ -137,20 +137,16 @@ static void prv_vmm_unlock_kvas(void) {
 
 static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
                      uint32_t flags) {
-    if (!p_dir) {
-        panic_enter();
-        LOG_ERROR("map_page: p_dir = NULL");
-        panic("invalid argument");
-    }
+    if (!p_dir) { PANIC("invalid argument 'p_dir' value NULL"); }
     if (virt & 0xFFF) {
-        panic_enter();
-        LOG_ERROR("map_page: virt is not page-aligned");
-        panic("invalid argument");
+        PANIC("invalid argument 'virt' value 0x%08" PRIx32
+              " - not page-aligned",
+              virt);
     }
     if (phys & 0xFFF) {
-        panic_enter();
-        LOG_ERROR("map_page: phys is not page-aligned");
-        panic("invalid argument");
+        PANIC("invalid argument 'phys' value 0x%08" PRIx32
+              " - not page-aligned",
+              phys);
     }
 
     uint32_t dir_idx = VMM_ADDR_DIR_IDX(virt);
@@ -159,12 +155,9 @@ static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
     uint32_t *p_tbl;
     if (p_dir[dir_idx] & VMM_TABLE_PRESENT) {
         if ((p_dir[dir_idx] & VMM_TBL_EQ_FLAGS) != flags) {
-            panic_enter();
-            LOG_ERROR("map_page: page table for %p is present, but its"
-                      " checked flags 0x%03" PRIx32
-                      " are different from 0x%03" PRIx32,
-                      (void *)virt, (p_dir[dir_idx] & VMM_TBL_EQ_FLAGS), flags);
-            panic("unexpected behavior");
+            PANIC("page table for %p is present, but its checked flags "
+                  "0x%03" PRIx32 " are different from 0x%03" PRIx32,
+                  (void *)virt, (p_dir[dir_idx] & VMM_TBL_EQ_FLAGS), flags);
         }
 
         p_tbl = ((uint32_t *)(p_dir[dir_idx] & ~0xFFF));
@@ -179,10 +172,7 @@ static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
 
     if (p_tbl[tbl_idx] != 0) {
         // The table entry is not empty.
-        panic_enter();
-        LOG_ERROR("map_page: table entry %zu for %p is not empty", tbl_idx,
-                  ((void *)virt));
-        panic("unexpected behavior");
+        PANIC("table entry %zu for %p is not empty", tbl_idx, ((void *)virt));
     }
 
     p_tbl[tbl_idx] = (phys | flags);
@@ -190,28 +180,22 @@ static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
 
 static void unmap_page(uint32_t *p_dir, uint32_t virt) {
     if (virt & 0xFFF) {
-        panic_enter();
-        LOG_ERROR("unmap_page: virt is not page-aligned");
-        panic("invalid argument");
+        PANIC("invalid argument 'virt' value 0x%08" PRIx32
+              " - not page-aligned",
+              virt);
     }
 
     uint32_t dir_idx = VMM_ADDR_DIR_IDX(virt);
     uint32_t tbl_idx = VMM_ADDR_TBL_IDX(virt);
 
     if (!(p_dir[dir_idx] & VMM_TABLE_PRESENT)) {
-        panic_enter();
-        LOG_ERROR("unmap_page: table %zu for %p is not present", dir_idx,
-                  ((void *)virt));
-        panic("unexpected behavior");
+        PANIC("table %zu for %p is not present", dir_idx, ((void *)virt));
     }
 
     uint32_t *p_tbl = ((uint32_t *)(p_dir[dir_idx] & ~0xFFF));
 
     if (!(p_tbl[tbl_idx] & VMM_PAGE_PRESENT)) {
-        panic_enter();
-        LOG_ERROR("unmap_page: page %zu for %p is not present", tbl_idx,
-                  ((void *)virt));
-        panic("unexpected behavior");
+        PANIC("page %zu for %p is not present", tbl_idx, ((void *)virt));
     }
 
     p_tbl[tbl_idx] = 0;

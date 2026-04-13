@@ -250,8 +250,7 @@ void smp_ap_trampoline_c(void) {
 
     taskmgr_local_init(init_ap_task);
 
-    panic_enter();
-    panic("End of smp_ap_trampoline_c");
+    PANIC("end of smp_ap_trampoline_c");
 }
 
 static void prv_smp_init_trampoline(const gdtr_t *gdtr) {

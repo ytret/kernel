@@ -66,7 +66,7 @@ const pci_dev_t *pci_get_dev_const(size_t idx) {
 }
 
 void pci_dump_dev_short(const pci_dev_t *dev) {
-    if (!dev) { panic("pci_dump_dev_short: dev = NULL"); }
+    if (!dev) { PANIC("invalid argument 'dev' value NULL"); }
     LOG_DEBUG("%u-%u-%u: %04x:%04x class %02x.%02x.%02x", dev->bus_num,
               dev->dev_num, dev->fun_num, dev->header.common.vendor_id,
               dev->header.common.device_id, dev->header.common.base_class,
@@ -74,7 +74,7 @@ void pci_dump_dev_short(const pci_dev_t *dev) {
 }
 
 void pci_dump_dev_header(const pci_dev_t *dev) {
-    if (!dev) { panic("pci_dump_dev_short: dev = NULL"); }
+    if (!dev) { PANIC("invalid argument 'dev' value NULL"); }
 
     LOG_DEBUG("vendor_id = 0x%04X", dev->header.common.vendor_id);
     LOG_DEBUG("device_id = 0x%04X", dev->header.common.device_id);

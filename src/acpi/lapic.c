@@ -23,9 +23,7 @@ void lapic_init(bool is_bsp) {
     cpu_msr_apic_base_t msr_apic_base;
     msr_apic_base.val = cpu_read_msr(CPU_MSR_APIC_BASE);
     if (msr_apic_base.bit.apic_base >> 20) {
-        panic_enter();
-        LOG_ERROR("MSR IA32_APIC_BASE address is beyond 4 GiB");
-        panic("unexpected behavior");
+        PANIC("MSR IA32_APIC_BASE address is beyond 4 GiB");
     }
     msr_apic_base.bit.apic_gl_en = 1;
     cpu_write_msr(CPU_MSR_APIC_BASE, msr_apic_base.val);
@@ -63,21 +61,17 @@ uint8_t lapic_get_id(void) {
     unsigned int unused;
     unsigned int ebx;
     const int ok = __get_cpuid(1, &unused, &ebx, &unused, &unused);
-    if (!ok) {
-        panic_enter();
-        LOG_ERROR("failed to get CPUID leaf 1");
-        panic("unexpected behavior");
-    }
+    if (!ok) { PANIC("failed to get CPUID leaf 1"); }
     return ebx >> 24;
 }
 
 void lapic_clear_ers(void) {
-    if (!g_lapic_regs) { panic("LAPIC register pointer is uninitialized"); }
+    if (!g_lapic_regs) { PANIC("LAPIC register pointer is uninitialized"); }
     g_lapic_regs->esr = 0;
 }
 
 void lapic_send_ipi(const lapic_icr_t *icr) {
-    if (!g_lapic_regs) { panic("LAPIC register pointer is uninitialized"); }
+    if (!g_lapic_regs) { PANIC("LAPIC register pointer is uninitialized"); }
 
     uint64_t icr_buf;
     kmemcpy(&icr_buf, icr, sizeof(*icr));
@@ -127,9 +121,7 @@ void lapic_calib_tim(void) {
 
 void lapic_init_tim(uint32_t period_ms) {
     if (g_lapic_tim_freq_hz == 0) {
-        panic_enter();
-        LOG_ERROR("cannot initialize LAPIC Timer: not calibrated");
-        panic("unexpected behavior");
+        PANIC("cannot initialize LAPIC Timer - not calibrated");
     }
 
     const uint32_t init_cnt_val = g_lapic_tim_freq_hz * period_ms / 1000;

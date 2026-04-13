@@ -60,9 +60,7 @@ static uint8_t read_code(void) {
 
 static void append_code(uint8_t sc) {
     if (g_kbd_code_buf_pos >= CODE_BUF_LEN) {
-        panic_enter();
-        LOG_ERROR("append_code: scancode buffer is full");
-        panic("buffer overflow");
+        PANIC("scancode buffer is full");
     }
 
     gp_kbd_code_buf[g_kbd_code_buf_pos] = sc;

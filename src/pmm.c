@@ -114,14 +114,10 @@ paddr_t pmm_alloc_pages(size_t num_pages) {
 }
 
 paddr_t pmm_alloc_aligned_pages(size_t num_pages, size_t align_pages) {
-    if (num_pages == 0) {
-        LOG_ERROR("requested number of pages is zero");
-        panic("invalid argument");
-    }
+    if (num_pages == 0) { PANIC("invalid argument 'num_pages' value 0"); }
     if (align_pages == 0 || (align_pages & (align_pages - 1)) != 0) {
-        LOG_ERROR("requested alignment of %zu pages is not a power of two",
-                  align_pages);
-        panic("invalid argument");
+        PANIC("invalid argument 'align_pages' value %zu - not a power of two",
+              align_pages);
     }
 
     for (list_node_t *node = g_pmm.mmap.entry_list.p_first_node; node != NULL;
@@ -135,11 +131,9 @@ paddr_t pmm_alloc_aligned_pages(size_t num_pages, size_t align_pages) {
         if (addr != 0) {
             // Do an extra check in case ytalloc is buggy.
             if (addr % (PMM_PAGE_SIZE * align_pages) != 0) {
-                LOG_ERROR("internal error: returned address 0x%08" PRIx32
-                          " is not "
-                          "aligned at %zu pages",
-                          addr, align_pages);
-                panic("unexpected behavior");
+                PANIC("internal error - returned address 0x%08" PRIx32
+                      " is not aligned at %zu pages",
+                      addr, align_pages);
             }
             return addr;
         }
@@ -147,7 +141,7 @@ paddr_t pmm_alloc_aligned_pages(size_t num_pages, size_t align_pages) {
 
     LOG_ERROR("failed to allocate %zu pages aligned at %zu pages", num_pages,
               align_pages);
-    panic("physical memory allocation failed");
+    PANIC("physical memory allocation failed");
 }
 
 void pmm_free_pages(paddr_t addr, size_t num_pages) {
@@ -155,18 +149,17 @@ void pmm_free_pages(paddr_t addr, size_t num_pages) {
 
     pmm_region_t *const region = pmm_find_region_by_addr(addr);
     if (!region) {
-        LOG_ERROR("could not find a region by address 0x%08" PRIx32,
-                  (uint32_t)addr);
-        panic("unexpected behavior");
+        PANIC("could not find a region containing the address 0x%08" PRIx32,
+              (uint32_t)addr);
     }
 
     alloc_buddy_t *const pool =
         prv_pmm_find_pool_by_addr(region, addr, num_pages);
     if (!pool) {
-        LOG_ERROR("could not find the allocation pool for address 0x%08" PRIx32
-                  " size %zu pages",
-                  (uint32_t)addr, num_pages);
-        panic("unexpected behavior");
+        PANIC(
+            "could not find the pool containing the allocation at 0x%08" PRIx32
+            " size %zu pages",
+            (uint32_t)addr, num_pages);
     }
 
     alloc_buddy_free(pool, (void *)addr, PMM_PAGE_SIZE * num_pages);
@@ -177,8 +170,7 @@ pmm_page_t *pmm_paddr_to_page(paddr_t addr) {
 
     const pmm_region_t *const region = pmm_find_region_by_addr(addr);
     if (!region) {
-        LOG_ERROR("could not find the region of address 0x%08" PRIx32, addr);
-        panic("unexpected behavior");
+        PANIC("could not find the region of the address 0x%08" PRIx32, addr);
     }
 
     const size_t rel_idx = (aligned_addr - region->start) / PMM_PAGE_SIZE;
@@ -205,11 +197,11 @@ pmm_region_t *pmm_find_region_by_addr(paddr_t addr) {
 
 void pmm_push_page(uint32_t addr) {
     (void)addr;
-    panic("not implemented");
+    PANIC("not implemented");
 }
 
 uint32_t pmm_pop_page(void) {
-    panic("not implemented");
+    PANIC("not implemented");
     return 0;
 }
 
@@ -263,9 +255,8 @@ static void prv_pmm_patch_mmap_holes(pmm_mmap_t *mmap) {
                           hole_start, hole_end_incl);
 
                 if (g_pmm_patch_region_cnt >= PMM_MAX_PATCH_REGIONS) {
-                    LOG_ERROR("too many holes in the memory map (%zu > %u)",
-                              g_pmm_patch_region_cnt, PMM_MAX_PATCH_REGIONS);
-                    panic("unexpected behavior");
+                    PANIC("too many holes in the memory map (%zu > %u)",
+                          g_pmm_patch_region_cnt, PMM_MAX_PATCH_REGIONS);
                 }
 
                 pmm_region_t *const patch =
@@ -307,9 +298,8 @@ static void prv_pmm_reserve_lower_mem(pmm_mmap_t *mmap) {
     LIST_FIND(&mmap->entry_list, last_region, pmm_region_t, node,
               region->end_incl >= PMM_RESERVE_LOWER_BYTES - 1, region);
     if (!last_region) {
-        LOG_ERROR("could not find the region that crosses byte 0x%08x",
-                  PMM_RESERVE_LOWER_BYTES);
-        panic("unexpected behavior");
+        PANIC("could not find the region that crosses the address 0x%08x",
+              PMM_RESERVE_LOWER_BYTES);
     }
 
     // Iterate backwards from `last_region` and mark every available RAM region
@@ -421,10 +411,9 @@ static void prv_pmm_init_static_heap(pmm_ctx_t *pmm) {
                (region->end_incl - region->start + 1) >= static_heap_size),
               region);
     if (!found_region) {
-        LOG_ERROR("could not find an available RAM region for a static heap of "
-                  "size %zu",
-                  static_heap_size);
-        panic("out of memory");
+        PANIC("could not find an available RAM region for a static heap of "
+              "size %zu",
+              static_heap_size);
     }
 
     pmm_static_heap_region.start = found_region->start;
@@ -441,8 +430,8 @@ static void prv_pmm_init_static_heap(pmm_ctx_t *pmm) {
               pmm_static_heap_region.start, pmm_static_heap_region.end_incl);
 
     if (pmm_static_heap_region.end_incl > UINT32_MAX) {
-        LOG_ERROR("static heap region end is larger than UINT32_MAX");
-        panic("not implemented");
+        PANIC("static heap region end 0x%16llx is larger than UINT32_MAX",
+              pmm_static_heap_region.end_incl);
     }
 
     alloc_static_init(pmm->static_heap,
@@ -460,9 +449,8 @@ static void prv_pmm_init_page_metadata(pmm_ctx_t *pmm) {
     const size_t metadata_size = pmm->available_ram_pages * sizeof(pmm_page_t);
     pmm->page_metadata = alloc_static(pmm->static_heap, metadata_size);
     if (!pmm->page_metadata) {
-        LOG_ERROR("failed to statically allocate %zu bytes for page metadata",
-                  metadata_size);
-        panic("out of memory");
+        PANIC("failed to statically allocate %zu bytes for page metadata",
+              metadata_size);
     }
 
     LOG_DEBUG("initializing page metadata");
@@ -479,14 +467,13 @@ static void prv_pmm_init_page_metadata(pmm_ctx_t *pmm) {
         if (region->type != PMM_REGION_AVAILABLE) { continue; }
 
         if (region->start & (PMM_PAGE_SIZE - 1)) {
-            LOG_ERROR("region 0x%016llx .. 0x%016llx start is not page-aligned",
-                      region->start, region->end_incl);
-            panic("not implemented");
+            PANIC(
+                "TODO: region 0x%016llx .. 0x%016llx start is not page-aligned",
+                region->start, region->end_incl);
         }
         if ((region->end_incl + 1) & (PMM_PAGE_SIZE - 1)) {
-            LOG_ERROR("region 0x%016llx .. 0x%016llx end is not page-aligned",
-                      region->start, region->end_incl);
-            panic("not implemented");
+            PANIC("TODO: region 0x%016llx .. 0x%016llx end is not page-aligned",
+                  region->start, region->end_incl);
         }
 
         const size_t region_size = region->end_incl - region->start + 1;
@@ -532,10 +519,9 @@ static void prv_pmm_build_region_pools(pmm_ctx_t *pmm, pmm_region_t *region) {
     region->num_pools = 0;
     region->v_pools = alloc_static(pmm->static_heap, array_size);
     if (!region->v_pools) {
-        LOG_ERROR("failed to statically allocate %zu bytes for the pool "
-                  "pointers array",
-                  array_size);
-        panic("out of memory");
+        PANIC("failed to statically allocate %zu bytes for the pool pointers "
+              "array",
+              array_size);
     }
 
     prv_pmm_partition_pools(pmm, region, region->start, region->end_incl + 1);
@@ -609,27 +595,23 @@ static alloc_buddy_t *prv_pmm_create_pool(pmm_ctx_t *pmm, uint32_t start,
 
     alloc_buddy_t *const heap = alloc_static(pmm->static_heap, sizeof(*heap));
     if (!heap) {
-        LOG_ERROR("failed to statically allocate %zu bytes for alloc_buddy_t",
-                  sizeof(*heap));
-        panic("out of memory");
+        PANIC("failed to statically allocate %zu bytes for alloc_buddy_t",
+              sizeof(*heap));
     }
 
     const size_t free_heads_size = PMM_BUDDY_MAX_ORDERS * sizeof(uintptr_t);
     void *const free_heads = alloc_static(pmm->static_heap, free_heads_size);
     if (!free_heads) {
-        LOG_ERROR(
-            "failed to statically allocate %zu bytes for free heads buffer",
-            free_heads_size);
-        panic("out of memory");
+        PANIC("failed to statically allocate %zu bytes for free heads buffer",
+              free_heads_size);
     }
 
     const size_t num_order0_blocks = block_size / YTALLOC_BUDDY_MIN_BLOCK_SIZE;
     const size_t bitmap_size = ((num_order0_blocks + 7) & ~7) / 8;
     void *const bitmap = alloc_static(pmm->static_heap, bitmap_size);
     if (!bitmap) {
-        LOG_ERROR("failed to statically allocate %zu bytes for bitmap buffer",
-                  bitmap_size);
-        panic("out of memory");
+        PANIC("failed to statically allocate %zu bytes for bitmap buffer",
+              bitmap_size);
     }
 
     LOG_DEBUG("init pool at 0x%08zx size 0x%08zx", aligned_start, block_size);

@@ -81,7 +81,7 @@ void queue_read(queue_t *p_queue, void *p_buf, size_t item_size) {
                 atomic_compare_exchange_strong(&p_queue->p_tail, &p_tail,
                                                p_next);
             } else {
-                panic_silent();
+                panic_nomsg();
             }
         } else {
             __builtin_memcpy(p_buf, p_next->p_data, item_size);

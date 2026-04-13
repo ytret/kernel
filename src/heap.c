@@ -44,18 +44,16 @@ void *heap_get_static_heap(void) {
 
 void *heap_alloc_static(size_t size) {
     if (g_heap_static.start == 0) {
-        LOG_ERROR("static heap is not yet initialized");
-        panic("unexpected behavior");
+        PANIC("static heap is not yet initialized");
     }
 
     void *const ptr = alloc_static(&g_heap_static, size);
     if (!ptr) {
         const size_t bytes_used = g_heap_static.next - g_heap_static.start;
         const size_t bytes_total = g_heap_static.end - g_heap_static.start;
-        LOG_ERROR("could not statically allocate %zu bytes", size);
-        LOG_ERROR("static heap usage: %zu out of %zu bytes", bytes_used,
+        LOG_DEBUG("static heap usage: %zu out of %zu bytes", bytes_used,
                   bytes_total);
-        panic("out of memory");
+        PANIC("could not statically allocate %zu bytes", size);
     }
 
     return ptr;
@@ -75,7 +73,7 @@ void heap_init(void) {
 }
 
 uint32_t heap_end(void) {
-    panic("heap_end not implemented");
+    PANIC("TODO: heap_end not implemented");
 }
 
 void *heap_alloc(size_t size) {
@@ -84,8 +82,7 @@ void *heap_alloc(size_t size) {
 
 void *heap_alloc_aligned(size_t size, size_t align) {
     if ((align & (align - 1)) != 0) {
-        LOG_ERROR("alignment %zu is not a power of two", align);
-        panic("invalid argument");
+        PANIC("invalid argument 'align' value %zu - not a power of two", align);
     }
 
     prv_heap_lock();
@@ -104,18 +101,16 @@ void *heap_alloc_aligned(size_t size, size_t align) {
 
         ret_ptr = slab_alloc(&g_heap.slab_caches[idx]);
         if (!ret_ptr) {
-            LOG_ERROR("failed to allocate %zu bytes aligned at %zu bytes "
-                      "(effective size %zu)",
-                      size, align, eff_size);
-            panic("out of memory");
+            PANIC("failed to allocate %zu bytes aligned at %zu bytes "
+                  "(effective size %zu)",
+                  size, align, eff_size);
         }
     } else {
         if (align < PMM_PAGE_SIZE) { align = PMM_PAGE_SIZE; }
         if (align & (PMM_PAGE_SIZE - 1)) {
-            LOG_ERROR("pmm: alignment %zu must be a multiple of page size (%u) "
-                      "for allocations larger than %u",
-                      align, PMM_PAGE_SIZE, HEAP_MAX_SLAB_SIZE);
-            panic("invalid argument");
+            PANIC("invalid argument 'align' value %zu - must be a multiple of "
+                  "page size (%u) for allocations larger than %u",
+                  align, PMM_PAGE_SIZE, HEAP_MAX_SLAB_SIZE);
         }
 
         const size_t aligned_size =
@@ -158,8 +153,7 @@ void heap_free(void *ptr) {
     switch (metadata->type) {
     case PMM_ALLOC_NONE:
         LOG_FLOW("free %p: PMM_ALLOC_FREE", ptr);
-        LOG_ERROR("tried to free a free page 0x%08" PRIxPTR, addr);
-        panic("unexpected behavior");
+        PANIC("tried to free a free page 0x%08" PRIxPTR, addr);
 
     case PMM_ALLOC_SLAB:
         LOG_FLOW("free %p: PMM_ALLOC_SLAB 0x%08" PRIxPTR, ptr,
@@ -176,9 +170,8 @@ void heap_free(void *ptr) {
         break;
 
     default:
-        LOG_ERROR("unrecognized value of page 0x%08" PRIxPTR " type (%u)", addr,
-                  metadata->type);
-        panic("unexpected behavior");
+        PANIC("unrecognized value of page 0x%08" PRIxPTR " type (%u)", addr,
+              metadata->type);
     }
 
     prv_heap_unlock();
@@ -195,8 +188,7 @@ void *heap_realloc(void *ptr, size_t size, size_t align) {
     switch (metadata->type) {
     case PMM_ALLOC_NONE:
         LOG_FLOW("realloc: PMM_ALLOC_FREE");
-        LOG_ERROR("tried to realloc a free page 0x%08" PRIxPTR, addr);
-        panic("unexpected behavior");
+        PANIC("tried to realloc a free page 0x%08" PRIxPTR, addr);
 
     case PMM_ALLOC_SLAB:
         LOG_FLOW("realloc: PMM_ALLOC_SLAB slab = 0x%08" PRIxPTR,
@@ -211,9 +203,8 @@ void *heap_realloc(void *ptr, size_t size, size_t align) {
         break;
 
     default:
-        LOG_ERROR("unrecognized value of page 0x%08" PRIxPTR " type (%u)", addr,
-                  metadata->type);
-        panic("unexpected behavior");
+        PANIC("unrecognized value of page 0x%08" PRIxPTR " type (%u)", addr,
+              metadata->type);
     }
 
     const size_t copy_size = size <= old_size ? size : old_size;
@@ -231,8 +222,7 @@ static void prv_heap_lock(void) {
 
 static void prv_heap_unlock(void) {
     if (g_heap.nested_lock_cnt == 0) {
-        LOG_ERROR("nested lock counter is zero during unlock");
-        panic("unexpected behavior");
+        PANIC("nested lock counter is zero during unlock");
     }
     g_heap.nested_lock_cnt--;
     if (g_heap.nested_lock_cnt == 0) { mutex_release(&g_heap.lock); }

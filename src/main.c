@@ -58,7 +58,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     term_clear();
 
     if (!mbi_fill_mmap(mbi_ptr(), &g_mmap)) {
-        panic("failed to fill the memory map");
+        PANIC("failed to fill the memory map");
     }
     prv_main_add_kernel_region(&g_mmap, (uint32_t)&ld_vmm_kernel_start,
                                prv_main_find_first_free_page());
@@ -73,12 +73,12 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     pit_init(PIT_PERIOD_MS);
     if (!ioapic_map_irq(PIT_IRQ, 32 + PIT_IRQ, lapic_get_id())) {
-        panic("failed to map PIT IRQ");
+        PANIC("failed to map PIT IRQ");
     }
 
     kbd_init();
     if (!ioapic_map_irq(KBD_IRQ, 32 + KBD_IRQ, lapic_get_id())) {
-        panic("failed to map kbd IRQ");
+        PANIC("failed to map kbd IRQ");
     }
 
     vmm_init();
@@ -109,10 +109,9 @@ static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr) {
         LOG_DEBUG("multiboot information structure is at 0x%08" PRIx32,
                   mbi_addr);
     } else {
-        panic_enter();
         LOG_ERROR("main: magic number: 0x%" PRIx32 ", expected: 0x%x",
                   magic_num, MULTIBOOT_MAGIC_NUM);
-        panic("booted by an unknown bootloader");
+        PANIC("booted by an unknown bootloader");
     }
 }
 
@@ -132,7 +131,7 @@ static uint32_t prv_main_find_first_free_page(void) {
 static void prv_main_add_kernel_region(pmm_mmap_t *mmap, uintptr_t region_start,
                                        uintptr_t region_end_excl) {
     if (region_end_excl == 0) {
-        panic("argument 'region_end_excl' value must not be 0");
+        PANIC("invalid argument 'region_end_excl' value 0");
     }
 
     const uintptr_t region_end_incl = region_end_excl - 1;
@@ -145,10 +144,9 @@ static void prv_main_add_kernel_region(pmm_mmap_t *mmap, uintptr_t region_start,
                   region_end_incl <= region->end_incl,
               region);
     if (!found_region) {
-        LOG_ERROR("could not find a single region that covers [0x%08" PRIxPTR
-                  "; 0x%08" PRIxPTR ")",
-                  region_start, region_end_excl);
-        panic("not implemented");
+        PANIC("TODO: could not find a single region that covers [0x%08" PRIxPTR
+              "; 0x%08" PRIxPTR ")",
+              region_start, region_end_excl);
     }
 
     g_kernel_region.start = region_start;

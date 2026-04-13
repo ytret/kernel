@@ -1,6 +1,5 @@
 #include "heap.h"
 #include "kstring.h"
-#include "log.h"
 #include "mbi.h"
 #include "memfun.h"
 #include "panic.h"
@@ -115,11 +114,9 @@ mbi_mod_t const *mbi_find_mod(char const *p_name) {
         mbi_mod_t const *p_mod = mbi_nth_mod(idx);
 
         if (!p_mod) {
-            panic_enter();
-            LOG_ERROR("mbi_nth_mod() returned NULL for index %zu < number of "
-                      "modules %zu",
-                      idx, mbi_num_mods());
-            panic("unexpected behavior");
+            PANIC("mbi_nth_mod() returned NULL for index %zu < number of "
+                  "modules %zu",
+                  idx, mbi_num_mods());
         }
 
         if (string_equals((char const *)p_mod->string, p_name)) {

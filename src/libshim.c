@@ -19,9 +19,7 @@ void libshim_init(void) {
 }
 
 static void prv_libshim_abort(void) {
-    panic_enter();
-    LOG_ERROR("abort callback called from a libary");
-    panic_silent();
+    PANIC("abort callback called from a libary");
 }
 
 static int prv_libshim_log(const char *fmt, va_list ap) {

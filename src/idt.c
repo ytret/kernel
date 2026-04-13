@@ -105,8 +105,6 @@ void idt_dummy_exception_handler(uint32_t exc_num, uint32_t err_code,
                                  isr_stack_frame_t *p_stack_frame) {
     task_t *const p_running_task = taskmgr_local_running_task();
 
-    panic_enter();
-
     char const *p_name;
     switch (exc_num) {
     case 0:
@@ -187,21 +185,21 @@ void idt_dummy_exception_handler(uint32_t exc_num, uint32_t err_code,
     }
     LOG_ERROR("error code: %" PRIu32, err_code);
     dump_stack_frame(p_stack_frame);
-    panic("no handler defined");
+
+    PANIC("no handler defined");
 }
 
 void idt_dummy_handler(isr_stack_frame_t *p_stack_frame) {
-    panic_enter();
     LOG_ERROR("idt_dummy_handler()");
     dump_stack_frame(p_stack_frame);
-    panic("no handler defined");
+
+    PANIC("no handler defined");
 }
 
 void idt_page_fault_handler(uint32_t addr, uint32_t err_code,
                             isr_stack_frame_t *p_stack_frame) {
     task_t *const p_running_task = taskmgr_local_running_task();
 
-    panic_enter();
     LOG_ERROR("page fault exception");
     if (p_running_task) {
         LOG_ERROR("running task ID: %" PRIu32, p_running_task->id);
@@ -211,7 +209,8 @@ void idt_page_fault_handler(uint32_t addr, uint32_t err_code,
     LOG_ERROR("virtual address: 0x%08" PRIx32 "", addr);
     LOG_ERROR("error code: %" PRIu32, err_code);
     dump_stack_frame(p_stack_frame);
-    panic("unresolved page fault");
+
+    PANIC("unresolved page fault");
 }
 
 static void fill_desc(uint8_t *p_desc, void const *p_idt, uint16_t idt_size) {

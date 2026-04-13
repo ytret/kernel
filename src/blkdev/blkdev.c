@@ -99,8 +99,7 @@ void blkdev_task_entry(void) {
         req->dev->driver_intf.f_submit_req(req);
     }
 
-    LOG_ERROR("reached task end");
-    panic("unexpected behavior");
+    PANIC("reached task end");
 }
 
 static void prv_blkdev_init(void) {

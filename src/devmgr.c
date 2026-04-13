@@ -136,7 +136,7 @@ const char *devmgr_driver_name(devmgr_driver_t driver) {
  * One PCI device may result in several kernel devices registered.
  */
 static devmgr_dev_t *prv_devmgr_init_dev(const pci_dev_t *pci_dev) {
-    if (!pci_dev) { panic("prv_devmgr_init_dev: dev = NULL"); }
+    if (!pci_dev) { PANIC("prv_devmgr_init_dev: dev = NULL"); }
 
     devmgr_dev_t *dev = NULL;
 
@@ -211,10 +211,8 @@ static devmgr_dev_t *prv_devmgr_init_ahci(const pci_dev_t *pci_dev) {
  */
 static void prv_devmgr_init_blkparts(devmgr_dev_t *dev) {
     if (dev->dev_class != DEVMGR_CLASS_BLOCK) {
-        panic_enter();
-            LOG_ERROR("init blkparts called on a non-blkdev device ID %" PRIu32,
-                  dev->id);
-        panic("unexpected behavior");
+        PANIC("init blkparts called on a non-blkdev device ID %" PRIu32,
+              dev->id);
     }
 
     if (!gpt_probe_signature(&dev->blkdev_dev)) {

@@ -813,9 +813,8 @@ static bool prv_ahci_send_ata_cmd(ahci_port_ctx_t *port_ctx, ata_cmd_t cmd,
 
     if (num_sectors == 0) {
         // FIXME: do not fail
-        panic_enter();
-        LOG_ERROR("send_read_cmd: port %s, num_sectors = 0", port_ctx->name);
-        panic("invalid send_read_cmd argument");
+        PANIC("invalid argument 'num_sectors' value 0, port %s",
+              port_ctx->name);
     }
 
     // One PRD can describe a 4 MiB block of data.
@@ -984,27 +983,22 @@ static bool prv_ahci_find_cmd_slot(reg_port_t *reg_port, size_t *out_slot) {
 static void prv_ahci_port_handle_tfe(ahci_port_ctx_t *port_ctx) {
     const ahci_port_state_t port_state = port_ctx->state;
     if (port_state != AHCI_PORT_ACTIVE) {
-        panic_enter();
-        LOG_ERROR("port %s TFE: unexpected port state: %u", port_ctx->name,
-                  port_state);
-        panic("unexpected AHCI TFE IRQ");
+        PANIC("port %s got TFE IRQ in unexpected state %u", port_ctx->name,
+              port_state);
     }
 
     LOG_FLOW("port %s TFE: AHCI_PORT_ACTIVE", port_ctx->name);
 
     if (!port_ctx->has_blkdev_req ||
         port_ctx->blkdev_req->state != BLKDEV_REQ_ACTIVE) {
-        panic_enter();
-        LOG_ERROR("port %s TFE: no active request", port_ctx->name);
-        panic("unexpected AHCI request state");
+        PANIC("port %s got TFE IRQ with no active request", port_ctx->name);
     }
 
     const uint32_t ci = port_ctx->reg_port->ci;
     if (ci != (uint32_t)(1 << (port_ctx->req_cmd_slot))) {
-        panic_enter();
-        LOG_ERROR("port %s TFE: CI = 0x%08" PRIx32 ", request slot = %zu",
-                  port_ctx->name, ci, port_ctx->req_cmd_slot);
-        panic("unexpected AHCI CI register value");
+        PANIC("port %s got TFE IRQ with CI = 0x%08" PRIx32
+              ", request slot = %zu",
+              port_ctx->name, ci, port_ctx->req_cmd_slot);
     }
 
     // Clear PxCMD.ST to '0' to reset the CI register.
@@ -1020,9 +1014,7 @@ static void prv_ahci_port_handle_tfe(ahci_port_ctx_t *port_ctx) {
     // has done that. If it really needs to be cleared, add the appropriate
     // code.
     if (port_ctx->reg_port->is & AHCI_PORT_INT_TFE) {
-        panic_enter();
-        LOG_ERROR("TODO: prv_ahci_port_handle_tfe() clear IS.TFES");
-        panic("not implemented");
+        PANIC("TODO: prv_ahci_port_handle_tfe() clear IS.TFES");
     }
 
     // In case PxTFD.STS.BSY or PxTFD.STS.DRQ is set, a COMRESET needs to be
@@ -1040,11 +1032,7 @@ static void prv_ahci_port_handle_tfe(ahci_port_ctx_t *port_ctx) {
         LOG_FLOW("port %s TFE: STS.DRQ is set, need COMRESET", port_ctx->name);
         do_comreset = true;
     }
-    if (do_comreset) {
-        panic_enter();
-        LOG_ERROR("TODO: prv_ahci_port_handle_tfe() COMRESET");
-        panic("not implemented");
-    }
+    if (do_comreset) { PANIC("TODO: prv_ahci_port_handle_tfe() COMRESET"); }
 
     // Set PxCMD.ST back to '1' to be able to issue new commands.
     port_ctx->reg_port->cmd |= AHCI_PORT_CMD_ST;
@@ -1072,11 +1060,9 @@ static void prv_ahci_port_handle_dhr(ahci_port_ctx_t *port_ctx) {
     LOG_FLOW("port %s irq: AHCI_PORT_ACTIVE", port_ctx->name);
     if (!port_ctx->has_blkdev_req ||
         port_ctx->blkdev_req->state != BLKDEV_REQ_ACTIVE) {
-        panic_enter();
-        LOG_ERROR("port %s irq: port state is AHCI_PORT_ACTIVE, "
-                  "but there is no active request",
-                  port_ctx->name);
-        panic("unexpected AHCI DHR IRQ");
+        PANIC("port %s got DHR IRQ with port state AHCI_PORT_ACTIVE, but there "
+              "is no active request",
+              port_ctx->name);
     }
 
     LOG_FLOW("port %s irq: has active request", port_ctx->name);
