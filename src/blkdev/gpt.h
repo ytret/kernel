@@ -26,11 +26,13 @@ struct gpt_part {
 };
 
 /**
- * Returns `true` if a device *might* contain a GPT structure.
+ * Returns `true` if the device @a dev *might* contain a GPT structure.
+ *
  * @param dev blkdev-level context of a device.
+ *
  * @note
  * This function only checks the GPT header signature. Parsing the GPT
- * structures may still fail.
+ * structures might still fail.
  */
 bool gpt_probe_signature(blkdev_dev_t *dev);
 
@@ -38,8 +40,8 @@ bool gpt_probe_signature(blkdev_dev_t *dev);
  * Parses the GPT structures of a block device @a dev.
  *
  * @param[in]  dev          blkdev-level context of a device.
- * @param[out] out_gpt_disk Where to store #gpt_disk_t allocated by the
- *                          function.
+ * @param[out] out_gpt_disk Where to store the pointer to #gpt_disk_t allocated
+ *                          by the function.
  *
  * @returns `true` if @a dev is GPT-partitioned and @a *out_gpt_disk has been
  * written with GPT information (if it's not `NULL`). Otherwise, `false`.
