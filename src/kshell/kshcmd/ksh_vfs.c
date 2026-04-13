@@ -40,8 +40,13 @@ static const ksharg_parser_desc_t g_ksh_vfs_parser = {
 };
 
 static void prv_ksh_vfs_ls(const char *path);
-static void prv_ksh_vfs_mkdir(const char *path);
+static void prv_ksh_vfs_mkdir(const char *path_str);
+static void prv_ksh_vfs_mkfile(const char *path_str);
+
 static bool prv_ksh_vfs_resolve_path(const char *path, vfs_node_t **out_node);
+static bool prv_ksh_vfs_get_parent_node(const char *path_str,
+                                        vfs_node_t **out_node,
+                                        char **out_basename);
 
 void ksh_vfs(list_t *arg_list) {
     ksharg_parser_inst_t *parser;
@@ -102,6 +107,8 @@ void ksh_vfs(list_t *arg_list) {
         prv_ksh_vfs_ls(path_str);
     } else if (string_equals(action_str, "mkdir")) {
         prv_ksh_vfs_mkdir(path_str);
+    } else if (string_equals(action_str, "mkfile")) {
+        prv_ksh_vfs_mkfile(path_str);
     } else {
         kprintf("ksh_vfs: unrecognized action '%s'\n", action_str);
     }
@@ -151,60 +158,74 @@ static void prv_ksh_vfs_ls(const char *path) {
 
 static void prv_ksh_vfs_mkdir(const char *path_str) {
     vfs_err_t err;
-    vfs_path_t path;
-    err = vfs_path_from_str(path_str, &path);
-    if (err != VFS_ERR_NONE) {
-        kprintf(
-            "ksh_vfs: failed to convert '%s' to a path object, error %u: %s\n",
-            path_str, err, vfs_err_str(err));
-        vfs_path_free(&path);
+    vfs_node_t *parent_node;
+    char *basename;
+
+    if (!prv_ksh_vfs_get_parent_node(path_str, &parent_node, &basename)) {
+        // ^ should have printed the error message.
         return;
     }
 
-    if (list_is_empty(&path.parts)) {
-        kprintf("ksh_vfs: path '%s' has too few parts\n", path_str);
-        return;
-    }
-    const list_node_t *const last_part_node = list_pop_last(&path.parts);
-    const vfs_path_part_t *const last_part =
-        LIST_NODE_TO_STRUCT(last_part_node, vfs_path_part_t, list_node);
-    const char *const last_part_name = last_part->name;
-
-    vfs_node_t *vfs_node;
-    err = vfs_resolve_path(&path, &vfs_node);
-    if (err != VFS_ERR_NONE) {
-        kprintf("ksh_vfs: failed to resolve '%s' without its last part, error "
-                "%u: %s\n",
-                path_str, err, vfs_err_str(err));
-        vfs_path_free(&path);
-        return;
-    }
-
-    if (!vfs_node->ops) {
+    if (!parent_node->ops) {
         kprintf("ksh_vfs: node at path '%s' has no ops\n", path_str);
-        vfs_path_free(&path);
+        heap_free(basename);
         return;
     }
-    if (!vfs_node->ops->f_mknode) {
+    if (!parent_node->ops->f_mknode) {
         kprintf("ksh_vfs: node at path '%s' does not support op 'mknode'\n",
                 path_str);
-        vfs_path_free(&path);
+        heap_free(basename);
         return;
     }
 
     vfs_node_t *child_node;
-    auto f_mknode = vfs_node->ops->f_mknode;
-    err = f_mknode(vfs_node, &child_node, last_part_name, VFS_NODE_DIR);
+    auto f_mknode = parent_node->ops->f_mknode;
+    err = f_mknode(parent_node, &child_node, basename, VFS_NODE_DIR);
     if (err != VFS_ERR_NONE) {
         kprintf("ksh_vfs: op 'mknode' returned error code %u: %s\n", err,
                 vfs_err_str(err));
-        vfs_path_free(&path);
+        heap_free(basename);
         return;
     }
 
     kprintf("ksh_vfs: created directory node at '%s'\n", path_str);
+    heap_free(basename);
+}
 
-    vfs_path_free(&path);
+static void prv_ksh_vfs_mkfile(const char *path_str) {
+    vfs_err_t err;
+    vfs_node_t *parent_node;
+    char *basename;
+
+    if (!prv_ksh_vfs_get_parent_node(path_str, &parent_node, &basename)) {
+        // ^ should have printed the error message.
+        return;
+    }
+
+    if (!parent_node->ops) {
+        kprintf("ksh_vfs: node at path '%s' has no ops\n", path_str);
+        heap_free(basename);
+        return;
+    }
+    if (!parent_node->ops->f_mknode) {
+        kprintf("ksh_vfs: node at path '%s' does not support op 'mknode'\n",
+                path_str);
+        heap_free(basename);
+        return;
+    }
+
+    vfs_node_t *child_node;
+    auto f_mknode = parent_node->ops->f_mknode;
+    err = f_mknode(parent_node, &child_node, basename, VFS_NODE_FILE);
+    if (err != VFS_ERR_NONE) {
+        kprintf("ksh_vfs: op 'mknode' returned error code %u: %s\n", err,
+                vfs_err_str(err));
+        heap_free(basename);
+        return;
+    }
+
+    kprintf("ksh_vfs: created file node at '%s'\n", path_str);
+    heap_free(basename);
 }
 
 static bool prv_ksh_vfs_resolve_path(const char *path, vfs_node_t **out_node) {
@@ -216,4 +237,45 @@ static bool prv_ksh_vfs_resolve_path(const char *path, vfs_node_t **out_node) {
                 path, err, vfs_err_str(err));
         return false;
     }
+}
+
+static bool prv_ksh_vfs_get_parent_node(const char *path_str,
+                                        vfs_node_t **out_node,
+                                        char **out_basename) {
+    vfs_err_t err;
+    vfs_path_t path;
+    err = vfs_path_from_str(path_str, &path);
+    if (err != VFS_ERR_NONE) {
+        kprintf(
+            "ksh_vfs: failed to convert '%s' to a path object, error %u: %s\n",
+            path_str, err, vfs_err_str(err));
+        vfs_path_free(&path);
+        return false;
+    }
+
+    if (list_is_empty(&path.parts)) {
+        kprintf("ksh_vfs: path '%s' has too few parts\n", path_str);
+        return false;
+    }
+    const list_node_t *const basename_lnode = list_pop_last(&path.parts);
+    const vfs_path_part_t *const path_last_part =
+        LIST_NODE_TO_STRUCT(basename_lnode, vfs_path_part_t, list_node);
+    const char *const basename = path_last_part->name;
+
+    vfs_node_t *parent_node;
+    err = vfs_resolve_path(&path, &parent_node);
+    if (err != VFS_ERR_NONE) {
+        kprintf("ksh_vfs: failed to resolve '%s' without its last part, error "
+                "%u: %s\n",
+                path_str, err, vfs_err_str(err));
+        vfs_free_node(parent_node);
+        vfs_path_free(&path);
+        return false;
+    }
+
+    if (out_node) { *out_node = parent_node; }
+    if (out_basename) { *out_basename = string_dup(basename); }
+
+    vfs_path_free(&path);
+    return true;
 }
