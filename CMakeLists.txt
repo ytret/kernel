@@ -15,6 +15,17 @@ set(CMAKE_C_FLAGS_DEBUG "-O0 -g")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -g")
 
 
+#############
+## Options ##
+#############
+set(YTKERNEL_STACKTRACE_ON_PANIC ON CACHE BOOL
+    "Print stacktrace on kernel panic.")
+configure_file(
+    ${CMAKE_CURRENT_LIST_DIR}/src/config.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/generated/config.h
+)
+
+
 ##################
 ## Dependencies ##
 ##################
@@ -120,7 +131,10 @@ target_compile_options(kernel PRIVATE
     -Wall -Wextra -Wmissing-prototypes
     ${OPTIMIZATION_FLAGS}
 )
-target_include_directories(kernel PRIVATE src)
+target_include_directories(kernel PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
+    src
+)
 target_link_options(kernel PRIVATE
     ${OPTIMIZATION_FLAGS}
     -T${CMAKE_SOURCE_DIR}/src/link.ld

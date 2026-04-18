@@ -2,6 +2,7 @@
 #include <stdbool.h>
 
 #include "acpi/lapic.h"
+#include "config.h"
 #include "kinttypes.h"
 #include "kprintf.h"
 #include "kspinlock.h"
@@ -28,6 +29,7 @@ static void prv_panic_set_flag(void);
 static bool prv_panic_get_flag(void);
 static void prv_panic_check_flag(void);
 static void prv_panic_send_ipi(void);
+[[maybe_unused]]
 static void prv_panic_log_stacktrace(void);
 
 [[gnu::noreturn]]
@@ -49,7 +51,9 @@ void panic_helper(const char *file, const char *func, int line, const char *fmt,
     LOG_ERROR("Function: %s", func);
     LOG_ERROR("    Line: %d", line);
 
+#ifdef YTKERNEL_STACKTRACE_ON_PANIC
     prv_panic_log_stacktrace();
+#endif
 
     for (;;) {
         __asm__ volatile("hlt");

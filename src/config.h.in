@@ -1,0 +1,3 @@
+#pragma once
+
+#cmakedefine YTKERNEL_STACKTRACE_ON_PANIC
