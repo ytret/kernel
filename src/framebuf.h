@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 void framebuf_init(void);
+void framebuf_map_iomem(void);
 
 uint32_t framebuf_start(void);
 uint32_t framebuf_end(void);

@@ -8,9 +8,12 @@
 #include "assert.h"
 #include "framebuf.h"
 #include "heap.h"
+#include "kinttypes.h"
+#include "log.h"
 #include "mbi.h"
 #include "memfun.h"
 #include "psf.h"
+#include "vmm.h"
 
 #define SHADOW_SCREENS 2
 
@@ -67,6 +70,17 @@ void framebuf_init(void) {
     g_height_chars = g_height_px / g_font.height_px;
     g_width_chars = g_width_px / g_font.width_px;
     g_row_pitch = g_px_pitch * g_font.height_px;
+}
+
+void framebuf_map_iomem(void) {
+    const uint32_t iomem_start = framebuf_start();
+    const uint32_t iomem_end = framebuf_end();
+
+    LOG_DEBUG("map framebuffer memory 0x%08" PRIx32 " .. 0x%08" PRIx32,
+              iomem_start, iomem_end);
+    for (uint32_t page = iomem_start; page < iomem_end; page += 4096) {
+        vmm_map_kernel_page(page, page);
+    }
 }
 
 uint32_t framebuf_start(void) {

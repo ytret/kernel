@@ -59,6 +59,8 @@ void term_init(void) {
         g_max_row = framebuf_height_chars();
         g_max_col = framebuf_width_chars();
 
+        g_output_impl.p_map_iomem = framebuf_map_iomem;
+
         g_output_impl.p_put_char_at = framebuf_put_char_at;
         g_output_impl.p_put_cursor_at = framebuf_put_cursor_at;
         g_output_impl.p_clear_rows = framebuf_clear_rows;
