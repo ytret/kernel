@@ -3,8 +3,9 @@
 #include <stdint.h>
 
 #include "acpi/acpi.h"
-#include "arch/x86/gdt.h"
 #include "taskmgr.h"
+
+#include "arch/x86/gdt.h"
 
 #define SMP_VEC_HALT          0xF1 //!< Halt on panic.
 #define SMP_VEC_TLB_SHOOTDOWN 0xF2 //!< TLB shootdown.

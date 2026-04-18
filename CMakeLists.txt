@@ -106,7 +106,6 @@ add_executable(kernel
     src/arch/x86/panic.s
     src/arch/x86/vmm.s
 
-    src/smp.s
     src/taskmgr.s
 
     src/kshell/kbdlog.c

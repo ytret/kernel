@@ -57,8 +57,8 @@ static smp_tlb_shootdown_req_t g_smp_tlb_shootdown_req;
 
 static void prv_smp_init_trampoline(const gdtr_t *gdtr);
 
-// Defined in smp.s.
-extern void smp_ap_trampoline(void);
+// Defined in entry.s.
+extern void entry_ap_trampoline(void);
 
 void smp_init(void) {
     spinlock_init(&g_smp_tlb_shootdown_lock);
@@ -260,7 +260,7 @@ static void prv_smp_init_trampoline(const gdtr_t *gdtr) {
     static_assert(SMP_AP_TRAMPOLINE_ADDR % 4096 == 0);
     static_assert(SMP_AP_INIT_STACK_TOP % 4096 == 0);
 
-    kmemcpy((void *)SMP_AP_TRAMPOLINE_ADDR, smp_ap_trampoline, 4096);
+    kmemcpy((void *)SMP_AP_TRAMPOLINE_ADDR, entry_ap_trampoline, 4096);
     kmemclr_sse2((void *)(SMP_AP_INIT_STACK_TOP - 4096), 4096);
 
     smp_ap_trampoline_args_t args = {
