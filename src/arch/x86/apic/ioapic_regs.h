@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "acpi/apic_common.h" // IWYU pragma: keep
+#include "arch/x86/apic/apic_common.h" // IWYU pragma: keep
 #include "types.h"
 
 /**

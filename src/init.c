@@ -3,7 +3,6 @@
  * SMP-aware initial tasks implementation.
  */
 
-#include "acpi/lapic.h"
 #include "assert.h"
 #include "blkdev/blkdev.h"
 #include "devmgr.h"
@@ -17,6 +16,8 @@
 #include "term.h"
 #include "vfs/vfs.h"
 #include "vfs/vfs_fs.h"
+
+#include "arch/x86/apic/lapic.h"
 
 [[gnu::noreturn]]
 void init_bsp_task(void) {

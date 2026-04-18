@@ -1,6 +1,5 @@
 #include <stddef.h>
 
-#include "acpi/lapic.h"
 #include "blkdev/ahci.h"
 #include "idt.h"
 #include "isrs.h"
@@ -11,6 +10,8 @@
 #include "panic.h"
 #include "smp.h"
 #include "taskmgr.h"
+
+#include "arch/x86/apic/lapic.h"
 
 #define NUM_ENTRIES     256
 #define DESC_SIZE_BYTES 6

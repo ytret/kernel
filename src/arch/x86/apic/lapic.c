@@ -5,7 +5,6 @@
 
 #include <cpuid.h>
 
-#include "acpi/lapic.h"
 #include "cpu.h"
 #include "kinttypes.h"
 #include "log.h"
@@ -14,6 +13,8 @@
 #include "pit.h"
 #include "taskmgr.h"
 #include "vmm.h"
+
+#include "arch/x86/apic/lapic.h"
 
 static lapic_regs_t *g_lapic_regs;
 static uint32_t g_lapic_tim_freq_hz;

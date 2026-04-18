@@ -1,7 +1,6 @@
 #include <stdarg.h>
 #include <stdbool.h>
 
-#include "acpi/lapic.h"
 #include "config.h"
 #include "kinttypes.h"
 #include "kprintf.h"
@@ -11,6 +10,8 @@
 #include "smp.h"
 #include "taskmgr.h"
 #include "term.h"
+
+#include "arch/x86/apic/lapic.h"
 
 #define PANIC_MSG_SIZE             128
 #define PANIC_STACKTRACE_MAX_ITEMS 32

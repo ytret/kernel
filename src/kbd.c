@@ -1,11 +1,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "acpi/lapic.h"
 #include "kbd.h"
 #include "log.h"
 #include "panic.h"
 #include "port.h"
+
+#include "arch/x86/apic/lapic.h"
 
 #define PORT_DATA   0x0060
 #define PORT_CMD    0x0064

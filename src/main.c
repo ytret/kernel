@@ -2,25 +2,20 @@
 #include <ytalloc/ytalloc.h>
 
 #include "acpi/acpi.h"
-#include "acpi/ioapic.h"
-#include "acpi/lapic.h"
 #include "arch.h"
 #include "devmgr.h"
 #include "heap.h"
 #include "init.h"
-#include "kbd.h"
 #include "kinttypes.h"
 #include "libshim.h"
 #include "log.h"
 #include "mbi.h"
 #include "panic.h"
-#include "pit.h"
 #include "pmm.h"
 #include "serial.h"
 #include "smp.h"
 #include "taskmgr.h"
 #include "term.h"
-#include "vmm.h"
 
 #define MULTIBOOT_MAGIC_NUM 0x2BADB002U
 
@@ -63,30 +58,10 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     term_clear();
 
     acpi_init();
-    lapic_init(true);
-    ioapic_init();
-
-    pit_init(PIT_PERIOD_MS);
-    if (!ioapic_map_irq(PIT_IRQ, 32 + PIT_IRQ, lapic_get_id())) {
-        PANIC("failed to map PIT IRQ");
-    }
-
-    kbd_init();
-    if (!ioapic_map_irq(KBD_IRQ, 32 + KBD_IRQ, lapic_get_id())) {
-        PANIC("failed to map kbd IRQ");
-    }
-
-    vmm_init();
-
-    lapic_map_pages();
-    ioapic_map_pages();
 
     taskmgr_global_init();
 
-    __asm__ volatile("sti");
-    LOG_DEBUG("interrupts enabled");
-
-    lapic_calib_tim();
+    arch_init_2();
 
     smp_init();
     // NOTE: main() is executed only by the bootstrap processor (BSP). Hence,

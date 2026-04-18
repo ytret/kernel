@@ -56,8 +56,6 @@ add_executable(kernel
     src/main.c
 
     src/acpi/acpi.c
-    src/acpi/ioapic.c
-    src/acpi/lapic.c
     src/blkdev/ahci.c
     src/blkdev/blkdev.c
     src/blkdev/blkpart.c
@@ -94,6 +92,8 @@ add_executable(kernel
     src/vfs/vfs_path.c
     src/vga.c
 
+    src/arch/x86/apic/ioapic.c
+    src/arch/x86/apic/lapic.c
     src/arch/x86/arch.c
     src/arch/x86/gdt.c
     src/arch/x86/gdt.s

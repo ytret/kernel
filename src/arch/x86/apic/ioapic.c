@@ -5,12 +5,13 @@
  */
 
 #include "acpi/acpi.h"
-#include "acpi/ioapic.h"
 #include "kinttypes.h"
 #include "log.h"
 #include "memfun.h"
 #include "pic.h"
 #include "vmm.h"
+
+#include "arch/x86/apic/ioapic.h"
 
 static ioapic_regs_t *g_ioapic_regs;
 

@@ -7,8 +7,6 @@
 
 #include <stddef.h>
 
-#include "acpi/ioapic.h"
-#include "acpi/lapic.h"
 #include "assert.h"
 #include "blkdev/ahci.h"
 #include "blkdev/ahci_regs.h"
@@ -20,6 +18,9 @@
 #include "memfun.h"
 #include "pci.h"
 #include "vmm.h"
+
+#include "arch/x86/apic/ioapic.h"
+#include "arch/x86/apic/lapic.h"
 
 /**
  * ABAR register, base address mask.

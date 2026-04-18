@@ -1,8 +1,9 @@
-#include "acpi/lapic.h"
 #include "kinttypes.h"
 #include "panic.h"
 #include "pit.h"
 #include "port.h"
+
+#include "arch/x86/apic/lapic.h"
 
 #define PORT_CMD      0x0043
 #define PORT_CH0_DATA 0x0040

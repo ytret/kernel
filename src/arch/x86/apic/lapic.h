@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "acpi/lapic_regs.h"
+#include "arch/x86/apic/lapic_regs.h"
 
 #define LAPIC_VEC_TIM       0xF0
 #define LAPIC_TIM_PERIOD_MS 10

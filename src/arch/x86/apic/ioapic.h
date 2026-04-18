@@ -8,7 +8,7 @@
 
 #include <stdint.h>
 
-#include "acpi/ioapic_regs.h"
+#include "arch/x86/apic/ioapic_regs.h"
 
 /**
  * Initializes and enables the I/O APIC.

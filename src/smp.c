@@ -3,9 +3,6 @@
 #include <stdint.h>
 
 #include "acpi/acpi.h"
-#include "acpi/lapic.h"
-#include "arch/x86/gdt.h"
-#include "arch/x86/idt.h"
 #include "heap.h"
 #include "init.h"
 #include "kspinlock.h"
@@ -15,6 +12,10 @@
 #include "pit.h"
 #include "smp.h"
 #include "vmm.h"
+
+#include "arch/x86/apic/lapic.h"
+#include "arch/x86/gdt.h"
+#include "arch/x86/idt.h"
 
 // physical/virtual (identity-mapped)
 #define SMP_AP_TRAMPOLINE_ADDR 0x8000
