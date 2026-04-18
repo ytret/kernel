@@ -1,14 +1,16 @@
-/*
- * Text-mode terminal implementation.
+/**
+ * @file vga.c
+ * VGA text-mode terminal implementation.
  *
- * Uses a sort of double buffering for saving history output and replaying it.
- * The output is first saved in the 'shadow buffer', and, if it's visible,
- * replayed to the VGA framebuffer.
+ * It uses a kind of double buffering to save the output history and replay it.
+ * First, the output is saved in a "shadow buffer". If it's visible, it's then
+ * copied to the VGA framebuffer.
  *
- * Variable naming conventions:
- *   sh_  - shadow buffer
- *   lss_ - last screen of the shadow buffer (LSS - last shadow screen)
- *   vga_ - VGA framebuffer
+ * Variable naming convention:
+ *
+ * - `sh_` -- shadow buffer
+ * - `lss_` -- last screen of the shadow buffer (LSS -- last shadow screen)
+ * - `vga_` -- VGA framebuffer
  */
 
 #include <stdbool.h>
@@ -25,8 +27,8 @@
 #define NUM_COLS 80
 #define PITCH    (2 * NUM_COLS)
 
-/*
- * Number of screens of output that the shadow buffer can hold.
+/**
+ * Size of output that the shadow buffer can save in screens.
  */
 #define SHADOW_SCREENS 3
 
@@ -78,9 +80,6 @@ size_t vga_width_chars(void) {
     return NUM_COLS;
 }
 
-/*
- * Places a character on the last screen of the shadow buffer.
- */
 void vga_put_char_at(size_t row, size_t col, char ch) {
     ASSERT(row < NUM_ROWS && col < NUM_COLS);
 
@@ -92,9 +91,6 @@ void vga_put_char_at(size_t row, size_t col, char ch) {
     if (b_visible) { gp_vga_buf[vga_idx] = (0x0F << 8) | ch; }
 }
 
-/*
- * Positions the cursor on the last screen of the shadow buffer.
- */
 void vga_put_cursor_at(size_t lss_row, size_t lss_col) {
     ASSERT(lss_row < NUM_ROWS && lss_col < NUM_COLS);
 
@@ -105,9 +101,6 @@ void vga_put_cursor_at(size_t lss_row, size_t lss_col) {
     port_outb(PORT_CRTC_DATA, ((uint8_t)vga_idx));
 }
 
-/*
- * Clears rows in the last screen of the shadow buffer.
- */
 void vga_clear_rows(size_t lss_start_row, size_t lss_num_rows) {
     size_t sh_start_row = (SHADOW_SCREENS - 1) * NUM_ROWS + lss_start_row;
     size_t sh_num_words = lss_num_rows * NUM_COLS;
@@ -123,9 +116,6 @@ void vga_clear_rows(size_t lss_start_row, size_t lss_num_rows) {
                  vga_num_words);
 }
 
-/*
- * Scrolls the shadow buffer so that one empty row is available at the bottom.
- */
 void vga_scroll_new_row(void) {
     // Move every shadow row except the first one up.
     kmemmove(gp_shadow_buf, &gp_shadow_buf[1 * NUM_COLS],
@@ -142,33 +132,20 @@ void vga_init_history(void) {
     g_vga_start_at_sh_row = (SHADOW_SCREENS - 1) * NUM_ROWS;
 }
 
-/*
- * Resets the shadow buffer thus deleting all output history. Also deletes the
- * currently visible part of it WITHOUT updating the VGA framebuffer.
- */
 void vga_clear_history(void) {
     kmemset_word(gp_shadow_buf, 0x0F << 8,
                  SHADOW_SCREENS * NUM_ROWS * NUM_COLS);
     g_vga_start_at_sh_row = (SHADOW_SCREENS - 1) * NUM_ROWS;
 }
 
-/*
- * Returns the number of screens that the shadow buffer can hold.
- */
 size_t vga_history_screens(void) {
     return SHADOW_SCREENS;
 }
 
-/*
- * Returns the row number in the shadow buffer of the first visible row.
- */
 size_t vga_history_pos(void) {
     return g_vga_start_at_sh_row;
 }
 
-/*
- * Specifies the visible part of the shadow buffer.
- */
 void vga_set_history_mode(size_t row_from_start) {
     // Assert that there are enough rows until the shadow buffer end to fill up
     // the visible screen.
@@ -206,11 +183,10 @@ static void disable_cursor(void) {
     port_outb(PORT_CRTC_DATA, REG_CRTC_CURSOR_START_CD);
 }
 
-/*
- * Converts the position on the last shadow buffer screen to a VGA framebuffer
- * offset, if the position is visible.
+/**
+ * Gets the framebuffer offset for a character on the last shadow screen.
  *
- * Returns true if the position is visible and *p_vga_idx has been written.
+ * @returns `true` if the position is visible and @a *p_vga_idx has been set.
  */
 static bool get_vga_idx(size_t lss_row, size_t lss_col, size_t *p_vga_idx) {
     /*
@@ -218,16 +194,15 @@ static bool get_vga_idx(size_t lss_row, size_t lss_col, size_t *p_vga_idx) {
      *
      * The shadow buffer has 3 screens, or 75 rows (NUM_ROWS * 3). The last
      * shadow screen starts at row 50 and ends at row 75 exclusively. Let's say
-     * the user visible part begins at row 49 (g_vga_start_at_sh_row = 49) and
+     * the user-visible part begins at row 49 (g_vga_start_at_sh_row = 49) and
      * ends at +NUM_ROWS = 74 exclusively. Every row of the last shadow screen
-     * is visible, except for the last one (rows 74). This check can be
-     * expressed as:
+     * is visible, except for the last one (row 74). This can be expressed as:
      *
      *   bool is_visible = lss_row >= 49 && lss_row < 74
      *
-     * So, the visible part of the history buffer is composed of the last row of
-     * the second-to-last shadow screen (row 49) and rows [50, 73] of the last
-     * shadow screen.
+     * So, the visible part of the history buffer consists of:
+     * - the last row of the second-to-last shadow screen (row 49), and
+     * - rows [50, 73] of the last shadow screen.
      */
 
     size_t sh_row = (SHADOW_SCREENS - 1) * NUM_ROWS + lss_row;
@@ -240,9 +215,11 @@ static bool get_vga_idx(size_t lss_row, size_t lss_col, size_t *p_vga_idx) {
     }
 }
 
-/*
- * Similar to get_vga_idx, but converts row ranges on the last shadow screen to
- * their visible counterpart.
+/**
+ * Gets the framebuffer row range for a range of rows on the last shadow buffer.
+ *
+ * Similar to #get_vga_idx(), except this one converts the range of rows on the
+ * last shadow screen to their corresponding visible rows.
  */
 static void get_vga_row_range(size_t lss_start_row, size_t lss_num_rows,
                               size_t *p_vga_start_row, size_t *p_vga_num_rows) {
