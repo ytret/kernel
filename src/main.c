@@ -54,9 +54,6 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     idt_init();
 
-    term_init_history();
-    term_clear();
-
     if (!mbi_fill_mmap(mbi_ptr(), &g_mmap)) {
         PANIC("failed to fill the memory map");
     }
@@ -66,6 +63,9 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     heap_init();
     mbi_save_on_heap();
+
+    term_init_history();
+    term_clear();
 
     acpi_init();
     lapic_init(true);
