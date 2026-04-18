@@ -4,8 +4,8 @@
 #include "acpi/acpi.h"
 #include "acpi/ioapic.h"
 #include "acpi/lapic.h"
+#include "arch.h"
 #include "devmgr.h"
-#include "gdt.h"
 #include "heap.h"
 #include "idt.h"
 #include "init.h"
@@ -48,9 +48,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     LOG_INFO("Hello, World!");
     check_bootloader(magic_num, mbi_addr);
 
-    gdtr_t gdtr;
-    gdt_init_pre_smp(&gdtr);
-    gdt_load(&gdtr);
+    arch_init_1();
 
     idt_init();
 

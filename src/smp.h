@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 #include "acpi/acpi.h"
-#include "gdt.h"
+#include "arch/x86/gdt.h"
 #include "taskmgr.h"
 
 #define SMP_VEC_HALT          0xF1 //!< Halt on panic.

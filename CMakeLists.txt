@@ -67,7 +67,6 @@ add_executable(kernel
     src/elf.c
     src/framebuf.c
     src/fs/ramfs.c
-    src/gdt.c
     src/heap.c
     src/idt.c
     src/init.c
@@ -97,8 +96,11 @@ add_executable(kernel
     src/vga.c
     src/vmm.c
 
+    src/arch/x86/arch.c
+    src/arch/x86/gdt.c
+    src/arch/x86/gdt.s
+
     src/entry.s
-    src/gdt.s
     src/idt.s
     src/isrs.s
     src/panic.s

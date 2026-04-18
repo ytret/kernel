@@ -6,13 +6,12 @@
 #include <stdatomic.h>
 #include <stdint.h>
 
+#include "arch/x86/gdt.h"
 #include "assert.h"
 #include "cpu.h"
-#include "gdt.h"
 #include "heap.h"
 #include "kstring.h"
 #include "list.h"
-#include "log.h"
 #include "memfun.h"
 #include "panic.h"
 #include "pit.h"

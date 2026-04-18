@@ -4,7 +4,7 @@
 
 #include "acpi/acpi.h"
 #include "acpi/lapic.h"
-#include "gdt.h"
+#include "arch/x86/gdt.h"
 #include "heap.h"
 #include "idt.h"
 #include "init.h"
