@@ -93,7 +93,6 @@ add_executable(kernel
     src/vfs/vfs_err.c
     src/vfs/vfs_path.c
     src/vga.c
-    src/vmm.c
 
     src/arch/x86/arch.c
     src/arch/x86/gdt.c
@@ -101,12 +100,13 @@ add_executable(kernel
     src/arch/x86/idt.c
     src/arch/x86/idt.s
     src/arch/x86/isrs.s
+    src/arch/x86/vmm.c
+    src/arch/x86/vmm.s
 
     src/entry.s
     src/panic.s
     src/smp.s
     src/taskmgr.s
-    src/vmm.s
 
     src/kshell/kbdlog.c
     src/kshell/ksharg.c
