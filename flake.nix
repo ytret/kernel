@@ -140,6 +140,7 @@
           buildingPackages = [
             pkgs.cmake
             pkgs.ninja
+            pkgs.doxygen
           ];
           bootableIsoPackages = [
             pkgs.grub2
