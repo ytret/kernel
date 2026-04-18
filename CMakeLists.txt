@@ -100,9 +100,9 @@ add_executable(kernel
     src/arch/x86/gdt.s
     src/arch/x86/idt.c
     src/arch/x86/idt.s
+    src/arch/x86/isrs.s
 
     src/entry.s
-    src/isrs.s
     src/panic.s
     src/smp.s
     src/taskmgr.s
