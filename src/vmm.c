@@ -14,13 +14,16 @@
 #define VMM_ADDR_DIR_IDX(addr) (((addr) >> 22) & 0x3FF)
 #define VMM_ADDR_TBL_IDX(addr) (((addr) >> 12) & 0x3FF)
 
-#define VMM_TABLE_USER    (1 << 2)
-#define VMM_TABLE_RW      (1 << 1)
-#define VMM_TABLE_PRESENT (1 << 0)
+#define VMM_TABLE_ADDR_MASK 0xFFFFF000U
+#define VMM_TABLE_USER      (1 << 2)
+#define VMM_TABLE_RW        (1 << 1)
+#define VMM_TABLE_PRESENT   (1 << 0)
 
 #define VMM_PAGE_USER    (1 << 2)
 #define VMM_PAGE_RW      (1 << 1)
 #define VMM_PAGE_PRESENT (1 << 0)
+
+#define VMM_CR0_PGEN (1 << 31)
 
 /**
  * Table entry flags that are checked when comparing two page tables.
@@ -40,6 +43,9 @@ static void prv_vmm_identity_map_ram(void);
 static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
                      uint32_t flags);
 static void unmap_page(uint32_t *p_dir, uint32_t virt);
+
+static uint32_t prv_vmm_read_cr0(void);
+static uint32_t prv_vmm_read_cr3(void);
 
 void vmm_init(void) {
     gp_kvas_dir = heap_alloc_aligned(4096, 4096);
@@ -91,6 +97,38 @@ void vmm_invlpg(uint32_t virt) {
                      : /* no outputs */
                      : "r"(virt)
                      : "memory");
+}
+
+bool vmm_is_paging_enabled(void) {
+    const uint32_t cr0 = prv_vmm_read_cr0();
+    LOG_DEBUG("cr0 = 0x%08" PRIx32, cr0);
+    return cr0 & VMM_CR0_PGEN;
+}
+
+bool vmm_is_addr_mapped(uint32_t virt) {
+    const uint32_t pgdir_idx = VMM_ADDR_DIR_IDX(virt);
+    const uint32_t pgtbl_idx = VMM_ADDR_TBL_IDX(virt);
+
+    if (!vmm_is_paging_enabled()) {
+        LOG_ERROR("paging is not enabled, address 0x%08" PRIx32
+                  " is considered unmapped",
+                  virt);
+        return false;
+    }
+
+    const uint32_t *const pgdir = (const uint32_t *)prv_vmm_read_cr3();
+    LOG_DEBUG("pgdir = %p (0x%08" PRIx32 ")", pgdir, (uint32_t)pgdir);
+    if (!pgdir) { return false; }
+
+    const uint32_t pgdir_entry = pgdir[pgdir_idx];
+    if (pgdir_entry & VMM_TABLE_PRESENT) {
+        const uint32_t *const pgtbl =
+            (const uint32_t *)(pgdir_entry & VMM_TABLE_ADDR_MASK);
+        const uint32_t pgtbl_entry = pgtbl[pgtbl_idx];
+        return pgtbl_entry & VMM_PAGE_PRESENT;
+    }
+
+    return false;
 }
 
 static void prv_vmm_identity_map_ram(void) {
@@ -199,4 +237,16 @@ static void unmap_page(uint32_t *p_dir, uint32_t virt) {
     }
 
     p_tbl[tbl_idx] = 0;
+}
+
+static uint32_t prv_vmm_read_cr0(void) {
+    uint32_t reg_val;
+    __asm__ volatile("mov %%cr0, %0" : "=r"(reg_val));
+    return reg_val;
+}
+
+static uint32_t prv_vmm_read_cr3(void) {
+    uint32_t reg_val;
+    __asm__ volatile("mov %%cr3, %0" : "=r"(reg_val));
+    return reg_val;
 }
