@@ -22,9 +22,6 @@ static uint32_t g_panic_stacktrace[PANIC_STACKTRACE_MAX_ITEMS];
 static volatile bool g_panic_flag;
 static spinlock_t g_panic_flag_lock;
 
-// See panic.s.
-extern int panic_walk_stack(uint32_t *arr_addr, uint32_t max_items);
-
 static void prv_panic_enter(void);
 static void prv_panic_set_flag(void);
 static bool prv_panic_get_flag(void);
