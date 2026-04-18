@@ -90,6 +90,7 @@ add_executable(kernel
     src/gdt.s
     src/idt.s
     src/isrs.s
+    src/panic.s
     src/smp.s
     src/taskmgr.s
     src/vmm.s

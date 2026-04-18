@@ -2,6 +2,7 @@
 #include <stdbool.h>
 
 #include "acpi/lapic.h"
+#include "kinttypes.h"
 #include "kprintf.h"
 #include "kspinlock.h"
 #include "log.h"
@@ -10,19 +11,24 @@
 #include "taskmgr.h"
 #include "term.h"
 
-#define PANIC_MSG_SIZE 128
+#define PANIC_MSG_SIZE             128
+#define PANIC_STACKTRACE_MAX_ITEMS 32
 
 static char g_panic_msg[PANIC_MSG_SIZE];
+static uint32_t g_panic_stacktrace[PANIC_STACKTRACE_MAX_ITEMS];
 
 static volatile bool g_panic_flag;
 static spinlock_t g_panic_flag_lock;
+
+// See panic.s.
+extern int panic_walk_stack(uint32_t *arr_addr, uint32_t max_items);
 
 static void prv_panic_enter(void);
 static void prv_panic_set_flag(void);
 static bool prv_panic_get_flag(void);
 static void prv_panic_check_flag(void);
-
 static void prv_panic_send_ipi(void);
+static void prv_panic_log_stacktrace(void);
 
 [[gnu::noreturn]]
 void panic_helper(const char *file, const char *func, int line, const char *fmt,
@@ -42,6 +48,8 @@ void panic_helper(const char *file, const char *func, int line, const char *fmt,
     LOG_ERROR("    File: %s", file);
     LOG_ERROR("Function: %s", func);
     LOG_ERROR("    Line: %d", line);
+
+    prv_panic_log_stacktrace();
 
     for (;;) {
         __asm__ volatile("hlt");
@@ -106,4 +114,24 @@ static void prv_panic_send_ipi(void) {
         .dest = 0, // ignored because destsh is used
     };
     lapic_send_ipi(&ipi_halt);
+}
+
+static void prv_panic_log_stacktrace(void) {
+    LOG_ERROR("stacktrace:");
+
+    const int num_items =
+        panic_walk_stack(g_panic_stacktrace, PANIC_STACKTRACE_MAX_ITEMS);
+
+    if (num_items > PANIC_STACKTRACE_MAX_ITEMS) {
+        LOG_ERROR("panic_walk_stack placed too many items (%d > %d)", num_items,
+                  PANIC_STACKTRACE_MAX_ITEMS);
+    }
+
+    if (num_items == 0) { LOG_ERROR("no entries"); }
+    for (int idx = 0; idx < num_items; idx++) {
+        const uint32_t addr = g_panic_stacktrace[idx];
+        LOG_ERROR("%2d. 0x%08" PRIx32, idx + 1, addr);
+    }
+
+    LOG_ERROR("further entries may be unmapped");
 }
