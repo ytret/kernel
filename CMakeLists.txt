@@ -18,6 +18,8 @@ set(CMAKE_C_FLAGS_RELEASE "-O3 -g")
 ##################
 ## Dependencies ##
 ##################
+set(YTALLOC_BUILD_TESTS OFF CACHE BOOL "Disable building ytalloc tests.")
+set(YTPRINTF_BUILD_TESTS OFF CACHE BOOL "Disable building ytprintf tests.")
 include(FetchContent)
 FetchContent_Declare(
     ytalloc
