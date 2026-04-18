@@ -68,7 +68,6 @@ add_executable(kernel
     src/framebuf.c
     src/fs/ramfs.c
     src/heap.c
-    src/idt.c
     src/init.c
     src/kbd.c
     src/kprintf.c
@@ -99,9 +98,10 @@ add_executable(kernel
     src/arch/x86/arch.c
     src/arch/x86/gdt.c
     src/arch/x86/gdt.s
+    src/arch/x86/idt.c
+    src/arch/x86/idt.s
 
     src/entry.s
-    src/idt.s
     src/isrs.s
     src/panic.s
     src/smp.s

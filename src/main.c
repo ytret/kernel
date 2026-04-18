@@ -7,7 +7,6 @@
 #include "arch.h"
 #include "devmgr.h"
 #include "heap.h"
-#include "idt.h"
 #include "init.h"
 #include "kbd.h"
 #include "kinttypes.h"
@@ -49,8 +48,6 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     check_bootloader(magic_num, mbi_addr);
 
     arch_init_1();
-
-    idt_init();
 
     if (!mbi_fill_mmap(mbi_ptr(), &g_mmap)) {
         PANIC("failed to fill the memory map");
