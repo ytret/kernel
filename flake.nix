@@ -92,7 +92,7 @@
             ];
 
             # See https://gcc.gnu.org/install/configure.html
-           configurePhase = ''
+            configurePhase = ''
               mkdir ../build
               cd ../build
               ../gcc-15.2.0/configure \
@@ -131,17 +131,54 @@
       );
 
       devShells = forAllSystems (
-        system: pkgs: {
-          default = pkgs.mkShell {
-            name = "i686-elf-dev";
-            packages = [
-              self.packages.${system}.i686-elf-binutils
-              self.packages.${system}.i686-elf-gcc
-            ];
+        system: pkgs:
+        let
+          minimalPackages = [
+            self.packages.${system}.i686-elf-binutils
+            self.packages.${system}.i686-elf-gcc
+          ];
+          buildingPackages = [
+            pkgs.cmake
+            pkgs.ninja
+          ];
+          bootableIsoPackages = [
+            pkgs.grub2
+            pkgs.libisoburn
+            pkgs.mtools
+          ];
+          virtualDiskPackages = [
+            pkgs.qemu-utils
+            pkgs.e2fsprogs
+          ];
+          emulatorPackages = [
+            pkgs.qemu_full
+          ];
+          fullPackages =
+            minimalPackages
+            ++ buildingPackages
+            ++ bootableIsoPackages
+            ++ virtualDiskPackages
+            ++ emulatorPackages;
+          pkgName = p: p.pname or p.name or "unknown";
+        in
+        rec {
+          minimal = pkgs.mkShell rec {
+            packages = minimalPackages;
             shellHook = ''
-              echo "i686-elf cross-compiler toolchain loaded."
+              echo "Packages in this shell:"
+              echo "${builtins.concatStringsSep ", " (map pkgName packages)}"
             '';
           };
+
+          full = pkgs.mkShell rec {
+            packages = fullPackages;
+            shellHook = ''
+              echo "Packages in this shell:"
+              echo "${builtins.concatStringsSep ", " (map pkgName packages)}"
+            '';
+          };
+
+          default = full;
         }
       );
     };
