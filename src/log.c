@@ -1,3 +1,5 @@
+#include "config.h"
+
 #include "kprintf.h"
 #include "log.h"
 #include "serial.h"
@@ -31,16 +33,18 @@ int log_vprintf(const char *file, const char *func, int line, int level,
 
     // Note the differences: kprintf output has `file` instead of `func` for
     // brevity, and has less formatting.
-    kprintf("%s %s:%d ", level_str, file, line);
+    if (level <= YTKERNEL_TERM_LOG_LEVEL) {
+        kprintf("%s %s:%d ", level_str, file, line);
+    }
     ret += ksnprintf(g_log_buf, LOG_BUF_SIZE, "%s %27s:%04d ", level_str, func,
                      line);
     serial_puts(g_log_buf);
 
-    kvprintf(fmt, ap);
+    if (level <= YTKERNEL_TERM_LOG_LEVEL) { kvprintf(fmt, ap); }
     ret += kvsnprintf(g_log_buf, LOG_BUF_SIZE, fmt, ap);
     serial_puts(g_log_buf);
 
-    kprintf("\n");
+    if (level <= YTKERNEL_TERM_LOG_LEVEL) { kprintf("\n"); }
     serial_puts("\n");
     ret += 1;
 

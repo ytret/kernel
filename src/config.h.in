@@ -1,3 +1,7 @@
 #pragma once
 
 #cmakedefine YTKERNEL_STACKTRACE_ON_PANIC
+
+// clang-format off
+#define YTKERNEL_TERM_LOG_LEVEL @YTKERNEL_TERM_LOG_LEVEL@
+// clang-format on

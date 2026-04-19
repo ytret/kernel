@@ -27,6 +27,8 @@ set(CMAKE_C_FLAGS_RELEASE "-O3 -g")
 #############
 set(YTKERNEL_STACKTRACE_ON_PANIC ON CACHE BOOL
     "Print stacktrace on kernel panic.")
+set(YTKERNEL_TERM_LOG_LEVEL 2 CACHE STRING
+    "Maximum verbosity level of logs printed on the terminal.")
 configure_file(
     ${CMAKE_CURRENT_LIST_DIR}/src/config.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/generated/config.h
