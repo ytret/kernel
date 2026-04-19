@@ -42,11 +42,12 @@ add_library(klibc STATIC
     klibc/errno.c
     klibc/locale.c
     klibc/math.c
-    klibc/setjmp.c
     klibc/stdio.c
     klibc/stdlib.c
     klibc/string.c
     klibc/time.c
+
+    klibc/setjmp.s
 
 )
 target_compile_options(klibc PRIVATE
