@@ -36,7 +36,7 @@ configure_file(
 #################
 ## Kernel libc ##
 #################
-add_library(klibc OBJECT
+add_library(klibc STATIC
 
     klibc/errno.c
     klibc/locale.c
