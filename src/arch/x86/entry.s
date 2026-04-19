@@ -81,6 +81,7 @@ enable_sse:     push    %eax
                 ##   4. Arguments (entry_ap_trampoline_args_t) are placed at the
                 ##      physical address 0x8800.
                 .code16
+                .align 32
                 .global entry_ap_trampoline
                 .type   entry_ap_trampoline, @function
 entry_ap_trampoline:
@@ -89,13 +90,13 @@ entry_ap_trampoline:
 
                 ## Load the GDT descriptor at 0x8800, enable protected mode.
                 mov     $0, %dx
-                lgdt    0x8800
+                lgdtl   0x8800
                 mov     %cr0, %eax
                 or      $1, %eax
                 mov     %eax, %cr0
                 ljmp    $0x08, $0x8020          # CS = 0x08
 
-                ## NOTE: it is assumed that the alignment puts the code 64 bytes
+                ## NOTE: it is assumed that the alignment puts the code 32 bytes
                 ## past the 'entry_ap_trampoline' label.
                 .align  32
                 .code32
