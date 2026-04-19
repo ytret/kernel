@@ -1,10 +1,14 @@
+#include "assert.h"
 #include "heap.h"
 #include "kbd.h"
+#include "kinttypes.h"
 #include "kprintf.h"
 #include "kshell/kshcmd/kshcmd.h"
 #include "kshell/kshell.h"
+#include "kstring.h"
 #include "log.h"
 #include "mbi.h"
+#include "memfun.h"
 #include "panic.h"
 #include "term.h"
 
@@ -39,6 +43,7 @@ static char char_from_key(uint8_t key);
 
 static void prv_kshell_init_lua(const mbi_mod_t *mod);
 static void prv_kshell_deinit_lua(void);
+static int prv_kshell_exec_str(lua_State *L, const char *s);
 static int prv_kshell_do_lua(lua_State *L, const char *cmd);
 
 void kshell(void) {
@@ -272,15 +277,49 @@ static void prv_kshell_init_lua(const mbi_mod_t *mod) {
     LOG_DEBUG("initialized lua");
 
     if (mod) {
-        // TODO: check for zero byte
-        const char *const str = (const char *)mod->mod_start;
-        LOG_DEBUG("exec module");
-        prv_kshell_do_lua(g_kshell_lua, str);
+        ASSERT(mod->mod_end > mod->mod_start);
+
+        const char *const mod_start = (const char *)mod->mod_start;
+        const uint32_t mod_size = mod->mod_end - mod->mod_start;
+        LOG_DEBUG("copy module at %p len %" PRIu32 " to heap", mod_start,
+                  mod->mod_end - mod->mod_start);
+
+        char *const mod_str = heap_alloc(mod_size + 1);
+        kmemcpy(mod_str, mod_start, mod_size);
+        mod_str[mod_size] = 0;
+
+        prv_kshell_exec_str(g_kshell_lua, mod_str);
     }
 }
 
 static void prv_kshell_deinit_lua(void) {
     lua_close(g_kshell_lua);
+}
+
+static int prv_kshell_exec_str(lua_State *L, const char *s) {
+    int err;
+
+    LOG_FLOW("string len %zu", string_len(s));
+
+    err = luaL_loadstring(L, s);
+    if (err != 0) {
+        const char *const errstr = lua_tostring(L, -1);
+        lua_pop(L, 1);
+        LOG_ERROR("luaL_loadstring returned %d, len %zu", err, string_len(s));
+        LOG_ERROR("stack top as a string: %s", errstr);
+        return err;
+    }
+
+    err = lua_pcall(L, 0, LUA_MULTRET, 0);
+    if (err != 0) {
+        const char *const errstr = lua_tostring(L, -1);
+        lua_pop(L, 1);
+        LOG_ERROR("pcall returned %d", err);
+        LOG_ERROR("stack top as a string: %s", errstr);
+        return err;
+    }
+
+    return 0;
 }
 
 static int prv_kshell_do_lua(lua_State *L, const char *input) {
@@ -292,7 +331,7 @@ static int prv_kshell_do_lua(lua_State *L, const char *input) {
     snprintf(buf, sizeof(buf), "return %s", input);
 
     int err = luaL_loadstring(L, buf);
-    if (err == 0) err = lua_pcall(L, 0, LUA_MULTRET, 0);
+    if (err == 0) { err = lua_pcall(L, 0, LUA_MULTRET, 0); }
 
     // ---- 2. Fallback: statement mode ----
     if (err != 0) {
