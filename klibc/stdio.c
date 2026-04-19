@@ -2,9 +2,9 @@
 #include <ytkernel/kprintf.h>
 #include <ytkernel/panic.h>
 
-FILE *stdin;
-FILE *stderr;
-FILE *stdout;
+FILE *stdin = (FILE *)1;
+FILE *stderr = (FILE *)2;
+FILE *stdout = (FILE *)3;
 
 char *fgets(char *s, int size, FILE *restrict stream) {
     PANIC("stub %s called", __func__);
@@ -36,7 +36,11 @@ int ferror(FILE *stream) {
 }
 
 int fflush(FILE *stream) {
-    PANIC("stub %s called", __func__);
+    if (stream == stdout) {
+        // Do nothing, the output is not buffered.
+    } else {
+        PANIC("fflush stream %p is not implemented", stream);
+    }
 }
 
 int fseek(FILE *stream, long offset, int whence) {
@@ -56,7 +60,14 @@ size_t fread(void *ptr, size_t size, size_t n, FILE *restrict stream) {
 }
 
 size_t fwrite(const void *ptr, size_t size, size_t n, FILE *restrict stream) {
-    PANIC("stub %s called", __func__);
+    (void)size;
+    (void)n;
+
+    if (stream == stdout) {
+        return kprintf("%s", (const char *)ptr);
+    } else {
+        PANIC("fwrite to stream %p is not implemented", stream);
+    }
 }
 
 void clearerr(FILE *stream) {
