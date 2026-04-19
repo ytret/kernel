@@ -1,11 +1,20 @@
+#include "heap.h"
 #include "kbd.h"
 #include "kprintf.h"
 #include "kshell/kshcmd/kshcmd.h"
 #include "kshell/kshell.h"
+#include "log.h"
 #include "panic.h"
 #include "term.h"
 
-#define CMD_BUF_SIZE 256
+#include <lauxlib.h>
+#include <lua.h>
+#include <lualib.h>
+
+#define CMD_BUF_SIZE     256
+#define LUA_CMD_BUF_SIZE 256
+
+static lua_State *g_kshell_lua;
 
 // Command buffer.
 static volatile char gp_cmd_buf[CMD_BUF_SIZE];
@@ -27,12 +36,28 @@ static bool parse_kbd_event(kbd_event_t *p_event);
 static void echo_key(uint8_t key);
 static char char_from_key(uint8_t key);
 
+static void prv_kshell_init_lua(void);
+static void prv_kshell_deinit_lua(void);
+static int prv_kshell_do_lua(lua_State *L, const char *cmd);
+
 void kshell(void) {
     for (;;) {
         kprintf("> ");
         char const *p_cmd = read_cmd();
         kshcmd_parse(p_cmd);
     }
+}
+
+void kshell_lua(void) {
+    prv_kshell_init_lua();
+
+    for (;;) {
+        kprintf("Lua > ");
+        char const *p_cmd = read_cmd();
+        prv_kshell_do_lua(g_kshell_lua, p_cmd);
+    }
+
+    prv_kshell_deinit_lua();
 }
 
 /*
@@ -233,4 +258,65 @@ static char char_from_key(uint8_t key) {
     default:
         return 0;
     }
+}
+
+static void prv_kshell_init_lua(void) {
+    g_kshell_lua = luaL_newstate();
+    if (!g_kshell_lua) { PANIC("luaL_newstate failed"); }
+
+    luaL_openlibs(g_kshell_lua);
+    LOG_DEBUG("initialized lua");
+}
+
+static void prv_kshell_deinit_lua(void) {
+    lua_close(g_kshell_lua);
+}
+
+static int prv_kshell_do_lua(lua_State *L, const char *input) {
+    int base = lua_gettop(L);
+
+    char buf[512];
+
+    // ---- 1. Try expression mode ----
+    snprintf(buf, sizeof(buf), "return %s", input);
+
+    int err = luaL_loadstring(L, buf);
+    if (err == 0) err = lua_pcall(L, 0, LUA_MULTRET, 0);
+
+    // ---- 2. Fallback: statement mode ----
+    if (err != 0) {
+        lua_pop(L, 1); // remove error
+
+        err = luaL_loadstring(L, input);
+        if (err != 0) {
+            kprintf("%s\n", lua_tostring(L, -1));
+            lua_pop(L, 1);
+            lua_settop(L, base);
+            return -1;
+        }
+
+        err = lua_pcall(L, 0, LUA_MULTRET, 0);
+        if (err != 0) {
+            kprintf("%s\n", lua_tostring(L, -1));
+            lua_pop(L, 1);
+            lua_settop(L, base);
+            return -1;
+        }
+    }
+
+    // ---- 3. Print results ----
+    int n = lua_gettop(L) - base;
+
+    for (int i = 1; i <= n; i++) {
+        if (lua_isnil(L, i)) {
+            kprintf("nil\n");
+        } else {
+            const char *s = luaL_tolstring(L, i, NULL);
+            kprintf("%s\n", s);
+            lua_pop(L, 1);
+        }
+    }
+
+    lua_settop(L, base);
+    return 0;
 }

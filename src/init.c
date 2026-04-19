@@ -3,10 +3,6 @@
  * SMP-aware initial tasks implementation.
  */
 
-#include <lauxlib.h>
-#include <lua.h>
-#include <lualib.h>
-
 #include "blkdev/blkdev.h"
 #include "devmgr.h"
 #include "init.h"
@@ -19,8 +15,6 @@
 #include "vfs/vfs.h"
 
 #include "arch/x86/apic/lapic.h"
-
-static void prv_lua(void);
 
 [[gnu::noreturn]]
 void init_bsp_task(void) {
@@ -41,9 +35,7 @@ void init_bsp_task(void) {
 
     vfs_init();
 
-    prv_lua();
-
-    kshell();
+    kshell_lua();
 
     PANIC("kshell returned");
 }
@@ -62,23 +54,4 @@ void init_ap_task(void) {
     for (;;) {
         __asm__ volatile("hlt");
     }
-}
-
-static void prv_lua(void) {
-    LOG_DEBUG("Lua test begin");
-
-    lua_State *L = luaL_newstate();
-    if (!L) { PANIC("luaL_newstate failed"); }
-
-    luaL_openlibs(L);
-
-    if (luaL_dostring(L, "return 2 + 3")) { PANIC(lua_tostring(L, -1)); }
-
-    int result = (int)lua_tointeger(L, -1);
-
-    LOG_DEBUG("Lua result: %d", result);
-
-    lua_close(L);
-
-    LOG_DEBUG("Lua test end");
 }
