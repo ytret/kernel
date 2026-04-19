@@ -59,6 +59,7 @@ static void prv_smp_init_trampoline(const gdtr_t *gdtr);
 
 // Defined in entry.s.
 extern void entry_ap_trampoline(void);
+extern void enable_sse(void);
 
 void smp_init(void) {
     spinlock_init(&g_smp_tlb_shootdown_lock);
@@ -240,6 +241,7 @@ void smp_tlb_shootdown_handler(void) {
 void smp_ap_trampoline_c(void) {
     // NOTE: this function is called from 'smp_ap_trampoline' in smp.s.
 
+    enable_sse();
     vmm_load_dir(vmm_kvas_dir());
 
     LOG_DEBUG("Hello, World! from AP kernel num %u UID %u with LAPIC ID %u",

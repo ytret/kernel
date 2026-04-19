@@ -49,6 +49,9 @@ entry:          mov     $stack_top, %esp
                 jmp     1b
                 .size   entry, . - entry
 
+                ## void enable_sse(void)
+                ## @note
+                ## This function is used both in BSP entry and in AP trampoline.
                 .global enable_sse
                 .type   enable_sse, @function
 enable_sse:     push    %eax
