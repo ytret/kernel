@@ -38,6 +38,7 @@ configure_file(
 #################
 add_library(klibc STATIC
 
+    klibc/ctype.c
     klibc/errno.c
     klibc/locale.c
     klibc/math.c
