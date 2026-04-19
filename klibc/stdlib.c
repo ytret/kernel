@@ -13,7 +13,10 @@
 }
 
 char *getenv(const char *name) {
-    PANIC("stub %s called", __func__);
+    LOG_FLOW("name %s", name);
+    char *const ret = NULL;
+    LOG_FLOW("return str %p", ret);
+    return ret;
 }
 
 void *realloc(void *p, size_t size) {
