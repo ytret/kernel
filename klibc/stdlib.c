@@ -1,3 +1,7 @@
+#ifndef LOG_LEVEL
+#define LOG_LEVEL LOG_LEVEL_DEBUG
+#endif
+
 #include <stdlib.h>
 #include <ytkernel/heap.h>
 #include <ytkernel/panic.h>

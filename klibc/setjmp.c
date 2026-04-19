@@ -1,3 +1,7 @@
+#ifndef LOG_LEVEL
+#define LOG_LEVEL LOG_LEVEL_DEBUG
+#endif
+
 #include <setjmp.h>
 #include <ytkernel/log.h>
 
