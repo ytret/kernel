@@ -3,10 +3,12 @@
  * SMP-aware initial tasks implementation.
  */
 
-#include "assert.h"
+#include <lauxlib.h>
+#include <lua.h>
+#include <lualib.h>
+
 #include "blkdev/blkdev.h"
 #include "devmgr.h"
-#include "fs/ramfs.h"
 #include "init.h"
 #include "kshell/kshell.h"
 #include "log.h"
@@ -15,9 +17,10 @@
 #include "taskmgr.h"
 #include "term.h"
 #include "vfs/vfs.h"
-#include "vfs/vfs_fs.h"
 
 #include "arch/x86/apic/lapic.h"
+
+static void prv_lua(void);
 
 [[gnu::noreturn]]
 void init_bsp_task(void) {
@@ -37,35 +40,8 @@ void init_bsp_task(void) {
     devmgr_init_blkdev_parts();
 
     vfs_init();
-    const vfs_fs_desc_t *const fs_ramfs = ramfs_get_desc();
-    ramfs_ctx_t *const ramfs = ramfs_init(1024);
-    ASSERT(ramfs);
 
-    vfs_err_t err = fs_ramfs->f_mount(ramfs, vfs_root_node());
-    LOG_FLOW("mount err = %u", err);
-    ASSERT(err == VFS_ERR_NONE);
-
-    vfs_node_t *res_node;
-    err = vfs_resolve_path_str("/", &res_node);
-    LOG_FLOW("resolve err = %u", err);
-    ASSERT(err == VFS_ERR_NONE);
-
-    vfs_node_t *new_node;
-    err = res_node->ops->f_mknode(res_node, &new_node, "abc", VFS_NODE_FILE);
-    LOG_FLOW("mknode err = %u", err);
-    ASSERT(err == VFS_ERR_NONE);
-
-    vfs_dirent_t dirents[10];
-    size_t num_dirents;
-    err = res_node->ops->f_readdir(
-        res_node, dirents, sizeof(dirents) / sizeof(dirents[0]), &num_dirents);
-    LOG_FLOW("readdir err = %u", err);
-    ASSERT(err == VFS_ERR_NONE);
-
-    for (size_t idx = 0; idx < num_dirents; idx++) {
-        vfs_dirent_t *dirent = &dirents[idx];
-        LOG_FLOW("%zu. %s", idx, dirent->name);
-    }
+    prv_lua();
 
     kshell();
 
@@ -86,4 +62,19 @@ void init_ap_task(void) {
     for (;;) {
         __asm__ volatile("hlt");
     }
+}
+
+static void prv_lua(void) {
+    lua_State *L = luaL_newstate();
+    if (!L) { PANIC("luaL_newstate failed"); }
+
+    // luaL_openlibs(L);
+
+    if (luaL_dostring(L, "return 2 + 3")) { PANIC(lua_tostring(L, -1)); }
+
+    int result = (int)lua_tointeger(L, -1);
+
+    LOG_DEBUG("Lua result: %d", result);
+
+    lua_close(L);
 }
