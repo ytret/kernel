@@ -35,12 +35,18 @@ static int prv_kshlua_do_cmd(lua_State *L, const char *cmd);
 static int prv_kshlua_repl_expr(lua_State *L, const char *input);
 
 static int prv_kshlua_cmd_exit(lua_State *L);
+static int prv_kshlua_cmd_repl(lua_State *L);
 
 static lua_shell_cmd_t g_kshell_lua_cmds[] = {
     {
         .name = "exit",
         .help = "exit Lua kshell",
         .f_handler = prv_kshlua_cmd_exit,
+    },
+    {
+        .name = "repl",
+        .help = "enter the Lua engine REPL",
+        .f_handler = prv_kshlua_cmd_repl,
     },
 };
 
@@ -257,11 +263,11 @@ static int prv_kshlua_repl_expr(lua_State *L, const char *input) {
     // ---- 3. Print results ----
     int n = lua_gettop(L) - base;
 
-    for (int i = 1; i <= n; i++) {
+    for (int i = 0; i < n; i++) {
         if (lua_isnil(L, i)) {
             kprintf("nil\n");
         } else {
-            const char *s = luaL_tolstring(L, i, NULL);
+            const char *s = luaL_tolstring(L, -(n - i), NULL);
             kprintf("%s\n", s);
             lua_pop(L, 1);
         }
@@ -274,5 +280,23 @@ static int prv_kshlua_repl_expr(lua_State *L, const char *input) {
 static int prv_kshlua_cmd_exit(lua_State *L) {
     (void)L;
     g_kshlua_loop = false;
+    return 0;
+}
+
+static int prv_kshlua_cmd_repl(lua_State *L) {
+    (void)L;
+
+    kprintf("Lua REPL. Enter '.exit' exactly to exit.\n");
+    kprintf("BE CAREFUL, the REPL runs in the same environment as kshell.\n");
+
+    for (;;) {
+        kprintf("Lua REPL > ");
+        char const *expr = kshinput_line();
+
+        if (string_equals(expr, ".exit")) { break; }
+
+        prv_kshlua_repl_expr(L, expr);
+    }
+
     return 0;
 }
