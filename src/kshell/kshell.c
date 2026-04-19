@@ -41,10 +41,11 @@ static bool parse_kbd_event(kbd_event_t *p_event);
 static void echo_key(uint8_t key);
 static char char_from_key(uint8_t key);
 
-static void prv_kshell_init_lua(const mbi_mod_t *mod);
-static void prv_kshell_deinit_lua(void);
-static int prv_kshell_exec_str(lua_State *L, const char *s);
-static int prv_kshell_do_lua(lua_State *L, const char *cmd);
+static void prv_kshell_lua_init(const mbi_mod_t *mod);
+static void prv_kshell_lua_deinit(void);
+static int prv_kshell_lua_do_cmd(lua_State *L, const char *cmd);
+static int prv_kshell_lua_exec_mod(lua_State *L, const char *s);
+static int prv_kshell_lua_repl_expr(lua_State *L, const char *input);
 
 void kshell(void) {
     for (;;) {
@@ -58,15 +59,15 @@ void kshell_lua(void) {
     const mbi_mod_t *const kshell_mod = mbi_find_mod("kshell");
     if (!kshell_mod) { LOG_ERROR("no module named kshell.lua"); }
 
-    prv_kshell_init_lua(kshell_mod);
+    prv_kshell_lua_init(kshell_mod);
 
     for (;;) {
         kprintf("Lua > ");
         char const *p_cmd = read_cmd();
-        prv_kshell_do_lua(g_kshell_lua, p_cmd);
+        prv_kshell_lua_do_cmd(g_kshell_lua, p_cmd);
     }
 
-    prv_kshell_deinit_lua();
+    prv_kshell_lua_deinit();
 }
 
 /*
@@ -269,7 +270,7 @@ static char char_from_key(uint8_t key) {
     }
 }
 
-static void prv_kshell_init_lua(const mbi_mod_t *mod) {
+static void prv_kshell_lua_init(const mbi_mod_t *mod) {
     g_kshell_lua = luaL_newstate();
     if (!g_kshell_lua) { PANIC("luaL_newstate failed"); }
 
@@ -288,15 +289,87 @@ static void prv_kshell_init_lua(const mbi_mod_t *mod) {
         kmemcpy(mod_str, mod_start, mod_size);
         mod_str[mod_size] = 0;
 
-        prv_kshell_exec_str(g_kshell_lua, mod_str);
+        prv_kshell_lua_exec_mod(g_kshell_lua, mod_str);
     }
 }
 
-static void prv_kshell_deinit_lua(void) {
+static void prv_kshell_lua_deinit(void) {
     lua_close(g_kshell_lua);
 }
 
-static int prv_kshell_exec_str(lua_State *L, const char *s) {
+static int prv_kshell_lua_do_cmd(lua_State *L, const char *cmd) {
+    int err;
+    int base = lua_gettop(L);
+
+    LOG_FLOW("parse and execute '%s' using Lua", cmd);
+    LOG_FLOW("stack position at start = %d", base);
+
+    int val_type = lua_getglobal(L, "S");
+    if (val_type == LUA_TNIL) {
+        LOG_ERROR("lua_getglobal returned nil for S, is the module loaded?");
+        goto fail;
+    }
+
+    val_type = lua_getfield(L, -1, "do_cmd");
+    if (val_type == LUA_TNIL) {
+        LOG_ERROR("lua_getfield pushed nil for \"S.do_cmd\"");
+        goto fail;
+    }
+
+    // Remove the table S from the stack.
+    lua_remove(L, -2);
+
+    // Argument for S.do_cmd.
+    lua_pushstring(L, cmd);
+
+    // Call S.do_cmd(cmd).
+    err = lua_pcall(L, 1, LUA_MULTRET, 0);
+    if (err != LUA_OK) {
+        const char *const errstr = lua_tostring(L, -1);
+        lua_pop(L, 1);
+        LOG_ERROR("pcall(S.do_cmd) returned %d", err);
+        LOG_ERROR("error string: %s", errstr);
+        goto fail;
+    }
+
+    // Check the number of return values.
+    int num_ret = lua_gettop(L) - base;
+    LOG_FLOW("S.cmd returned %d values", num_ret);
+    if (num_ret > 0) {
+        for (int idx = 0; idx < num_ret; idx++) {
+            int stack_idx = -(num_ret - idx);
+            val_type = lua_type(L, stack_idx);
+            const char *type_name = lua_typename(L, val_type);
+            if (val_type == LUA_TSTRING || val_type == LUA_TNUMBER) {
+                LOG_FLOW("  value %2d (stack %2d): [%s] %s", idx, stack_idx,
+                         type_name, lua_tostring(L, stack_idx));
+            } else {
+                LOG_FLOW("  value %2d (stack %2d): %s", idx, stack_idx,
+                         type_name);
+            }
+        }
+    }
+    if (num_ret == 2 && lua_type(L, -2) == LUA_TNIL) {
+        // If the first returned value is nil, then the second must be an error
+        // string.
+        if (lua_type(L, -1) == LUA_TSTRING) {
+            LOG_ERROR(lua_tostring(L, -1));
+        } else {
+            LOG_ERROR("S.do_cmd returned nil and %s, instead of nil and string",
+                      lua_typename(L, lua_type(L, -1)));
+        }
+    }
+
+    LOG_FLOW("stack position at end = %d, set to %d", lua_gettop(L), base);
+    lua_settop(L, base);
+    return 0;
+fail:
+    LOG_FLOW("stack position at end = %d, set to %d", lua_gettop(L), base);
+    lua_settop(L, base);
+    return 1;
+}
+
+static int prv_kshell_lua_exec_mod(lua_State *L, const char *s) {
     int err;
 
     LOG_FLOW("string len %zu", string_len(s));
@@ -305,8 +378,9 @@ static int prv_kshell_exec_str(lua_State *L, const char *s) {
     if (err != 0) {
         const char *const errstr = lua_tostring(L, -1);
         lua_pop(L, 1);
-        LOG_ERROR("luaL_loadstring returned %d, len %zu", err, string_len(s));
-        LOG_ERROR("stack top as a string: %s", errstr);
+        LOG_ERROR("pcall(luaL_loadstring) returned %d, len %zu", err,
+                  string_len(s));
+        LOG_ERROR("error string: %s", errstr);
         return err;
     }
 
@@ -315,14 +389,22 @@ static int prv_kshell_exec_str(lua_State *L, const char *s) {
         const char *const errstr = lua_tostring(L, -1);
         lua_pop(L, 1);
         LOG_ERROR("pcall returned %d", err);
-        LOG_ERROR("stack top as a string: %s", errstr);
+        LOG_ERROR("error string: %s", errstr);
         return err;
     }
 
     return 0;
 }
 
-static int prv_kshell_do_lua(lua_State *L, const char *input) {
+/**
+ * Executes a Lua expression or statement.
+ *
+ * @param L     Lua state.
+ * @param input Expression or statement in Lua.
+ *
+ * @returns `0` on success, `-1` on error.
+ */
+static int prv_kshell_lua_repl_expr(lua_State *L, const char *input) {
     int base = lua_gettop(L);
 
     char buf[512];
