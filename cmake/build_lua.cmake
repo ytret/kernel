@@ -1,17 +1,19 @@
 include(ExternalProject)
 
-set(LUA_C_FLAGS
-    "${CMAKE_C_FLAGS} -I${CMAKE_CURRENT_LIST_DIR}/../libc-shim/include")
+set(LUA_CFLAGS
+    "${CMAKE_C_FLAGS} -I${CMAKE_CURRENT_LIST_DIR}/../klibc/include")
 
 function(build_lua)
     ExternalProject_Add(lua54
         URL "https://www.lua.org/ftp/lua-5.4.7.tar.gz"
         URL_HASH SHA256=9fbf5e28ef86c69858f6d3d34eccc32e911c1a28b4120ff3e84aaa70cfbf1e30
+        PATCH_COMMAND patch -Np1 < ${CMAKE_CURRENT_LIST_DIR}/cmake/lua_dont_link_lm.patch
         CONFIGURE_COMMAND ""
-        BUILD_COMMAND make CC="${CMAKE_C_COMPILER}" CFLAGS=${LUA_C_FLAGS} generic
+        BUILD_COMMAND make CC="${CMAKE_C_COMPILER}" CFLAGS=${LUA_CFLAGS} -C src a
         BUILD_IN_SOURCE TRUE
         INSTALL_COMMAND ""
         BUILD_BYPRODUCTS lua54-prefix/src/lua54/src/liblua.a
+        DEPENDS klibc
     )
     ExternalProject_Get_Property(lua54 SOURCE_DIR)
 

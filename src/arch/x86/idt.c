@@ -1,8 +1,6 @@
 #include <stddef.h>
 
 #include "blkdev/ahci.h"
-#include "idt.h"
-#include "isrs.h"
 #include "kinttypes.h"
 #include "kprintf.h"
 #include "ksyscall.h"
@@ -12,6 +10,8 @@
 #include "taskmgr.h"
 
 #include "arch/x86/apic/lapic.h"
+#include "arch/x86/idt.h"
+#include "arch/x86/isrs.h"
 
 #define NUM_ENTRIES     256
 #define DESC_SIZE_BYTES 6

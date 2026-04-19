@@ -6,6 +6,7 @@
 #define CLOCKS_PER_SEC 1000
 
 typedef uint64_t time_t;
+typedef long int clock_t;
 
 struct tm {
     int tm_sec;
@@ -26,11 +27,11 @@ struct tm {
 };
 
 time_t time(time_t *tloc);
+double difftime(time_t time1, time_t time0);
 
 time_t mktime(struct tm *tm);
 struct tm *gmtime(const time_t *timep);
-
-double difftime(time_t time1, time_t time0);
+struct tm *localtime(const time_t *timep);
 
 size_t strftime(char *s, size_t max, const char *restrict format,
                 const struct tm *restrict tm);

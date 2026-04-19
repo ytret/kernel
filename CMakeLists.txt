@@ -33,6 +33,29 @@ configure_file(
 )
 
 
+#################
+## Kernel libc ##
+#################
+add_library(klibc OBJECT
+
+    klibc/errno.c
+    klibc/locale.c
+    klibc/math.c
+    klibc/setjmp.c
+    klibc/stdio.c
+    klibc/stdlib.c
+    klibc/string.c
+    klibc/time.c
+
+)
+target_compile_options(klibc PRIVATE
+    -Wall -Wextra -Wmissing-prototypes
+    ${OPTIMIZATION_FLAGS}
+)
+target_include_directories(klibc PUBLIC klibc/include)
+target_include_directories(klibc PRIVATE include klibc)
+
+
 ##################
 ## Dependencies ##
 ##################
@@ -53,8 +76,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(ytalloc)
 FetchContent_MakeAvailable(ytprintf)
-target_include_directories(ytalloc PRIVATE libc-shim/include)
-target_include_directories(ytprintf PRIVATE libc-shim/include)
+target_link_libraries(ytalloc klibc)
+target_link_libraries(ytprintf klibc)
 
 include(build_lua)
 build_lua()
@@ -146,12 +169,13 @@ target_compile_options(kernel PRIVATE
 target_include_directories(kernel PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/generated
     src
+    include/ytkernel
 )
 target_link_options(kernel PRIVATE
     ${OPTIMIZATION_FLAGS}
     -T${CMAKE_SOURCE_DIR}/src/link.ld
 )
-target_link_libraries(kernel ytalloc ytprintf gcc)
+target_link_libraries(kernel ytalloc ytprintf lua klibc gcc)
 set_target_properties(kernel PROPERTIES
     C_EXTENSIONS ON
     LINK_DEPENDS ${CMAKE_SOURCE_DIR}/src/link.ld

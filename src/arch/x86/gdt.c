@@ -1,6 +1,7 @@
-#include "gdt.h"
 #include "heap.h"
 #include "memfun.h"
+
+#include "arch/x86/gdt.h"
 
 #define GDT_NUM_PRE_SMP_SEGS 3
 
