@@ -70,7 +70,7 @@ static void prv_lua(void) {
     lua_State *L = luaL_newstate();
     if (!L) { PANIC("luaL_newstate failed"); }
 
-    // luaL_openlibs(L);
+    luaL_openlibs(L);
 
     if (luaL_dostring(L, "return 2 + 3")) { PANIC(lua_tostring(L, -1)); }
 
