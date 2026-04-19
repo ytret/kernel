@@ -4,3 +4,6 @@ build*/
 *.img
 *.iso
 *.log
+
+isodir/*
+!isodir/boot/

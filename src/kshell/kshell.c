@@ -4,6 +4,7 @@
 #include "kshell/kshcmd/kshcmd.h"
 #include "kshell/kshell.h"
 #include "log.h"
+#include "mbi.h"
 #include "panic.h"
 #include "term.h"
 
@@ -36,7 +37,7 @@ static bool parse_kbd_event(kbd_event_t *p_event);
 static void echo_key(uint8_t key);
 static char char_from_key(uint8_t key);
 
-static void prv_kshell_init_lua(void);
+static void prv_kshell_init_lua(const mbi_mod_t *mod);
 static void prv_kshell_deinit_lua(void);
 static int prv_kshell_do_lua(lua_State *L, const char *cmd);
 
@@ -49,7 +50,10 @@ void kshell(void) {
 }
 
 void kshell_lua(void) {
-    prv_kshell_init_lua();
+    const mbi_mod_t *const kshell_mod = mbi_find_mod("kshell");
+    if (!kshell_mod) { LOG_ERROR("no module named kshell.lua"); }
+
+    prv_kshell_init_lua(kshell_mod);
 
     for (;;) {
         kprintf("Lua > ");
@@ -260,12 +264,19 @@ static char char_from_key(uint8_t key) {
     }
 }
 
-static void prv_kshell_init_lua(void) {
+static void prv_kshell_init_lua(const mbi_mod_t *mod) {
     g_kshell_lua = luaL_newstate();
     if (!g_kshell_lua) { PANIC("luaL_newstate failed"); }
 
     luaL_openlibs(g_kshell_lua);
     LOG_DEBUG("initialized lua");
+
+    if (mod) {
+        // TODO: check for zero byte
+        const char *const str = (const char *)mod->mod_start;
+        LOG_DEBUG("exec module");
+        prv_kshell_do_lua(g_kshell_lua, str);
+    }
 }
 
 static void prv_kshell_deinit_lua(void) {

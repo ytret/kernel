@@ -58,6 +58,7 @@ fi
 
 cp -v "$OPT_BUILD_DIR/kernel" "$ISO_DIR/boot/kernel.elf"
 cp -v "$OPT_BUILD_DIR/user/user" "$ISO_DIR/user.elf"
+cp -v "$REPO_DIR/lua/kshell.lua" "$ISO_DIR/kshell.lua"
 
 if [ -e "$OPT_BUILD_DIR/kernel.iso" ]; then
     rm -ifv "$OPT_BUILD_DIR/kernel.iso"
