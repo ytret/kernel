@@ -7,7 +7,6 @@ function(build_lua)
     ExternalProject_Add(lua54
         URL "https://www.lua.org/ftp/lua-5.4.7.tar.gz"
         URL_HASH SHA256=9fbf5e28ef86c69858f6d3d34eccc32e911c1a28b4120ff3e84aaa70cfbf1e30
-        PATCH_COMMAND patch -Np1 < ${CMAKE_CURRENT_LIST_DIR}/cmake/lua_dont_link_lm.patch
         CONFIGURE_COMMAND ""
         BUILD_COMMAND make CC="${CMAKE_C_COMPILER}" CFLAGS=${LUA_CFLAGS} -C src a
         BUILD_IN_SOURCE TRUE
