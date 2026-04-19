@@ -101,7 +101,6 @@ void vmm_invlpg(uint32_t virt) {
 
 bool vmm_is_paging_enabled(void) {
     const uint32_t cr0 = prv_vmm_read_cr0();
-    LOG_DEBUG("cr0 = 0x%08" PRIx32, cr0);
     return cr0 & VMM_CR0_PGEN;
 }
 
@@ -117,7 +116,6 @@ bool vmm_is_addr_mapped(uint32_t virt) {
     }
 
     const uint32_t *const pgdir = (const uint32_t *)prv_vmm_read_cr3();
-    LOG_DEBUG("pgdir = %p (0x%08" PRIx32 ")", pgdir, (uint32_t)pgdir);
     if (!pgdir) { return false; }
 
     const uint32_t pgdir_entry = pgdir[pgdir_idx];
