@@ -4,8 +4,15 @@ if(CMAKE_VERSION VERSION_GREATER 3.19)
     # 3.20+
     cmake_policy(SET CMP0115 NEW)
 endif()
+if(CMAKE_VERSION VERSION_GREATER 3.23)
+    # CMP0135: Do not extract timestamps from archives.
+    # 3.24+
+    cmake_policy(SET CMP0135 NEW)
+endif()
 
 project(kernel C ASM)
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -48,6 +55,9 @@ FetchContent_MakeAvailable(ytalloc)
 FetchContent_MakeAvailable(ytprintf)
 target_include_directories(ytalloc PRIVATE libc-shim/include)
 target_include_directories(ytprintf PRIVATE libc-shim/include)
+
+include(build_lua)
+build_lua()
 
 ############
 ## Kernel ##
