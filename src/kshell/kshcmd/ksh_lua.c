@@ -19,11 +19,12 @@
 
 typedef struct {
     const char *name;
-    const char *help_str;
+    const char *help;
     int (*f_handler)(lua_State *L);
 } lua_shell_cmd_t;
 
 static lua_State *g_kshlua_L;
+static volatile bool g_kshlua_loop;
 
 static void prv_kshlua_init(const mbi_mod_t *mod);
 static void prv_kshlua_deinit(void);
@@ -33,6 +34,16 @@ static void prv_kshlua_init_kobj(lua_State *L);
 static int prv_kshlua_do_cmd(lua_State *L, const char *cmd);
 static int prv_kshlua_repl_expr(lua_State *L, const char *input);
 
+static int prv_kshlua_cmd_dotexit(lua_State *L);
+
+static lua_shell_cmd_t g_kshell_lua_cmds[] = {
+    {
+        .name = ".exit",
+        .help = "exit Lua kshell",
+        .f_handler = prv_kshlua_cmd_dotexit,
+    },
+};
+
 void ksh_lua(list_t *arg_list) {
     (void)arg_list;
 
@@ -41,7 +52,8 @@ void ksh_lua(list_t *arg_list) {
 
     prv_kshlua_init(kshell_mod);
 
-    for (;;) {
+    g_kshlua_loop = true;
+    while (g_kshlua_loop) {
         kprintf("Lua > ");
         char const *p_cmd = kshinput_line();
         prv_kshlua_do_cmd(g_kshlua_L, p_cmd);
@@ -49,8 +61,6 @@ void ksh_lua(list_t *arg_list) {
 
     prv_kshlua_deinit();
 }
-
-static lua_shell_cmd_t g_kshell_lua_cmds[] = {};
 
 static void prv_kshlua_init(const mbi_mod_t *mod) {
     g_kshlua_L = luaL_newstate();
@@ -118,7 +128,7 @@ static void prv_kshlua_init_kobj(lua_State *L) {
 
         lua_newtable(L);
 
-        lua_pushstring(L, cmd->help_str);
+        lua_pushstring(L, cmd->help);
         lua_setfield(L, -2, "help");
 
         lua_pushcfunction(L, cmd->f_handler);
@@ -257,5 +267,11 @@ static int prv_kshlua_repl_expr(lua_State *L, const char *input) {
     }
 
     lua_settop(L, base);
+    return 0;
+}
+
+static int prv_kshlua_cmd_dotexit(lua_State *L) {
+    (void)L;
+    g_kshlua_loop = false;
     return 0;
 }
