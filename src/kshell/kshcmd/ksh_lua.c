@@ -34,13 +34,13 @@ static void prv_kshlua_init_kobj(lua_State *L);
 static int prv_kshlua_do_cmd(lua_State *L, const char *cmd);
 static int prv_kshlua_repl_expr(lua_State *L, const char *input);
 
-static int prv_kshlua_cmd_dotexit(lua_State *L);
+static int prv_kshlua_cmd_exit(lua_State *L);
 
 static lua_shell_cmd_t g_kshell_lua_cmds[] = {
     {
-        .name = ".exit",
+        .name = "exit",
         .help = "exit Lua kshell",
-        .f_handler = prv_kshlua_cmd_dotexit,
+        .f_handler = prv_kshlua_cmd_exit,
     },
 };
 
@@ -271,7 +271,7 @@ static int prv_kshlua_repl_expr(lua_State *L, const char *input) {
     return 0;
 }
 
-static int prv_kshlua_cmd_dotexit(lua_State *L) {
+static int prv_kshlua_cmd_exit(lua_State *L) {
     (void)L;
     g_kshlua_loop = false;
     return 0;
