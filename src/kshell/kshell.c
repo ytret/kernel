@@ -19,6 +19,8 @@
 #define CMD_BUF_SIZE     256
 #define LUA_CMD_BUF_SIZE 256
 
+#define LUA_KOBJ_NAME "K"
+
 static lua_State *g_kshell_lua;
 
 // Command buffer.
@@ -43,14 +45,32 @@ static char char_from_key(uint8_t key);
 
 static void prv_kshell_lua_init(const mbi_mod_t *mod);
 static void prv_kshell_lua_deinit(void);
+static void prv_kshell_lua_init_kobj(lua_State *L);
 static int prv_kshell_lua_do_cmd(lua_State *L, const char *cmd);
 static int prv_kshell_lua_exec_mod(lua_State *L, const char *s);
 static int prv_kshell_lua_repl_expr(lua_State *L, const char *input);
+
+typedef struct {
+    const char *name;
+    const char *help_str;
+    int (*f_handler)(lua_State *L);
+} lua_shell_cmd_t;
+
+static int l_old_kshell(lua_State *L);
+
+static lua_shell_cmd_t g_kshell_lua_cmds[] = {
+    {
+        .name = "old-shell",
+        .help_str = "enter old kshell",
+        .f_handler = l_old_kshell,
+    },
+};
 
 void kshell(void) {
     for (;;) {
         kprintf("> ");
         char const *p_cmd = read_cmd();
+        if (string_equals(p_cmd, ".exit")) { break; }
         kshcmd_parse(p_cmd);
     }
 }
@@ -291,10 +311,35 @@ static void prv_kshell_lua_init(const mbi_mod_t *mod) {
 
         prv_kshell_lua_exec_mod(g_kshell_lua, mod_str);
     }
+
+    prv_kshell_lua_init_kobj(g_kshell_lua);
 }
 
 static void prv_kshell_lua_deinit(void) {
     lua_close(g_kshell_lua);
+}
+
+static void prv_kshell_lua_init_kobj(lua_State *L) {
+    lua_newtable(L); // KOBJ
+    lua_newtable(L); // KOBJ.cmds
+
+    for (size_t idx = 0;
+         idx < sizeof(g_kshell_lua_cmds) / sizeof(lua_shell_cmd_t); idx++) {
+        lua_shell_cmd_t *const cmd = &g_kshell_lua_cmds[idx];
+
+        lua_newtable(L);
+
+        lua_pushstring(L, cmd->help_str);
+        lua_setfield(L, -2, "help");
+
+        lua_pushcfunction(L, cmd->f_handler);
+        lua_setfield(L, -2, "handler");
+
+        lua_setfield(L, -2, cmd->name);
+    }
+
+    lua_setfield(L, -2, "cmds");
+    lua_setglobal(L, LUA_KOBJ_NAME);
 }
 
 static int prv_kshell_lua_do_cmd(lua_State *L, const char *cmd) {
@@ -450,5 +495,14 @@ static int prv_kshell_lua_repl_expr(lua_State *L, const char *input) {
     }
 
     lua_settop(L, base);
+    return 0;
+}
+
+static int l_old_kshell(lua_State *L) {
+    (void)L;
+
+    kprintf("Old kshell. Enter '.exit' exactly to exit to the Lua version.\n");
+    kshell();
+
     return 0;
 }

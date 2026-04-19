@@ -110,6 +110,13 @@ end
 -- @param  args  string   Table containing the command and its arguments.
 -- @return nil, err       nil + error string if an unclosed quote is detected.
 local function do_cmd_args(args)
+	if type(K) ~= "table" then
+		return nil, string.format("K is expected to be table, but actually is %s", type(K))
+	end
+	if type(K.cmds) ~= "table" then
+		return nil, string.format("K.cmds is expected to be table, but actually is %s", type(K))
+	end
+
 	if type(args) ~= "table" then
 		return nil, string.format("argument 1 - expected table, got %s", type(args))
 	end
@@ -117,14 +124,20 @@ local function do_cmd_args(args)
 		return
 	end
 
-	local cmd = args[1]
-	if cmd == "help" then
+	local cmd_name = args[1]
+	if cmd_name == "help" then
 		print("This is kshell. It is running in kernel mode.")
 		print("Enter one of the commands. The spaces in arguments can be quoted.")
 		print("Available commands:")
-		print("* help - print this message")
+		for name, cmd_obj in pairs(K.cmds) do
+			print(string.format("* %s - %s", name, cmd_obj.help))
+		end
 	else
-		return nil, string.format("unrecognized command: %s", cmd)
+		local cmd_obj = K.cmds[cmd_name]
+		if cmd_obj == nil then
+			return nil, string.format("unrecognized command: %s", cmd_name)
+		end
+		cmd_obj.handler(args)
 	end
 end
 
