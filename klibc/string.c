@@ -8,7 +8,10 @@ void *memchr(const void *s, int c, size_t n) {
 }
 
 char *strchr(const char *s, int c) {
-    PANIC("stub %s called", __func__);
+    while (*s && *s != c)
+        s++;
+    if (*s == c) return (char *)s;
+    return NULL;
 }
 
 int strcmp(const char *s1, const char *s2) {
