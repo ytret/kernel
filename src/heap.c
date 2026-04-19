@@ -43,6 +43,8 @@ void *heap_get_static_heap(void) {
 }
 
 void *heap_alloc_static(size_t size) {
+    LOG_FLOW("size %zu", size);
+
     if (g_heap_static.start == 0) {
         PANIC("static heap is not yet initialized");
     }
@@ -56,6 +58,7 @@ void *heap_alloc_static(size_t size) {
         PANIC("could not statically allocate %zu bytes", size);
     }
 
+    LOG_FLOW("return ptr %zu", size);
     return ptr;
 }
 
@@ -77,10 +80,15 @@ uint32_t heap_end(void) {
 }
 
 void *heap_alloc(size_t size) {
-    return heap_alloc_aligned(size, 1);
+    LOG_FLOW("size %zu", size);
+    void *const ret = heap_alloc_aligned(size, 1);
+    LOG_FLOW("return ptr %p", ret);
+    return ret;
 }
 
 void *heap_alloc_aligned(size_t size, size_t align) {
+    LOG_FLOW("size %zu align %zu", size, align);
+
     if ((align & (align - 1)) != 0) {
         PANIC("invalid argument 'align' value %zu - not a power of two", align);
     }
@@ -138,10 +146,14 @@ void *heap_alloc_aligned(size_t size, size_t align) {
     }
 
     prv_heap_unlock();
+
+    LOG_FLOW("return ptr %p", ret_ptr);
     return ret_ptr;
 }
 
 void heap_free(void *ptr) {
+    LOG_FLOW("ptr %p", ptr);
+
     if (!ptr) { return; }
 
     prv_heap_lock();
@@ -178,6 +190,8 @@ void heap_free(void *ptr) {
 }
 
 void *heap_realloc(void *ptr, size_t size, size_t align) {
+    LOG_FLOW("ptr %p size %zu align %zu", ptr, size, align);
+
     if (!ptr) { return heap_alloc_aligned(size, align); }
 
     const paddr_t addr = (paddr_t)ptr; // FIXME
@@ -212,6 +226,8 @@ void *heap_realloc(void *ptr, size_t size, size_t align) {
     void *const new_ptr = heap_alloc_aligned(size, align);
     kmemcpy(new_ptr, ptr, copy_size);
     heap_free(ptr);
+
+    LOG_FLOW("return ptr %p", new_ptr);
     return new_ptr;
 }
 
