@@ -151,11 +151,13 @@ add_executable(kernel
     src/kshell/kshcmd/kshcmd.c
     src/kshell/kshcmd/ksh_devmgr.c
     src/kshell/kshcmd/ksh_help.c
+    src/kshell/kshcmd/ksh_lua.c
     src/kshell/kshcmd/ksh_mbi.c
     src/kshell/kshcmd/ksh_taskmgr.c
     src/kshell/kshcmd/ksh_vasview.c
     src/kshell/kshcmd/ksh_vfs.c
     src/kshell/kshell.c
+    src/kshell/kshinput.c
     src/kshell/kshscan.c
     src/kshell/vasview.c
 

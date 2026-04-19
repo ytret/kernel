@@ -35,7 +35,7 @@ void init_bsp_task(void) {
 
     vfs_init();
 
-    kshell_lua();
+    kshell();
 
     PANIC("kshell returned");
 }
