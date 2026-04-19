@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <ytkernel/kprintf.h>
 #include <ytkernel/panic.h>
 
 FILE *stdin;
@@ -95,5 +96,12 @@ char *tmpnam(char *s) {
 }
 
 int snprintf(char *str, size_t size, const char *restrict format, ...) {
-    PANIC("stub %s called", __func__);
+    int ret;
+    va_list ap;
+
+    va_start(ap, format);
+    ret = kvsnprintf(str, size, format, ap);
+    va_end(ap);
+
+    return ret;
 }
