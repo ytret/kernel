@@ -89,6 +89,7 @@ static void prv_kshlua_init(const mbi_mod_t *mod) {
 
 static void prv_kshlua_deinit(void) {
     lua_close(g_kshlua_L);
+    LOG_DEBUG("deinitialized lua");
 }
 
 static int prv_kshlua_exec_mod(lua_State *L, const char *s) {
