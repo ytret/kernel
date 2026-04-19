@@ -2,7 +2,11 @@
 #include <ytkernel/panic.h>
 
 int abs(int j) {
-    PANIC("stub %s called", __func__);
+    if (j >= 0) {
+        return j;
+    } else {
+        return -j;
+    }
 }
 
 double acos(double x) {
@@ -22,6 +26,10 @@ double ceil(double x) {
 }
 
 double cos(double x) {
+    PANIC("stub %s called", __func__);
+}
+
+double cosh(double x) {
     PANIC("stub %s called", __func__);
 }
 
@@ -69,10 +77,18 @@ double sin(double x) {
     PANIC("stub %s called", __func__);
 }
 
+double sinh(double x) {
+    PANIC("stub %s called", __func__);
+}
+
 double sqrt(double x) {
     PANIC("stub %s called", __func__);
 }
 
 double tan(double x) {
+    PANIC("stub %s called", __func__);
+}
+
+double tanh(double x) {
     PANIC("stub %s called", __func__);
 }

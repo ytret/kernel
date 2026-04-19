@@ -65,6 +65,8 @@ void init_ap_task(void) {
 }
 
 static void prv_lua(void) {
+    LOG_DEBUG("Lua test begin");
+
     lua_State *L = luaL_newstate();
     if (!L) { PANIC("luaL_newstate failed"); }
 
@@ -77,4 +79,6 @@ static void prv_lua(void) {
     LOG_DEBUG("Lua result: %d", result);
 
     lua_close(L);
+
+    LOG_DEBUG("Lua test end");
 }

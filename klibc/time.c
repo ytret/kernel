@@ -2,7 +2,11 @@
 #include <ytkernel/panic.h>
 
 time_t time(time_t *tloc) {
-    PANIC("stub %s called", __func__);
+    const time_t ret = 0;
+
+    if (tloc) { *tloc = ret; }
+
+    return ret;
 }
 
 double difftime(time_t time1, time_t time0) {

@@ -1,5 +1,8 @@
 #include <stdlib.h>
+#include <ytkernel/heap.h>
 #include <ytkernel/panic.h>
+
+#include <ytkernel/log.h>
 
 [[noreturn]] void abort(void) {
     PANIC("stub %s called", __func__);
@@ -14,11 +17,12 @@ char *getenv(const char *name) {
 }
 
 void *realloc(void *p, size_t size) {
-    PANIC("stub %s called", __func__);
+    LOG_FLOW("klibc realloc(%p, %zu)", p, size);
+    return heap_realloc(p, size, 8);
 }
 
 void free(void *p) {
-    PANIC("stub %s called", __func__);
+    heap_free(p);
 }
 
 double strtod(const char *restrict nptr, char **endptr) {
