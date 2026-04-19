@@ -1,14 +1,14 @@
 include(ExternalProject)
 
-set(LUA_CFLAGS
-    "${CMAKE_C_FLAGS} -I${CMAKE_CURRENT_LIST_DIR}/../klibc/include")
+set(LUA_MYCFLAGS
+    "${CMAKE_C_FLAGS} -O0 -g -I${CMAKE_CURRENT_LIST_DIR}/../klibc/include")
 
 function(build_lua)
     ExternalProject_Add(lua54
         URL "https://www.lua.org/ftp/lua-5.4.7.tar.gz"
         URL_HASH SHA256=9fbf5e28ef86c69858f6d3d34eccc32e911c1a28b4120ff3e84aaa70cfbf1e30
         CONFIGURE_COMMAND ""
-        BUILD_COMMAND make CC="${CMAKE_C_COMPILER}" CFLAGS=${LUA_CFLAGS} -C src a
+        BUILD_COMMAND make CC="${CMAKE_C_COMPILER}" MYCFLAGS=${LUA_MYCFLAGS} -C src a
         BUILD_IN_SOURCE TRUE
         INSTALL_COMMAND ""
         BUILD_BYPRODUCTS lua54-prefix/src/lua54/src/liblua.a
