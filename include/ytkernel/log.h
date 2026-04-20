@@ -43,3 +43,5 @@ int log_printf(const char *file, const char *func, int line, int level,
                const char *fmt, ...) __attribute__((format(printf, 5, 6)));
 int log_vprintf(const char *file, const char *func, int line, int level,
                 const char *fmt, va_list ap);
+
+int log_init_lua(void *v_L);

@@ -76,6 +76,8 @@ static void prv_kshlua_init(const mbi_mod_t *mod) {
     luaL_openlibs(g_kshlua_L);
     LOG_DEBUG("initialized lua");
 
+    prv_kshlua_init_kobj(g_kshlua_L);
+
     if (mod) {
         ASSERT(mod->mod_end > mod->mod_start);
 
@@ -90,8 +92,6 @@ static void prv_kshlua_init(const mbi_mod_t *mod) {
 
         prv_kshlua_exec_mod(g_kshlua_L, mod_str);
     }
-
-    prv_kshlua_init_kobj(g_kshlua_L);
 }
 
 static void prv_kshlua_deinit(void) {
@@ -146,6 +146,9 @@ static void prv_kshlua_init_kobj(lua_State *L) {
     }
 
     lua_setfield(L, -2, "cmds");
+
+    log_init_lua(L);
+
     lua_setglobal(L, LUA_KOBJ_NAME);
 }
 
