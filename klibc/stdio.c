@@ -75,7 +75,18 @@ void clearerr(FILE *stream) {
 }
 
 int fprintf(FILE *restrict stream, const char *restrict format, ...) {
-    PANIC("stub %s called", __func__);
+    int ret;
+    va_list ap;
+
+    if (stream == stdout || stream == stderr) {
+        va_start(ap, format);
+        ret = kvprintf(format, ap);
+        va_end(ap);
+    } else {
+        PANIC("fprintf to stream %p is not implemented", stream);
+    }
+
+    return ret;
 }
 
 int fputs(const char *restrict s, FILE *restrict stream) {
