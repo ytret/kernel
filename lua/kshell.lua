@@ -198,10 +198,25 @@ local function pretty_print_table(t)
 	print("}")
 end
 
+local function pretty_print(value)
+	local t = type(value)
+
+	if t == "function" then
+		print(string.format("function: %p", value))
+	elseif t == "string" then
+		print(string.format("%q", value))
+	elseif t == "table" then
+		pretty_print_table(value)
+	else
+		print(tostring(value))
+	end
+end
+
 S = {
 	split_args = split_args,
 	do_cmd_args = do_cmd_args,
 	do_cmd = do_cmd,
 
+	pretty_print = pretty_print,
 	pretty_print_table = pretty_print_table,
 }
