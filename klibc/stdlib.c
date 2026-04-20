@@ -9,7 +9,7 @@
 #include <ytkernel/log.h>
 
 [[noreturn]] void abort(void) {
-    PANIC("stub %s called", __func__);
+    PANIC("klibc abort");
 }
 
 [[noreturn]] void exit(int status) {
