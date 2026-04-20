@@ -33,6 +33,7 @@ static void prv_kshlua_init_kobj(lua_State *L);
 
 static int prv_kshlua_do_cmd(lua_State *L, const char *cmd);
 static int prv_kshlua_repl_expr(lua_State *L, const char *input);
+static int prv_kshlua_pretty_print(lua_State *L, int index);
 
 static int prv_kshlua_cmd_exit(lua_State *L);
 static int prv_kshlua_cmd_repl(lua_State *L);
@@ -264,17 +265,66 @@ static int prv_kshlua_repl_expr(lua_State *L, const char *input) {
     int n = lua_gettop(L) - base;
 
     for (int i = 0; i < n; i++) {
-        if (lua_isnil(L, i)) {
-            kprintf("nil\n");
-        } else {
-            const char *s = luaL_tolstring(L, -(n - i), NULL);
-            kprintf("%s\n", s);
-            lua_pop(L, 1);
-        }
+        int stack_idx = base + 1; // same for all vals, see lua_remove() below
+
+        LOG_FLOW("i %d, stack_idx %d / %d", i, stack_idx, lua_gettop(L));
+        prv_kshlua_pretty_print(L, stack_idx);
+
+        lua_remove(L, stack_idx);
     }
 
     lua_settop(L, base);
     return 0;
+}
+
+/**
+ * Pretty prints a value using S.retty_print().
+ */
+static int prv_kshlua_pretty_print(lua_State *L, int index) {
+    int base = lua_gettop(L);
+    LOG_FLOW("stack position at start = %d", base);
+    ASSERT(base >= index);
+    if (index < 0) { index = base - index + 1; }
+
+    int val_type = lua_getglobal(L, "S");
+    if (val_type == LUA_TNIL) {
+        LOG_ERROR("lua_getglobal returned nil for S, is the module loaded?");
+        goto fail;
+    }
+
+    val_type = lua_getfield(L, -1, "pretty_print");
+    if (val_type != LUA_TFUNCTION) {
+        LOG_ERROR("lua_getfield pushed %s for \"S.pretty_print\"",
+                  lua_typename(L, val_type));
+        goto fail;
+    }
+
+    // Remove the table S from the stack.
+    lua_remove(L, -2);
+
+    // Copy the value to be printed as an argument.
+    LOG_FLOW("copy value from index %d to -1", index);
+    lua_pushnil(L);
+    lua_copy(L, index, -1);
+
+    // Call S.pretty_print(val).
+    LOG_FLOW("stack size before pcall: %d", lua_gettop(L));
+    int err = lua_pcall(L, 1, 0, 0);
+    if (err != LUA_OK) {
+        const char *errstr = lua_tostring(L, -1);
+        LOG_ERROR("pcall(S.pretty_print) returned %d", err);
+        LOG_ERROR("error string: %s", errstr);
+        lua_pop(L, 1);
+        goto fail;
+    }
+
+    LOG_FLOW("stack position at end = %d, set to %d", lua_gettop(L), base);
+    lua_settop(L, base);
+    return 0;
+fail:
+    LOG_FLOW("stack position at end = %d, set to %d", lua_gettop(L), base);
+    lua_settop(L, base);
+    return -1;
 }
 
 static int prv_kshlua_cmd_exit(lua_State *L) {
