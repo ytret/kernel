@@ -106,19 +106,19 @@ static int prv_kshlua_exec_mod(lua_State *L, const char *s) {
     err = luaL_loadstring(L, s);
     if (err != 0) {
         const char *const errstr = lua_tostring(L, -1);
-        lua_pop(L, 1);
         LOG_ERROR("pcall(luaL_loadstring) returned %d, len %zu", err,
                   string_len(s));
         LOG_ERROR("error string: %s", errstr);
+        lua_pop(L, 1);
         return err;
     }
 
     err = lua_pcall(L, 0, LUA_MULTRET, 0);
     if (err != 0) {
         const char *const errstr = lua_tostring(L, -1);
-        lua_pop(L, 1);
         LOG_ERROR("pcall returned %d", err);
         LOG_ERROR("error string: %s", errstr);
+        lua_pop(L, 1);
         return err;
     }
 
@@ -177,9 +177,9 @@ static int prv_kshlua_do_cmd(lua_State *L, const char *cmd) {
     err = lua_pcall(L, 1, LUA_MULTRET, 0);
     if (err != LUA_OK) {
         const char *const errstr = lua_tostring(L, -1);
-        lua_pop(L, 1);
         LOG_ERROR("pcall(S.do_cmd) returned %d", err);
         LOG_ERROR("error string: %s", errstr);
+        lua_pop(L, 1);
         goto fail;
     }
 
@@ -221,7 +221,7 @@ fail:
 }
 
 /**
- * Executes a Lua expression or statement.
+ * Executes a Lua expression or statement and prints its result.
  *
  * @param L     Lua state.
  * @param input Expression or statement in Lua.
