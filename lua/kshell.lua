@@ -149,8 +149,59 @@ local function do_cmd(cmd)
 	return do_cmd_args(args)
 end
 
+local function pretty_print_table(t)
+	if type(t) ~= "table" then
+		print(tostring(t))
+		return
+	end
+
+	local MAX_KEYS = 16
+	local MAX_STR_LEN = 60
+
+	local function format_value(v)
+		local tv = type(v)
+		if tv == "table" then
+			return "{...}"
+		elseif tv == "string" then
+			if #v > MAX_STR_LEN then
+				v = v:sub(1, MAX_STR_LEN) .. "..."
+			end
+			return string.format("%q", v)
+		else
+			return tostring(v)
+		end
+	end
+
+	-- Collect and sort keys: numbers first (ascending), then strings (alphabetical)
+	local keys = {}
+	for k in pairs(t) do
+		keys[#keys + 1] = k
+	end
+	table.sort(keys, function(a, b)
+		local ta, tb = type(a), type(b)
+		if ta == tb then
+			return a < b
+		end
+		return ta == "number" -- numbers before strings
+	end)
+
+	print("{")
+	local omitted = math.max(0, #keys - MAX_KEYS)
+	for i = 1, math.min(#keys, MAX_KEYS) do
+		local k = keys[i]
+		local key_str = type(k) == "string" and k or "[" .. tostring(k) .. "]"
+		print(string.format("  %s = %s", key_str, format_value(t[k])))
+	end
+	if omitted > 0 then
+		print(string.format("  ... (%d keys omitted)", omitted))
+	end
+	print("}")
+end
+
 S = {
 	split_args = split_args,
 	do_cmd_args = do_cmd_args,
 	do_cmd = do_cmd,
+
+	pretty_print_table = pretty_print_table,
 }
