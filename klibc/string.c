@@ -82,7 +82,7 @@ char *strpbrk(const char *s, const char *accept) {
 }
 
 int strcoll(const char *s1, const char *s2) {
-    PANIC("stub %s called", __func__);
+    return strcmp(s1, s2);
 }
 
 char *strerror(int errnum) {
