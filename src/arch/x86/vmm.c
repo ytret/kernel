@@ -39,6 +39,7 @@ static void prv_vmm_lock_kvas(void);
 static void prv_vmm_unlock_kvas(void);
 
 static void prv_vmm_identity_map_ram(void);
+static void prv_vmm_unmap_zero_page(void);
 
 static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
                      uint32_t flags);
@@ -53,6 +54,7 @@ void vmm_init(void) {
     LOG_DEBUG("kernel page dir is at %p", gp_kvas_dir);
 
     prv_vmm_identity_map_ram();
+    prv_vmm_unmap_zero_page();
 
     term_map_iomem();
 
@@ -161,6 +163,13 @@ static void prv_vmm_identity_map_ram(void) {
             vmm_map_kernel_page(page, page);
         }
     }
+}
+
+static void prv_vmm_unmap_zero_page(void) {
+    uint32_t dir_entry0 = gp_kvas_dir[0];
+    uint32_t *const tbl = (uint32_t *)(dir_entry0 & VMM_TABLE_ADDR_MASK);
+    if (!tbl) { return; }
+    tbl[0] = 0;
 }
 
 static void prv_vmm_lock_kvas(void) {
