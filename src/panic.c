@@ -22,36 +22,47 @@ static uint32_t g_panic_stacktrace[PANIC_STACKTRACE_MAX_ITEMS];
 static volatile bool g_panic_flag;
 static spinlock_t g_panic_flag_lock;
 
+static void prv_panic_var_helper(const char *file, const char *func, int line,
+                                 const panic_traceinit_t *traceinit,
+                                 const char *fmt, va_list arg);
+
 static void prv_panic_enter(void);
 static void prv_panic_set_flag(void);
 static bool prv_panic_get_flag(void);
 static void prv_panic_check_flag(void);
 static void prv_panic_send_ipi(void);
+
 [[maybe_unused]]
-static void prv_panic_log_stacktrace(void);
+static void prv_panic_log_stacktrace(uint32_t init_ebp, uint32_t init_eip);
 
-[[gnu::noreturn]]
-void panic_helper(const char *file, const char *func, int line, const char *fmt,
-                  ...) {
+[[gnu::noreturn]] void panic_helper(const char *file, const char *func,
+                                    int line, const char *fmt, ...) {
+    uint32_t ebp;
+    __asm__ volatile("mov %%ebp, %0" : "=r"(ebp));
+
+    const panic_traceinit_t traceinit = {
+        .init_ebp = ebp,
+        .init_eip = 0,
+    };
+
     va_list ap;
-
-    prv_panic_enter();
-
     va_start(ap, fmt);
-    kvsnprintf(g_panic_msg, PANIC_MSG_SIZE, fmt, ap);
+    prv_panic_var_helper(file, func, line, &traceinit, fmt, ap);
     va_end(ap);
 
-    term_enter_panic_mode();
-    LOG_ERROR("%s", "");
-    LOG_ERROR("==== KERNEL PANIC ====");
-    LOG_ERROR(" Message: %s", g_panic_msg);
-    LOG_ERROR("    File: %s", file);
-    LOG_ERROR("Function: %s", func);
-    LOG_ERROR("    Line: %d", line);
+    for (;;) {
+        __asm__ volatile("hlt");
+    }
+}
 
-#ifdef YTKERNEL_STACKTRACE_ON_PANIC
-    prv_panic_log_stacktrace();
-#endif
+[[gnu::noreturn]] void panic_helper_st(const char *file, const char *func,
+                                       int line,
+                                       const panic_traceinit_t *traceinit,
+                                       const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    prv_panic_var_helper(file, func, line, traceinit, fmt, ap);
+    va_end(ap);
 
     for (;;) {
         __asm__ volatile("hlt");
@@ -72,6 +83,28 @@ void panic_nested(void) {
     for (;;) {
         __asm__ volatile("hlt");
     }
+}
+
+static void prv_panic_var_helper(const char *file, const char *func, int line,
+                                 const panic_traceinit_t *traceinit,
+                                 const char *fmt, va_list ap) {
+    prv_panic_enter();
+
+    kvsnprintf(g_panic_msg, PANIC_MSG_SIZE, fmt, ap);
+
+    term_enter_panic_mode();
+    LOG_ERROR("%s", "");
+    LOG_ERROR("==== KERNEL PANIC ====");
+    LOG_ERROR(" Message: %s", g_panic_msg);
+    LOG_ERROR("    File: %s", file);
+    LOG_ERROR("Function: %s", func);
+    LOG_ERROR("    Line: %d", line);
+
+#ifdef YTKERNEL_STACKTRACE_ON_PANIC
+    if (traceinit) {
+        prv_panic_log_stacktrace(traceinit->init_ebp, traceinit->init_eip);
+    }
+#endif
 }
 
 static void prv_panic_enter(void) {
@@ -118,11 +151,11 @@ static void prv_panic_send_ipi(void) {
     lapic_send_ipi(&ipi_halt);
 }
 
-static void prv_panic_log_stacktrace(void) {
+static void prv_panic_log_stacktrace(uint32_t init_ebp, uint32_t init_eip) {
     LOG_ERROR("stacktrace:");
 
-    const int num_items =
-        panic_walk_stack(g_panic_stacktrace, PANIC_STACKTRACE_MAX_ITEMS);
+    const int num_items = panic_walk_stack(
+        g_panic_stacktrace, PANIC_STACKTRACE_MAX_ITEMS, init_ebp);
 
     if (num_items > PANIC_STACKTRACE_MAX_ITEMS) {
         LOG_ERROR("panic_walk_stack placed too many items (%d > %d)", num_items,
@@ -130,9 +163,10 @@ static void prv_panic_log_stacktrace(void) {
     }
 
     if (num_items == 0) { LOG_ERROR("no entries"); }
+    if (init_eip) { LOG_ERROR(" 1. 0x%08" PRIx32, init_eip); }
     for (int idx = 0; idx < num_items; idx++) {
         const uint32_t addr = g_panic_stacktrace[idx];
-        LOG_ERROR("%2d. 0x%08" PRIx32, idx + 1, addr);
+        LOG_ERROR("%2d. 0x%08" PRIx32, init_eip ? (idx + 2) : (idx + 1), addr);
     }
 
     LOG_ERROR("further entries may be unmapped");

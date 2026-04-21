@@ -1,10 +1,14 @@
                 ## Panic stacktrace.
 
                 ##
-                ## int panic_walk_stack(uint32_t *arr_addr, uint32_t max_items)
+                ## int panic_walk_stack(uint32_t *arr_addr, uint32_t max_items,
+                ##                      uint32_t init_ebp)
                 ##
                 ## @param arr_addr  Array of addresses.
                 ## @param max_items Maximum number of items in @a arr_addr.
+                ## @param init_ebp  Initial EBP to start the walk from. The
+                ##                  corresponding address is **not** added to
+                ##                  the array.
                 ##
                 ## @returns Number of addresses placed in @a arr_addr.
                 ##
@@ -20,9 +24,9 @@ panic_walk_stack:
                 mov     %ebx, -8(%ebp)
 
                 xor     %eax, %eax
-                mov     8(%esp), %ebx   # ebx - old ebp
                 mov     16(%esp), %edi  # edi - dest array pointer
                 mov     20(%esp), %ecx  # ecx - max array size
+                mov     24(%esp), %ebx  # ebx - init_ebp
 
 .walk:          ## Walk backwards through ebp list.
                 test    %ebx, %ebx
