@@ -21,7 +21,7 @@
 #include "taskmgr.h"
 #include "vmm.h"
 
-#define KERNEL_STACK_SIZE 4096
+#define KERNEL_STACK_SIZE 32768
 
 /**
  * Userspace stack address (top).
@@ -31,6 +31,9 @@
 #define USER_STACK_TOP   0x7FFFF000
 /// Size of userspace stacks (pages).
 #define USER_STACK_PAGES 1
+
+static_assert(KERNEL_STACK_SIZE % PMM_PAGE_SIZE == 0);
+static_assert(USER_STACK_TOP % PMM_PAGE_SIZE == 0);
 
 typedef struct [[gnu::packed]] {
     uint32_t edi;
