@@ -14,6 +14,8 @@ isr_\num:       cli
                 push    %edi
                 push    %esi
 
+                mov     (%ebp), %edx
+                push    %edx            # original ebp        -> 4th arg
                 mov     %ebp, %edx
                 add     $4, %edx
                 push    %edx            # int stack frame     -> 3rd arg
@@ -49,6 +51,8 @@ isr_\num:       cli
                 push    %edi
                 push    %esi
 
+                mov     (%ebp), %edx
+                push    %edx            # original ebp     -> 4th arg
                 mov     %ebp, %edx
                 add     $8, %edx
                 push    %edx            # int stack frame  -> 3rd arg
@@ -106,6 +110,10 @@ isr_14:         cli
                 push    %ebx
                 push    %edi
                 push    %esi
+
+                # 4th arg - original ebp for the stacktrace.
+                mov     (%ebp), %edx
+                push    %edx
 
                 # 3rd arg - interrupt stack frame.
                 mov     %ebp, %eax

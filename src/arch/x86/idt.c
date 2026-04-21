@@ -103,7 +103,12 @@ uint8_t *idt_get_desc(void) {
 }
 
 void idt_dummy_exception_handler(uint32_t exc_num, uint32_t err_code,
-                                 isr_stack_frame_t *p_stack_frame) {
+                                 isr_stack_frame_t *p_stack_frame,
+                                 uint32_t saved_ebp) {
+    const panic_traceinit_t traceinit = {
+        .init_ebp = saved_ebp,
+        .init_eip = p_stack_frame->eip,
+    };
     task_t *const p_running_task = taskmgr_local_running_task();
 
     char const *p_name;
@@ -187,7 +192,7 @@ void idt_dummy_exception_handler(uint32_t exc_num, uint32_t err_code,
     LOG_ERROR("error code: %" PRIu32, err_code);
     dump_stack_frame(p_stack_frame);
 
-    PANIC("no handler defined");
+    PANIC_ST(&traceinit, "no handler defined");
 }
 
 void idt_dummy_handler(isr_stack_frame_t *p_stack_frame) {
@@ -198,7 +203,12 @@ void idt_dummy_handler(isr_stack_frame_t *p_stack_frame) {
 }
 
 void idt_page_fault_handler(uint32_t addr, uint32_t err_code,
-                            isr_stack_frame_t *p_stack_frame) {
+                            isr_stack_frame_t *p_stack_frame,
+                            uint32_t saved_ebp) {
+    const panic_traceinit_t traceinit = {
+        .init_ebp = saved_ebp,
+        .init_eip = p_stack_frame->eip,
+    };
     task_t *const p_running_task = taskmgr_local_running_task();
 
     LOG_ERROR("page fault exception");
@@ -211,7 +221,7 @@ void idt_page_fault_handler(uint32_t addr, uint32_t err_code,
     LOG_ERROR("error code: %" PRIu32, err_code);
     dump_stack_frame(p_stack_frame);
 
-    PANIC("unresolved page fault");
+    PANIC_ST(&traceinit, "unresolved page fault");
 }
 
 static void fill_desc(uint8_t *p_desc, void const *p_idt, uint16_t idt_size) {
