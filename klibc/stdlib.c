@@ -13,10 +13,12 @@
 }
 
 [[noreturn]] void exit(int status) {
+    (void)status;
     PANIC("stub %s called", __func__);
 }
 
 char *getenv(const char *name) {
+    (void)name;
     LOG_FLOW("name %s", name);
     char *const ret = NULL;
     LOG_FLOW("return str %p", ret);
@@ -32,6 +34,8 @@ void free(void *p) {
     heap_free(p);
 }
 
-double strtod(const char *restrict nptr, char **endptr) {
-    PANIC("stub %s called", __func__);
+double strtod(const char *restrict nptr, char **restrict endptr) {
+    if (endptr) { *endptr = (char *)nptr; }
+    LOG_ERROR("stub strtod not implemented, nptr = %s", nptr);
+    return 0.0;
 }
