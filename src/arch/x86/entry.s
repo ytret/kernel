@@ -43,11 +43,16 @@ entry:          mov     $stack_top, %esp
                 call    enable_sse
                 cld
                 call    main
+entry_main_ret_addr:
                 add     $8, %esp
                 cli
 1:              hlt
                 jmp     1b
                 .size   entry, . - entry
+
+                ## entry_main_ret_addr (defined above) is used to tell the panic
+                ## handler that the actual call chain end was reached.
+                .global entry_main_ret_addr
 
                 ## void enable_sse(void)
                 ## @note

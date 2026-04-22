@@ -417,9 +417,15 @@ static task_t *new_task(const char *name, taskmgr_t *taskmgr,
     task->tcb.page_dir_phys = ((uint32_t)vmm_kvas_dir());
     task->tcb.p_kernel_stack = &task->kernel_stack;
 
-    // Set up initial stack entries that will be popped during a task switch.
+    // Set up the fake value that will be effectively a return address for the
+    // task entry function. It is also the last return address that the stack
+    // walker sees, if the EBP, which is pushed below, points to unmapped
+    // memory.
+    stack_push(&task->kernel_stack, 0x00000000);
+
+    // Set up the entries that will be popped during a task switch.
     stack_push(&task->kernel_stack, entry_point); // eip
-    stack_push(&task->kernel_stack, 1);           // ebp
+    stack_push(&task->kernel_stack, 0x00000000);  // ebp
     stack_push(&task->kernel_stack, 2);           // eax
     stack_push(&task->kernel_stack, 3);           // ecx
     stack_push(&task->kernel_stack, 4);           // edx

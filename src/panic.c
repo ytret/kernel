@@ -22,6 +22,9 @@ static uint32_t g_panic_stacktrace[PANIC_STACKTRACE_MAX_ITEMS];
 static volatile bool g_panic_flag;
 static spinlock_t g_panic_flag_lock;
 
+// Defined in entry.s.
+extern uint32_t entry_main_ret_addr;
+
 static void prv_panic_var_helper(const char *file, const char *func, int line,
                                  const panic_traceinit_t *traceinit,
                                  const char *fmt, va_list arg);
@@ -169,5 +172,13 @@ static void prv_panic_log_stacktrace(uint32_t init_ebp, uint32_t init_eip) {
         LOG_ERROR("%2d. 0x%08" PRIx32, init_eip ? (idx + 2) : (idx + 1), addr);
     }
 
-    LOG_ERROR("further entries may be unmapped");
+    uint32_t last_addr = g_panic_stacktrace[num_items - 1];
+    if (last_addr == (uint32_t)&entry_main_ret_addr ||
+        last_addr == 0x00000000) {
+        LOG_ERROR("end of kernel stack");
+    } else {
+        // The last address is not the kernel entry point nor a special value
+        // (0x00000000) pushed early during the task creation, print a warning.
+        LOG_ERROR("further entries may be unmapped");
+    }
 }
