@@ -8,7 +8,6 @@
 #include "kinttypes.h"
 #include "kprintf.h"
 #include "kspinlock.h"
-#include "kstring.h"
 #include "log.h"
 #include "panic.h"
 #include "smp.h"
@@ -19,6 +18,17 @@
 
 #define PANIC_MSG_SIZE             128
 #define PANIC_STACKTRACE_MAX_ITEMS 64
+
+/**
+ * Panic type argument from Lua environment.
+ *
+ * @note
+ * Must be kept in sync with Lua names in #panic_init_lua().
+ */
+typedef enum {
+    PANIC_LUA_SIMPLE,
+    PANIC_LUA_BAD_OPCODE,
+} panic_lua_type_t;
 
 static char g_panic_msg[PANIC_MSG_SIZE];
 static uint32_t g_panic_stacktrace[PANIC_STACKTRACE_MAX_ITEMS];
@@ -100,10 +110,17 @@ int panic_init_lua(void *v_L) {
     int idx_kobj = base;
     ASSERT(idx_kobj > 0);
 
-    lua_createtable(L, 0, 1);
+    lua_createtable(L, 0, 2);
 
     lua_pushcfunction(L, prv_panic_lua_panic);
     lua_setfield(L, -2, "panic");
+
+    lua_newtable(L);
+    lua_pushinteger(L, PANIC_LUA_SIMPLE);
+    lua_setfield(L, -2, "SIMPLE");
+    lua_pushinteger(L, PANIC_LUA_BAD_OPCODE);
+    lua_setfield(L, -2, "BAD_OPCODE");
+    lua_setfield(L, -2, "type");
 
     lua_setfield(L, idx_kobj, "panic");
 
@@ -214,11 +231,16 @@ static int prv_panic_lua_panic(lua_State *L) {
         luaL_error(L, "too many arguments");
         return -1;
     } else if (nargs == 1) {
-        const char *arg = lua_tostring(L, -1);
-        if (string_equals(arg, "ud2")) {
-            non_interrupt = false;
-        } else {
-            luaL_error(L, "unrecognized argument value");
+        lua_Integer panic_type = luaL_checkinteger(L, 1);
+        switch (panic_type) {
+        case PANIC_LUA_SIMPLE:
+            LOG_ERROR("TODO SIMPLE");
+            return 0;
+        case PANIC_LUA_BAD_OPCODE:
+            LOG_ERROR("TODO BAD_OPCODE");
+            return 0;
+        default:
+            luaL_argexpected(L, false, 1, "K.panic.type");
             return -1;
         }
     }
