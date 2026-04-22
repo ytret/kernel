@@ -1,10 +1,14 @@
+#include <lauxlib.h>
+#include <lua.h>
 #include <stdarg.h>
 #include <stdbool.h>
 
+#include "assert.h"
 #include "config.h"
 #include "kinttypes.h"
 #include "kprintf.h"
 #include "kspinlock.h"
+#include "kstring.h"
 #include "log.h"
 #include "panic.h"
 #include "smp.h"
@@ -37,6 +41,8 @@ static void prv_panic_send_ipi(void);
 
 [[maybe_unused]]
 static void prv_panic_log_stacktrace(uint32_t init_ebp, uint32_t init_eip);
+
+static int prv_panic_lua_panic(lua_State *L);
 
 [[gnu::noreturn]] void panic_helper(const char *file, const char *func,
                                     int line, const char *fmt, ...) {
@@ -86,6 +92,23 @@ void panic_nested(void) {
     for (;;) {
         __asm__ volatile("hlt");
     }
+}
+
+int panic_init_lua(void *v_L) {
+    lua_State *L = v_L;
+    int base = lua_gettop(L);
+    int idx_kobj = base;
+    ASSERT(idx_kobj > 0);
+
+    lua_createtable(L, 0, 1);
+
+    lua_pushcfunction(L, prv_panic_lua_panic);
+    lua_setfield(L, -2, "panic");
+
+    lua_setfield(L, idx_kobj, "panic");
+
+    ASSERT(lua_gettop(L) == base);
+    return 0;
 }
 
 static void prv_panic_var_helper(const char *file, const char *func, int line,
@@ -180,5 +203,30 @@ static void prv_panic_log_stacktrace(uint32_t init_ebp, uint32_t init_eip) {
         // The last address is not the kernel entry point nor a special value
         // (0x00000000) pushed early during the task creation, print a warning.
         LOG_ERROR("further entries may be unmapped");
+    }
+}
+
+static int prv_panic_lua_panic(lua_State *L) {
+    bool non_interrupt = true;
+    int nargs = lua_gettop(L);
+
+    if (nargs > 1) {
+        luaL_error(L, "too many arguments");
+        return -1;
+    } else if (nargs == 1) {
+        const char *arg = lua_tostring(L, -1);
+        if (string_equals(arg, "ud2")) {
+            non_interrupt = false;
+        } else {
+            luaL_error(L, "unrecognized argument value");
+            return -1;
+        }
+    }
+
+    if (non_interrupt) {
+        PANIC("here's a panic in a non-interrupt context as requested");
+    } else {
+        __asm__ volatile("ud2");
+        PANIC("expected ud2 to cause a fatal exception");
     }
 }

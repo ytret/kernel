@@ -148,6 +148,7 @@ static void prv_kshlua_init_kobj(lua_State *L) {
     lua_setfield(L, -2, "cmds");
 
     log_init_lua(L);
+    panic_init_lua(L);
 
     lua_setglobal(L, LUA_KOBJ_NAME);
 }

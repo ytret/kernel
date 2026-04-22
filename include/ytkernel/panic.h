@@ -22,5 +22,7 @@ panic_helper_st(const char *file, const char *func, int line,
 [[gnu::noreturn]] void panic_nomsg(void);
 [[gnu::noreturn]] void panic_nested(void);
 
+int panic_init_lua(void *v_L);
+
 extern int panic_walk_stack(uint32_t *arr_addr, uint32_t max_items,
                             uint32_t init_ebp);
