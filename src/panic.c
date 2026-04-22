@@ -18,7 +18,7 @@
 #include "arch/x86/apic/lapic.h"
 
 #define PANIC_MSG_SIZE             128
-#define PANIC_STACKTRACE_MAX_ITEMS 32
+#define PANIC_STACKTRACE_MAX_ITEMS 64
 
 static char g_panic_msg[PANIC_MSG_SIZE];
 static uint32_t g_panic_stacktrace[PANIC_STACKTRACE_MAX_ITEMS];
