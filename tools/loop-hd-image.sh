@@ -44,7 +44,7 @@ if [[ ${#POSARGS[@]} -gt 1 ]]; then
     log_err "Unexpected positional arguments: ${POSARGS[@]:1}"
     exit 1
 elif [[ ${#POSARGS[@]} -eq 1 ]]; then
-    IMG_FILE="$(readlink --canonicalize -- "${POSARGS[0]}")"
+    IMG_FILE="$(readlink -f -- "${POSARGS[0]}")"
 else
     IMG_FILE="$REPO_DIR/hd.img"
 fi

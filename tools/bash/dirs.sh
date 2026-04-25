@@ -6,7 +6,7 @@ function declare_dir_vars() {
     this_dir="$(dirname -- "$this_file")"
 
     declare -g REPO_DIR
-    REPO_DIR="$(readlink --canonicalize -- "$this_dir/../..")"
+    REPO_DIR="$(readlink -f -- "$this_dir/../..")"
     readonly REPO_DIR
 
     declare -gr GDB_DIR="$REPO_DIR/gdb"
