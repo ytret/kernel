@@ -45,15 +45,9 @@ if [[ ! -d "$OPT_BUILD_DIR" ]]; then
     exit 1
 fi
 
-if ! command grub-mkrescue --version &>/dev/null; then
-    if ! command grub2-mkrescue --version &>/dev/null; then
-        echo "Could not find grub-mkrescue or grub2-mkrescue"
-        exit 1
-    else
-        declare -r MKRESCUE=grub2-mkrescue
-    fi
-else
-    declare -r MKRESCUE=grub-mkrescue
+if ! command xorriso --version &>/dev/null; then
+    echo "Could not find xorriso"
+    exit 1
 fi
 
 cp -v "$OPT_BUILD_DIR/kernel" "$ISO_DIR/boot/kernel.elf"
@@ -64,4 +58,8 @@ if [ -e "$OPT_BUILD_DIR/kernel.iso" ]; then
     rm -ifv "$OPT_BUILD_DIR/kernel.iso"
 fi
 
-$MKRESCUE -o "$OPT_BUILD_DIR/kernel.iso" "$ISO_DIR/"
+xorriso -as mkisofs \
+    -R -r -J \
+    -b boot/limine/limine-bios-cd.bin \
+    -no-emul-boot -boot-load-size 4 -boot-info-table \
+    "$ISO_DIR" -o "$OPT_BUILD_DIR/kernel.iso"
