@@ -29,12 +29,19 @@
             pname = "i686-elf-binutils";
             version = binutilsVersion;
 
+            hardeningDisable = [
+              "all"
+            ];
+
             src = pkgs.fetchurl {
               url = "https://sourceware.org/pub/binutils/releases/binutils-${binutilsVersion}.tar.xz";
               sha256 = "sha256-xQwOf5yxiJgOLMl+RTdiaxZyRBgVWH8eq2nSob++9dI=";
             };
 
-            nativeBuildInputs = with pkgs; [ texinfo ];
+            nativeBuildInputs = with pkgs; [
+              texinfo
+              zlib
+            ];
 
             separateDebugInfo = false;
             separateBuildDir = true;
@@ -45,6 +52,7 @@
               "--with-sysroot"
               "--disable-nls"
               "--disable-werror"
+              "--with-system-zlib"
             ];
 
             buildPhase = "make -j$NIX_BUILD_CORES";
@@ -63,7 +71,7 @@
             version = gccVersion;
 
             hardeningDisable = [
-              "format"
+              "all"
             ];
 
             src = pkgs.fetchurl {
@@ -78,6 +86,7 @@
               libmpc
               mpfr
               isl
+              zlib
               flex
               bison
               file
@@ -91,11 +100,13 @@
               isl
             ];
 
+            postPhases = [ "reindexPhase" ];
+
             # See https://gcc.gnu.org/install/configure.html
             configurePhase = ''
               mkdir ../build
               cd ../build
-              ../gcc-15.2.0/configure \
+              ../$sourceRoot/configure \
                   --target=${target} \
                   --prefix="${placeholder "out"}" \
                   --with-local-prefix="${placeholder "out"}" \
@@ -103,7 +114,12 @@
                   --enable-languages=c \
                   --without-headers \
                   --with-as="${i686-elf-binutils}/bin/${target}-as" \
-                  --with-ld="${i686-elf-binutils}/bin/${target}-ld"
+                  --with-ld="${i686-elf-binutils}/bin/${target}-ld" \
+                  --with-system-zlib \
+                  --disable-libsanitizer \
+                  --disable-libssp \
+                  --disable-libquadmath \
+                  --disable-libgomp
             '';
 
             buildPhase = ''
@@ -114,6 +130,13 @@
             installPhase = ''
               make install-gcc
               make install-target-libgcc
+            '';
+
+            reindexPhase = ''
+              echo ========
+              echo "Reindexing the following libraries:"
+              find "${placeholder "out"}" -name '*.a' -print -exec ${i686-elf-binutils}/bin/${target}-ranlib {} \;
+              echo ========
             '';
 
             meta = {
@@ -139,13 +162,12 @@
           ];
           buildingPackages = [
             pkgs.cmake
+            pkgs.git
             pkgs.ninja
             pkgs.doxygen
           ];
           bootableIsoPackages = [
-            pkgs.grub2
             pkgs.libisoburn
-            pkgs.mtools
           ];
           virtualDiskPackages = [
             pkgs.qemu-utils
