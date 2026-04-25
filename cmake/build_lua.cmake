@@ -8,7 +8,11 @@ function(build_lua)
         URL "https://www.lua.org/ftp/lua-5.4.7.tar.gz"
         URL_HASH SHA256=9fbf5e28ef86c69858f6d3d34eccc32e911c1a28b4120ff3e84aaa70cfbf1e30
         CONFIGURE_COMMAND ""
-        BUILD_COMMAND make CC="${CMAKE_C_COMPILER}" MYCFLAGS=${LUA_MYCFLAGS} -C src a
+        BUILD_COMMAND make CC="${CMAKE_C_COMPILER}"
+                           "AR=i686-elf-ar rcu"
+                           RANLIB=i686-elf-ranlib
+                           MYCFLAGS=${LUA_MYCFLAGS}
+                           -C src a
         BUILD_IN_SOURCE TRUE
         INSTALL_COMMAND ""
         BUILD_BYPRODUCTS lua54-prefix/src/lua54/src/liblua.a
@@ -24,7 +28,7 @@ function(build_lua)
     # HACK: create ${SOURCE_DIR}/src/ beforehand, so that CMake sees it during
     # the generation phase. (The Lua sources are downloaded later, during the
     # build phase.)
-    #file(MAKE_DIRECTORY ${SOURCE_DIR}/src)
+    file(MAKE_DIRECTORY ${SOURCE_DIR}/src)
     target_include_directories(lua INTERFACE
         ${SOURCE_DIR}/src
     )

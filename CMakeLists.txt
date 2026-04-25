@@ -182,6 +182,7 @@ target_link_options(kernel PRIVATE
     -T${CMAKE_SOURCE_DIR}/src/link.ld
 )
 target_link_libraries(kernel ytalloc ytprintf lua klibc gcc)
+add_dependencies(kernel lua54)
 set_target_properties(kernel PROPERTIES
     C_EXTENSIONS ON
     LINK_DEPENDS ${CMAKE_SOURCE_DIR}/src/link.ld
