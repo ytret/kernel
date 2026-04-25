@@ -86,6 +86,7 @@ target_link_libraries(ytprintf klibc)
 include(build_lua)
 build_lua()
 
+
 ############
 ## Kernel ##
 ############
@@ -205,3 +206,18 @@ configure_file(gdb/util.scm ${CMAKE_BINARY_DIR}/util.scm)
 configure_file(gdb/linked-list.scm ${CMAKE_BINARY_DIR}/linked-list.scm)
 configure_file(gdb/task.scm ${CMAKE_BINARY_DIR}/task.scm)
 configure_file(gdb/heap.scm ${CMAKE_BINARY_DIR}/heap.scm)
+
+
+########################################
+## Symlink tools into build directory ##
+########################################
+file(CREATE_LINK
+    ${CMAKE_SOURCE_DIR}/tools/create_iso.sh
+    ${CMAKE_BINARY_DIR}/create_iso.sh
+    SYMBOLIC
+)
+file(CREATE_LINK
+    ${CMAKE_SOURCE_DIR}/tools/run_qemu.sh
+    ${CMAKE_BINARY_DIR}/run_qemu.sh
+    SYMBOLIC
+)
