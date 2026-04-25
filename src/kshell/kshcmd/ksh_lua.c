@@ -16,6 +16,7 @@
 
 #define LUA_CMD_BUF_SIZE 256
 #define LUA_KOBJ_NAME    "K"
+#define LUA_MOD_STRING   "kshell.lua"
 
 typedef struct {
     const char *name;
@@ -54,8 +55,8 @@ static lua_shell_cmd_t g_kshell_lua_cmds[] = {
 void ksh_lua(list_t *arg_list) {
     (void)arg_list;
 
-    const mbi_mod_t *const kshell_mod = mbi_find_mod("kshell");
-    if (!kshell_mod) { LOG_ERROR("no module named kshell.lua"); }
+    const mbi_mod_t *const kshell_mod = mbi_find_mod(LUA_MOD_STRING);
+    if (!kshell_mod) { LOG_ERROR("no module named %s", LUA_MOD_STRING); }
 
     prv_kshlua_init(kshell_mod);
 
