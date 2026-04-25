@@ -4,14 +4,13 @@ set(CMAKE_SYSTEM_PROCESSOR i686)
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Debug|Release")
 set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
 
+set(CMAKE_C_COMPILER i686-elf-gcc)
 execute_process(
-    COMMAND "${CMAKE_CURRENT_LIST_DIR}/tools/find-gcc-system-includes.sh"
+    COMMAND ${CMAKE_C_COMPILER} -print-file-name=include
     OUTPUT_VARIABLE SYSTEM_INCLUDE_DIRECTORY
     COMMAND_ERROR_IS_FATAL ANY
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-
-set(CMAKE_C_COMPILER i686-elf-gcc)
 set(CMAKE_C_FLAGS
     "-ffreestanding -nostdinc -isystem${SYSTEM_INCLUDE_DIRECTORY} -fdiagnostics-color=always"
 )
