@@ -10,9 +10,9 @@ HD_PATH="$REPO_DIR/hd.img"
 HD_SIZE=4M  # must be understandable by qemu-img
 
 if [[ ! -f $HD_PATH ]]; then
-    echo "'$HD_PATH' does not exist or is not a regular file."
-    echo "See README.txt for instructions on how to create a disk image with" \
-         "a root partition."
+    log_err "Error: '$HD_PATH' does not exist or is not a regular file"
+    log_err "See README.txt for instructions on how to create a disk image" \
+            "with a root partition"
     exit 1
 fi
 

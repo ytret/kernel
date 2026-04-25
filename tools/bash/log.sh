@@ -25,7 +25,7 @@ function log_info {
 }
 
 function log_err {
-    echo -ne "$COLOR_ERR"
-    echo "$@"
-    echo -ne "$COLOR_NONE"
+    echo -ne "$COLOR_ERR" 1>&2
+    echo "$@" 1>&2
+    echo -ne "$COLOR_NONE" 1>&2
 } 1>&2
