@@ -173,15 +173,11 @@
             pkgs.qemu-utils
             pkgs.e2fsprogs
           ];
-          emulatorPackages = [
-            pkgs.qemu_full
-          ];
           fullPackages =
             minimalPackages
             ++ buildingPackages
             ++ bootableIsoPackages
-            ++ virtualDiskPackages
-            ++ emulatorPackages;
+            ++ virtualDiskPackages;
           pkgName = p: p.pname or p.name or "unknown";
         in
         rec {
