@@ -5,9 +5,11 @@
 #include "kprintf.h"
 #include "ksyscall.h"
 #include "log.h"
+#include "memfun.h"
 #include "panic.h"
 #include "smp.h"
 #include "taskmgr.h"
+#include "vmm.h"
 
 #include "arch/x86/apic/lapic.h"
 #include "arch/x86/idt.h"
@@ -22,6 +24,7 @@
 #define ENTRY_DPL_USER   (3 << 5)
 
 #define ENTRY_TYPE_INT_32BIT (0xE << 0)
+#define ENTRY_TYPE_TASK_GATE (0x5 << 0)
 
 typedef struct [[gnu::packed]] {
     uint16_t offset_15_0;
@@ -38,6 +41,8 @@ static void fill_desc(uint8_t *p_desc, void const *p_idt, uint16_t idt_size);
 static void fill_entry(entry_t *p_entry, void (*p_handler)(void));
 static void fill_user_entry(entry_t *p_entry, void (*p_handler)(void));
 
+static void prv_idt_init_df_entry(entry_t *entry);
+
 static void snprint_entry(char *buf, size_t size, entry_t const *p_entry);
 static void dump_stack_frame(isr_stack_frame_t const *p_stack_frame);
 
@@ -50,7 +55,9 @@ void idt_init(void) {
     fill_entry(&gp_idt[5], isr_5);
     fill_entry(&gp_idt[6], isr_6);
     fill_entry(&gp_idt[7], isr_7);
-    fill_entry(&gp_idt[8], isr_8);
+
+    prv_idt_init_df_entry(&gp_idt[8]);
+
     fill_entry(&gp_idt[9], isr_9);
     fill_entry(&gp_idt[10], isr_10);
     fill_entry(&gp_idt[11], isr_11);
@@ -253,6 +260,13 @@ static void fill_user_entry(entry_t *p_entry, void (*p_handler)(void)) {
     p_entry->selector = 0x08;
     p_entry->present_dpl_type =
         (ENTRY_PRESENT | ENTRY_DPL_USER | ENTRY_TYPE_INT_32BIT);
+}
+
+static void prv_idt_init_df_entry(entry_t *entry) {
+    kmemset(entry, 0, sizeof(*entry));
+    entry->selector = GDT_DF_TSS_IDX << 3;
+    entry->present_dpl_type =
+        ENTRY_PRESENT | ENTRY_DPL_KERNEL | ENTRY_TYPE_TASK_GATE;
 }
 
 [[maybe_unused]]
