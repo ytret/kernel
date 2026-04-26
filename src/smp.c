@@ -51,10 +51,19 @@ static _Atomic bool g_smp_bsp_done;
 static _Atomic bool g_smp_curr_ap_done;
 
 static smp_proc_t *g_smp_procs;
-static uint8_t g_smp_num_procs;
+static _Atomic uint8_t g_smp_num_procs;
+
+/**
+ * The number of fully initialized processors, including the BSP.
+ *
+ * See #smp_send_tlb_shootdown().
+ */
+static uint8_t g_smp_num_init_procs;
 
 static spinlock_t g_smp_tlb_shootdown_lock;
 static smp_tlb_shootdown_req_t g_smp_tlb_shootdown_req;
+
+static void smp_init_proc_df_tss(smp_proc_t *proc);
 
 static void prv_smp_init_trampoline(const gdtr_t *gdtr);
 
@@ -63,6 +72,9 @@ extern void entry_ap_trampoline(void);
 extern void enable_sse(void);
 
 void smp_init(void) {
+    // The BSP is already initialized.
+    g_smp_num_init_procs = 1;
+
     spinlock_init(&g_smp_tlb_shootdown_lock);
 
     const uint8_t num_procs = acpi_num_procs();
@@ -89,13 +101,7 @@ void smp_init(void) {
 
             gdt_init_for_proc(&smp_proc->gdt, &smp_proc->tss, &smp_proc->df_tss,
                               &smp_proc->gdtr);
-
-            smp_proc->df_stack_bottom =
-                heap_alloc_aligned(SMP_DF_STACK_SIZE, PMM_PAGE_SIZE);
-            smp_proc->df_stack_top =
-                (void *)((uintptr_t)smp_proc->df_stack_bottom +
-                         SMP_DF_STACK_SIZE);
-            static_assert(SMP_DF_STACK_SIZE % PMM_PAGE_SIZE == 0);
+            smp_init_proc_df_tss(smp_proc);
 
             smp_proc->proc_num = g_smp_num_procs;
             smp_proc->acpi = acpi_proc;
@@ -176,6 +182,7 @@ void smp_set_bsp_ready(void) {
 }
 
 void smp_set_ap_ready(void) {
+    g_smp_num_init_procs += 1;
     g_smp_curr_ap_done = true;
 }
 
@@ -232,7 +239,7 @@ void smp_send_tlb_shootdown(uint32_t addr) {
     };
     lapic_send_ipi(&ipi_tlb_shootdown);
 
-    const uint8_t num_procs = acpi_num_procs();
+    const uint8_t num_procs = g_smp_num_init_procs;
     while (g_smp_tlb_shootdown_req.ack_count < num_procs - 1) {
         __asm__ volatile("pause");
     }
@@ -263,6 +270,29 @@ void smp_ap_trampoline_c(void) {
     taskmgr_local_init(init_ap_task);
 
     PANIC("end of smp_ap_trampoline_c");
+}
+
+static void smp_init_proc_df_tss(smp_proc_t *proc) {
+    static_assert(SMP_DF_STACK_SIZE % PMM_PAGE_SIZE == 0);
+
+    if (!proc) { PANIC("invalid argument 'proc' value NULL"); }
+
+    proc->df_stack_bottom =
+        heap_alloc_aligned(SMP_DF_STACK_SIZE, PMM_PAGE_SIZE);
+    proc->df_stack_top =
+        (void *)((uintptr_t)proc->df_stack_bottom + SMP_DF_STACK_SIZE);
+
+    proc->df_tss->esp0 = (uint32_t)proc->df_stack_top;
+    proc->df_tss->esp = (uint32_t)proc->df_stack_top;
+    proc->df_tss->ss0 = GDT_KERNEL_DATA_IDX << 3;
+    proc->df_tss->ss = GDT_KERNEL_DATA_IDX << 3;
+    proc->df_tss->ds = GDT_KERNEL_DATA_IDX << 3;
+    proc->df_tss->es = GDT_KERNEL_DATA_IDX << 3;
+    proc->df_tss->fs = GDT_KERNEL_DATA_IDX << 3;
+    proc->df_tss->gs = GDT_KERNEL_DATA_IDX << 3;
+    proc->df_tss->cs = GDT_KERNEL_CODE_IDX << 3;
+    proc->df_tss->eip = (uint32_t)isr_8;
+    proc->df_tss->cr3 = (uint32_t)vmm_kvas_dir();
 }
 
 static void prv_smp_init_trampoline(const gdtr_t *gdtr) {

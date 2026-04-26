@@ -58,8 +58,12 @@ void smp_set_bsp_ready(void);
 
 /**
  * Indicates to the BSP that the running AP has reached the initial task.
+ *
  * @warning
- * Use this only in the AP initial task, see #init_ap_task().
+ * Call this only in the AP initial task, see #init_ap_task().
+ *
+ * @warning
+ * Call this only **once**.
  */
 void smp_set_ap_ready(void);
 /// @}
@@ -71,6 +75,11 @@ taskmgr_t *smp_get_running_taskmgr(void);
 
 void smp_init_proc_taskmgr(void);
 
+/**
+ * Sends a TLB shootdown request to all initialized processors.
+ *
+ * See #g_smp_num_init_procs.
+ */
 void smp_send_tlb_shootdown(uint32_t addr);
 void smp_tlb_shootdown_handler(void);
 
