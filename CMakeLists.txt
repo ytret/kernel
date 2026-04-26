@@ -180,13 +180,13 @@ target_include_directories(kernel PRIVATE
 )
 target_link_options(kernel PRIVATE
     ${OPTIMIZATION_FLAGS}
-    -T${CMAKE_SOURCE_DIR}/src/link.ld
+    -T${CMAKE_SOURCE_DIR}/src/arch/x86/linker.ld
 )
 target_link_libraries(kernel ytalloc ytprintf lua klibc gcc)
 add_dependencies(kernel lua54)
 set_target_properties(kernel PROPERTIES
     C_EXTENSIONS ON
-    LINK_DEPENDS ${CMAKE_SOURCE_DIR}/src/link.ld
+    LINK_DEPENDS ${CMAKE_SOURCE_DIR}/src/arch/x86/linker.ld
 )
 
 
