@@ -12,6 +12,7 @@
 #include "heap.h"
 #include "kstring.h"
 #include "list.h"
+#include "log.h"
 #include "memfun.h"
 #include "panic.h"
 #include "pit.h"
@@ -409,9 +410,15 @@ static task_t *new_task(const char *name, taskmgr_t *taskmgr,
     kmemcpy(task->name, name, name_len);
     task->name[name_len] = 0;
 
-    // Allocate the kernel stack.
-    void *p_stack = heap_alloc(KERNEL_STACK_SIZE);
+    // Allocate the kernel stack plus one guard page.
+    void *const p_stack_guard = heap_alloc(KERNEL_STACK_SIZE + PMM_PAGE_SIZE);
+    void *const p_stack = (void *)((uintptr_t)p_stack_guard + PMM_PAGE_SIZE);
+    LOG_FLOW("new kernel stack at %p", p_stack);
     stack_new(&task->kernel_stack, p_stack, KERNEL_STACK_SIZE);
+
+    // Unmap the guard page.
+    LOG_FLOW("unmap the stack guard page at %p", p_stack_guard);
+    vmm_unmap_kernel_page((uint32_t)p_stack_guard);
 
     // Set up the control block.
     task->tcb.page_dir_phys = ((uint32_t)vmm_kvas_dir());
