@@ -4,7 +4,6 @@
 #include <ytprintf.h>
 
 #include "kprintf.h"
-#include "serial.h"
 #include "term.h"
 
 #define KPRINTF_BUF_SIZE 256
