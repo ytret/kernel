@@ -5,7 +5,7 @@ shopt -s inherit_errexit
 
 source "$(dirname "$(readlink -f "$0")")/bash/prelude.sh"
 
-declare -r DEFAULT_BUILD_DIR="$REPO_DIR/build"
+declare -r DEFAULT_BUILD_DIR="$PWD"
 declare -r DEFAULT_ISO_DIR="$REPO_DIR/isodir"
 declare -r DEFAULT_KERNEL_ISO="$REPO_DIR/build/kernel.iso"
 
