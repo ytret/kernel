@@ -1,6 +1,7 @@
 #include "framebuf.h"
 #include "kbd.h"
 #include "kmutex.h"
+#include "log.h"
 #include "mbi.h"
 #include "panic.h"
 #include "queue.h"
@@ -54,6 +55,8 @@ void term_init(void) {
 
     if ((p_mbi->flags & MBI_FLAG_FRAMEBUF) &&
         (MBI_FRAMEBUF_EGA != p_mbi->framebuffer_type)) {
+        LOG_DEBUG("terminal type - framebuffer");
+
         framebuf_init();
 
         g_max_row = framebuf_height_chars();
@@ -74,6 +77,8 @@ void term_init(void) {
         g_output_impl.p_is_history_mode_active =
             framebuf_is_history_mode_active;
     } else {
+        LOG_DEBUG("terminal type - VGA text mode");
+
         vga_init();
 
         g_max_row = vga_height_chars();
