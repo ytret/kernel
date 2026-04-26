@@ -137,6 +137,7 @@ add_executable(kernel
     src/arch/x86/idt.c
     src/arch/x86/vmm.c
 
+    src/arch/x86/boot.s
     src/arch/x86/entry.s
     src/arch/x86/gdt.s
     src/arch/x86/idt.s
