@@ -10,6 +10,7 @@
 #include "memfun.h"
 #include "panic.h"
 #include "pit.h"
+#include "pmm.h"
 #include "smp.h"
 #include "vmm.h"
 
@@ -88,6 +89,13 @@ void smp_init(void) {
 
             gdt_init_for_proc(&smp_proc->gdt, &smp_proc->tss, &smp_proc->df_tss,
                               &smp_proc->gdtr);
+
+            smp_proc->df_stack_bottom =
+                heap_alloc_aligned(SMP_DF_STACK_SIZE, PMM_PAGE_SIZE);
+            smp_proc->df_stack_top =
+                (void *)((uintptr_t)smp_proc->df_stack_bottom +
+                         SMP_DF_STACK_SIZE);
+            static_assert(SMP_DF_STACK_SIZE % PMM_PAGE_SIZE == 0);
 
             smp_proc->proc_num = g_smp_num_procs;
             smp_proc->acpi = acpi_proc;

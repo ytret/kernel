@@ -10,6 +10,9 @@
 #define SMP_VEC_HALT          0xF1 //!< Halt on panic.
 #define SMP_VEC_TLB_SHOOTDOWN 0xF2 //!< TLB shootdown.
 
+/// Kernel stack size for the double fault handler.
+#define SMP_DF_STACK_SIZE 4096
+
 typedef struct {
     uint8_t proc_num;
     const acpi_proc_t *acpi;
@@ -18,6 +21,9 @@ typedef struct {
     tss_t *tss;
     tss_t *df_tss;
     gdtr_t gdtr;
+
+    void *df_stack_bottom;
+    void *df_stack_top;
 
     taskmgr_t *taskmgr;
 } smp_proc_t;
