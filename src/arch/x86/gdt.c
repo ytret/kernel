@@ -72,6 +72,11 @@ void gdt_init_for_proc(gdt_seg_desc_t **out_gdt, tss_t **out_tss,
     gdt[5].db = 1;
     gdt[5].gran = GDT_SEG_GRAN_BYTE;
 
+    static_assert(GDT_SMP_TSS_IDX == 5,
+                  "please update either GDT_SMP_TSS_IDX or the code above");
+    static_assert(GDT_NUM_SMP_SEGS == 6,
+                  "please update either GDT_NUM_SMP_SEGS or the code above");
+
     gdt_seg_sel_t tss_sel;
     tss_sel.index = 2;
     tss_sel.ti = 0;
