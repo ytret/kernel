@@ -76,7 +76,10 @@ void framebuf_init(void) {
     g_fb_bpp = p_mbi->framebuffer_bpp;
 
     const mbi_mod_t *p_mod = mbi_find_mod("font");
-    ASSERT(p_mod);
+    if (!p_mod) {
+        PANIC("could not find the 'font' module for the framebuffer terminal");
+    }
+
     bool b_psf_loaded = psf_load(&g_fb_font, p_mod->mod_start);
     ASSERT(b_psf_loaded);
 
