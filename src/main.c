@@ -19,7 +19,7 @@
 
 #define MULTIBOOT_MAGIC_NUM 0x2BADB002U
 
-// See link.ld.
+// See arch/x86/linker.ld.
 extern uint32_t ld_vmm_kernel_start;
 extern uint32_t ld_vmm_kernel_end;
 
