@@ -86,7 +86,8 @@ void smp_init(void) {
         smp_proc_t *const smp_proc = &g_smp_procs[g_smp_num_procs];
         if (acpi_proc->enabled) {
 
-            gdt_init_for_proc(&smp_proc->gdt, &smp_proc->tss, &smp_proc->gdtr);
+            gdt_init_for_proc(&smp_proc->gdt, &smp_proc->tss, &smp_proc->df_tss,
+                              &smp_proc->gdtr);
 
             smp_proc->proc_num = g_smp_num_procs;
             smp_proc->acpi = acpi_proc;

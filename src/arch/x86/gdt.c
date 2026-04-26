@@ -20,23 +20,29 @@ void gdt_init_pre_smp(gdtr_t *out_gdtr) {
 }
 
 void gdt_init_for_proc(gdt_seg_desc_t **out_gdt, tss_t **out_tss,
-                       gdtr_t *out_gdtr) {
+                       tss_t **out_df_tss, gdtr_t *out_gdtr) {
     /*
-     * Per-processor GDTs have 6 segment descriptors:
+     * Per-processor GDTs have 7 segment descriptors:
      * - entry 0 is not used.
      * - entry 1 is kernel code.
      * - entry 2 is kernel data.
      * - entry 3 is user code.
      * - entry 4 is user data.
-     * - entry 5 is task state segment.
+     * - entry 5 is the TSS descriptor used for task switching.
+     * - entry 6 is the TSS descriptor used by the double fault handler.
      */
 
-    static_assert(GDT_NUM_SMP_SEGS == 6);
-    gdt_seg_desc_t *const gdt = heap_alloc(6 * sizeof(gdt_seg_desc_t));
-    tss_t *const tss = heap_alloc(sizeof(tss_t));
+    static_assert(GDT_NUM_SMP_SEGS == 7,
+                  "please update either GDT_NUM_SMP_SEGS or the code below");
 
-    kmemset(gdt, 0, 6 * sizeof(gdt_seg_desc_t));
+    gdt_seg_desc_t *const gdt =
+        heap_alloc(GDT_NUM_SMP_SEGS * sizeof(gdt_seg_desc_t));
+    tss_t *const tss = heap_alloc(sizeof(tss_t));
+    tss_t *const df_tss = heap_alloc(sizeof(tss_t));
+
+    kmemset(gdt, 0, GDT_NUM_SMP_SEGS * sizeof(gdt_seg_desc_t));
     kmemset(tss, 0, sizeof(tss_t));
+    kmemset(df_tss, 0, sizeof(tss_t));
 
     // Ring 0 (kernel) code and data.
     prv_gdt_init_kernel_segs(gdt);
@@ -62,7 +68,8 @@ void gdt_init_for_proc(gdt_seg_desc_t **out_gdt, tss_t **out_tss,
     gdt[4].gran = GDT_SEG_GRAN_4KB;
 
     // Task state segment descriptor.
-    static_assert(GDT_SMP_TSS_IDX == 5);
+    static_assert(GDT_SMP_TSS_IDX == 5,
+                  "please update either GDT_SMP_TSS_IDX or the code below");
     prv_gdt_set_base_limit(&gdt[5], (uint32_t)tss, sizeof(tss_t));
     gdt[5].desc_type = GDT_DESC_TYPE_SYSTEM;
     gdt[5].seg_type = GDT_SEG_TYPE_TSS_32BIT;
@@ -72,20 +79,37 @@ void gdt_init_for_proc(gdt_seg_desc_t **out_gdt, tss_t **out_tss,
     gdt[5].db = 1;
     gdt[5].gran = GDT_SEG_GRAN_BYTE;
 
-    static_assert(GDT_SMP_TSS_IDX == 5,
-                  "please update either GDT_SMP_TSS_IDX or the code above");
-    static_assert(GDT_NUM_SMP_SEGS == 6,
-                  "please update either GDT_NUM_SMP_SEGS or the code above");
+    // Descriptor for the task state segment used by the double fault handler,
+    // see idt.c.
+    static_assert(GDT_DF_TSS_IDX == 6,
+                  "please update either GDT_DF_TSS_IDX or the code below");
+    prv_gdt_set_base_limit(&gdt[6], (uint32_t)df_tss, sizeof(tss_t));
+    gdt[6].desc_type = GDT_DESC_TYPE_SYSTEM;
+    gdt[6].seg_type = GDT_SEG_TYPE_TSS_32BIT;
+    gdt[6].dpl = 0;
+    gdt[6].present = 1;
+    gdt[6].longm = 0;
+    gdt[6].db = 1;
+    gdt[6].gran = GDT_SEG_GRAN_BYTE;
 
     gdt_seg_sel_t tss_sel;
-    tss_sel.index = 2;
+    tss_sel.index = GDT_KERNEL_DATA_IDX;
     tss_sel.ti = 0;
     tss_sel.rpl = 0;
     kmemcpy(&tss->ss0, &tss_sel, sizeof(tss_sel));
 
+    gdt_seg_sel_t df_tss_sel;
+    df_tss_sel.index = GDT_KERNEL_DATA_IDX;
+    df_tss_sel.ti = 0;
+    df_tss_sel.rpl = 0;
+    kmemcpy(&df_tss->ss0, &df_tss_sel, sizeof(df_tss_sel));
+
     *out_gdt = gdt;
     *out_tss = tss;
-    out_gdtr->size = 6 * sizeof(gdt_seg_desc_t) - 1;
+
+    *out_df_tss = df_tss;
+
+    out_gdtr->size = GDT_NUM_SMP_SEGS * sizeof(gdt_seg_desc_t) - 1;
     out_gdtr->addr = (uint32_t)gdt;
 }
 
@@ -99,6 +123,8 @@ static void prv_gdt_init_kernel_segs(gdt_seg_desc_t *gdt) {
     gdt[1].longm = 0;
     gdt[1].db = 1;
     gdt[1].gran = GDT_SEG_GRAN_4KB;
+    static_assert(GDT_KERNEL_CODE_IDX == 1,
+                  "please update either GDT_KERNEL_CODE_IDX or the code above");
 
     // Ring 0 data.
     prv_gdt_set_base_limit(&gdt[2], 0, 0x00FFFFF);
@@ -109,6 +135,8 @@ static void prv_gdt_init_kernel_segs(gdt_seg_desc_t *gdt) {
     gdt[2].longm = 0;
     gdt[2].db = 1;
     gdt[2].gran = GDT_SEG_GRAN_4KB;
+    static_assert(GDT_KERNEL_DATA_IDX == 2,
+                  "please update either GDT_KERNEL_DATA_IDX or the code above");
 }
 
 static void prv_gdt_set_base_limit(gdt_seg_desc_t *seg_desc, uint32_t base,

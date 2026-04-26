@@ -11,11 +11,20 @@
 
 #include <stdint.h>
 
-/// Number of segments used in per-processor GDTs.
-#define GDT_NUM_SMP_SEGS 6
+/// Index of the kernel code segment descriptor.
+#define GDT_KERNEL_CODE_IDX 1
+
+/// Index of the kernel data segment descriptor.
+#define GDT_KERNEL_DATA_IDX 2
 
 /// Index of the TSS descriptor in the GDT.
 #define GDT_SMP_TSS_IDX 5
+
+/// Index of the TSS descriptor in the GDT used by the Double Fault ISR.
+#define GDT_DF_TSS_IDX 6
+
+/// Number of segments used in per-processor GDTs.
+#define GDT_NUM_SMP_SEGS 7
 
 /**
  * Segment Selector.
@@ -162,7 +171,7 @@ typedef struct [[gnu::packed]] {
 
 void gdt_init_pre_smp(gdtr_t *out_gdtr);
 void gdt_init_for_proc(gdt_seg_desc_t **out_gdt, tss_t **out_tss,
-                       gdtr_t *out_gdtr);
+                       tss_t **out_df_tss, gdtr_t *out_gdtr);
 
 // Defined in gdt.s.
 void gdt_load(const gdtr_t *gdtr);

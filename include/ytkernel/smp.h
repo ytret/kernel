@@ -13,9 +13,12 @@
 typedef struct {
     uint8_t proc_num;
     const acpi_proc_t *acpi;
+
     gdt_seg_desc_t *gdt;
     tss_t *tss;
+    tss_t *df_tss;
     gdtr_t gdtr;
+
     taskmgr_t *taskmgr;
 } smp_proc_t;
 
