@@ -9,7 +9,6 @@ if(Doxygen_FOUND)
         OUTPUT ${DOXYGEN_INDEX_FILE}
         DEPENDS kernel
                 ${CMAKE_SOURCE_DIR}/README.md
-                ${CMAKE_CURRENT_SOURCE_DIR}/theme/
         COMMAND ${DOXYGEN_EXECUTABLE} -q ${DOXYFILE}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         MAIN_DEPENDENCY Doxyfile
