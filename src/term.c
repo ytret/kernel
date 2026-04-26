@@ -28,6 +28,7 @@ static task_mutex_t g_term_mutex;
 static bool gb_panic_mode;
 static bool gb_history_mode;
 static output_impl_t g_output_impl;
+static bool g_term_has_impl;
 
 static size_t g_max_row;
 static size_t g_max_col;
@@ -99,6 +100,8 @@ void term_init(void) {
         g_output_impl.p_is_history_mode_active = vga_is_history_mode_active;
     }
 
+    g_term_has_impl = true;
+
     mutex_init(&g_term_mutex);
 }
 
@@ -153,6 +156,8 @@ void term_enter_panic_mode(void) {
 }
 
 void term_clear(void) {
+    if (!g_term_has_impl) { return; }
+
     assert_owns_mutex();
     g_output_impl.p_clear_rows(0, g_max_row);
     put_cursor_at(0, 0);
@@ -161,11 +166,15 @@ void term_clear(void) {
 }
 
 void term_clear_rows(size_t start_row, size_t num_rows) {
+    if (!g_term_has_impl) { return; }
+
     assert_owns_mutex();
     g_output_impl.p_clear_rows(start_row, num_rows);
 }
 
 void term_print_str(char const *p_str) {
+    if (!g_term_has_impl) { return; }
+
     assert_owns_mutex();
     while ((*p_str) != 0) {
         char ch = (*p_str);
@@ -176,6 +185,8 @@ void term_print_str(char const *p_str) {
 }
 
 void term_print_str_len(char const *p_str, size_t len) {
+    if (!g_term_has_impl) { return; }
+
     assert_owns_mutex();
     for (size_t idx = 0; idx < len; idx++) {
         put_char(p_str[idx]);
@@ -184,11 +195,15 @@ void term_print_str_len(char const *p_str, size_t len) {
 }
 
 void term_put_char_at(size_t row, size_t col, char ch) {
+    if (!g_term_has_impl) { return; }
+
     assert_owns_mutex();
     g_output_impl.p_put_char_at(row, col, ch);
 }
 
 void term_put_cursor_at(size_t row, size_t col) {
+    if (!g_term_has_impl) { return; }
+
     assert_owns_mutex();
     put_cursor_at(row, col);
 }
