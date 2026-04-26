@@ -8,7 +8,15 @@ source "$(dirname "$(readlink -f "$0")")/bash/prelude.sh"
 ISO_PATH="$REPO_DIR/build/kernel.iso"
 HD_PATH="$REPO_DIR/hd.img"
 HD_SIZE=4M  # must be understandable by qemu-img
-QEMU_BIN=qemu-system-i386
+
+QEMU_BIN="${QEMU_BIN:-qemu-system-i386}"
+QEMU_DISPLAY_ARGS=()
+
+# macOS-only settings for QEMU.
+MACOS_QEMU_WIDTH="${MACOS_QEMU_WIDTH:-800}"
+MACOS_QEMU_HEIGHT="${MACOS_QEMU_HEIGHT:-600}"
+MACOS_QEMU_X="${MACOS_QEMU_X:-80}"
+MACOS_QEMU_Y="${MACOS_QEMU_Y:-60}"
 
 if [[ ! -f $HD_PATH ]]; then
     log_err "Error: '$HD_PATH' does not exist or is not a regular file"
@@ -17,22 +25,27 @@ if [[ ! -f $HD_PATH ]]; then
     exit 1
 fi
 
-function macos_focus_qemu() {
-    (
-        sleep 0.3
+if [[ $OSTYPE == darwin* ]]; then
+    # Make the window resizable.
+    QEMU_DISPLAY_ARGS+=(-display "${QEMU_DISPLAY:-cocoa,zoom-to-fit=on}")
 
-        local qemu_pid="$(pgrep -n -x "$QEMU_BIN" || true)"
-        [[ -n $qemu_pid ]] || return 0
-
-        osascript >/dev/null 2>&1 <<EOF || true
+    # Automatically focus the window and resize it.
+    ( sleep 0.5
+      qemu_pid="$(pgrep -n -x "$QEMU_BIN" || true)"
+      [[ -n $qemu_pid ]] || return 0
+      osascript >/dev/null 2>&1 <<EOF || true
 tell application "System Events"
-    set frontmost of first application process whose unix id is $qemu_pid to true
+    tell first application process whose unix id is $qemu_pid
+        set frontmost to true
+        tell first window
+            set position to {$MACOS_QEMU_X, $MACOS_QEMU_Y}
+            set size to {$MACOS_QEMU_WIDTH, $MACOS_QEMU_HEIGHT}
+        end tell
+    end tell
 end tell
 EOF
     ) &
-}
-
-[[ $OSTYPE == darwin* ]] && macos_focus_qemu
+fi
 
 "$QEMU_BIN" -cdrom "$ISO_PATH"                                \
             -drive file="$HD_PATH",format=raw,if=none,id=disk \
@@ -41,4 +54,5 @@ EOF
             -boot order=d                                     \
             -serial stdio                                     \
             -d guest_errors                                   \
+            "${QEMU_DISPLAY_ARGS[@]}"                         \
             "$@"
