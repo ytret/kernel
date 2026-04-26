@@ -24,7 +24,15 @@ typedef struct {
     bool (*p_is_history_mode_active)(void);
 } output_impl_t;
 
+/**
+ * The terminal mutex.
+ *
+ * To maintain coherent output in the terminal, each task that wants to print
+ * must lock the terminal mutex. See #term_acquire_mutex(),
+ * #term_release_mutex(), #term_owns_mutex().
+ */
 static task_mutex_t g_term_mutex;
+
 static bool gb_panic_mode;
 static bool gb_history_mode;
 static output_impl_t g_output_impl;

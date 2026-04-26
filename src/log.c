@@ -4,6 +4,7 @@
 
 #include "assert.h"
 #include "kprintf.h"
+#include "kspinlock.h"
 #include "log.h"
 #include "memfun.h"
 #include "serial.h"
@@ -13,6 +14,8 @@
 // FIXME: both kprintf and this module have separate buffers, but they have the
 // same contents.
 static char g_log_buf[LOG_BUF_SIZE];
+
+static spinlock_t g_log_lock;
 
 static const char *prv_log_level_str(int level);
 
@@ -38,6 +41,8 @@ int log_vprintf(const char *file, const char *func, int line, int level,
     int ret = 0;
     const char *level_str;
 
+    spinlock_acquire(&g_log_lock);
+
     level_str = prv_log_level_str(level);
 
     // Note the differences: kprintf output has `file` instead of `func` for
@@ -56,6 +61,8 @@ int log_vprintf(const char *file, const char *func, int line, int level,
     if (level <= YTKERNEL_TERM_LOG_LEVEL) { kprintf("\n"); }
     serial_puts("\n");
     ret += 1;
+
+    spinlock_release(&g_log_lock);
 
     return ret;
 }
