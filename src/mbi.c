@@ -1,5 +1,6 @@
 #include "heap.h"
 #include "kstring.h"
+#include "log.h"
 #include "mbi.h"
 #include "memfun.h"
 #include "panic.h"
@@ -110,6 +111,8 @@ mbi_mod_t const *mbi_nth_mod(size_t idx) {
 }
 
 mbi_mod_t const *mbi_find_mod(char const *p_name) {
+    LOG_FLOW("find module named '%s'", p_name);
+
     for (size_t idx = 0; idx < mbi_num_mods(); idx++) {
         mbi_mod_t const *p_mod = mbi_nth_mod(idx);
 
@@ -119,11 +122,16 @@ mbi_mod_t const *mbi_find_mod(char const *p_name) {
                   idx, mbi_num_mods());
         }
 
-        if (string_equals((char const *)p_mod->string, p_name)) {
+        LOG_FLOW("module idx %zu string '%s'", idx,
+                 (const char *)p_mod->string);
+
+        if (string_equals((const char *)p_mod->string, p_name)) {
+            LOG_FLOW("exact match, return %p", p_mod);
             return p_mod;
         }
     }
 
+    LOG_FLOW("no match, return %p", NULL);
     return NULL;
 }
 
