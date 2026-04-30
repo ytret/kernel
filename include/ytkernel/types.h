@@ -4,8 +4,12 @@
 
 #define ALIGN(x) [[gnu::aligned(x)]]
 
+#define VADDR_MAX UINT32_MAX
+#define PADDR_MAX UINT64_MAX
+
 typedef volatile uint8_t IO8;
 typedef volatile uint16_t IO16;
 typedef volatile uint32_t IO32;
 
-typedef uintptr_t paddr_t;
+typedef uint64_t paddr_t;
+typedef uint32_t vaddr_t;
