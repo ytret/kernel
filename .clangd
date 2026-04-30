@@ -1,3 +1,6 @@
 CompileFlags:
-  Add: -D_GCC_MAX_ALIGN_T
+  Add: [ -D_GCC_MAX_ALIGN_T, -D__STDC_HOSTED__=0 ]
   Remove: -fanalyzer
+Diagnostics:
+  Includes:
+    IgnoreHeader: kinttypes\.h
