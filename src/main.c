@@ -16,6 +16,7 @@
 #include "smp.h"
 #include "taskmgr.h"
 #include "term.h"
+#include "vmm.h"
 
 #define MULTIBOOT_MAGIC_NUM 0x2BADB002U
 
@@ -25,11 +26,12 @@ extern uint32_t ld_vmm_kernel_end;
 
 static pmm_mmap_t g_mmap;
 static pmm_region_t g_kernel_region;
+static pmm_region_t g_cut_region;
 
 static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr);
-static uint32_t prv_main_find_first_free_page(void);
-static void prv_main_add_kernel_region(pmm_mmap_t *mmap, uintptr_t region_start,
-                                       uintptr_t region_end);
+static paddr_t prv_main_find_kernel_phys_end(void);
+static void prv_main_add_kernel_region(pmm_mmap_t *mmap, paddr_t region_start,
+                                       paddr_t region_end);
 
 void main(uint32_t magic_num, uint32_t mbi_addr) {
     libshim_init();
@@ -47,8 +49,12 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     if (!mbi_fill_mmap(mbi_ptr(), &g_mmap)) {
         PANIC("failed to fill the memory map");
     }
-    prv_main_add_kernel_region(&g_mmap, (uint32_t)&ld_vmm_kernel_start,
-                               prv_main_find_first_free_page());
+
+    const paddr_t kernel_start = VMM_KERNEL_LMA;
+    const paddr_t kernel_end = prv_main_find_kernel_phys_end();
+    LOG_DEBUG("kernel region physical 0x%016llx..0x%016llx", kernel_start,
+              kernel_end);
+    prv_main_add_kernel_region(&g_mmap, kernel_start, kernel_end);
     pmm_init(&g_mmap);
 
     heap_init();
@@ -85,21 +91,21 @@ static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr) {
     }
 }
 
-static uint32_t prv_main_find_first_free_page(void) {
-    const uint32_t kernel_end = (uint32_t)&ld_vmm_kernel_end;
-
-    uint32_t last_used_addr;
+static paddr_t prv_main_find_kernel_phys_end(void) {
     const mbi_mod_t *const last_mod = mbi_last_mod();
+    const paddr_t kernel_end = VIRT_TO_PHYS(&ld_vmm_kernel_end);
+
+    paddr_t last_used_addr;
     if (last_mod) { last_used_addr = last_mod->mod_end; }
     if (!last_mod || kernel_end > last_used_addr) {
         last_used_addr = kernel_end;
     }
 
-    return (last_used_addr + 0x3FFFFF) & ~(0X3FFFFF);
+    return (last_used_addr + 0x3FFFFFULL) & ~(0X3FFFFFULL);
 }
 
-static void prv_main_add_kernel_region(pmm_mmap_t *mmap, uintptr_t region_start,
-                                       uintptr_t region_end_excl) {
+static void prv_main_add_kernel_region(pmm_mmap_t *mmap, paddr_t region_start,
+                                       paddr_t region_end_excl) {
     if (region_end_excl == 0) {
         PANIC("invalid argument 'region_end_excl' value 0");
     }
@@ -113,9 +119,12 @@ static void prv_main_add_kernel_region(pmm_mmap_t *mmap, uintptr_t region_start,
               region->start <= region_start &&
                   region_end_incl <= region->end_incl,
               region);
-    if (!found_region) {
-        PANIC("TODO: could not find a single region that covers [0x%08" PRIxPTR
-              "; 0x%08" PRIxPTR ")",
+    if (found_region) {
+        LOG_FLOW("found covering region physical 0x%016llx..0x%016llx",
+                 found_region->start, found_region->end_incl);
+    } else {
+        PANIC("TODO: could not find a single region that covers [0x%08llx; "
+              "0x%08llx)",
               region_start, region_end_excl);
     }
 
@@ -123,26 +132,35 @@ static void prv_main_add_kernel_region(pmm_mmap_t *mmap, uintptr_t region_start,
     g_kernel_region.end_incl = region_end_incl;
     g_kernel_region.type = PMM_REGION_KERNEL_AND_MODS;
 
-    LOG_DEBUG("added kernel region 0x%016llx .. 0x%016llx",
+    LOG_DEBUG("insert kernel region physical 0x%016llx..0x%016llx",
               g_kernel_region.start, g_kernel_region.end_incl);
 
-    if (found_region->start < region_start) {
-        // [original region]
-        //    [   kernel   ]
-        found_region->end_incl = region_start - 1;
-        list_insert(&mmap->entry_list, &found_region->node,
-                    &g_kernel_region.node);
-    } else if (found_region->end_incl > region_end_incl) {
-        // [original region]
-        // [kernel]
-        found_region->start = region_end_excl;
-        list_insert(&mmap->entry_list, found_region->node.p_prev,
-                    &g_kernel_region.node);
+    if (found_region->start == region_start) {
+        PANIC("TODO: case when the kernel region starts at the found region "
+              "start");
+    } else if (found_region->end_incl == region_end_incl) {
+        PANIC("TODO: case when the kernel region ends at the found region end");
     } else {
-        // [original region]
-        // [    kernel     ]
-        list_insert(&mmap->entry_list, &found_region->node,
+        // Before: [              found_region             ]
+        // After:  [found_region][kernel_region][cut_region]
+        LOG_FLOW("split the found region into three parts");
+
+        g_cut_region.start = g_kernel_region.end_incl + 1;
+        g_cut_region.end_incl = found_region->end_incl;
+        g_cut_region.type = PMM_REGION_AVAILABLE;
+
+        found_region->end_incl = g_kernel_region.start - 1;
+
+        list_insert(&mmap->entry_list, found_region->node.p_next,
+                    &g_cut_region.node);
+        list_insert(&mmap->entry_list, &g_cut_region.node,
                     &g_kernel_region.node);
-        list_remove(&mmap->entry_list, &found_region->node);
+
+        LOG_FLOW("first part  0x%016llx..0x%016llx", found_region->start,
+                 found_region->end_incl);
+        LOG_FLOW("kernel part 0x%016llx..0x%016llx", g_kernel_region.start,
+                 g_kernel_region.end_incl);
+        LOG_FLOW("third part  0x%016llx..0x%016llx", g_cut_region.start,
+                 g_cut_region.end_incl);
     }
 }
