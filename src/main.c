@@ -34,7 +34,7 @@ static void prv_main_add_kernel_region(pmm_mmap_t *mmap, uintptr_t region_start,
 void main(uint32_t magic_num, uint32_t mbi_addr) {
     libshim_init();
 
-    mbi_init(mbi_addr);
+    mbi_init((paddr_t)mbi_addr);
 
     serial_init();
     term_init();

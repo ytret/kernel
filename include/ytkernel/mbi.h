@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "pmm.h"
+#include "types.h"
 
 #define MBI_PMM_MMAP_MAX_ENTRIES 20
 
@@ -91,7 +92,7 @@ typedef struct {
     uint32_t type;
 } mbi_mmap_entry_t;
 
-void mbi_init(uint32_t mbi_addr);
+void mbi_init(paddr_t mbi_addr);
 void mbi_save_on_heap(void);
 
 mbi_t const *mbi_ptr(void);

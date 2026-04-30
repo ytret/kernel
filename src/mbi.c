@@ -16,8 +16,12 @@ static pmm_region_t g_mbi_pmm_regions[MBI_PMM_MMAP_MAX_ENTRIES];
  * mbi_deep_copy() is called, which copies them to heap.  After that, the
  * original data may be overwritten.
  */
-void mbi_init(uint32_t mbi_addr) {
-    gp_mbi = (mbi_t *)mbi_addr;
+void mbi_init(paddr_t mbi_addr) {
+    if (mbi_addr > VADDR_MAX) {
+        PANIC("MBI structure is located beyond 4 GiB");
+    }
+
+    gp_mbi = (mbi_t *)(vaddr_t)mbi_addr;
 }
 
 /*
