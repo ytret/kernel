@@ -90,6 +90,9 @@ bool mbi_fill_mmap(const mbi_t *mbi, pmm_mmap_t *mmap) {
         pmm_region->start = mbi_entry->base_addr;
         pmm_region->end_incl = (mbi_entry->base_addr - 1) + mbi_entry->length;
 
+        LOG_DEBUG("added region physical 0x%016llx..0x%016llx type %d",
+                  pmm_region->start, pmm_region->end_incl, pmm_region->type);
+
         list_append(&mmap->entry_list, &g_mbi_pmm_regions[pmm_idx].node);
 
         offset += 4 + mbi_entry->size;
