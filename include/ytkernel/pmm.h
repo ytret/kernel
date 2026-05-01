@@ -9,6 +9,10 @@
 
 #define PMM_PAGE_SIZE 4096U
 
+#define PMM_PAGE_ALIGN_DOWN(x) ((x) & ~(PMM_PAGE_SIZE - 1))
+#define PMM_PAGE_ALIGN_UP(x)                                                   \
+    (((x) + (PMM_PAGE_SIZE - 1)) & ~(PMM_PAGE_SIZE - 1))
+
 typedef enum {
     PMM_REGION_AVAILABLE,
     PMM_REGION_RESERVED,
