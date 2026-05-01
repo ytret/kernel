@@ -219,4 +219,8 @@ saved_ebx:      .skip 4
 
 boot_pgdir:     .skip PGDIR_SIZE
 boot_pgtbls:    .skip PGTBL_SIZE * NUM_LOWMEM_TABLES
+boot_pgtbls_end:
 himem_pgtbls:   .skip PGTBL_SIZE * NUM_HIMEM_TABLES
+
+                .global boot_pgtbls
+                .global boot_pgtbls_end
