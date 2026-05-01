@@ -1,10 +1,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define LOG_LEVEL LOG_LEVEL_DEBUG
+
 #include "heap.h"
 #include "kinttypes.h"
 #include "kmutex.h"
 #include "log.h"
+#include "memfun.h"
 #include "panic.h"
 #include "pmm.h"
 #include "smp.h"
@@ -13,11 +16,13 @@
 
 #define VMM_ADDR_DIR_IDX(addr) (((addr) >> 22) & 0x3FF)
 #define VMM_ADDR_TBL_IDX(addr) (((addr) >> 12) & 0x3FF)
+#define VMM_ADDR_PAGE_MASK     ~0xFFF
 
 #define VMM_TABLE_ADDR_MASK 0xFFFFF000U
 #define VMM_TABLE_USER      (1 << 2)
 #define VMM_TABLE_RW        (1 << 1)
 #define VMM_TABLE_PRESENT   (1 << 0)
+#define VMM_TABLE_SIZE      4096U
 
 #define VMM_PAGE_USER    (1 << 2)
 #define VMM_PAGE_RW      (1 << 1)
@@ -34,6 +39,9 @@
 
 static uint32_t *gp_kvas_dir;
 static task_mutex_t g_kvas_lock;
+
+extern uint32_t *boot_pgtbls;
+extern uint32_t boot_pgtbls_end;
 
 static void prv_vmm_lock_kvas(void);
 static void prv_vmm_unlock_kvas(void);
@@ -90,6 +98,107 @@ void vmm_unmap_kernel_page(uint32_t virt) {
     unmap_page(gp_kvas_dir, virt);
     vmm_invlpg(virt);
     if (smp_is_active()) { smp_send_tlb_shootdown(virt); }
+
+    prv_vmm_unlock_kvas();
+}
+
+void vmm_kmap_region(void *(*alloc)(size_t size), vaddr_t start, vaddr_t size) {
+    vaddr_t end = start + size;
+    LOG_FLOW("identity map region 0x%08" PRIx32 "..0x%08" PRIx32
+             " (size 0x%08" PRIx32 ")",
+             start, end, size);
+
+    if (start & ~VMM_ADDR_PAGE_MASK) {
+        PANIC("invalid argument 'start' value 0x%08" PRIx32
+              ", it must be page-aligned (%u)",
+              start, PMM_PAGE_SIZE);
+    }
+    if (size == 0) { return; }
+    if (size % PMM_PAGE_SIZE != 0) {
+        PANIC("invalid argument 'size' value 0x%08" PRIx32
+              ", it must be page-aligned (%u)",
+              size, PMM_PAGE_SIZE);
+    }
+
+    if (!vmm_is_paging_enabled()) { PANIC("paging is not enabled"); }
+
+    uint32_t *pgdir;
+
+    if (gp_kvas_dir) {
+        pgdir = gp_kvas_dir;
+    } else {
+        uint32_t cr3 = prv_vmm_read_cr3();
+        pgdir = (uint32_t *)cr3; // FIXME: PHYS_TO_VIRT?
+    }
+
+    prv_vmm_lock_kvas();
+
+    for (vaddr_t addr = start; addr < end; addr += PMM_PAGE_SIZE) {
+        const uint32_t pgdir_idx = VMM_ADDR_DIR_IDX(addr);
+        const uint32_t pgtbl_idx = VMM_ADDR_TBL_IDX(addr);
+
+        uint32_t pgdir_entry = pgdir[pgdir_idx];
+        uint32_t *pgtbl;
+        if (pgdir_entry & VMM_TABLE_PRESENT) {
+            uint32_t need_flags = VMM_TABLE_RW | VMM_TABLE_PRESENT;
+            if ((pgdir_entry & VMM_TBL_EQ_FLAGS) != need_flags) {
+                PANIC("cannot map page 0x%08" PRIx32
+                      ", page dir entry %u has incompatible flags (0x%08" PRIx32
+                      ")",
+                      addr, pgdir_idx, pgdir_entry);
+            }
+            pgtbl = (uint32_t *)(pgdir_entry & VMM_TABLE_ADDR_MASK);
+        } else {
+            pgtbl = alloc(VMM_TABLE_SIZE);
+            if ((uintptr_t)pgtbl & (PMM_PAGE_SIZE - 1)) {
+                PANIC("alloc returned an unaligned address 0x%08" PRIxPTR,
+                      (uintptr_t)pgtbl);
+            }
+            LOG_FLOW("alloc page table 0x%08" PRIxPTR
+                     " for dir idx %u page 0x%08" PRIx32 "",
+                     (uintptr_t)pgtbl, pgdir_idx, addr);
+            kmemset(pgtbl, 0, VMM_TABLE_SIZE);
+
+            const uint32_t flags = VMM_TABLE_RW | VMM_TABLE_PRESENT;
+            if ((uintptr_t)pgtbl >= VMM_KERNEL_VMA) {
+                pgdir_entry = (uint32_t)VIRT_TO_PHYS(pgtbl) | flags;
+            } else {
+                pgdir_entry = (uint32_t)pgtbl | flags;
+            }
+
+            pgdir[pgdir_idx] = pgdir_entry;
+        }
+
+        if (vmm_is_paging_enabled() && !vmm_is_addr_mapped((uint32_t)pgtbl)) {
+            vaddr_t himem_pgtbl = PHYS_TO_VIRT(pgtbl);
+            if (!vmm_is_addr_mapped(himem_pgtbl)) {
+                LOG_FLOW("page table covering 0x%08" PRIx32
+                         " at physical 0x%08" PRIxPTR ", virtual 0x%08" PRIx32
+                         " is unmapped",
+                         addr, (uintptr_t)pgtbl, himem_pgtbl);
+            }
+            pgtbl = (uint32_t *)himem_pgtbl;
+        }
+
+        uint32_t pgtbl_entry = pgtbl[pgtbl_idx];
+        if (pgtbl_entry & VMM_PAGE_PRESENT) {
+            LOG_ERROR("found present pgtbl entry idx %u page 0x%08" PRIx32
+                      ": 0x%08x",
+                      pgtbl_idx, addr, pgtbl_entry);
+            PANIC("cannot map page 0x%08" PRIx32 ", page tbl 0x%08" PRIxPTR
+                  " entry %" PRIu32 " is already present",
+                  addr, (uintptr_t)pgtbl, pgtbl_idx);
+        }
+
+        pgtbl_entry = addr | VMM_PAGE_RW | VMM_PAGE_PRESENT;
+        pgtbl[pgtbl_idx] = pgtbl_entry;
+        LOG_FLOW("identity mapped page 0x%08" PRIx32 " (pgdir 0x%08" PRIxPTR
+                 " idx %u, pgtbl 0x%08" PRIxPTR " idx %u)",
+                 addr, (uintptr_t)pgdir, pgdir_idx, (uintptr_t)pgtbl,
+                 pgtbl_idx);
+
+        vmm_invlpg(addr);
+    }
 
     prv_vmm_unlock_kvas();
 }

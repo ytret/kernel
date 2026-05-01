@@ -1,6 +1,9 @@
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
+
+#include "types.h"
 
 #define VMM_USER_START 0x40000000
 #define VMM_USER_END   0xE0000000
@@ -24,6 +27,7 @@ void vmm_free_vas(uint32_t *p_dir);
 void vmm_map_user_page(uint32_t *p_dir, uint32_t virt, uint32_t phys);
 void vmm_map_kernel_page(uint32_t virt, uint32_t phys);
 void vmm_unmap_kernel_page(uint32_t virt);
+void vmm_kmap_region(void *(*alloc)(size_t size), vaddr_t start, vaddr_t size);
 void vmm_invlpg(uint32_t virt);
 
 bool vmm_is_paging_enabled(void);
