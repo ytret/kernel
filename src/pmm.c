@@ -1,3 +1,39 @@
+/**
+ * @file pmm.c
+ *
+ * Physical memory manager.
+ *
+ * The PMM starts from the bootloader-provided memory map, patches holes in it,
+ * inserts new kernel regions, and then serves page allocations from the
+ * remaining available RAM.
+ *
+ * Allocation is pool-based. Each available memory region is partitioned into
+ * one or more buddy-allocator-backed pools, and page requests are satisfied by
+ * iterating over the regions and their pools until a pool that has enough free
+ * space for the allocation is found.
+ *
+ * Glossary:
+ * - region: a contiguous physical address range from the PMM memory map, tagged
+ *   with a type (see #pmm_region_type_t);
+ * - pool: a power-of-two-sized part of an available region, managed by a single
+ *   buddy allocator;
+ * - early page allocator: a static allocator backed by its own
+ *   reserved region, used during bootstrap to allocate pages needed to map and
+ *   initialize the page-table-provider pool;
+ * - page-table-provider pool: the first mapped and initialized pool; it is used
+ *   to map all the other pools and can later, like any other pool, satisfy
+ *   regular allocations.
+ *
+ * Pool initialization has three phases:
+ * 1. Build pool descriptors by partitioning each available region into
+ *    power-of-two-sized buddy pools. The data structures are allocated on the
+ *    static heap.
+ * 2. Select one pool to bootstrap page-table allocations. Map and initialize
+ *    it. The page tables are allocated using the early page allocator.
+ * 3. Map and initialize the remaining pools. The page tables are allocated
+ *    using the page-table-provider pool.
+ */
+
 #include <ytalloc/ytalloc.h>
 
 #define LOG_LEVEL LOG_LEVEL_DEBUG
