@@ -14,7 +14,10 @@
       ];
 
       forAllSystems =
-        f: nixpkgs.lib.genAttrs supportedSystems (system: f system (import nixpkgs { inherit system; }));
+        f:
+        nixpkgs.lib.genAttrs supportedSystems (
+          system: f system (import nixpkgs { inherit system; })
+        );
 
       target = "i686-elf";
       binutilsVersion = "2.45";
@@ -179,23 +182,30 @@
             ++ bootableIsoPackages
             ++ virtualDiskPackages;
           pkgName = p: p.pname or p.name or "unknown";
+          localDevShell =
+            if builtins.pathExists ./flake.local.nix then
+              import ./flake.local.nix {
+                inherit pkgs system;
+              }
+            else
+              { };
+          localPackages = localDevShell.packages or [ ];
+          localShellHook = localDevShell.shellHook or "";
+          mkDevShell =
+            basePackages:
+            pkgs.mkShell rec {
+              packages = basePackages ++ localPackages;
+              shellHook = ''
+                echo "Packages in this shell:"
+                echo "${builtins.concatStringsSep ", " (map pkgName packages)}"
+                ${localShellHook}
+              '';
+            };
         in
         rec {
-          minimal = pkgs.mkShell rec {
-            packages = minimalPackages;
-            shellHook = ''
-              echo "Packages in this shell:"
-              echo "${builtins.concatStringsSep ", " (map pkgName packages)}"
-            '';
-          };
+          minimal = mkDevShell minimalPackages;
 
-          full = pkgs.mkShell rec {
-            packages = fullPackages;
-            shellHook = ''
-              echo "Packages in this shell:"
-              echo "${builtins.concatStringsSep ", " (map pkgName packages)}"
-            '';
-          };
+          full = mkDevShell fullPackages;
 
           default = full;
         }

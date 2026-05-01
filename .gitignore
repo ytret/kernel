@@ -4,6 +4,7 @@ build*/
 *.img
 *.iso
 *.log
+flake.local.nix
 
 isodir/*
 !isodir/boot/
