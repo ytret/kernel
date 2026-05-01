@@ -16,7 +16,6 @@
 
 #define VMM_ADDR_DIR_IDX(addr) (((addr) >> 22) & 0x3FF)
 #define VMM_ADDR_TBL_IDX(addr) (((addr) >> 12) & 0x3FF)
-#define VMM_ADDR_PAGE_MASK     ~0xFFF
 
 #define VMM_TABLE_ADDR_MASK 0xFFFFF000U
 #define VMM_TABLE_USER      (1 << 2)
@@ -24,9 +23,10 @@
 #define VMM_TABLE_PRESENT   (1 << 0)
 #define VMM_TABLE_SIZE      4096U
 
-#define VMM_PAGE_USER    (1 << 2)
-#define VMM_PAGE_RW      (1 << 1)
-#define VMM_PAGE_PRESENT (1 << 0)
+#define VMM_PAGE_USER      (1 << 2)
+#define VMM_PAGE_RW        (1 << 1)
+#define VMM_PAGE_PRESENT   (1 << 0)
+#define VMM_PAGE_ADDR_MASK (~0xFFF)
 
 #define VMM_CR0_PGEN (1 << 31)
 
@@ -36,6 +36,8 @@
  * applied, they are considered different.
  */
 #define VMM_TBL_EQ_FLAGS (VMM_TABLE_USER | VMM_TABLE_RW | VMM_TABLE_PRESENT)
+
+#define VMM_PG_EQ_FLAGS (VMM_TABLE_USER | VMM_TABLE_RW | VMM_TABLE_PRESENT)
 
 static uint32_t *gp_kvas_dir;
 static task_mutex_t g_kvas_lock;
@@ -109,7 +111,7 @@ void vmm_kmap_region_a(void *(*alloc)(size_t size), vaddr_t start,
              " (size 0x%08" PRIx32 ")",
              start, end, size);
 
-    if (start & ~VMM_ADDR_PAGE_MASK) {
+    if (start % PMM_PAGE_SIZE != 0) {
         PANIC("invalid argument 'start' value 0x%08" PRIx32
               ", it must be page-aligned (%u)",
               start, PMM_PAGE_SIZE);
@@ -180,17 +182,22 @@ void vmm_kmap_region_a(void *(*alloc)(size_t size), vaddr_t start,
             pgtbl = (uint32_t *)himem_pgtbl;
         }
 
+        const uint32_t flags = VMM_PAGE_RW | VMM_PAGE_PRESENT;
         uint32_t pgtbl_entry = pgtbl[pgtbl_idx];
         if (pgtbl_entry & VMM_PAGE_PRESENT) {
-            LOG_ERROR("found present pgtbl entry idx %" PRIu32
-                      " page 0x%08" PRIx32 ": 0x%08" PRIx32,
-                      pgtbl_idx, addr, pgtbl_entry);
-            PANIC("cannot map page 0x%08" PRIx32 ", page tbl 0x%08" PRIxPTR
-                  " entry %" PRIu32 " is already present",
-                  addr, (uintptr_t)pgtbl, pgtbl_idx);
+            LOG_FLOW("found present pgtbl entry idx %" PRIu32
+                     " page 0x%08" PRIx32 ": 0x%08" PRIx32,
+                     pgtbl_idx, addr, pgtbl_entry);
+            uint32_t ex_addr = pgtbl_entry & VMM_PAGE_ADDR_MASK;
+            uint32_t ex_flags = pgtbl_entry & VMM_PG_EQ_FLAGS;
+            if (ex_addr != addr || ex_flags != flags) {
+                PANIC("cannot map page 0x%08" PRIx32 ", page tbl 0x%08" PRIxPTR
+                      " entry %" PRIu32 " is already used (0x%08" PRIx32 ")",
+                      addr, (uintptr_t)pgtbl, pgtbl_idx, pgtbl_entry);
+            }
         }
 
-        pgtbl_entry = addr | VMM_PAGE_RW | VMM_PAGE_PRESENT;
+        pgtbl_entry = addr | flags;
         pgtbl[pgtbl_idx] = pgtbl_entry;
         LOG_FLOW("identity mapped page 0x%08" PRIx32 " (pgdir 0x%08" PRIxPTR
                  " idx %u, pgtbl 0x%08" PRIxPTR " idx %u)",
