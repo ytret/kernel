@@ -36,6 +36,8 @@ void ioapic_init(void) {
         g_ioapic_regs = (ioapic_regs_t *)acpiIOAPIC_FALLBACK_ADDR;
     }
 
+    vmm_kmap_buf((void *)g_ioapic_regs, sizeof(*g_ioapic_regs));
+
     ioapic_reg_id_t reg_id;
     ioapic_reg_ver_t reg_ver;
     prv_ioapic_read_u32(IOAPIC_REG_ID, &reg_id);

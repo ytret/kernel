@@ -34,6 +34,8 @@ void lapic_init(bool is_bsp) {
             (lapic_regs_t *)((uint32_t)msr_apic_base.bit.apic_base << 12);
     }
 
+    vmm_kmap_buf((void *)g_lapic_regs, sizeof(*g_lapic_regs));
+
     LOG_DEBUG("Local APIC 0x%02X version %u (%u entries) at %p",
               g_lapic_regs->lapic_id_bit.apic_id,
               g_lapic_regs->lapic_version_bit.version,
