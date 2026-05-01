@@ -214,6 +214,14 @@ void vmm_kmap_region(vaddr_t start, vaddr_t size) {
     vmm_kmap_region_a(heap_alloc, start, size);
 }
 
+void vmm_kmap_buf(const void *buf, size_t size) {
+    const vaddr_t imap_start = (vaddr_t)PMM_PAGE_ALIGN_DOWN((uintptr_t)buf);
+    const vaddr_t imap_end = (vaddr_t)PMM_PAGE_ALIGN_UP((uintptr_t)buf + size);
+    LOG_FLOW("identity map region 0x%08" PRIx32 "..0x%08" PRIx32, imap_start,
+             imap_end);
+    vmm_kmap_region(imap_start, imap_end - imap_start);
+}
+
 void vmm_invlpg(uint32_t virt) {
     __asm__ volatile("invlpg (%0)"
                      : /* no outputs */
