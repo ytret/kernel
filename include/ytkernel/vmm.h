@@ -29,6 +29,7 @@ void vmm_map_kernel_page(uint32_t virt, uint32_t phys);
 void vmm_unmap_kernel_page(uint32_t virt);
 void vmm_kmap_region_a(void *(*alloc)(size_t size), vaddr_t start,
                        vaddr_t size);
+void vmm_kmap_region(vaddr_t start, vaddr_t size);
 void vmm_invlpg(uint32_t virt);
 
 bool vmm_is_paging_enabled(void);

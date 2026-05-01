@@ -203,6 +203,10 @@ void vmm_kmap_region_a(void *(*alloc)(size_t size), vaddr_t start,
     prv_vmm_unlock_kvas();
 }
 
+void vmm_kmap_region(vaddr_t start, vaddr_t size) {
+    vmm_kmap_region_a(heap_alloc, start, size);
+}
+
 void vmm_invlpg(uint32_t virt) {
     __asm__ volatile("invlpg (%0)"
                      : /* no outputs */
