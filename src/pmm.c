@@ -8,6 +8,7 @@
 #include "memfun.h"
 #include "panic.h"
 #include "pmm.h"
+#include "vmm.h"
 
 #define PMM_RESERVE_LOWER_BYTES (4U * 1024U * 1024U)
 
@@ -83,6 +84,9 @@ void pmm_init(const pmm_mmap_t *mmap) {
     kmemcpy(&g_pmm.mmap, mmap, sizeof(*mmap));
 
     g_pmm.static_heap = heap_get_static_heap();
+
+    LOG_DEBUG("memory map upon init entry:");
+    pmm_dump_mmap();
 
     prv_pmm_patch_mmap_holes(&g_pmm.mmap);
     prv_pmm_reserve_lower_mem(&g_pmm.mmap);
@@ -426,16 +430,27 @@ static void prv_pmm_init_static_heap(pmm_ctx_t *pmm) {
     list_insert(&pmm->mmap.entry_list, found_region->node.p_prev,
                 &pmm_static_heap_region.node);
 
-    LOG_DEBUG("static heap region: 0x%016llx .. 0x%016llx",
-              pmm_static_heap_region.start, pmm_static_heap_region.end_incl);
+    const uint64_t virt_start = PHYS_TO_VIRT(pmm_static_heap_region.start);
+    const uint64_t virt_end_incl =
+        PHYS_TO_VIRT(pmm_static_heap_region.end_incl);
 
-    if (pmm_static_heap_region.end_incl > UINT32_MAX) {
-        PANIC("static heap region end 0x%16llx is larger than UINT32_MAX",
-              pmm_static_heap_region.end_incl);
+    LOG_DEBUG("static heap region: physical 0x%016llx .. 0x%016llx",
+              pmm_static_heap_region.start, pmm_static_heap_region.end_incl);
+    LOG_DEBUG("static heap region: virtual  0x%016llx .. 0x%016llx", virt_start,
+              virt_end_incl);
+
+    if (virt_start > VADDR_MAX) {
+        PANIC("static heap region virtual start 0x%16llx is larger than "
+              "VADDR_MAX",
+              virt_start);
+    }
+    if (virt_end_incl > VADDR_MAX) {
+        PANIC(
+            "static heap region virtual end 0x%16llx is larger than VADDR_MAX",
+            virt_end_incl);
     }
 
-    alloc_static_init(pmm->static_heap,
-                      (void *)(uintptr_t)pmm_static_heap_region.start,
+    alloc_static_init(pmm->static_heap, (void *)(vaddr_t)virt_start,
                       static_heap_size);
 }
 
