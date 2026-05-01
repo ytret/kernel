@@ -7,6 +7,7 @@
 #include "kinttypes.h"
 #include "log.h"
 #include "memfun.h"
+#include "vmm.h"
 
 static acpi_rsdp1_t *g_acpi_rsdp1;
 static acpi_rsdt_t *g_acpi_rsdt;
@@ -88,8 +89,12 @@ static bool prv_acpi_copy_rsdp1(void) {
     LOG_DEBUG("found RSD PTR at 0x%08" PRIx32, rsdp_addr);
     prv_acpi_dump_rsdp1((void *)rsdp_addr);
 
+    vmm_kmap_buf((void *)rsdp_addr, sizeof(acpi_rsdp1_t));
+
+    // FIXME: reason for copying onto the heap?
     g_acpi_rsdp1 = heap_alloc(sizeof(*g_acpi_rsdp1));
     kmemcpy(g_acpi_rsdp1, (void *)rsdp_addr, sizeof(*g_acpi_rsdp1));
+
     if (!prv_acpi_check_sum(g_acpi_rsdp1, sizeof(*g_acpi_rsdp1))) {
         LOG_ERROR("bad checksum of RSDT at 0x%08" PRIx32, rsdp_addr);
         return false;
@@ -99,7 +104,11 @@ static bool prv_acpi_copy_rsdp1(void) {
 }
 
 static bool prv_acpi_copy_rsdt(const acpi_rsdt_t *sys_rsdt) {
+    vmm_kmap_buf(sys_rsdt, sizeof(*sys_rsdt));
+    vmm_kmap_buf(sys_rsdt, sys_rsdt->header.length);
+
     // Check the RSDT's sum and copy the table to the heap.
+    // FIXME: reason for copying onto the heap?
     prv_acpi_dump_sdt(&sys_rsdt->header);
     if (!prv_acpi_check_sum(sys_rsdt, sys_rsdt->header.length)) {
         LOG_ERROR("bad checksum of RSDT at 0x%08" PRIx32,
@@ -107,9 +116,11 @@ static bool prv_acpi_copy_rsdt(const acpi_rsdt_t *sys_rsdt) {
         return false;
     }
 
+    vmm_kmap_buf(sys_rsdt, sizeof(acpi_rsdt_t));
+    vmm_kmap_buf(sys_rsdt, sys_rsdt->header.length);
+
     g_acpi_rsdt = heap_alloc(sys_rsdt->header.length);
-    kmemcpy(g_acpi_rsdt, (void *)g_acpi_rsdp1->rsdt_addr,
-            sys_rsdt->header.length);
+    kmemcpy(g_acpi_rsdt, sys_rsdt, sys_rsdt->header.length);
 
     // Dump the RSDT entry tables.
     const uint32_t num_rsdt_entries =
@@ -137,6 +148,8 @@ static bool prv_acpi_copy_rsdt(const acpi_rsdt_t *sys_rsdt) {
  * #g_acpi_madt, otherwise `false`.
  */
 static bool prv_acpi_copy_madt(const acpi_madt_t *sys_madt) {
+    vmm_kmap_buf(sys_madt, sys_madt->header.length);
+
     if (!prv_acpi_check_sum(sys_madt, sys_madt->header.length)) {
         LOG_ERROR("bad checksum of MADT at %p", sys_madt);
         return false;
