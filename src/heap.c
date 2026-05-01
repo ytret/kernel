@@ -125,15 +125,14 @@ void *heap_alloc_aligned(size_t size, size_t align) {
             (size + (PMM_PAGE_SIZE - 1)) & ~(PMM_PAGE_SIZE - 1);
         const size_t num_pages = aligned_size / PMM_PAGE_SIZE;
         const size_t align_pages = align / PMM_PAGE_SIZE;
-        const paddr_t addr = pmm_alloc_aligned_pages(num_pages, align_pages);
-        // FIXME: physical to virtual?
+        const uint64_t paddr = pmm_alloc_aligned_pages(num_pages, align_pages);
 
         heap_large_alloc_t *const large = heap_alloc(sizeof(*large));
         // This static_assert prevents infinite recursion.
         static_assert(sizeof(*large) <= HEAP_MAX_SLAB_SIZE);
         large->num_pages = num_pages;
 
-        for (paddr_t i_addr = addr; i_addr < addr + aligned_size;
+        for (paddr_t i_addr = paddr; i_addr < paddr + aligned_size;
              i_addr += PMM_PAGE_SIZE) {
             pmm_page_t *const metadata = pmm_paddr_to_page(i_addr);
             metadata->type = PMM_ALLOC_LARGE;
@@ -142,7 +141,8 @@ void *heap_alloc_aligned(size_t size, size_t align) {
                      i_addr, large);
         }
 
-        ret_ptr = (void *)addr;
+        // The PMM pools are identity mapped at this point.
+        ret_ptr = (void *)(uintptr_t)paddr;
     }
 
     prv_heap_unlock();
@@ -158,14 +158,16 @@ void heap_free(void *ptr) {
 
     prv_heap_lock();
 
-    const paddr_t addr = (paddr_t)ptr; // FIXME
-    pmm_page_t *const metadata = pmm_paddr_to_page(addr);
+    // heap_alloc*() return identity mapped pointers.
+    const vaddr_t vaddr = (uintptr_t)ptr;
+    const paddr_t paddr = (paddr_t)vaddr;
+    pmm_page_t *const metadata = pmm_paddr_to_page(paddr);
     heap_large_alloc_t *large;
 
     switch (metadata->type) {
     case PMM_ALLOC_NONE:
         LOG_FLOW("free %p: PMM_ALLOC_FREE", ptr);
-        PANIC("tried to free a free page 0x%08" PRIxPTR, addr);
+        PANIC("tried to free a free page 0x%08" PRIx32, vaddr);
 
     case PMM_ALLOC_SLAB:
         LOG_FLOW("free %p: PMM_ALLOC_SLAB 0x%08" PRIxPTR, ptr,
@@ -178,11 +180,11 @@ void heap_free(void *ptr) {
         LOG_FLOW("free %p: PMM_ALLOC_LARGE 0x%08" PRIxPTR, ptr,
                  (uintptr_t)large);
         LOG_FLOW("large->num_pages = %zu", large->num_pages);
-        pmm_free_pages(addr, large->num_pages);
+        pmm_free_pages(paddr, large->num_pages);
         break;
 
     default:
-        PANIC("unrecognized value of page 0x%08" PRIxPTR " type (%u)", addr,
+        PANIC("unrecognized value of page 0x%08" PRIxPTR " type (%u)", vaddr,
               metadata->type);
     }
 
@@ -194,15 +196,16 @@ void *heap_realloc(void *ptr, size_t size, size_t align) {
 
     if (!ptr) { return heap_alloc_aligned(size, align); }
 
-    const paddr_t addr = (paddr_t)ptr; // FIXME
-    pmm_page_t *const metadata = pmm_paddr_to_page(addr);
+    const vaddr_t vaddr = (uint32_t)ptr;
+    const paddr_t paddr = (paddr_t)vaddr;
+    pmm_page_t *const metadata = pmm_paddr_to_page(paddr);
     heap_large_alloc_t *large;
 
     size_t old_size;
     switch (metadata->type) {
     case PMM_ALLOC_NONE:
         LOG_FLOW("realloc: PMM_ALLOC_FREE");
-        PANIC("tried to realloc a free page 0x%08" PRIxPTR, addr);
+        PANIC("tried to realloc a free page 0x%08" PRIxPTR, vaddr);
 
     case PMM_ALLOC_SLAB:
         LOG_FLOW("realloc: PMM_ALLOC_SLAB slab = 0x%08" PRIxPTR,
@@ -217,7 +220,7 @@ void *heap_realloc(void *ptr, size_t size, size_t align) {
         break;
 
     default:
-        PANIC("unrecognized value of page 0x%08" PRIxPTR " type (%u)", addr,
+        PANIC("unrecognized value of page 0x%08" PRIxPTR " type (%u)", vaddr,
               metadata->type);
     }
 

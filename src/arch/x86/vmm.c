@@ -142,9 +142,8 @@ void vmm_kmap_region(void *(*alloc)(size_t size), vaddr_t start, vaddr_t size) {
         if (pgdir_entry & VMM_TABLE_PRESENT) {
             uint32_t need_flags = VMM_TABLE_RW | VMM_TABLE_PRESENT;
             if ((pgdir_entry & VMM_TBL_EQ_FLAGS) != need_flags) {
-                PANIC("cannot map page 0x%08" PRIx32
-                      ", page dir entry %u has incompatible flags (0x%08" PRIx32
-                      ")",
+                PANIC("cannot map page 0x%08" PRIx32 ", page dir entry %" PRIu32
+                      " has incompatible flags (0x%08" PRIx32 ")",
                       addr, pgdir_idx, pgdir_entry);
             }
             pgtbl = (uint32_t *)(pgdir_entry & VMM_TABLE_ADDR_MASK);
@@ -170,7 +169,7 @@ void vmm_kmap_region(void *(*alloc)(size_t size), vaddr_t start, vaddr_t size) {
         }
 
         if (vmm_is_paging_enabled() && !vmm_is_addr_mapped((uint32_t)pgtbl)) {
-            vaddr_t himem_pgtbl = PHYS_TO_VIRT(pgtbl);
+            vaddr_t himem_pgtbl = PHYS_TO_VIRT((uintptr_t)pgtbl);
             if (!vmm_is_addr_mapped(himem_pgtbl)) {
                 LOG_FLOW("page table covering 0x%08" PRIx32
                          " at physical 0x%08" PRIxPTR ", virtual 0x%08" PRIx32
@@ -182,8 +181,8 @@ void vmm_kmap_region(void *(*alloc)(size_t size), vaddr_t start, vaddr_t size) {
 
         uint32_t pgtbl_entry = pgtbl[pgtbl_idx];
         if (pgtbl_entry & VMM_PAGE_PRESENT) {
-            LOG_ERROR("found present pgtbl entry idx %u page 0x%08" PRIx32
-                      ": 0x%08x",
+            LOG_ERROR("found present pgtbl entry idx %" PRIu32
+                      " page 0x%08" PRIx32 ": 0x%08" PRIx32,
                       pgtbl_idx, addr, pgtbl_entry);
             PANIC("cannot map page 0x%08" PRIx32 ", page tbl 0x%08" PRIxPTR
                   " entry %" PRIu32 " is already present",
@@ -233,15 +232,17 @@ bool vmm_is_addr_mapped(uint32_t virt) {
     if (pgdir_entry & VMM_TABLE_PRESENT) {
         const uint32_t *const pgtbl =
             (const uint32_t *)(pgdir_entry & VMM_TABLE_ADDR_MASK);
+        const uint32_t pgtbl_addr = (uint32_t)pgtbl;
 
         uint32_t pgtbl_entry;
-        if ((vaddr_t)boot_pgtbls <= (vaddr_t)pgtbl &&
-            (vaddr_t)pgtbl < (vaddr_t)&boot_pgtbls_end) {
+        if ((vaddr_t)boot_pgtbls <= (vaddr_t)pgtbl_addr &&
+            (vaddr_t)pgtbl_addr < (vaddr_t)&boot_pgtbls_end) {
             pgtbl_entry = pgtbl[pgtbl_idx];
-        } else if (vmm_is_addr_mapped((vaddr_t)pgtbl)) {
+        } else if (vmm_is_addr_mapped((vaddr_t)pgtbl_addr)) {
             pgtbl_entry = pgtbl[pgtbl_idx];
-        } else if (vmm_is_addr_mapped((vaddr_t)PHYS_TO_VIRT(pgtbl))) {
-            pgtbl_entry = ((uint32_t *)PHYS_TO_VIRT(pgtbl))[pgtbl_idx];
+        } else if (vmm_is_addr_mapped((vaddr_t)PHYS_TO_VIRT(pgtbl_addr))) {
+            pgtbl_entry =
+                ((uint32_t *)(vaddr_t)PHYS_TO_VIRT(pgtbl_addr))[pgtbl_idx];
         } else {
             return false;
         }

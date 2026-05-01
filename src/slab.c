@@ -125,8 +125,9 @@ static slab_t *prv_slab_new(slab_cache_t *cache, size_t min_items) {
 
     LOG_FLOW("allocate a new slab for cache %zu", item_size);
 
-    const paddr_t pool_start = pmm_alloc_pages(pool_pages);
-    void *const v_pool = (void *)pool_start; // FIXME
+    const paddr_t pool_pstart = pmm_alloc_pages(pool_pages);
+    const vaddr_t pool_vstart = (vaddr_t)pool_pstart;
+    void *const v_pool = (void *)pool_vstart;
     slab_t *const slab = v_pool;
 
     kmemset(slab, 0, sizeof(*slab));
@@ -136,8 +137,8 @@ static slab_t *prv_slab_new(slab_cache_t *cache, size_t min_items) {
     ASSERT((item_size & (item_size - 1)) == 0);
     const size_t metadata_size = sizeof(slab_t);
     const size_t alloc_start =
-        pool_start + ((metadata_size + (item_size - 1)) & ~(item_size - 1));
-    const size_t lost_size = alloc_start - pool_start;
+        pool_vstart + ((metadata_size + (item_size - 1)) & ~(item_size - 1));
+    const size_t lost_size = alloc_start - pool_vstart;
 
     alloc_slab_init(&slab->alloc, (void *)alloc_start, pool_size - lost_size,
                     item_size);
@@ -146,8 +147,8 @@ static slab_t *prv_slab_new(slab_cache_t *cache, size_t min_items) {
              cache->item_size, (uintptr_t)slab, slab->alloc.num_items);
 
     // Mark the pages as being owned by the new slab.
-    for (paddr_t addr = pool_start;
-         addr < pool_start + pool_pages * PMM_PAGE_SIZE;
+    for (paddr_t addr = pool_pstart;
+         addr < pool_pstart + pool_pages * PMM_PAGE_SIZE;
          addr += PMM_PAGE_SIZE) {
         LOG_FLOW("mark page 0x%08" PRIxPTR
                  " as owned by cache %zu slab 0x%08" PRIxPTR,

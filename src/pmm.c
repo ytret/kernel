@@ -164,8 +164,8 @@ paddr_t pmm_alloc_aligned_pages(size_t num_pages, size_t align_pages) {
         if (addr != 0) {
             // Do an extra check in case ytalloc is buggy.
             if (addr % (PMM_PAGE_SIZE * align_pages) != 0) {
-                PANIC("internal error - returned address 0x%08" PRIx32
-                      " is not aligned at %zu pages",
+                PANIC("internal error - returned address 0x%016llx is not "
+                      "aligned at %zu pages",
                       addr, align_pages);
             }
             return addr;
@@ -195,16 +195,14 @@ void pmm_free_pages(paddr_t addr, size_t num_pages) {
             (uint32_t)addr, num_pages);
     }
 
-    alloc_buddy_free(alloc, (void *)addr, PMM_PAGE_SIZE * num_pages);
+    alloc_buddy_free(alloc, (void *)(uintptr_t)addr, PMM_PAGE_SIZE * num_pages);
 }
 
 pmm_page_t *pmm_paddr_to_page(paddr_t addr) {
     const size_t aligned_addr = addr & ~(PMM_PAGE_SIZE - 1);
 
     const pmm_region_t *const region = pmm_find_region_by_addr(addr);
-    if (!region) {
-        PANIC("could not find the region of the address 0x%08" PRIx32, addr);
-    }
+    if (!region) { PANIC("could not find region of address 0x%016llx", addr); }
 
     const size_t rel_idx = (aligned_addr - region->start) / PMM_PAGE_SIZE;
     const size_t idx = region->page_metadata_offset + rel_idx;
@@ -811,7 +809,7 @@ static paddr_t prv_pmm_alloc_in_pool(alloc_buddy_t *pool, size_t num_pages,
                                      size_t align_pages) {
     const size_t size = PMM_PAGE_SIZE * num_pages;
     const size_t align = PMM_PAGE_SIZE * align_pages;
-    return (paddr_t)alloc_buddy_aligned(pool, size, align);
+    return (paddr_t)(uintptr_t)alloc_buddy_aligned(pool, size, align);
 }
 
 static void *prv_pmm_early_alloc(size_t size) {
