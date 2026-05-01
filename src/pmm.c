@@ -783,8 +783,8 @@ static void prv_pmm_init_pools(pmm_ctx_t *pmm) {
 
             LOG_DEBUG("map and init pool 0x%08" PRIxPTR " size 0x%08zx",
                       (uintptr_t)pool->v_start, pool->size);
-            vmm_kmap_region(prv_pmm_alloc_in_pgtbl_prov, (vaddr_t)pool->v_start,
-                            pool->size);
+            vmm_kmap_region_a(prv_pmm_alloc_in_pgtbl_prov,
+                              (vaddr_t)pool->v_start, pool->size);
             alloc_buddy_init(pool->alloc, pool->v_start, pool->size,
                              pool->free_heads, pool->free_heads_size,
                              pool->bitmap, pool->bitmap_size);
@@ -816,8 +816,8 @@ static void prv_pmm_init_pgtbl_pool(pmm_ctx_t *pmm) {
             "pools");
     }
 
-    vmm_kmap_region(prv_pmm_early_alloc, (vaddr_t)pgtbl_prov->v_start,
-                    pgtbl_prov->size);
+    vmm_kmap_region_a(prv_pmm_early_alloc, (vaddr_t)pgtbl_prov->v_start,
+                      pgtbl_prov->size);
 
     LOG_DEBUG("init page table pool");
     alloc_buddy_init(pgtbl_prov->alloc, pgtbl_prov->v_start, pgtbl_prov->size,

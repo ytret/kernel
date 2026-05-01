@@ -102,7 +102,8 @@ void vmm_unmap_kernel_page(uint32_t virt) {
     prv_vmm_unlock_kvas();
 }
 
-void vmm_kmap_region(void *(*alloc)(size_t size), vaddr_t start, vaddr_t size) {
+void vmm_kmap_region_a(void *(*alloc)(size_t size), vaddr_t start,
+                       vaddr_t size) {
     vaddr_t end = start + size;
     LOG_FLOW("identity map region 0x%08" PRIx32 "..0x%08" PRIx32
              " (size 0x%08" PRIx32 ")",
