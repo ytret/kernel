@@ -25,16 +25,35 @@
 #define PMM_MIN_POOL_SIZE        (1 << PMM_LOG2_MIN_POOL_SIZE)
 #define PMM_MAX_POOLS_PER_REGION 16
 
+/**
+ * Size of the early page allocator in pages.
+ *
+ * The early page allocator is used for mapping the page table provider pool,
+ * which is in turn used to map all the other pools. Size of memory available to
+ * this allocator must be enough to map the page table pool.
+ *
+ * TODO: determine this value dynamically depending on the pool size.
+ */
+#define PMM_EARLY_PGALLOC_PAGES 64
+
 typedef struct {
-    uint32_t start_addr;
+    alloc_buddy_t *alloc;
+    void *v_start;
     size_t size;
-    alloc_buddy_t *heap;
-} pmm_buddy_pool_t;
+    void *free_heads;
+    size_t free_heads_size;
+    void *bitmap;
+    size_t bitmap_size;
+} pmm_pool_t;
 
 typedef struct {
     size_t available_ram_size;
     size_t available_ram_pages;
+
     alloc_static_t *static_heap;
+    alloc_static_t early_pgalloc;
+    bool early_pgalloc_ready;
+    pmm_pool_t *pgtbl_prov_pool;
 
     pmm_page_t *page_metadata;
 
@@ -44,6 +63,7 @@ typedef struct {
 static pmm_ctx_t g_pmm;
 static pmm_region_t g_pmm_first_region_after_lower_mem;
 static pmm_region_t pmm_static_heap_region;
+static pmm_region_t pmm_early_pgalloc_rgn;
 static pmm_region_t g_pmm_patch_regions[PMM_MAX_PATCH_REGIONS];
 static size_t g_pmm_patch_region_cnt;
 
@@ -54,22 +74,29 @@ static void prv_pmm_patch_mmap_holes(pmm_mmap_t *mmap);
 static void prv_pmm_reserve_lower_mem(pmm_mmap_t *mmap);
 static void prv_pmm_count_avail_ram(pmm_ctx_t *pmm);
 static void prv_pmm_init_static_heap(pmm_ctx_t *pmm);
+static void prv_pmm_init_early_pgalloc(pmm_ctx_t *pmm);
 static void prv_pmm_init_page_metadata(pmm_ctx_t *pmm);
-static void prv_pmm_init_pools(pmm_ctx_t *pmm);
+static void prv_pmm_build_pools(pmm_ctx_t *pmm);
 static void prv_pmm_build_region_pools(pmm_ctx_t *pmm, pmm_region_t *region);
 static void prv_pmm_partition_pools(pmm_ctx_t *pmm, pmm_region_t *region,
                                     uint32_t start, uint32_t size);
-static alloc_buddy_t *prv_pmm_create_pool(pmm_ctx_t *pmm, uint32_t start,
-                                          size_t size, uint32_t *out_start,
-                                          uint32_t *out_size);
+static pmm_pool_t *prv_pmm_build_pool(pmm_ctx_t *pmm, uint32_t start,
+                                      size_t size, uint32_t *out_start,
+                                      uint32_t *out_size);
+static void prv_pmm_init_pools(pmm_ctx_t *pmm);
+static void prv_pmm_init_pgtbl_pool(pmm_ctx_t *pmm);
 
 static paddr_t prv_pmm_alloc_in_region(pmm_region_t *region, size_t num_pages,
                                        size_t align_pages);
 static paddr_t prv_pmm_alloc_in_pool(alloc_buddy_t *pool, size_t num_pages,
                                      size_t align_pages);
 
-static alloc_buddy_t *prv_pmm_find_pool_by_addr(pmm_region_t *region,
-                                                paddr_t addr, size_t num_pages);
+static void *prv_pmm_early_alloc(size_t size);
+static void *prv_pmm_alloc_in_pgtbl_prov(size_t size);
+
+static alloc_buddy_t *prv_pmm_find_alloc_by_addr(pmm_region_t *region,
+                                                 paddr_t addr,
+                                                 size_t num_pages);
 
 static size_t prv_pmm_calc_log2(size_t num) {
     size_t log2 = 0;
@@ -92,7 +119,9 @@ void pmm_init(const pmm_mmap_t *mmap) {
     prv_pmm_reserve_lower_mem(&g_pmm.mmap);
     prv_pmm_count_avail_ram(&g_pmm);
     prv_pmm_init_static_heap(&g_pmm);
+    prv_pmm_init_early_pgalloc(&g_pmm);
     prv_pmm_init_page_metadata(&g_pmm);
+    prv_pmm_build_pools(&g_pmm);
     prv_pmm_init_pools(&g_pmm);
 
     LOG_DEBUG("memory map upon init exit:");
@@ -101,7 +130,7 @@ void pmm_init(const pmm_mmap_t *mmap) {
     const size_t static_size =
         g_pmm.static_heap->end - g_pmm.static_heap->start;
     const size_t static_left = g_pmm.static_heap->end - g_pmm.static_heap->next;
-    LOG_DEBUG("static heap has %zu bytes left (%zu %%)", static_left,
+    LOG_DEBUG("static heap has %zu bytes left (%zu %% free)", static_left,
               100 * static_left / static_size);
 }
 
@@ -157,16 +186,16 @@ void pmm_free_pages(paddr_t addr, size_t num_pages) {
               (uint32_t)addr);
     }
 
-    alloc_buddy_t *const pool =
-        prv_pmm_find_pool_by_addr(region, addr, num_pages);
-    if (!pool) {
+    alloc_buddy_t *const alloc =
+        prv_pmm_find_alloc_by_addr(region, addr, num_pages);
+    if (!alloc) {
         PANIC(
             "could not find the pool containing the allocation at 0x%08" PRIx32
             " size %zu pages",
             (uint32_t)addr, num_pages);
     }
 
-    alloc_buddy_free(pool, (void *)addr, PMM_PAGE_SIZE * num_pages);
+    alloc_buddy_free(alloc, (void *)addr, PMM_PAGE_SIZE * num_pages);
 }
 
 pmm_page_t *pmm_paddr_to_page(paddr_t addr) {
@@ -197,6 +226,13 @@ pmm_region_t *pmm_find_region_by_addr(paddr_t addr) {
     }
 
     return NULL;
+}
+
+alloc_static_t *pmm_early_pgalloc(void) {
+    if (!g_pmm.early_pgalloc_ready) {
+        PANIC("early pgalloc is not initialized");
+    }
+    return &g_pmm.early_pgalloc;
 }
 
 void pmm_push_page(uint32_t addr) {
@@ -454,6 +490,57 @@ static void prv_pmm_init_static_heap(pmm_ctx_t *pmm) {
                       static_heap_size);
 }
 
+static void prv_pmm_init_early_pgalloc(pmm_ctx_t *pmm) {
+    const size_t pgalloc_size = PMM_EARLY_PGALLOC_PAGES * PMM_PAGE_SIZE;
+
+    pmm_region_t *found_region;
+    LIST_FIND(&pmm->mmap.entry_list, found_region, pmm_region_t, node,
+              (region->type == PMM_REGION_AVAILABLE &&
+               (region->end_incl - region->start + 1) >= pgalloc_size),
+              region);
+    if (!found_region) {
+        PANIC("could not find an available RAM region for an early page "
+              "allocator of size %zu",
+              pgalloc_size);
+    }
+
+    pmm_early_pgalloc_rgn.start = found_region->start;
+    pmm_early_pgalloc_rgn.end_incl = found_region->start + pgalloc_size - 1;
+    pmm_early_pgalloc_rgn.type = PMM_REGION_STATIC_HEAP;
+
+    found_region->start += pgalloc_size;
+
+    list_insert(&pmm->mmap.entry_list, found_region->node.p_prev,
+                &pmm_early_pgalloc_rgn.node);
+
+    const uint64_t virt_start = PHYS_TO_VIRT(pmm_early_pgalloc_rgn.start);
+    const uint64_t virt_end_incl = PHYS_TO_VIRT(pmm_early_pgalloc_rgn.end_incl);
+
+    LOG_DEBUG("early pgalloc region: physical 0x%016llx .. 0x%016llx",
+              pmm_early_pgalloc_rgn.start, pmm_early_pgalloc_rgn.end_incl);
+    LOG_DEBUG("early pgalloc region: virtual  0x%016llx .. 0x%016llx",
+              virt_start, virt_end_incl);
+
+    if (virt_start > VADDR_MAX) {
+        PANIC("early pgalloc region virtual start 0x%16llx is larger than "
+              "VADDR_MAX",
+              virt_start);
+    }
+    if (virt_end_incl > VADDR_MAX) {
+        PANIC("early pgalloc region virtual end 0x%16llx is larger than "
+              "VADDR_MAX",
+              virt_end_incl);
+    }
+
+    if (virt_start & (PMM_PAGE_SIZE - 1)) {
+        PANIC("early pgalloc region start must be page-aligned");
+    }
+
+    alloc_static_init(&pmm->early_pgalloc, (void *)(vaddr_t)virt_start,
+                      pgalloc_size);
+    pmm->early_pgalloc_ready = true;
+}
+
 /**
  * Initializes page metadata.
  *
@@ -505,7 +592,7 @@ static void prv_pmm_init_page_metadata(pmm_ctx_t *pmm) {
  * Each region may have several allocation pools, the number depending on the
  * region alignment and size.
  */
-static void prv_pmm_init_pools(pmm_ctx_t *pmm) {
+static void prv_pmm_build_pools(pmm_ctx_t *pmm) {
     for (list_node_t *node = pmm->mmap.entry_list.p_first_node; node != NULL;
          node = node->p_next) {
         pmm_region_t *const region =
@@ -545,7 +632,7 @@ static void prv_pmm_build_region_pools(pmm_ctx_t *pmm, pmm_region_t *region) {
 /**
  * Partition the region into several pools.
  *
- * This is a recursive function. It uses #prv_pmm_create_pool() to create a
+ * This is a recursive function. It uses #prv_pmm_build_pool() to create a
  * single pool covering some part in the specified range `[start; end_excl)`,
  * and then calls itself two times for the remaining two parts of the range.
  */
@@ -560,10 +647,10 @@ static void prv_pmm_partition_pools(pmm_ctx_t *pmm, pmm_region_t *region,
 
     uint32_t used_start;
     uint32_t used_size;
-    alloc_buddy_t *const pool =
-        prv_pmm_create_pool(pmm, start, size, &used_start, &used_size);
+    pmm_pool_t *const pool =
+        prv_pmm_build_pool(pmm, start, size, &used_start, &used_size);
 
-    alloc_buddy_t **const pools = region->v_pools;
+    pmm_pool_t **const pools = region->v_pools;
     pools[region->num_pools] = pool;
     region->num_pools++;
 
@@ -589,9 +676,9 @@ static void prv_pmm_partition_pools(pmm_ctx_t *pmm, pmm_region_t *region,
  * be aligned at its size, the used start address and the used size are almost
  * always different from @a start and @a size.
  */
-static alloc_buddy_t *prv_pmm_create_pool(pmm_ctx_t *pmm, uint32_t start,
-                                          size_t size, uint32_t *used_start,
-                                          uint32_t *used_size) {
+static pmm_pool_t *prv_pmm_build_pool(pmm_ctx_t *pmm, uint32_t start,
+                                      size_t size, uint32_t *used_start,
+                                      uint32_t *used_size) {
     const uint32_t end = start + size;
 
     size_t aligned_start = 0;
@@ -607,6 +694,13 @@ static alloc_buddy_t *prv_pmm_create_pool(pmm_ctx_t *pmm, uint32_t start,
 
     if (used_start) { *used_start = aligned_start; }
     if (used_size) { *used_size = block_size; }
+
+    pmm_pool_t *const pool = alloc_static(pmm->static_heap, sizeof(*pool));
+    if (!pool) {
+        PANIC("failed to statically allocate %zu bytes for pmm_pool_t",
+              sizeof(*pool));
+    }
+    kmemset(pool, 0, sizeof(*pool));
 
     alloc_buddy_t *const heap = alloc_static(pmm->static_heap, sizeof(*heap));
     if (!heap) {
@@ -629,21 +723,84 @@ static alloc_buddy_t *prv_pmm_create_pool(pmm_ctx_t *pmm, uint32_t start,
               bitmap_size);
     }
 
-    LOG_DEBUG("init pool at 0x%08zx size 0x%08zx", aligned_start, block_size);
-    alloc_buddy_init(heap, (void *)aligned_start, block_size, free_heads,
-                     free_heads_size, bitmap, bitmap_size);
+    LOG_DEBUG("create pool at 0x%08zx size 0x%08zx", aligned_start, block_size);
+    pool->alloc = heap;
+    pool->v_start = (void *)aligned_start;
+    pool->size = block_size;
+    pool->free_heads = free_heads;
+    pool->free_heads_size = free_heads_size;
+    pool->bitmap = bitmap;
+    pool->bitmap_size = bitmap_size;
 
-    return heap;
+    return pool;
+}
+
+static void prv_pmm_init_pools(pmm_ctx_t *pmm) {
+    prv_pmm_init_pgtbl_pool(pmm);
+
+    for (list_node_t *node = pmm->mmap.entry_list.p_first_node; node != NULL;
+         node = node->p_next) {
+        pmm_region_t *const rgn = LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
+        pmm_pool_t **const pools = rgn->v_pools;
+
+        for (size_t idx = 0; idx < rgn->num_pools; idx++) {
+            pmm_pool_t *const pool = pools[idx];
+            if (pool == pmm->pgtbl_prov_pool) { continue; }
+
+            LOG_DEBUG("map and init pool 0x%08" PRIxPTR " size 0x%08zx",
+                      (uintptr_t)pool->v_start, pool->size);
+            vmm_kmap_region(prv_pmm_alloc_in_pgtbl_prov, (vaddr_t)pool->v_start,
+                            pool->size);
+            alloc_buddy_init(pool->alloc, pool->v_start, pool->size,
+                             pool->free_heads, pool->free_heads_size,
+                             pool->bitmap, pool->bitmap_size);
+        }
+    }
+}
+
+static void prv_pmm_init_pgtbl_pool(pmm_ctx_t *pmm) {
+    pmm_pool_t *pgtbl_prov = NULL;
+    for (list_node_t *node = pmm->mmap.entry_list.p_first_node; node != NULL;
+         node = node->p_next) {
+        pmm_region_t *const region =
+            LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
+        pmm_pool_t **const pools = region->v_pools;
+
+        for (size_t idx = 0; idx < region->num_pools; idx++) {
+            pmm_pool_t *const pool = pools[idx];
+            // TODO: add selection criteria
+            // TODO: do this one time?
+            LOG_DEBUG("use pool at 0x%08" PRIxPTR " size %zu for page tables",
+                      (uintptr_t)pool->v_start, pool->size);
+            pgtbl_prov = pool;
+            break;
+        }
+    }
+    if (!pgtbl_prov) {
+        PANIC(
+            "could not find a pool for allocating page tables for mapping the "
+            "pools");
+    }
+
+    vmm_kmap_region(prv_pmm_early_alloc, (vaddr_t)pgtbl_prov->v_start,
+                    pgtbl_prov->size);
+
+    LOG_DEBUG("init page table pool");
+    alloc_buddy_init(pgtbl_prov->alloc, pgtbl_prov->v_start, pgtbl_prov->size,
+                     pgtbl_prov->free_heads, pgtbl_prov->free_heads_size,
+                     pgtbl_prov->bitmap, pgtbl_prov->bitmap_size);
+
+    pmm->pgtbl_prov_pool = pgtbl_prov;
 }
 
 static paddr_t prv_pmm_alloc_in_region(pmm_region_t *region, size_t num_pages,
                                        size_t align_pages) {
-    alloc_buddy_t **const pools = region->v_pools;
+    pmm_pool_t **const pools = region->v_pools;
 
     for (size_t idx = 0; idx < region->num_pools; idx++) {
-        alloc_buddy_t *const pool = pools[idx];
+        pmm_pool_t *const pool = pools[idx];
         const paddr_t addr =
-            prv_pmm_alloc_in_pool(pool, num_pages, align_pages);
+            prv_pmm_alloc_in_pool(pool->alloc, num_pages, align_pages);
         if (addr != 0) { return addr; }
     }
 
@@ -657,21 +814,55 @@ static paddr_t prv_pmm_alloc_in_pool(alloc_buddy_t *pool, size_t num_pages,
     return (paddr_t)alloc_buddy_aligned(pool, size, align);
 }
 
-static alloc_buddy_t *prv_pmm_find_pool_by_addr(pmm_region_t *region,
-                                                paddr_t addr,
-                                                size_t num_pages) {
+static void *prv_pmm_early_alloc(size_t size) {
+    if (size % PMM_PAGE_SIZE != 0) {
+        PANIC(
+            "invalid argument 'size' value %zu, it must be aligned at %u bytes",
+            size, PMM_PAGE_SIZE);
+    }
+
+    alloc_static_t *const early_pgalloc = pmm_early_pgalloc();
+    void *const page = alloc_static(early_pgalloc, size);
+
+    if (!page) {
+        PANIC("early pgalloc (total size %" PRIuPTR
+              ") failed to allocate %zu bytes",
+              early_pgalloc->end - early_pgalloc->start, size);
+    }
+
+    if ((uintptr_t)page & (PMM_PAGE_SIZE - 1)) {
+        PANIC("early pgalloc returned a non-page-aligned address 0x%08" PRIxPTR,
+              (uintptr_t)page);
+    }
+
+    return page;
+}
+
+static void *prv_pmm_alloc_in_pgtbl_prov(size_t size) {
+    if (!g_pmm.pgtbl_prov_pool) {
+        PANIC("page table provider pool is not initialized");
+    }
+
+    return alloc_buddy_aligned(g_pmm.pgtbl_prov_pool->alloc, size,
+                               PMM_PAGE_SIZE);
+}
+
+static alloc_buddy_t *prv_pmm_find_alloc_by_addr(pmm_region_t *region,
+                                                 paddr_t addr,
+                                                 size_t num_pages) {
     const paddr_t end_excl = addr + PMM_PAGE_SIZE * num_pages;
-    alloc_buddy_t **const pools = region->v_pools;
+    pmm_pool_t **const pools = region->v_pools;
 
     LOG_FLOW("find addr 0x%08" PRIxPTR
              " in region 0x%016llx .. 0x%016llx with %zu pools",
              addr, region->start, region->end_incl, region->num_pools);
 
     for (size_t idx = 0; idx < region->num_pools; idx++) {
-        alloc_buddy_t *const pool = pools[idx];
-        LOG_FLOW("pool %zu start 0x%08" PRIxPTR " end 0x%08" PRIxPTR, idx,
-                 pool->start, pool->end);
-        if (pool->start <= addr && end_excl <= pool->end) { return pool; }
+        pmm_pool_t *const pool = pools[idx];
+        alloc_buddy_t *const alloc = pool->alloc;
+        LOG_FLOW("pool %zu alloc start 0x%08" PRIxPTR " end 0x%08" PRIxPTR, idx,
+                 alloc->start, alloc->end);
+        if (alloc->start <= addr && end_excl <= alloc->end) { return alloc; }
     }
 
     return NULL;

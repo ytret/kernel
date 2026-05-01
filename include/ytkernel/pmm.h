@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <ytalloc/ytalloc.h>
 
 #include "list.h"
 #include "types.h"
@@ -89,6 +90,8 @@ void pmm_free_pages(paddr_t addr, size_t num_pages);
 
 pmm_page_t *pmm_paddr_to_page(paddr_t addr);
 pmm_region_t *pmm_find_region_by_addr(paddr_t addr);
+
+alloc_static_t *pmm_early_pgalloc(void);
 
 void pmm_push_page(uint32_t addr);
 uint32_t pmm_pop_page(void);
