@@ -283,7 +283,7 @@ static void prv_pmm_dump_mmap(const pmm_mmap_t *mmap) {
         pmm_region_t *const region =
             LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
 
-        LOG_DEBUG("%zu: [0x%016llx; 0x%016llx) type '%s'", idx, region->start,
+        LOG_DEBUG("%2zu: [0x%016llx; 0x%016llx) type '%s'", idx, region->start,
                   region->end_incl, prv_pmm_region_type_name(region->type));
     }
 }
