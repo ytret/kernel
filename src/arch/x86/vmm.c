@@ -49,17 +49,6 @@
  */
 #define VMM_PG_EQ_FLAGS (VMM_TABLE_USER | VMM_TABLE_RW | VMM_TABLE_PRESENT)
 
-/**
- * Maximum recursion depth of #prv_vmm_is_mapped_rec().
- *
- * The kernel does not allocate a page table to cover the region that the page
- * table itself is in, so the maximum recursion depth is 2:
- *
- * 1. Depth 1 -- check if a page is mapped.
- * 2. Depth 2 -- check if the covering page table is mapped.
- */
-#define VMM_MAX_MAP_REC 2
-
 static uint32_t *gp_kvas_dir;
 static task_mutex_t g_kvas_lock;
 
@@ -76,7 +65,6 @@ static void prv_vmm_unmap_zero_page(void);
 static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
                      uint32_t flags);
 static void unmap_page(uint32_t *p_dir, uint32_t virt);
-static bool prv_vmm_is_mapped_rec(int depth, uint32_t virt);
 
 static uint32_t prv_vmm_read_cr0(void);
 static uint32_t prv_vmm_read_cr3(void);
@@ -191,7 +179,6 @@ void vmm_kmap_region_a(void *(*alloc)(size_t size), vaddr_t start,
             pgdir[pgdir_idx] = pgdir_entry;
         }
 
-        // FIXME: remove redundant paging enabled check (see above)
         if (vmm_is_paging_enabled() && !vmm_is_addr_mapped((uint32_t)pgtbl)) {
             vaddr_t himem_pgtbl = PHYS_TO_VIRT((uintptr_t)pgtbl);
             if (!vmm_is_addr_mapped(himem_pgtbl)) {
@@ -256,7 +243,42 @@ bool vmm_is_paging_enabled(void) {
 }
 
 bool vmm_is_addr_mapped(uint32_t virt) {
-    return prv_vmm_is_mapped_rec(1, virt);
+    const uint32_t pgdir_idx = VMM_ADDR_DIR_IDX(virt);
+    const uint32_t pgtbl_idx = VMM_ADDR_TBL_IDX(virt);
+
+    if (!vmm_is_paging_enabled()) {
+        LOG_ERROR("paging is not enabled, address 0x%08" PRIx32
+                  " is considered unmapped",
+                  virt);
+        return false;
+    }
+
+    const uint32_t *const pgdir = (const uint32_t *)prv_vmm_read_cr3();
+    if (!pgdir) { return false; }
+
+    const uint32_t pgdir_entry = pgdir[pgdir_idx];
+    if (pgdir_entry & VMM_TABLE_PRESENT) {
+        const uint32_t *const pgtbl =
+            (const uint32_t *)(pgdir_entry & VMM_TABLE_ADDR_MASK);
+        const uint32_t pgtbl_addr = (uint32_t)pgtbl;
+
+        uint32_t pgtbl_entry;
+        if ((vaddr_t)&boot_pgtbls <= (vaddr_t)pgtbl_addr &&
+            (vaddr_t)pgtbl_addr < (vaddr_t)&boot_pgtbls_end) {
+            pgtbl_entry = pgtbl[pgtbl_idx];
+        } else if (vmm_is_addr_mapped((vaddr_t)pgtbl_addr)) {
+            pgtbl_entry = pgtbl[pgtbl_idx];
+        } else if (vmm_is_addr_mapped((vaddr_t)PHYS_TO_VIRT(pgtbl_addr))) {
+            pgtbl_entry =
+                ((uint32_t *)(vaddr_t)PHYS_TO_VIRT(pgtbl_addr))[pgtbl_idx];
+        } else {
+            return false;
+        }
+
+        return pgtbl_entry & VMM_PAGE_PRESENT;
+    }
+
+    return false;
 }
 
 static void prv_vmm_copy_pgdir(void) {
@@ -401,52 +423,6 @@ static void unmap_page(uint32_t *p_dir, uint32_t virt) {
     }
 
     p_tbl[tbl_idx] = 0;
-}
-
-static bool prv_vmm_is_mapped_rec(int depth, uint32_t virt) {
-    if (depth > VMM_MAX_MAP_REC) {
-        LOG_ERROR("maximum recursion depth reached (%d > %d)", depth,
-                  VMM_MAX_MAP_REC);
-        return false;
-    }
-
-    const uint32_t pgdir_idx = VMM_ADDR_DIR_IDX(virt);
-    const uint32_t pgtbl_idx = VMM_ADDR_TBL_IDX(virt);
-
-    if (!vmm_is_paging_enabled()) {
-        LOG_ERROR("paging is not enabled, address 0x%08" PRIx32
-                  " is considered unmapped",
-                  virt);
-        return false;
-    }
-
-    const uint32_t *const pgdir = (const uint32_t *)prv_vmm_read_cr3();
-    if (!pgdir) { return false; }
-
-    const uint32_t pgdir_entry = pgdir[pgdir_idx];
-    if (pgdir_entry & VMM_TABLE_PRESENT) {
-        const uint32_t *const pgtbl =
-            (const uint32_t *)(pgdir_entry & VMM_TABLE_ADDR_MASK);
-        const uint32_t pgtbl_addr = (uint32_t)pgtbl;
-
-        uint32_t pgtbl_entry;
-        if ((vaddr_t)&boot_pgtbls <= (vaddr_t)pgtbl_addr &&
-            (vaddr_t)pgtbl_addr < (vaddr_t)&boot_pgtbls_end) {
-            pgtbl_entry = pgtbl[pgtbl_idx];
-        } else if (prv_vmm_is_mapped_rec(depth + 1, (vaddr_t)pgtbl_addr)) {
-            pgtbl_entry = pgtbl[pgtbl_idx];
-        } else if (prv_vmm_is_mapped_rec(depth + 1,
-                                         (vaddr_t)PHYS_TO_VIRT(pgtbl_addr))) {
-            pgtbl_entry =
-                ((uint32_t *)(vaddr_t)PHYS_TO_VIRT(pgtbl_addr))[pgtbl_idx];
-        } else {
-            return false;
-        }
-
-        return pgtbl_entry & VMM_PAGE_PRESENT;
-    }
-
-    return false;
 }
 
 static uint32_t prv_vmm_read_cr0(void) {
