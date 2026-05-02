@@ -54,8 +54,26 @@ typedef struct {
 } pmm_page_t;
 
 void pmm_init(const pmm_mmap_t *mmap);
+
 const pmm_mmap_t *pmm_get_mmap(void);
 void pmm_dump_mmap(void);
+
+/**
+ * Inserts a region into a memory map.
+ *
+ * @param mmap          Memory map to insert into.
+ * @param insert_region New region to insert.
+ * @param leftover      Possible leftover region.
+ *
+ * If the region covering @a insert_region had to be split into three parts, the
+ * first part is written into the covering region structure, the second part is
+ * described by @a insert_region, the third part is written to @a leftover.
+ *
+ * @returns `true` if the @a leftover region also was inserted and its
+ * boundaries were defined, otherwise `false`.
+ */
+bool pmm_mmap_insert(pmm_mmap_t *mmap, pmm_region_t *insert_region,
+                     pmm_region_t *leftover);
 
 /**
  * Allocate contiguous physical memory pages.

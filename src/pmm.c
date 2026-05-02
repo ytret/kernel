@@ -178,6 +178,55 @@ void pmm_dump_mmap(void) {
     prv_pmm_dump_mmap(&g_pmm.mmap);
 }
 
+bool pmm_mmap_insert(pmm_mmap_t *mmap, pmm_region_t *insert_region,
+                     pmm_region_t *leftover) {
+    // It is assumed that [region_start, region_end_excl) are residing in a
+    // single memory map entry. Otherwise this function will fail.
+    pmm_region_t *found_region;
+    LIST_FIND(&mmap->entry_list, found_region, pmm_region_t, node,
+              region->start <= insert_region->start &&
+                  insert_region->end_incl <= region->end_incl,
+              region);
+    if (found_region) {
+        LOG_FLOW("found covering region physical 0x%016llx..0x%016llx",
+                 found_region->start, found_region->end_incl);
+    } else {
+        PANIC("TODO: no single region covers [0x%016llx; 0x%016llx)",
+              insert_region->start, insert_region->end_incl);
+    }
+
+    LOG_FLOW("insert region physical 0x%016llx..0x%016llx",
+             insert_region->start, insert_region->end_incl);
+
+    if (found_region->start == insert_region->start) {
+        PANIC("TODO: case when region starts at found region start");
+    } else if (found_region->end_incl == insert_region->end_incl) {
+        PANIC("TODO: case when region ends at found region end");
+    } else {
+        // Before: [          found_region          ]
+        // After:  [found_region][region][cut_region]
+        LOG_FLOW("split found region into three parts");
+
+        leftover->start = insert_region->end_incl + 1;
+        leftover->end_incl = found_region->end_incl;
+
+        found_region->end_incl = insert_region->start - 1;
+
+        list_insert(&mmap->entry_list, found_region->node.p_next,
+                    &leftover->node);
+        list_insert(&mmap->entry_list, &leftover->node, &insert_region->node);
+
+        LOG_FLOW("first part  0x%016llx..0x%016llx", found_region->start,
+                 found_region->end_incl);
+        LOG_FLOW("inserted pt 0x%016llx..0x%016llx", insert_region->start,
+                 insert_region->end_incl);
+        LOG_FLOW("third part  0x%016llx..0x%016llx", leftover->start,
+                 leftover->end_incl);
+
+        return true;
+    }
+}
+
 paddr_t pmm_alloc_pages(size_t num_pages) {
     return pmm_alloc_aligned_pages(num_pages, 1);
 }

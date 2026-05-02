@@ -50,11 +50,8 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
         PANIC("failed to fill the memory map");
     }
 
-    const paddr_t kernel_start = VMM_KERNEL_LMA;
-    const paddr_t kernel_end = prv_main_find_kernel_phys_end();
-    LOG_DEBUG("kernel region physical 0x%016llx..0x%016llx", kernel_start,
-              kernel_end);
-    prv_main_add_kernel_region(&g_mmap, kernel_start, kernel_end);
+    prv_main_add_kernel_region(&g_mmap, VMM_KERNEL_LMA,
+                               prv_main_find_kernel_phys_end());
     pmm_init(&g_mmap);
 
     heap_init();
@@ -112,55 +109,15 @@ static void prv_main_add_kernel_region(pmm_mmap_t *mmap, paddr_t region_start,
 
     const uintptr_t region_end_incl = region_end_excl - 1;
 
-    // It is assumed that [region_start, region_end_excl) are residing in a
-    // single memory map entry. Otherwise this function will fail.
-    pmm_region_t *found_region;
-    LIST_FIND(&mmap->entry_list, found_region, pmm_region_t, node,
-              region->start <= region_start &&
-                  region_end_incl <= region->end_incl,
-              region);
-    if (found_region) {
-        LOG_FLOW("found covering region physical 0x%016llx..0x%016llx",
-                 found_region->start, found_region->end_incl);
-    } else {
-        PANIC("TODO: could not find a single region that covers [0x%08llx; "
-              "0x%08llx)",
-              region_start, region_end_excl);
-    }
-
     g_kernel_region.start = region_start;
     g_kernel_region.end_incl = region_end_incl;
-    g_kernel_region.type = PMM_REGION_KERNEL_AND_MODS;
 
     LOG_DEBUG("insert kernel region physical 0x%016llx..0x%016llx",
               g_kernel_region.start, g_kernel_region.end_incl);
+    pmm_mmap_insert(mmap, &g_kernel_region, &g_cut_region);
 
-    if (found_region->start == region_start) {
-        PANIC("TODO: case when the kernel region starts at the found region "
-              "start");
-    } else if (found_region->end_incl == region_end_incl) {
-        PANIC("TODO: case when the kernel region ends at the found region end");
-    } else {
-        // Before: [              found_region             ]
-        // After:  [found_region][kernel_region][cut_region]
-        LOG_FLOW("split the found region into three parts");
-
-        g_cut_region.start = g_kernel_region.end_incl + 1;
-        g_cut_region.end_incl = found_region->end_incl;
-        g_cut_region.type = PMM_REGION_AVAILABLE;
-
-        found_region->end_incl = g_kernel_region.start - 1;
-
-        list_insert(&mmap->entry_list, found_region->node.p_next,
-                    &g_cut_region.node);
-        list_insert(&mmap->entry_list, &g_cut_region.node,
-                    &g_kernel_region.node);
-
-        LOG_FLOW("first part  0x%016llx..0x%016llx", found_region->start,
-                 found_region->end_incl);
-        LOG_FLOW("kernel part 0x%016llx..0x%016llx", g_kernel_region.start,
-                 g_kernel_region.end_incl);
-        LOG_FLOW("third part  0x%016llx..0x%016llx", g_cut_region.start,
-                 g_cut_region.end_incl);
-    }
+    g_kernel_region.type = PMM_REGION_KERNEL_AND_MODS;
+    g_cut_region.type = PMM_REGION_AVAILABLE;
+    // NOTE: it is assumed that the original region covering the kernel is
+    // marked as available RAM, therefore #g_cut_region is marked as such too.
 }
