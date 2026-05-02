@@ -388,10 +388,16 @@ static void unmap_page(uint32_t *p_dir, uint32_t virt) {
     uint32_t tbl_idx = VMM_ADDR_TBL_IDX(virt);
 
     if (!(p_dir[dir_idx] & VMM_TABLE_PRESENT)) {
-        PANIC("table %zu for %p is not present", dir_idx, ((void *)virt));
+        PANIC("page dir entry %zu for %p is not present", dir_idx,
+              ((void *)virt));
     }
 
     uint32_t *p_tbl = ((uint32_t *)(p_dir[dir_idx] & ~0xFFF));
+
+    if (!vmm_is_addr_mapped((vaddr_t)p_tbl)) {
+        PANIC("page table at %p for 0x%08" PRIx32 " is not mapped", p_tbl,
+              virt);
+    }
 
     if (!(p_tbl[tbl_idx] & VMM_PAGE_PRESENT)) {
         PANIC("page %zu for %p is not present", tbl_idx, ((void *)virt));
