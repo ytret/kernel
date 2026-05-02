@@ -52,6 +52,7 @@ enable_sse:     push    %eax
 
                 pop     %eax
                 ret
+                .size   enable_sse, . - enable_sse
 
                 ## Application Processor (AP) trampoline.
                 ##
@@ -98,4 +99,3 @@ _ap_trampoline_p2:
 
                 ## Call the C part. Do not use relative 'call' opcodes.
                 call    $0x08, $smp_ap_trampoline_c
-                .size   enable_sse, . - enable_sse
