@@ -1,3 +1,8 @@
+/**
+ * @file queue.h
+ * Bounded multi-producer multi-consumer FIFO queue.
+ */
+
 #pragma once
 
 #include <stdbool.h>

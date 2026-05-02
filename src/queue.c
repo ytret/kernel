@@ -1,4 +1,5 @@
-/*
+/**
+ * @file queue.c
  * Bounded multi-producer multi-consumer FIFO queue.
  */
 
