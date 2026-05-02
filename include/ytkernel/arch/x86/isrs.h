@@ -1,5 +1,9 @@
-/*
- * Declarations of interrupt service routines defined in isrs.s.
+/**
+ * @file isrs.h
+ *
+ * ISR function declarations and type definitions.
+ *
+ * The interrupt service routines are defined in isrs.s.
  */
 
 #pragma once
