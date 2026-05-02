@@ -240,7 +240,7 @@ pmm_page_t *pmm_paddr_to_page(paddr_t addr) {
     const size_t rel_idx = (aligned_addr - region->start) / PMM_PAGE_SIZE;
     const size_t idx = region->page_metadata_offset + rel_idx;
 
-    LOG_FLOW("page 0x%08" PRIxPTR " metadata idx %zu", addr, idx);
+    LOG_FLOW("page 0x%08" PRIx32 " metadata idx %zu", (uint32_t)addr, idx);
     return &g_pmm.page_metadata[idx];
 }
 
@@ -878,9 +878,9 @@ static alloc_buddy_t *prv_pmm_find_alloc_by_addr(pmm_region_t *region,
     const paddr_t end_excl = addr + PMM_PAGE_SIZE * num_pages;
     pmm_pool_t **const pools = region->v_pools;
 
-    LOG_FLOW("find addr 0x%08" PRIxPTR
-             " in region 0x%016llx .. 0x%016llx with %zu pools",
-             addr, region->start, region->end_incl, region->num_pools);
+    LOG_FLOW(
+        "find addr 0x%016llx in region 0x%016llx .. 0x%016llx with %zu pools",
+        addr, region->start, region->end_incl, region->num_pools);
 
     for (size_t idx = 0; idx < region->num_pools; idx++) {
         pmm_pool_t *const pool = pools[idx];
