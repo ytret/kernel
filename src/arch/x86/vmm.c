@@ -17,6 +17,9 @@
 #define VMM_ADDR_DIR_IDX(addr) (((addr) >> 22) & 0x3FF)
 #define VMM_ADDR_TBL_IDX(addr) (((addr) >> 12) & 0x3FF)
 
+#define VMM_DIR_SIZE  4096U
+#define VMM_DIR_ALIGN 4096U
+
 #define VMM_TABLE_ADDR_MASK 0xFFFFF000U
 #define VMM_TABLE_USER      (1 << 2)
 #define VMM_TABLE_RW        (1 << 1)
@@ -48,7 +51,7 @@ extern uint32_t boot_pgtbls_end;
 static void prv_vmm_lock_kvas(void);
 static void prv_vmm_unlock_kvas(void);
 
-static void prv_vmm_identity_map_ram(void);
+static void prv_vmm_copy_pgdir(void);
 static void prv_vmm_unmap_zero_page(void);
 
 static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
@@ -59,11 +62,8 @@ static uint32_t prv_vmm_read_cr0(void);
 static uint32_t prv_vmm_read_cr3(void);
 
 void vmm_init(void) {
-    gp_kvas_dir = heap_alloc_aligned(4096, 4096);
-    __builtin_memset(gp_kvas_dir, 0, 4096);
-    LOG_DEBUG("kernel page dir is at %p", gp_kvas_dir);
+    prv_vmm_copy_pgdir();
 
-    prv_vmm_identity_map_ram();
     prv_vmm_unmap_zero_page();
 
     term_map_iomem();
@@ -273,38 +273,22 @@ bool vmm_is_addr_mapped(uint32_t virt) {
     return false;
 }
 
-static void prv_vmm_identity_map_ram(void) {
-    const pmm_mmap_t *const physmem_map = pmm_get_mmap();
-
-    for (list_node_t *node = physmem_map->entry_list.p_first_node; node != NULL;
-         node = node->p_next) {
-        pmm_region_t *const region =
-            LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
-
-        if (region->type != PMM_REGION_AVAILABLE &&
-            region->type != PMM_REGION_KERNEL_RESERVED &&
-            region->type != PMM_REGION_KERNEL_AND_MODS &&
-            region->type != PMM_REGION_STATIC_HEAP) {
-            continue;
-        }
-
-        if (region->end_incl >= UINT32_MAX) {
-            LOG_DEBUG("skip region 0x%016llx .. 0x%016llx", region->start,
-                      region->end_incl);
-            continue;
-        }
-
-        const uint32_t map_start = region->start & ~(PMM_PAGE_SIZE - 1);
-        const uint32_t map_end =
-            ((region->end_incl + 1) + (PMM_PAGE_SIZE - 1)) &
-            ~(PMM_PAGE_SIZE - 1);
-
-        LOG_DEBUG("identity map range %p .. %p", (void *)map_start,
-                  (void *)map_end);
-        for (uint32_t page = map_start; page < map_end; page += 4096) {
-            vmm_map_kernel_page(page, page);
-        }
+static void prv_vmm_copy_pgdir(void) {
+    if (!vmm_is_paging_enabled()) {
+        PANIC("paging was expected to be enabled");
     }
+
+    gp_kvas_dir = heap_alloc_aligned(VMM_DIR_SIZE, VMM_DIR_ALIGN);
+
+    const uint32_t paddr_boot_pgdir = prv_vmm_read_cr3();
+    if (!vmm_is_addr_mapped(paddr_boot_pgdir)) {
+        PANIC("boot pgdir at 0x%08" PRIx32 " is not mapped", paddr_boot_pgdir);
+    }
+
+    const void *const boot_pgdir = (const void *)paddr_boot_pgdir;
+    kmemcpy(gp_kvas_dir, boot_pgdir, VMM_DIR_SIZE);
+
+    LOG_DEBUG("kernel page dir is at %p", gp_kvas_dir);
 }
 
 static void prv_vmm_unmap_zero_page(void) {
