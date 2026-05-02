@@ -82,8 +82,8 @@ entry_ap_trampoline:
 
                 ## NOTE: it is assumed that the alignment puts the code 32 bytes
                 ## past the 'entry_ap_trampoline' label.
-                .align  32
                 .code32
+                .align  32
 _ap_trampoline_p2:
                 ## Set the data segment registers to 0x10.
                 mov     $0x10, %ax
@@ -97,5 +97,16 @@ _ap_trampoline_p2:
                 mov     $0x8800, %esi
                 mov     6(%esi), %esp
 
-                ## Call the C part. Do not use relative 'call' opcodes.
+                ljmp    $0x08, $0x8040
+
+                .align 32
+_ap_trampoline_p3:
+                ## Set up paging.
+                mov     10(%esi), %eax
+                mov     %eax, %cr3
+                mov     %cr0, %eax
+                or      $0x80000001, %eax
+                mov     %eax, %cr0
+
+                ## NOTE: do not use relative 'call' opcodes.
                 call    $0x08, $smp_ap_trampoline_c

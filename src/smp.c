@@ -258,7 +258,6 @@ void smp_ap_trampoline_c(void) {
     // NOTE: this function is called from 'smp_ap_trampoline' in smp.s.
 
     enable_sse();
-    vmm_load_dir(vmm_kvas_dir());
 
     LOG_DEBUG("Hello, World! from AP kernel num %u UID %u with LAPIC ID %u",
               smp_get_running_proc()->proc_num,
