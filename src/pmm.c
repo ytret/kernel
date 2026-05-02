@@ -322,7 +322,7 @@ static void prv_pmm_patch_mmap_holes(pmm_mmap_t *mmap) {
             if (!is_first_region && region->start > last_end_incl + 1) {
                 const uint64_t hole_start = last_end_incl + 1;
                 const uint64_t hole_end_incl = region->start - 1;
-                LOG_DEBUG("found memory map hole 0x%016llx .. 0x%016llx",
+                LOG_DEBUG("found memory map hole 0x%016llx..0x%016llx",
                           hole_start, hole_end_incl);
 
                 if (g_pmm_patch_region_cnt >= PMM_MAX_PATCH_REGIONS) {
@@ -379,13 +379,13 @@ static void prv_pmm_reserve_lower_mem(pmm_mmap_t *mmap) {
         pmm_region_t *const region =
             LIST_NODE_TO_STRUCT(node, pmm_region_t, node);
         if (region->type == PMM_REGION_AVAILABLE) {
-            LOG_FLOW("region 0x%016llx .. 0x%016llx available, reserving",
+            LOG_FLOW("region 0x%016llx..0x%016llx available, reserving",
                      region->start, region->end_incl);
             region->type = PMM_REGION_KERNEL_RESERVED;
             cnt_prev_available += region->end_incl - region->start + 1;
         } else {
             LOG_FLOW(
-                "region 0x%016llx .. 0x%016llx already not available, skipping",
+                "region 0x%016llx..0x%016llx already not available, skipping",
                 region->start, region->end_incl);
             continue;
         }
@@ -499,9 +499,9 @@ static void prv_pmm_init_static_heap(pmm_ctx_t *pmm) {
     const uint64_t virt_end_incl =
         PHYS_TO_VIRT(pmm_static_heap_region.end_incl);
 
-    LOG_DEBUG("static heap region: physical 0x%016llx .. 0x%016llx",
+    LOG_DEBUG("static heap region: physical 0x%016llx..0x%016llx",
               pmm_static_heap_region.start, pmm_static_heap_region.end_incl);
-    LOG_DEBUG("static heap region: virtual  0x%016llx .. 0x%016llx", virt_start,
+    LOG_DEBUG("static heap region: virtual  0x%016llx..0x%016llx", virt_start,
               virt_end_incl);
 
     if (virt_start > VADDR_MAX) {
@@ -544,10 +544,10 @@ static void prv_pmm_init_early_pgalloc(pmm_ctx_t *pmm) {
     const uint64_t virt_start = PHYS_TO_VIRT(pmm_early_pgalloc_rgn.start);
     const uint64_t virt_end_incl = PHYS_TO_VIRT(pmm_early_pgalloc_rgn.end_incl);
 
-    LOG_DEBUG("early pgalloc region: physical 0x%016llx .. 0x%016llx",
+    LOG_DEBUG("early pgalloc region: physical 0x%016llx..0x%016llx",
               pmm_early_pgalloc_rgn.start, pmm_early_pgalloc_rgn.end_incl);
-    LOG_DEBUG("early pgalloc region: virtual  0x%016llx .. 0x%016llx",
-              virt_start, virt_end_incl);
+    LOG_DEBUG("early pgalloc region: virtual  0x%016llx..0x%016llx", virt_start,
+              virt_end_incl);
 
     if (virt_start > VADDR_MAX) {
         PANIC("early pgalloc region virtual start 0x%16llx is larger than "
@@ -597,12 +597,11 @@ static void prv_pmm_init_page_metadata(pmm_ctx_t *pmm) {
         if (region->type != PMM_REGION_AVAILABLE) { continue; }
 
         if (region->start & (PMM_PAGE_SIZE - 1)) {
-            PANIC(
-                "TODO: region 0x%016llx .. 0x%016llx start is not page-aligned",
-                region->start, region->end_incl);
+            PANIC("TODO: region 0x%016llx..0x%016llx start is not page-aligned",
+                  region->start, region->end_incl);
         }
         if ((region->end_incl + 1) & (PMM_PAGE_SIZE - 1)) {
-            PANIC("TODO: region 0x%016llx .. 0x%016llx end is not page-aligned",
+            PANIC("TODO: region 0x%016llx..0x%016llx end is not page-aligned",
                   region->start, region->end_incl);
         }
 
@@ -633,7 +632,7 @@ static void prv_pmm_build_pools(pmm_ctx_t *pmm) {
         }
 
         prv_pmm_build_region_pools(pmm, region);
-        LOG_DEBUG("region 0x%016llx .. 0x%016llx has %zu buddy pools",
+        LOG_DEBUG("region 0x%016llx..0x%016llx has %zu buddy pools",
                   region->start, region->end_incl, region->num_pools);
     }
 }
@@ -669,7 +668,7 @@ static void prv_pmm_partition_pools(pmm_ctx_t *pmm, pmm_region_t *region,
     if (size < PMM_MIN_POOL_SIZE) { return; }
     if (region->num_pools >= PMM_MAX_POOLS_PER_REGION) { return; }
 
-    LOG_DEBUG("init pools for region 0x%08zx .. 0x%08zx", start,
+    LOG_DEBUG("init pools for region 0x%08zx..0x%08zx", start,
               start + size - 1);
 
     uint32_t used_start;
@@ -879,7 +878,7 @@ static alloc_buddy_t *prv_pmm_find_alloc_by_addr(pmm_region_t *region,
     pmm_pool_t **const pools = region->v_pools;
 
     LOG_FLOW(
-        "find addr 0x%016llx in region 0x%016llx .. 0x%016llx with %zu pools",
+        "find addr 0x%016llx in region 0x%016llx..0x%016llx with %zu pools",
         addr, region->start, region->end_incl, region->num_pools);
 
     for (size_t idx = 0; idx < region->num_pools; idx++) {
