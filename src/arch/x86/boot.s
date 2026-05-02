@@ -28,9 +28,11 @@
                  * Numer of lower memory page tables to identity map.
                  *
                  * This number of page tables must be enough to map everything
-                 * below the address of `ld_boot_end` (see the linker script).
+                 * below the address of `ld_boot_end` (see the linker script),
+                 * and must be equal to `NUM_HIGHMEM_TABLES` to allow identical
+                 * lower and higher half mappings of physical memory.
                  */
-                .set    NUM_LOWMEM_TABLES, 1
+                .set    NUM_LOWMEM_TABLES, 4
                 /**
                  * Number of higher memory page tables.
                  *
@@ -38,7 +40,7 @@
                  * kernel in the higher half. See symbols `ld_vmm_kernel_start`
                  * and `ld_vmm_kernel_end`.
                  */
-                .set    NUM_HIMEM_TABLES, 4
+                .set    NUM_HIMEM_TABLES, NUM_LOWMEM_TABLES
                 /**
                  * Base virtual address in higher memory for mapping.
                  *
