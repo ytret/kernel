@@ -51,15 +51,6 @@ void ioapic_init(void) {
               g_ioapic_id, g_ioapic_version, g_ioapic_redirs, g_ioapic_regs);
 }
 
-void ioapic_map_pages(void) {
-    const uint32_t ioapic_first_page = (uint32_t)g_ioapic_regs;
-    constexpr size_t ioapic_num_pages = (sizeof(*g_ioapic_regs) + 4095) / 4096;
-    for (uint32_t idx = 0; idx < ioapic_num_pages; idx++) {
-        const uint32_t ioapic_page = ioapic_first_page + 4096 * idx;
-        vmm_map_kernel_page(ioapic_page, ioapic_page);
-    }
-}
-
 bool ioapic_map_irq(uint8_t irq_num, uint8_t vec_num, uint8_t lapic_id) {
     if (!g_ioapic_regs) {
         LOG_ERROR(

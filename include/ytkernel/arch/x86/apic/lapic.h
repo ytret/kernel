@@ -12,14 +12,6 @@
 
 void lapic_init(bool is_bsp);
 
-/**
- * Identity maps the LAPIC memory-mapped register pages.
- * @note
- * If the kernel virtual address space is shared between the processors, this
- * needs to be done only once.
- */
-void lapic_map_pages(void);
-
 /// Returns the Local APIC ID of the running processor.
 uint8_t lapic_get_id(void);
 

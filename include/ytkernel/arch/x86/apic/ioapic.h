@@ -16,9 +16,6 @@
  */
 void ioapic_init(void);
 
-/// Identity maps the I/O memory-mapped register pages.
-void ioapic_map_pages(void);
-
 /**
  * Maps an external IRQ to a vector of the target LAPIC.
  *

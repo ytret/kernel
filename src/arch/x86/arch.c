@@ -34,9 +34,6 @@ void arch_init_2(void) {
 
     vmm_init();
 
-    lapic_map_pages();
-    ioapic_map_pages();
-
     __asm__ volatile("sti");
     LOG_DEBUG("interrupts enabled");
 

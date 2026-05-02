@@ -51,15 +51,6 @@ void lapic_init(bool is_bsp) {
     g_lapic_regs->sivr_bit.ase = 1;
 }
 
-void lapic_map_pages(void) {
-    const uint32_t lapic_first_page = (uint32_t)g_lapic_regs;
-    constexpr size_t lapic_num_pages = (sizeof(*g_lapic_regs) + 4095) / 4096;
-    for (uint32_t idx = 0; idx < lapic_num_pages; idx++) {
-        const uint32_t lapic_page = lapic_first_page + 4096 * idx;
-        vmm_map_kernel_page(lapic_page, lapic_page);
-    }
-}
-
 uint8_t lapic_get_id(void) {
     unsigned int unused;
     unsigned int ebx;
