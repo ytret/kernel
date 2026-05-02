@@ -260,21 +260,7 @@ bool vmm_is_addr_mapped(uint32_t virt) {
     if (pgdir_entry & VMM_TABLE_PRESENT) {
         const uint32_t *const pgtbl =
             (const uint32_t *)(pgdir_entry & VMM_TABLE_ADDR_MASK);
-        const uint32_t pgtbl_addr = (uint32_t)pgtbl;
-
-        uint32_t pgtbl_entry;
-        if ((vaddr_t)&boot_pgtbls <= (vaddr_t)pgtbl_addr &&
-            (vaddr_t)pgtbl_addr < (vaddr_t)&boot_pgtbls_end) {
-            pgtbl_entry = pgtbl[pgtbl_idx];
-        } else if (vmm_is_addr_mapped((vaddr_t)pgtbl_addr)) {
-            pgtbl_entry = pgtbl[pgtbl_idx];
-        } else if (vmm_is_addr_mapped((vaddr_t)PHYS_TO_VIRT(pgtbl_addr))) {
-            pgtbl_entry =
-                ((uint32_t *)(vaddr_t)PHYS_TO_VIRT(pgtbl_addr))[pgtbl_idx];
-        } else {
-            return false;
-        }
-
+        const uint32_t pgtbl_entry = pgtbl[pgtbl_idx];
         return pgtbl_entry & VMM_PAGE_PRESENT;
     }
 
