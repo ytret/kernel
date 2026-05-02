@@ -59,6 +59,7 @@ static void prv_vmm_lock_kvas(void);
 static void prv_vmm_unlock_kvas(void);
 
 static void prv_vmm_copy_pgdir(void);
+static void prv_vmm_copy_boot_pgtbls(uint32_t *pgdir);
 static void prv_vmm_unmap_zero_page(void);
 
 static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
@@ -295,7 +296,25 @@ static void prv_vmm_copy_pgdir(void) {
     const void *const boot_pgdir = (const void *)paddr_boot_pgdir;
     kmemcpy(gp_kvas_dir, boot_pgdir, VMM_DIR_SIZE);
 
+    prv_vmm_copy_boot_pgtbls(gp_kvas_dir);
+
     LOG_DEBUG("kernel page dir is at %p", gp_kvas_dir);
+}
+
+static void prv_vmm_copy_boot_pgtbls(uint32_t *pgdir) {
+    const vaddr_t start = (vaddr_t)&boot_pgtbls;
+    const vaddr_t size = (vaddr_t)&boot_pgtbls_end - start;
+
+    void *const copy = heap_alloc_aligned(size, PMM_PAGE_SIZE);
+    kmemcpy(copy, (const void *)start, size);
+
+    // NOTE: it is assumed that boot.s uses the boot tables to identity map
+    // everything starting from address 0.
+    for (size_t idx = 0; idx < size / VMM_TABLE_SIZE; idx++) {
+        // Replace the boot dir entries.
+        pgdir[idx] = (uint32_t)copy + idx * VMM_TABLE_SIZE;
+        pgdir[idx] |= VMM_TABLE_RW | VMM_TABLE_PRESENT;
+    }
 }
 
 static void prv_vmm_unmap_zero_page(void) {
