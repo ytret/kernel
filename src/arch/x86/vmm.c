@@ -52,7 +52,7 @@
 static uint32_t *gp_kvas_dir;
 static task_mutex_t g_kvas_lock;
 
-extern uint32_t *boot_pgtbls;
+extern uint32_t boot_pgtbls;
 extern uint32_t boot_pgtbls_end;
 
 static void prv_vmm_lock_kvas(void);
@@ -262,7 +262,7 @@ bool vmm_is_addr_mapped(uint32_t virt) {
         const uint32_t pgtbl_addr = (uint32_t)pgtbl;
 
         uint32_t pgtbl_entry;
-        if ((vaddr_t)boot_pgtbls <= (vaddr_t)pgtbl_addr &&
+        if ((vaddr_t)&boot_pgtbls <= (vaddr_t)pgtbl_addr &&
             (vaddr_t)pgtbl_addr < (vaddr_t)&boot_pgtbls_end) {
             pgtbl_entry = pgtbl[pgtbl_idx];
         } else if (vmm_is_addr_mapped((vaddr_t)pgtbl_addr)) {
