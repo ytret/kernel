@@ -9,7 +9,6 @@
 #include "panic.h"
 #include "smp.h"
 #include "taskmgr.h"
-#include "vmm.h"
 
 #include "arch/x86/apic/lapic.h"
 #include "arch/x86/idt.h"
