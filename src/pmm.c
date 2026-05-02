@@ -185,7 +185,7 @@ paddr_t pmm_alloc_pages(size_t num_pages) {
 paddr_t pmm_alloc_aligned_pages(size_t num_pages, size_t align_pages) {
     if (num_pages == 0) { PANIC("invalid argument 'num_pages' value 0"); }
     if (align_pages == 0 || (align_pages & (align_pages - 1)) != 0) {
-        PANIC("invalid argument 'align_pages' value %zu - not a power of two",
+        PANIC("invalid argument 'align_pages' value %zu - not power of two",
               align_pages);
     }
 
@@ -218,17 +218,14 @@ void pmm_free_pages(paddr_t addr, size_t num_pages) {
 
     pmm_region_t *const region = pmm_find_region_by_addr(addr);
     if (!region) {
-        PANIC("could not find a region containing the address 0x%08" PRIx32,
-              (uint32_t)addr);
+        PANIC("no physical region contains 0x%08" PRIx32, (uint32_t)addr);
     }
 
     alloc_buddy_t *const alloc =
         prv_pmm_find_alloc_by_addr(region, addr, num_pages);
     if (!alloc) {
-        PANIC(
-            "could not find the pool containing the allocation at 0x%08" PRIx32
-            " size %zu pages",
-            (uint32_t)addr, num_pages);
+        PANIC("no pool owns allocation at 0x%08" PRIx32 " of %zu pages",
+              (uint32_t)addr, num_pages);
     }
 
     alloc_buddy_free(alloc, (void *)(uintptr_t)addr, PMM_PAGE_SIZE * num_pages);
@@ -238,7 +235,7 @@ pmm_page_t *pmm_paddr_to_page(paddr_t addr) {
     const size_t aligned_addr = addr & ~(PMM_PAGE_SIZE - 1);
 
     const pmm_region_t *const region = pmm_find_region_by_addr(addr);
-    if (!region) { PANIC("could not find region of address 0x%016llx", addr); }
+    if (!region) { PANIC("no region contains address 0x%016llx", addr); }
 
     const size_t rel_idx = (aligned_addr - region->start) / PMM_PAGE_SIZE;
     const size_t idx = region->page_metadata_offset + rel_idx;
@@ -329,7 +326,7 @@ static void prv_pmm_patch_mmap_holes(pmm_mmap_t *mmap) {
                           hole_start, hole_end_incl);
 
                 if (g_pmm_patch_region_cnt >= PMM_MAX_PATCH_REGIONS) {
-                    PANIC("too many holes in the memory map (%zu > %u)",
+                    PANIC("too many holes in physical memory map (%zu > %u)",
                           g_pmm_patch_region_cnt, PMM_MAX_PATCH_REGIONS);
                 }
 
@@ -372,8 +369,7 @@ static void prv_pmm_reserve_lower_mem(pmm_mmap_t *mmap) {
     LIST_FIND(&mmap->entry_list, last_region, pmm_region_t, node,
               region->end_incl >= PMM_RESERVE_LOWER_BYTES - 1, region);
     if (!last_region) {
-        PANIC("could not find the region that crosses the address 0x%08x",
-              PMM_RESERVE_LOWER_BYTES);
+        PANIC("no region crosses address 0x%08x", PMM_RESERVE_LOWER_BYTES);
     }
 
     // Iterate backwards from `last_region` and mark every available RAM region
@@ -485,8 +481,7 @@ static void prv_pmm_init_static_heap(pmm_ctx_t *pmm) {
                (region->end_incl - region->start + 1) >= static_heap_size),
               region);
     if (!found_region) {
-        PANIC("could not find an available RAM region for a static heap of "
-              "size %zu",
+        PANIC("no available RAM region for static heap of size %zu",
               static_heap_size);
     }
 
@@ -533,8 +528,7 @@ static void prv_pmm_init_early_pgalloc(pmm_ctx_t *pmm) {
                (region->end_incl - region->start + 1) >= pgalloc_size),
               region);
     if (!found_region) {
-        PANIC("could not find an available RAM region for an early page "
-              "allocator of size %zu",
+        PANIC("no available RAM region for early page allocator of size %zu",
               pgalloc_size);
     }
 
@@ -655,8 +649,7 @@ static void prv_pmm_build_region_pools(pmm_ctx_t *pmm, pmm_region_t *region) {
     region->num_pools = 0;
     region->v_pools = alloc_static(pmm->static_heap, array_size);
     if (!region->v_pools) {
-        PANIC("failed to statically allocate %zu bytes for the pool pointers "
-              "array",
+        PANIC("failed to statically allocate %zu bytes for pool pointers array",
               array_size);
     }
 
@@ -811,9 +804,7 @@ static void prv_pmm_init_pgtbl_pool(pmm_ctx_t *pmm) {
         }
     }
     if (!pgtbl_prov) {
-        PANIC(
-            "could not find a pool for allocating page tables for mapping the "
-            "pools");
+        PANIC("no pool for page tables for mapping other pools");
     }
 
     vmm_kmap_region_a(prv_pmm_early_alloc, (vaddr_t)pgtbl_prov->v_start,
@@ -865,7 +856,7 @@ static void *prv_pmm_early_alloc(size_t size) {
     }
 
     if ((uintptr_t)page & (PMM_PAGE_SIZE - 1)) {
-        PANIC("early pgalloc returned a non-page-aligned address 0x%08" PRIxPTR,
+        PANIC("early pgalloc returned non-page-aligned address 0x%08" PRIxPTR,
               (uintptr_t)page);
     }
 
