@@ -176,8 +176,8 @@ void vmm_kmap_region_a(void *(*alloc)(size_t size), vaddr_t start,
                 PANIC("alloc returned an unaligned address 0x%08" PRIxPTR,
                       (uintptr_t)pgtbl);
             }
-            LOG_FLOW("alloc page table 0x%08" PRIxPTR
-                     " for dir idx %u page 0x%08" PRIx32 "",
+            LOG_FLOW("alloc page table 0x%08" PRIxPTR " for dir idx %" PRIu32
+                     " page 0x%08" PRIx32,
                      (uintptr_t)pgtbl, pgdir_idx, addr);
             kmemset(pgtbl, 0, VMM_TABLE_SIZE);
 
@@ -221,7 +221,7 @@ void vmm_kmap_region_a(void *(*alloc)(size_t size), vaddr_t start,
         pgtbl_entry = addr | flags;
         pgtbl[pgtbl_idx] = pgtbl_entry;
         LOG_FLOW("identity mapped page 0x%08" PRIx32 " (pgdir 0x%08" PRIxPTR
-                 " idx %u, pgtbl 0x%08" PRIxPTR " idx %u)",
+                 " idx %" PRIu32 ", pgtbl 0x%08" PRIxPTR " idx %" PRIu32 ")",
                  addr, (uintptr_t)pgdir, pgdir_idx, (uintptr_t)pgtbl,
                  pgtbl_idx);
 
