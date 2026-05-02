@@ -212,9 +212,9 @@ bool pmm_mmap_insert(pmm_mmap_t *mmap, pmm_region_t *insert_region,
 
         found_region->end_incl = insert_region->start - 1;
 
-        list_insert(&mmap->entry_list, found_region->node.p_next,
-                    &leftover->node);
-        list_insert(&mmap->entry_list, &leftover->node, &insert_region->node);
+        list_insert(&mmap->entry_list, &found_region->node, &leftover->node);
+        list_insert(&mmap->entry_list, leftover->node.p_prev,
+                    &insert_region->node);
 
         LOG_FLOW("first part  0x%016llx..0x%016llx", found_region->start,
                  found_region->end_incl);
