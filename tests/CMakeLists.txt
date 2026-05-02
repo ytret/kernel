@@ -24,6 +24,7 @@ FetchContent_MakeAvailable(googletest)
 include(GoogleTest)
 
 set(SRCDIR ${CMAKE_CURRENT_LIST_DIR}/../src)
+set(INCDIR ${CMAKE_CURRENT_LIST_DIR}/../include/ytkernel)
 
 add_library(common STATIC
     ${SRCDIR}/list.c
@@ -31,7 +32,7 @@ add_library(common STATIC
 target_compile_options(common PRIVATE
     -Wall -Wextra -fdiagnostics-color=always
 )
-target_include_directories(common PUBLIC ${SRCDIR})
+target_include_directories(common PUBLIC ${SRCDIR} ${INCDIR})
 
 add_library(fakes STATIC
     fakes/heap.c
@@ -53,7 +54,7 @@ function(add_unit_test name mod extra_src)
     target_compile_options(${name} PRIVATE
         -Wall -Wextra -fdiagnostics-color=always
     )
-    target_include_directories(${name} PRIVATE ${SRCDIR})
+    target_include_directories(${name} PRIVATE ${SRCDIR} ${INCDIR})
     target_link_libraries(${name}
         fakes common GTest::gtest_main GTest::gmock_main
     )
