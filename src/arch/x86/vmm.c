@@ -195,10 +195,10 @@ void vmm_kmap_region_a(void *(*alloc)(size_t size), vaddr_t start,
         if (vmm_is_paging_enabled() && !vmm_is_addr_mapped((uint32_t)pgtbl)) {
             vaddr_t himem_pgtbl = PHYS_TO_VIRT((uintptr_t)pgtbl);
             if (!vmm_is_addr_mapped(himem_pgtbl)) {
-                LOG_FLOW("page table covering 0x%08" PRIx32
-                         " at physical 0x%08" PRIxPTR ", virtual 0x%08" PRIx32
-                         " is unmapped",
-                         addr, (uintptr_t)pgtbl, himem_pgtbl);
+                PANIC("page table covering 0x%08" PRIx32
+                      " at physical 0x%08" PRIxPTR ", virtual 0x%08" PRIx32
+                      " is unmapped",
+                      addr, (uintptr_t)pgtbl, himem_pgtbl);
             }
             pgtbl = (uint32_t *)himem_pgtbl;
         }
