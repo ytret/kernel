@@ -34,12 +34,19 @@
 #define VMM_CR0_PGEN (1 << 31)
 
 /**
- * Table entry flags that are checked when comparing two page tables.
- * If the two page table entries have different values when this mask is
- * applied, they are considered different.
+ * Directory entry flags that are checked when comparing entries for equality.
+ *
+ * If two page directory entries have the same value after this mask is applied,
+ * they are considered equivalent.
  */
 #define VMM_TBL_EQ_FLAGS (VMM_TABLE_USER | VMM_TABLE_RW | VMM_TABLE_PRESENT)
 
+/**
+ * Table entry flags that are checked when comparing entries for equality.
+ *
+ * If two page table entries have the same value after this mask is applied,
+ * they are considered equivalent.
+ */
 #define VMM_PG_EQ_FLAGS (VMM_TABLE_USER | VMM_TABLE_RW | VMM_TABLE_PRESENT)
 
 static uint32_t *gp_kvas_dir;
@@ -325,28 +332,49 @@ static void map_page(uint32_t *p_dir, uint32_t virt, uint32_t phys,
 
     uint32_t *p_tbl;
     if (p_dir[dir_idx] & VMM_TABLE_PRESENT) {
-        if ((p_dir[dir_idx] & VMM_TBL_EQ_FLAGS) != flags) {
+        uint32_t used_addr = p_dir[dir_idx] & VMM_TABLE_ADDR_MASK;
+        uint32_t used_flags = p_dir[dir_idx] & VMM_TBL_EQ_FLAGS;
+
+        if (used_flags != flags) {
             PANIC("page table for %p is present, but its checked flags "
                   "0x%03" PRIx32 " are different from 0x%03" PRIx32,
                   (void *)virt, (p_dir[dir_idx] & VMM_TBL_EQ_FLAGS), flags);
         }
 
-        p_tbl = ((uint32_t *)(p_dir[dir_idx] & ~0xFFF));
+        if (!vmm_is_addr_mapped(used_addr)) {
+            PANIC("existing page table at physical 0x%08" PRIxPTR
+                  " for address 0x%08" PRIx32 " is suitable, but unmapped",
+                  used_addr, virt);
+        }
+
+        p_tbl = (uint32_t *)used_addr;
     } else {
-        // Allocate a new page table.
         p_tbl = heap_alloc_aligned(4096, 4096);
-        __builtin_memset(p_tbl, 0, 4096);
+        kmemset(p_tbl, 0, 4096);
 
-        // Fill the dir entry.
-        p_dir[dir_idx] = (((uint32_t)p_tbl) | flags);
+        p_dir[dir_idx] = (uint32_t)p_tbl | flags;
     }
 
-    if (p_tbl[tbl_idx] != 0) {
-        // The table entry is not empty.
-        PANIC("table entry %zu for %p is not empty", tbl_idx, ((void *)virt));
-    }
+    if (p_tbl[tbl_idx] & VMM_PAGE_PRESENT) {
+        uint32_t used_addr = p_tbl[tbl_idx] & VMM_PAGE_ADDR_MASK;
+        uint32_t used_flags = p_tbl[tbl_idx] & VMM_PG_EQ_FLAGS;
 
-    p_tbl[tbl_idx] = (phys | flags);
+        if (used_addr != phys) {
+            PANIC("page virtual 0x%08" PRIx32
+                  " is already mapped to 0x%08" PRIx32
+                  " instead of 0x%08" PRIx32,
+                  virt, used_addr, phys);
+        }
+
+        if (used_flags != flags) {
+            PANIC("page virtual 0x%08" PRIx32
+                  " is already mapped to requested 0x%08" PRIx32 ", but with"
+                  " flags 0x%08" PRIx32 " instead of 0x%08" PRIx32,
+                  virt, phys, used_flags, flags);
+        }
+    } else {
+        p_tbl[tbl_idx] = phys | flags;
+    }
 }
 
 static void unmap_page(uint32_t *p_dir, uint32_t virt) {
