@@ -6,5 +6,7 @@ struct lconv *localeconv(void) {
 }
 
 char *setlocale(int category, const char *locale) {
+    (void)category;
+    (void)locale;
     PANIC("stub %s called", __func__);
 }

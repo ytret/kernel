@@ -32,10 +32,15 @@ int strcmp(const char *s1, const char *s2) {
 }
 
 int strncmp(const char s1[], const char s2[], size_t n) {
+    (void)s1;
+    (void)s2;
+    (void)n;
     PANIC("stub %s called", __func__);
 }
 
 char *strstr(const char *haystack, const char *needle) {
+    (void)haystack;
+    (void)needle;
     PANIC("stub %s called", __func__);
 }
 
@@ -86,5 +91,6 @@ int strcoll(const char *s1, const char *s2) {
 }
 
 char *strerror(int errnum) {
+    (void)errnum;
     PANIC("stub %s called", __func__);
 }

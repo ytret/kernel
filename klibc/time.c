@@ -10,23 +10,32 @@ time_t time(time_t *tloc) {
 }
 
 double difftime(time_t time1, time_t time0) {
+    (void)time1;
+    (void)time0;
     PANIC("stub %s called", __func__);
 }
 
 time_t mktime(struct tm *tm) {
+    (void)tm;
     PANIC("stub %s called", __func__);
 }
 
 struct tm *gmtime(const time_t *timep) {
+    (void)timep;
     PANIC("stub %s called", __func__);
 }
 
 struct tm *localtime(const time_t *timep) {
+    (void)timep;
     PANIC("stub %s called", __func__);
 }
 
 size_t strftime(char *s, size_t max, const char *restrict format,
                 const struct tm *restrict tm) {
+    (void)s;
+    (void)max;
+    (void)format;
+    (void)tm;
     PANIC("stub %s called", __func__);
 }
 

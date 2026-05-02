@@ -92,6 +92,7 @@ int isdigit(int c) {
 }
 
 int isgraph(int c) {
+    (void)c;
     PANIC("stub %s called", __func__);
 }
 
@@ -100,10 +101,12 @@ int islower(int c) {
 }
 
 int ispunct(int c) {
+    (void)c;
     PANIC("stub %s called", __func__);
 }
 
 int isspace(int c) {
+    (void)c;
     PANIC("stub %s called", __func__);
 }
 
@@ -112,13 +115,16 @@ int isupper(int c) {
 }
 
 int isxdigit(int c) {
+    (void)c;
     PANIC("stub %s called", __func__);
 }
 
 int toupper(int c) {
+    (void)c;
     PANIC("stub %s called", __func__);
 }
 
 int tolower(int c) {
+    (void)c;
     PANIC("stub %s called", __func__);
 }
