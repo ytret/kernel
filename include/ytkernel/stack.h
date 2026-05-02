@@ -4,9 +4,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/**
+ * Stack context structure.
+ *
+ * @warning
+ * This field order is relied upon by #taskmgr_switch_tasks() assembly function
+ * (see taskmgr.s).
+ */
 typedef struct [[gnu::packed]] {
-    // This field order is relied upon by taskmgr_switch_tasks() assembly
-    // function (see taskmgr.s).
 
     uint32_t *p_top;
 
