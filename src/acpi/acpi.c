@@ -132,7 +132,7 @@ static bool prv_acpi_copy_rsdt(const acpi_rsdt_t *sys_rsdt) {
         LOG_DEBUG("dump of RSDT entry %" PRIu32, idx);
         prv_acpi_dump_sdt(sdt);
 
-        const char sig_madt[4] = "APIC";
+        const char sig_madt[4] NONSTRING = "APIC";
         if (!kmemcmp(sdt->signature, sig_madt, 4)) {
             prv_acpi_copy_madt((const acpi_madt_t *)sdt);
         }
@@ -274,7 +274,7 @@ static bool prv_acpi_find_rsdp_bios(uint32_t *out_addr) {
     const uint8_t *const ptr_end = (uint8_t *)(0xFFFFF - 8);
     while (it_u8 < ptr_end) {
         const char *const it_str = (const char *)it_u8;
-        const char signature[8] = "RSD PTR ";
+        const char signature[8] NONSTRING = "RSD PTR ";
         if (!kmemcmp(it_str, signature, sizeof(signature))) {
             *out_addr = (uint32_t)it_u8;
             found = true;
