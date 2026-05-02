@@ -49,6 +49,7 @@ int ferror(FILE *stream) {
 int fflush(FILE *stream) {
     if (stream == stdout || stream == stderr) {
         // Do nothing, the output is not buffered.
+        return 0;
     } else {
         PANIC("fflush stream %p is not implemented", stream);
     }
