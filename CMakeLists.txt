@@ -125,9 +125,10 @@ add_executable(kernel
     src/stack.c
     src/taskmgr.c
     src/term.c
-    src/vfs/vfs.c
+    src/vfs/file.c
     src/vfs/vfs_err.c
     src/vfs/vfs_path.c
+    src/vfs/vfs.c
     src/vga.c
 
     src/arch/x86/apic/ioapic.c
