@@ -1,5 +1,6 @@
 #pragma once
 
+#include "types.h"
 #include "vfs_node.h"
 #include "vfs_path.h"
 
@@ -17,15 +18,26 @@ typedef enum {
     FILE_ERR_BAD_FLAGS,
     FILE_ERR_NOT_FOUND,
     FILE_ERR_NOT_OPENED,
+    FILE_ERR_NOT_SUPP,
+    FILE_ERR_NEG_OFFSET,
 } file_err_t;
+
+typedef enum {
+    FILE_SEEK_SET,
+    FILE_SEEK_CUR,
+    FILE_SEEK_END,
+} file_seek_t;
 
 typedef struct {
     bool opened;
     vfs_node_t *node;
     file_flags_t flags;
+    off_t offset;
 } file_t;
 
 file_err_t file_open_node(vfs_node_t *node, file_t *file);
 file_err_t file_open_path(const vfs_path_t *path, file_t *file);
 file_err_t file_open_path_str(const char *path_str, file_t *file);
 file_err_t file_close(file_t *file);
+
+file_err_t file_seek(file_t *file, off_t offset, file_seek_t whence);

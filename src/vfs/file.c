@@ -1,4 +1,5 @@
 #include "assert.h"
+#include "kinttypes.h"
 #include "log.h"
 #include "vfs/file.h"
 #include "vfs/vfs.h"
@@ -39,6 +40,7 @@ file_err_t file_open_node(vfs_node_t *node, file_t *file) {
     file->opened = true;
     file->node = node;
     // file->flags are set already.
+    file->offset = 0;
 
     return FILE_ERR_NONE;
 }
@@ -76,9 +78,46 @@ file_err_t file_close(file_t *file) {
     LOG_FLOW("file %p", file);
     DEBUG_ASSERT(file != NULL);
 
-    if (!file->opened) { return FILE_ERR_NOT_OPENED; }
+    if (!file->opened) {
+        LOG_ERROR("file %p not opened", file);
+        return FILE_ERR_NOT_OPENED;
+    }
 
     file->opened = false;
+
+    return FILE_ERR_NONE;
+}
+
+file_err_t file_seek(file_t *file, off_t offset, file_seek_t whence) {
+    LOG_FLOW("file %p offset %" PRIdOFF " whence %d", file, offset, whence);
+    DEBUG_ASSERT(file != NULL);
+
+    if (!file->opened) {
+        LOG_ERROR("file %p not opened", file);
+        return FILE_ERR_NOT_OPENED;
+    }
+    if (file->node->type != VFS_NODE_FILE) {
+        LOG_ERROR("node type %d does not support seek", file->node->type);
+        return FILE_ERR_NOT_SUPP;
+    }
+
+    off_t new_offset;
+    switch (whence) {
+    case FILE_SEEK_SET:
+        new_offset = offset;
+        break;
+    case FILE_SEEK_CUR:
+        new_offset = file->offset + offset;
+        break;
+    case FILE_SEEK_END:
+        PANIC("TODO FILE_SEEK_END");
+        break;
+    }
+
+    if (new_offset < 0) {
+        LOG_ERROR("negative offset (%" PRIdOFF ")", new_offset);
+        return FILE_ERR_NEG_OFFSET;
+    }
 
     return FILE_ERR_NONE;
 }
