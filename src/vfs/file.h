@@ -20,6 +20,7 @@ typedef enum {
     FILE_ERR_NOT_OPENED,
     FILE_ERR_NOT_SUPP,
     FILE_ERR_NEG_OFFSET,
+    FILE_ERR_IO,
 } file_err_t;
 
 typedef enum {
@@ -41,3 +42,5 @@ file_err_t file_open_path_str(const char *path_str, file_t *file);
 file_err_t file_close(file_t *file);
 
 file_err_t file_seek(file_t *file, off_t offset, file_seek_t whence);
+file_err_t file_read(file_t *file, void *buf, size_t num_bytes,
+                     size_t *out_read);

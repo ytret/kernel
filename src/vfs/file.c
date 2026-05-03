@@ -121,3 +121,38 @@ file_err_t file_seek(file_t *file, off_t offset, file_seek_t whence) {
 
     return FILE_ERR_NONE;
 }
+
+file_err_t file_read(file_t *file, void *buf, size_t num_bytes,
+                     size_t *out_read) {
+    LOG_FLOW("file %p buf %p num_bytes %zu out_read %p", file, buf, num_bytes,
+             out_read);
+    DEBUG_ASSERT(file != NULL);
+    DEBUG_ASSERT(buf != NULL);
+    DEBUG_ASSERT(out_read != NULL);
+
+    if (!file->opened) {
+        LOG_ERROR("file %p not opened", file);
+        return FILE_ERR_NOT_OPENED;
+    }
+    if (file->node->type != VFS_NODE_FILE) {
+        LOG_ERROR("node %p type %d does not support read", file->node,
+                  file->node->type);
+        return FILE_ERR_NOT_SUPP;
+    }
+    if (!file->node->ops->f_read) {
+        LOG_ERROR("node %p file system does not support read", file->node);
+        return FILE_ERR_NOT_SUPP;
+    }
+
+    ASSERT(file->offset >= 0);
+
+    vfs_err_t err = file->node->ops->f_read(file->node, (size_t)file->offset,
+                                            buf, num_bytes, out_read);
+    if (err == VFS_ERR_NONE) {
+        return FILE_ERR_NONE;
+    } else {
+        LOG_ERROR("node %p read returned %d: %s", file->node, err,
+                  vfs_err_str(err));
+        return FILE_ERR_IO;
+    }
+}
