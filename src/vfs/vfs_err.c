@@ -16,6 +16,8 @@ const char *vfs_err_str(vfs_err_t err) {
         return "VFS_ERR_NODE_BAD_ARGS";
     case VFS_ERR_NODE_NOT_DIR:
         return "VFS_ERR_NODE_NOT_DIR";
+    case VFS_ERR_NODE_NOT_FILE:
+        return "VFS_ERR_NODE_NOT_FILE";
     case VFS_ERR_NODE_ALREADY_MOUNTED:
         return "VFS_ERR_NODE_ALREADY_MOUNTED";
     case VFS_ERR_NODE_NOT_MOUNTED:
@@ -28,6 +30,8 @@ const char *vfs_err_str(vfs_err_t err) {
         return "VFS_ERR_NODE_NAME_TOO_LONG";
     case VFS_ERR_NODE_NOT_FOUND:
         return "VFS_ERR_NODE_NOT_FOUND";
+    case VFS_ERR_NODE_BAD_OFFSET:
+        return "VFS_ERR_NODE_BAD_OFFSET";
     case VFS_ERR_PATH_EMPTY:
         return "VFS_ERR_PATH_EMPTY";
     case VFS_ERR_PATH_TOO_MANY_PARTS:
