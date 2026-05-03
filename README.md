@@ -19,8 +19,8 @@
 ### Requirements
 
 You can use [`nix`](https://nixos.org/download/#download-nix) to create a build
-environment with all required packages, or you can install the packages
-manually.
+environment with all required packages, or you can install the required
+packages manually.
 
 If you choose to use `nix`, run one of these commands to enter a shell, in
 which you will be able to build the kernel:
@@ -32,8 +32,8 @@ nix develop . -c fish   # to use fish instead of bash
 nix develop -i .        # for a clean build environment (QEMU won't work)
 ```
 
-If you choose to install the packages manually, the list is provided below. Arch Linux
-package names are provided in parentheses.
+If you choose to install the packages manually, the list is provided below. Arch
+Linux and macOS homebrew package names are provided in parentheses.
 
 1. Building:
 
@@ -44,9 +44,7 @@ package names are provided in parentheses.
 
 2. Creating a bootable ISO:
 
-  * grub-mkrescue or grub2-mkrescue (`grub`)
   * xorriso (`libisoburn`)
-  * GNU mtools (`mtools`)
 
 3. Creating a virtual disk:
 
