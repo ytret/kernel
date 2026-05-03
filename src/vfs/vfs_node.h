@@ -29,12 +29,15 @@ typedef struct {
                            size_t *out_len);
     vfs_err_t (*f_lookup)(vfs_node_t *dir_node, vfs_node_t **out_node,
                           const char *name);
+    vfs_err_t (*f_read)(vfs_node_t *node, size_t offset, void *buf,
+                        size_t num_bytes, size_t *out_read);
 } vfs_node_ops_t;
 
 struct vfs_node {
     vfs_node_type_t type;
     vfs_node_flags_t flags;
     const vfs_node_ops_t *ops;
+    size_t size;
 
     void *fs_ctx;
     void *fs_data;
