@@ -184,6 +184,9 @@ target_link_options(kernel PRIVATE
     -T${CMAKE_SOURCE_DIR}/src/arch/x86/linker.ld
 )
 target_link_libraries(kernel ytalloc ytprintf lua klibc gcc)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(kernel PRIVATE -DYTKERNEL_DEBUG)
+endif()
 add_dependencies(kernel lua54)
 set_target_properties(kernel PROPERTIES
     C_EXTENSIONS ON
