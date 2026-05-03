@@ -7,8 +7,9 @@
 #define FILE_FLAGS_DIR  (FILE_SEARCH)
 
 file_err_t file_open_node(vfs_node_t *node, file_t *file) {
-    DEBUG_ASSERT(node);
-    DEBUG_ASSERT(file);
+    LOG_FLOW("node %p file %p", node, file);
+    DEBUG_ASSERT(node != NULL);
+    DEBUG_ASSERT(file != NULL);
 
     bool ok_type = false;
     int bad_flags;
@@ -43,6 +44,10 @@ file_err_t file_open_node(vfs_node_t *node, file_t *file) {
 }
 
 file_err_t file_open_path(const vfs_path_t *path, file_t *file) {
+    LOG_FLOW("path %p file %p", path, file);
+    DEBUG_ASSERT(path != NULL);
+    DEBUG_ASSERT(file != NULL);
+
     vfs_node_t *node;
     vfs_err_t err = vfs_resolve_path(path, &node);
     if (err != VFS_ERR_NONE) {
@@ -53,6 +58,10 @@ file_err_t file_open_path(const vfs_path_t *path, file_t *file) {
 }
 
 file_err_t file_open_path_str(const char *path_str, file_t *file) {
+    LOG_FLOW("path_str %s file %p", path_str, file);
+    DEBUG_ASSERT(path_str != NULL);
+    DEBUG_ASSERT(file != NULL);
+
     vfs_node_t *node;
     vfs_err_t err = vfs_resolve_path_str(path_str, &node);
     if (err != VFS_ERR_NONE) {
@@ -64,7 +73,8 @@ file_err_t file_open_path_str(const char *path_str, file_t *file) {
 }
 
 file_err_t file_close(file_t *file) {
-    DEBUG_ASSERT(file);
+    LOG_FLOW("file %p", file);
+    DEBUG_ASSERT(file != NULL);
 
     if (!file->opened) { return FILE_ERR_NOT_OPENED; }
 
