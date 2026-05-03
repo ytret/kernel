@@ -133,6 +133,18 @@ vfs_err_t ramfs_node_mknode(vfs_node_t *dir_node, vfs_node_t **out_node,
     if (node_type == VFS_NODE_FILE) {
         new_data = prv_ramfs_alloc_data(ctx, RAMFS_DATA_FILE);
         if (!new_data) { return VFS_ERR_FS_NO_SPACE; }
+
+        // Prefill files with data.
+        size_t prefill_size = 32;
+        if (ctx->bytes_used + prefill_size > ctx->size) {
+            return VFS_ERR_FS_NO_SPACE;
+        }
+        new_data->file_data.buf = heap_alloc(prefill_size);
+        new_data->file_data.buf_size = prefill_size;
+        for (size_t idx = 0; idx < prefill_size; idx++) {
+            uint8_t *ptr = &((uint8_t *)new_data->file_data.buf)[idx];
+            *ptr = 2 * idx;
+        }
     } else if (node_type == VFS_NODE_DIR) {
         err = prv_ramfs_make_dir_data(ctx, data, &new_data);
         if (err != VFS_ERR_NONE) { return err; }
@@ -144,6 +156,8 @@ vfs_err_t ramfs_node_mknode(vfs_node_t *dir_node, vfs_node_t **out_node,
     new_node->type = node_type;
     new_node->flags = 0;
     new_node->ops = &g_ramfs_node_ops;
+    new_node->size =
+        node_type == VFS_NODE_FILE ? new_data->file_data.buf_size : 0;
     new_node->fs_ctx = ctx;
     new_node->fs_data = new_data;
 
