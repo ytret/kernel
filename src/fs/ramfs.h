@@ -25,3 +25,5 @@ vfs_err_t ramfs_node_readdir(vfs_node_t *node, void *dirent_buf, size_t buf_len,
                              size_t *out_len);
 vfs_err_t ramfs_node_lookup(vfs_node_t *dir_node, vfs_node_t **out_node,
                             const char *name);
+vfs_err_t ramfs_node_read(vfs_node_t *node, size_t offset, void *buf,
+                          size_t num_bytes, size_t *out_read);

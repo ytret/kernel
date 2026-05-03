@@ -37,6 +37,7 @@ static const vfs_node_ops_t g_ramfs_node_ops = {
     .f_mknode = ramfs_node_mknode,
     .f_readdir = ramfs_node_readdir,
     .f_lookup = ramfs_node_lookup,
+    .f_read = ramfs_node_read,
 };
 
 static ramfs_data_t *prv_ramfs_alloc_data(ramfs_ctx_t *ctx,
@@ -221,6 +222,30 @@ vfs_err_t ramfs_node_lookup(vfs_node_t *node, vfs_node_t **out_node,
     }
 
     *out_node = child_data->vfs_node;
+    return VFS_ERR_NONE;
+}
+
+vfs_err_t ramfs_node_read(vfs_node_t *node, size_t offset, void *buf,
+                          size_t num_bytes, size_t *out_read) {
+    if (!node) { return VFS_ERR_NODE_BAD_ARGS; }
+    if (node->type != VFS_NODE_FILE) { return VFS_ERR_NODE_NOT_DIR; }
+    if (offset >= node->size) { return VFS_ERR_NODE_BAD_OFFSET; }
+    if (!buf) { return VFS_ERR_NODE_BAD_ARGS; }
+
+    ramfs_ctx_t *const ctx = node->fs_ctx;
+    ramfs_data_t *const data = node->fs_data;
+    if (!ctx) { return VFS_ERR_NODE_NO_FS; }
+    if (!data) { return VFS_ERR_NODE_NO_DATA; }
+
+    ASSERT(data->type == RAMFS_DATA_FILE);
+    DEBUG_ASSERT(node->size == data->file_data.buf_size);
+
+    // FIXME: check for overflow
+    if (offset + num_bytes >= node->size) { num_bytes = node->size - offset; }
+
+    kmemcpy(buf, (void *)((uintptr_t)data->file_data.buf + offset), num_bytes);
+    *out_read = num_bytes;
+
     return VFS_ERR_NONE;
 }
 
