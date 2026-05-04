@@ -5,7 +5,7 @@
 #include "vfs/vfs_path.h"
 #include "vfs/vnode.h"
 
-vfs_err_t vfs_path_from_str(const char *path_str, vfs_path_t *out_path) {
+vpath_err_t vfs_path_from_str(const char *path_str, vpath_t *out_path) {
     kmemset(out_path, 0, sizeof(*out_path));
     list_init(&out_path->parts, NULL);
 
@@ -18,12 +18,12 @@ vfs_err_t vfs_path_from_str(const char *path_str, vfs_path_t *out_path) {
         const char ch = path_str[idx];
         if (ch == '/' || ch == 0) {
             if ((substr_len + 1) > VNODE_MAX_NAME_SIZE) {
-                return VFS_ERR_PATH_PART_TOO_LONG;
+                return VPATH_ERR_PART_TOO_LONG;
             }
             if (num_parts >= VFS_PATH_MAX_PARTS) {
-                return VFS_ERR_PATH_TOO_MANY_PARTS;
+                return VPATH_ERR_TOO_MANY_PARTS;
             }
-            if (idx == 0 && ch == 0) { return VFS_ERR_PATH_EMPTY; }
+            if (idx == 0 && ch == 0) { return VPATH_ERR_EMPTY; }
             if (idx == 0) { out_path->is_absolute = true; }
 
             if (substr_len > 0) {
@@ -31,7 +31,7 @@ vfs_err_t vfs_path_from_str(const char *path_str, vfs_path_t *out_path) {
                 kmemcpy(substr, &path_str[substr_off], substr_len);
                 substr[substr_len] = 0;
 
-                vfs_path_part_t *const part = heap_alloc(sizeof(*part));
+                vpath_part_t *const part = heap_alloc(sizeof(*part));
                 kmemset(part, 0, sizeof(*part));
                 part->name = substr;
 
@@ -49,15 +49,33 @@ vfs_err_t vfs_path_from_str(const char *path_str, vfs_path_t *out_path) {
         idx++;
     }
 
-    return VFS_ERR_NONE;
+    return VPATH_ERR_NONE;
 }
 
-void vfs_path_free(vfs_path_t *path) {
+void vfs_path_free(vpath_t *path) {
     list_node_t *node;
     while ((node = list_pop_first(&path->parts))) {
-        vfs_path_part_t *const part =
-            LIST_NODE_TO_STRUCT(node, vfs_path_part_t, list_node);
+        vpath_part_t *const part =
+            LIST_NODE_TO_STRUCT(node, vpath_part_t, list_node);
         heap_free(part->name);
         heap_free(part);
     }
+}
+
+const char *vpath_err_str(vpath_err_t err) {
+    switch (err) {
+    case VPATH_ERR_NONE:
+        return "VPATH_ERR_NONE";
+    case VPATH_ERR_EMPTY:
+        return "VPATH_ERR_EMPTY";
+    case VPATH_ERR_TOO_MANY_PARTS:
+        return "VPATH_ERR_TOO_MANY_PARTS";
+    case VPATH_ERR_PART_TOO_LONG:
+        return "VPATH_ERR_PART_TOO_LONG";
+    case VPATH_ERR_MUST_BE_ABSOLUTE:
+        return "VPATH_ERR_MUST_BE_ABSOLUTE";
+    case VPATH_ERR_BAD_NODE:
+        return "VPATH_ERR_BAD_NODE";
+    }
+    return "<unknown error>";
 }

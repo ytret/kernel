@@ -30,39 +30,36 @@ void vfs_free_node(vnode_t *node) {
     heap_free(node);
 }
 
-vfs_err_t vfs_resolve_path_str(const char *path_str, vnode_t **out_node) {
-    vfs_err_t err;
-    vfs_path_t path;
+vpath_err_t vfs_resolve_path_str(const char *path_str, vnode_t **out_node) {
+    vpath_t path;
+    vpath_err_t err = vfs_path_from_str(path_str, &path);
+    if (err != VPATH_ERR_NONE) { return err; }
 
-    err = vfs_path_from_str(path_str, &path);
-    if (err != VFS_ERR_NONE) { return err; }
-
-    err = vfs_resolve_path(&path, out_node);
-    return err;
+    return vfs_resolve_path(&path, out_node);
 }
 
-vfs_err_t vfs_resolve_path(const vfs_path_t *path, vnode_t **out_node) {
-    if (!path->is_absolute) { return VFS_ERR_PATH_MUST_BE_ABSOLUTE; }
+vpath_err_t vfs_resolve_path(const vpath_t *path, vnode_t **out_node) {
+    if (!path->is_absolute) { return VPATH_ERR_MUST_BE_ABSOLUTE; }
 
     vnode_t *vfs_node = g_vfs.root_node;
     for (list_node_t *list_node = path->parts.p_first_node; list_node != NULL;
          list_node = list_node->p_next) {
-        const vfs_path_part_t *const path_part =
-            LIST_NODE_TO_STRUCT(list_node, vfs_path_part_t, list_node);
+        const vpath_part_t *const path_part =
+            LIST_NODE_TO_STRUCT(list_node, vpath_part_t, list_node);
 
         const char *const child_name = path_part->name;
 
-        if (!vfs_node->ops) { return VFS_ERR_NODE_BAD_OP; }
-        if (!vfs_node->ops->f_lookup) { return VFS_ERR_NODE_BAD_OP; }
+        if (!vfs_node->ops) { return VPATH_ERR_BAD_NODE; }
+        if (!vfs_node->ops->f_lookup) { return VPATH_ERR_BAD_NODE; }
 
         vnode_t *child_node;
         auto f_lookup = vfs_node->ops->f_lookup;
         vfs_err_t err = f_lookup(vfs_node, &child_node, child_name);
-        if (err != VFS_ERR_NONE) { return err; }
+        if (err != VFS_ERR_NONE) { return VPATH_ERR_BAD_NODE; }
 
         vfs_node = child_node;
     }
 
     *out_node = vfs_node;
-    return VFS_ERR_NONE;
+    return VPATH_ERR_NONE;
 }

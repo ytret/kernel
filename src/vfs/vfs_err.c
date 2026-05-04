@@ -32,14 +32,6 @@ const char *vfs_err_str(vfs_err_t err) {
         return "VFS_ERR_NODE_NOT_FOUND";
     case VFS_ERR_NODE_BAD_OFFSET:
         return "VFS_ERR_NODE_BAD_OFFSET";
-    case VFS_ERR_PATH_EMPTY:
-        return "VFS_ERR_PATH_EMPTY";
-    case VFS_ERR_PATH_TOO_MANY_PARTS:
-        return "VFS_ERR_PATH_TOO_MANY_PARTS";
-    case VFS_ERR_PATH_PART_TOO_LONG:
-        return "VFS_ERR_PATH_PART_TOO_LONG";
-    case VFS_ERR_PATH_MUST_BE_ABSOLUTE:
-        return "VFS_ERR_PATH_MUST_BE_ABSOLUTE";
     case VFS_ERR_NAME_TAKEN:
         return "VFS_ERR_NAME_TAKEN";
     }

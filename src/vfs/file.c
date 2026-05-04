@@ -45,15 +45,15 @@ file_err_t file_open_node(vnode_t *node, file_t *file) {
     return FILE_ERR_NONE;
 }
 
-file_err_t file_open_path(const vfs_path_t *path, file_t *file) {
+file_err_t file_open_path(const vpath_t *path, file_t *file) {
     LOG_FLOW("path %p file %p", path, file);
     DEBUG_ASSERT(path != NULL);
     DEBUG_ASSERT(file != NULL);
 
     vnode_t *node;
-    vfs_err_t err = vfs_resolve_path(path, &node);
-    if (err != VFS_ERR_NONE) {
-        LOG_ERROR("failed to resolve path: %s", vfs_err_str(err));
+    vpath_err_t err = vfs_resolve_path(path, &node);
+    if (err != VPATH_ERR_NONE) {
+        LOG_ERROR("failed to resolve path: %s", vpath_err_str(err));
         return FILE_ERR_NOT_FOUND;
     }
     return file_open_node(node, file);
@@ -65,10 +65,10 @@ file_err_t file_open_path_str(const char *path_str, file_t *file) {
     DEBUG_ASSERT(file != NULL);
 
     vnode_t *node;
-    vfs_err_t err = vfs_resolve_path_str(path_str, &node);
-    if (err != VFS_ERR_NONE) {
+    vpath_err_t err = vfs_resolve_path_str(path_str, &node);
+    if (err != VPATH_ERR_NONE) {
         LOG_ERROR("failed to resolve path '%s': %s", path_str,
-                  vfs_err_str(err));
+                  vpath_err_str(err));
         return FILE_ERR_NOT_FOUND;
     }
     return file_open_node(node, file);

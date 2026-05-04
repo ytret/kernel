@@ -131,8 +131,7 @@ static void prv_ksh_vfs_ls(const char *path) {
     }
 
     constexpr size_t max_dirents = 10;
-    dirent_t *const dirents =
-        heap_alloc(max_dirents * sizeof(dirent_t));
+    dirent_t *const dirents = heap_alloc(max_dirents * sizeof(dirent_t));
 
     size_t read_dirents;
     auto f_readdir = node->ops->f_readdir;
@@ -229,12 +228,12 @@ static void prv_ksh_vfs_mkfile(const char *path_str) {
 }
 
 static bool prv_ksh_vfs_resolve_path(const char *path, vnode_t **out_node) {
-    vfs_err_t err = vfs_resolve_path_str(path, out_node);
-    if (err == VFS_ERR_NONE) {
+    vpath_err_t err = vfs_resolve_path_str(path, out_node);
+    if (err == VPATH_ERR_NONE) {
         return true;
     } else {
         kprintf("ksh_vfs: failed to resolve path '%s' with error code %u: %s\n",
-                path, err, vfs_err_str(err));
+                path, err, vpath_err_str(err));
         return false;
     }
 }
@@ -242,13 +241,12 @@ static bool prv_ksh_vfs_resolve_path(const char *path, vnode_t **out_node) {
 static bool prv_ksh_vfs_get_parent_node(const char *path_str,
                                         vnode_t **out_node,
                                         char **out_basename) {
-    vfs_err_t err;
-    vfs_path_t path;
-    err = vfs_path_from_str(path_str, &path);
-    if (err != VFS_ERR_NONE) {
+    vpath_t path;
+    vpath_err_t path_err = vfs_path_from_str(path_str, &path);
+    if (path_err != VPATH_ERR_NONE) {
         kprintf(
             "ksh_vfs: failed to convert '%s' to a path object, error %u: %s\n",
-            path_str, err, vfs_err_str(err));
+            path_str, path_err, vpath_err_str(path_err));
         vfs_path_free(&path);
         return false;
     }
@@ -258,16 +256,16 @@ static bool prv_ksh_vfs_get_parent_node(const char *path_str,
         return false;
     }
     const list_node_t *const basename_lnode = list_pop_last(&path.parts);
-    const vfs_path_part_t *const path_last_part =
-        LIST_NODE_TO_STRUCT(basename_lnode, vfs_path_part_t, list_node);
+    const vpath_part_t *const path_last_part =
+        LIST_NODE_TO_STRUCT(basename_lnode, vpath_part_t, list_node);
     const char *const basename = path_last_part->name;
 
     vnode_t *parent_node;
-    err = vfs_resolve_path(&path, &parent_node);
-    if (err != VFS_ERR_NONE) {
+    vpath_err_t err = vfs_resolve_path(&path, &parent_node);
+    if (err != VPATH_ERR_NONE) {
         kprintf("ksh_vfs: failed to resolve '%s' without its last part, error "
                 "%u: %s\n",
-                path_str, err, vfs_err_str(err));
+                path_str, err, vpath_err_str(err));
         vfs_free_node(parent_node);
         vfs_path_free(&path);
         return false;
