@@ -39,6 +39,6 @@ struct vnode {
     const vnode_ops_t *ops;
     size_t size;
 
-    void *fs_ctx;
-    void *fs_data;
+    void *fs_ctx; //!< File system context, shared by all of its nodes.
+    void *fs_data; //!< File-system-specific data, referenced only by this node.
 };
