@@ -10,7 +10,7 @@ typedef struct vnode vnode_t;
 
 typedef struct {
     char name[VNODE_MAX_NAME_SIZE];
-} vfs_dirent_t;
+} dirent_t;
 
 typedef enum {
     VNODE_NONE,

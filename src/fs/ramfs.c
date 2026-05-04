@@ -23,7 +23,7 @@ struct ramfs_data {
         } file_data;
         struct {
             ramfs_data_t **children;
-            vfs_dirent_t *dirents;
+            dirent_t *dirents;
             size_t num_children;
         } dir_data;
     };
@@ -193,7 +193,7 @@ vfs_err_t ramfs_node_readdir(vnode_t *node, void *dirent_buf, size_t buf_len,
                                 ? data->dir_data.num_children
                                 : buf_len;
     kmemcpy(dirent_buf, data->dir_data.dirents,
-            copy_len * sizeof(vfs_dirent_t));
+            copy_len * sizeof(dirent_t));
     *out_len = copy_len;
 
     return VFS_ERR_NONE;
@@ -302,7 +302,7 @@ static void prv_ramfs_free_data(ramfs_ctx_t *ctx, ramfs_data_t *data) {
 static bool prv_ramfs_find_child(ramfs_data_t *dir_data, const char *name,
                                  ramfs_data_t **child_data) {
     for (size_t idx = 0; idx < dir_data->dir_data.num_children; idx++) {
-        const vfs_dirent_t *const dirent = &dir_data->dir_data.dirents[idx];
+        const dirent_t *const dirent = &dir_data->dir_data.dirents[idx];
         if (string_equals(name, dirent->name)) {
             if (child_data) { *child_data = dir_data->dir_data.children[idx]; }
             return true;
@@ -323,7 +323,7 @@ static vfs_err_t prv_ramfs_make_dir_data(ramfs_ctx_t *ctx,
     dir_data->parent_data = parent_data;
 
     const size_t num_children = 2; // '.' and '..'
-    const size_t child_size = sizeof(ramfs_data_t *) + sizeof(vfs_dirent_t);
+    const size_t child_size = sizeof(ramfs_data_t *) + sizeof(dirent_t);
     const size_t req_size = num_children * child_size;
     if (ctx->bytes_used + req_size > ctx->size) {
         prv_ramfs_free_data(ctx, dir_data);
@@ -332,7 +332,7 @@ static vfs_err_t prv_ramfs_make_dir_data(ramfs_ctx_t *ctx,
 
     dir_data->dir_data.num_children = num_children;
     dir_data->dir_data.dirents =
-        heap_alloc(num_children * sizeof(vfs_dirent_t));
+        heap_alloc(num_children * sizeof(dirent_t));
     dir_data->dir_data.children =
         heap_alloc(num_children * sizeof(ramfs_data_t *));
 
@@ -356,15 +356,15 @@ static vfs_err_t prv_ramfs_add_child(ramfs_ctx_t *ctx, ramfs_data_t *dir_data,
     const size_t new_idx = dir_data->dir_data.num_children;
     const size_t new_len = new_idx + 1;
 
-    const size_t req_size = sizeof(ramfs_data_t *) + sizeof(vfs_dirent_t);
+    const size_t req_size = sizeof(ramfs_data_t *) + sizeof(dirent_t);
     if (ctx->bytes_used + req_size > ctx->size) { return VFS_ERR_FS_NO_SPACE; }
     ctx->bytes_used += req_size;
 
     if (dir_data->dir_data.dirents) {
         dir_data->dir_data.dirents = heap_realloc(
-            dir_data->dir_data.dirents, new_len * sizeof(vfs_dirent_t), 4);
+            dir_data->dir_data.dirents, new_len * sizeof(dirent_t), 4);
     } else {
-        dir_data->dir_data.dirents = heap_alloc(new_len * sizeof(vfs_dirent_t));
+        dir_data->dir_data.dirents = heap_alloc(new_len * sizeof(dirent_t));
     }
 
     if (dir_data->dir_data.children) {

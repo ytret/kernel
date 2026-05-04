@@ -131,8 +131,8 @@ static void prv_ksh_vfs_ls(const char *path) {
     }
 
     constexpr size_t max_dirents = 10;
-    vfs_dirent_t *const dirents =
-        heap_alloc(max_dirents * sizeof(vfs_dirent_t));
+    dirent_t *const dirents =
+        heap_alloc(max_dirents * sizeof(dirent_t));
 
     size_t read_dirents;
     auto f_readdir = node->ops->f_readdir;
@@ -145,7 +145,7 @@ static void prv_ksh_vfs_ls(const char *path) {
     }
 
     for (size_t idx = 0; idx < read_dirents; idx++) {
-        const vfs_dirent_t *const dirent = &dirents[idx];
+        const dirent_t *const dirent = &dirents[idx];
         kprintf("%s\n", dirent->name);
     }
 
