@@ -85,7 +85,7 @@ vfs_err_t ramfs_mount(void *v_ctx, vnode_t *node) {
 
     if (ctx->root->vfs_node) { return VFS_ERR_FS_ALREADY_MOUNTED; }
     if (node->fs_ctx) { return VFS_ERR_NODE_ALREADY_MOUNTED; }
-    if (node->type != VFS_NODE_DIR) { return VFS_ERR_NODE_NOT_DIR; }
+    if (node->type != VNODE_DIR) { return VFS_ERR_NODE_NOT_DIR; }
 
     node->flags |= VNODE_ROOT;
     node->ops = &g_ramfs_node_ops;
@@ -130,7 +130,7 @@ vfs_err_t ramfs_node_mknode(vnode_t *dir_node, vnode_t **out_node,
 
     vfs_err_t err;
     ramfs_data_t *new_data = NULL;
-    if (node_type == VFS_NODE_FILE) {
+    if (node_type == VNODE_FILE) {
         new_data = prv_ramfs_alloc_data(ctx, RAMFS_DATA_FILE);
         if (!new_data) { return VFS_ERR_FS_NO_SPACE; }
 
@@ -145,7 +145,7 @@ vfs_err_t ramfs_node_mknode(vnode_t *dir_node, vnode_t **out_node,
             uint8_t *ptr = &((uint8_t *)new_data->file_data.buf)[idx];
             *ptr = 2 * idx;
         }
-    } else if (node_type == VFS_NODE_DIR) {
+    } else if (node_type == VNODE_DIR) {
         err = prv_ramfs_make_dir_data(ctx, data, &new_data);
         if (err != VFS_ERR_NONE) { return err; }
     } else {
@@ -157,7 +157,7 @@ vfs_err_t ramfs_node_mknode(vnode_t *dir_node, vnode_t **out_node,
     new_node->flags = 0;
     new_node->ops = &g_ramfs_node_ops;
     new_node->size =
-        node_type == VFS_NODE_FILE ? new_data->file_data.buf_size : 0;
+        node_type == VNODE_FILE ? new_data->file_data.buf_size : 0;
     new_node->fs_ctx = ctx;
     new_node->fs_data = new_data;
 
@@ -179,7 +179,7 @@ vfs_err_t ramfs_node_mknode(vnode_t *dir_node, vnode_t **out_node,
 vfs_err_t ramfs_node_readdir(vnode_t *node, void *dirent_buf, size_t buf_len,
                              size_t *out_len) {
     if (!node) { return VFS_ERR_NODE_BAD_ARGS; }
-    if (node->type != VFS_NODE_DIR) { return VFS_ERR_NODE_NOT_DIR; }
+    if (node->type != VNODE_DIR) { return VFS_ERR_NODE_NOT_DIR; }
     if (!dirent_buf) { return VFS_ERR_NODE_BAD_ARGS; }
     if (buf_len == 0) { return VFS_ERR_NODE_BAD_ARGS; }
     if (!out_len) { return VFS_ERR_NODE_BAD_ARGS; }
@@ -202,7 +202,7 @@ vfs_err_t ramfs_node_readdir(vnode_t *node, void *dirent_buf, size_t buf_len,
 vfs_err_t ramfs_node_lookup(vnode_t *node, vnode_t **out_node,
                             const char *name) {
     if (!node) { return VFS_ERR_NODE_BAD_ARGS; }
-    if (node->type != VFS_NODE_DIR) { return VFS_ERR_NODE_NOT_DIR; }
+    if (node->type != VNODE_DIR) { return VFS_ERR_NODE_NOT_DIR; }
     if (!out_node) { return VFS_ERR_NODE_BAD_ARGS; }
     if (!name) { return VFS_ERR_NODE_BAD_ARGS; }
 
@@ -225,10 +225,10 @@ vfs_err_t ramfs_node_lookup(vnode_t *node, vnode_t **out_node,
 
         switch (child_data->type) {
         case RAMFS_DATA_DIR:
-            vfs_node->type = VFS_NODE_DIR;
+            vfs_node->type = VNODE_DIR;
             break;
         case RAMFS_DATA_FILE:
-            vfs_node->type = VFS_NODE_FILE;
+            vfs_node->type = VNODE_FILE;
             break;
         }
 
@@ -242,7 +242,7 @@ vfs_err_t ramfs_node_lookup(vnode_t *node, vnode_t **out_node,
 vfs_err_t ramfs_node_read(vnode_t *node, size_t offset, void *buf,
                           size_t num_bytes, size_t *out_read) {
     if (!node) { return VFS_ERR_NODE_BAD_ARGS; }
-    if (node->type != VFS_NODE_FILE) { return VFS_ERR_NODE_NOT_DIR; }
+    if (node->type != VNODE_FILE) { return VFS_ERR_NODE_NOT_DIR; }
     if (offset >= node->size) { return VFS_ERR_NODE_BAD_OFFSET; }
     if (!buf) { return VFS_ERR_NODE_BAD_ARGS; }
 

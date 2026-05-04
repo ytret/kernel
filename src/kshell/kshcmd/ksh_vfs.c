@@ -180,7 +180,7 @@ static void prv_ksh_vfs_mkdir(const char *path_str) {
 
     vnode_t *child_node;
     auto f_mknode = parent_node->ops->f_mknode;
-    err = f_mknode(parent_node, &child_node, basename, VFS_NODE_DIR);
+    err = f_mknode(parent_node, &child_node, basename, VNODE_DIR);
     if (err != VFS_ERR_NONE) {
         kprintf("ksh_vfs: op 'mknode' returned error code %u: %s\n", err,
                 vfs_err_str(err));
@@ -216,7 +216,7 @@ static void prv_ksh_vfs_mkfile(const char *path_str) {
 
     vnode_t *child_node;
     auto f_mknode = parent_node->ops->f_mknode;
-    err = f_mknode(parent_node, &child_node, basename, VFS_NODE_FILE);
+    err = f_mknode(parent_node, &child_node, basename, VNODE_FILE);
     if (err != VFS_ERR_NONE) {
         kprintf("ksh_vfs: op 'mknode' returned error code %u: %s\n", err,
                 vfs_err_str(err));

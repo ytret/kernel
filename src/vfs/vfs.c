@@ -12,7 +12,7 @@ void vfs_init(void) {
     g_vfs.root_node = heap_alloc(sizeof(*g_vfs.root_node));
     kmemset(g_vfs.root_node, 0, sizeof(*g_vfs.root_node));
 
-    g_vfs.root_node->type = VFS_NODE_DIR;
+    g_vfs.root_node->type = VNODE_DIR;
     g_vfs.root_node->ops = NULL;
 }
 

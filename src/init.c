@@ -50,7 +50,7 @@ void init_bsp_task(void) {
     if (vfs_err) { PANIC("mount err %d: %s", vfs_err, vfs_err_str(vfs_err)); }
 
     vnode_t *foo_node = NULL;
-    vfs_err = ramfs_node_mknode(root_node, &foo_node, "foo", VFS_NODE_FILE);
+    vfs_err = ramfs_node_mknode(root_node, &foo_node, "foo", VNODE_FILE);
     if (vfs_err) { PANIC("mknode err %d: %s", vfs_err, vfs_err_str(vfs_err)); }
 
     file_t file = {0};

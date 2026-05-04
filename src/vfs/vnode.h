@@ -13,9 +13,9 @@ typedef struct {
 } vfs_dirent_t;
 
 typedef enum {
-    VFS_NODE_NONE,
-    VFS_NODE_DIR,
-    VFS_NODE_FILE,
+    VNODE_NONE,
+    VNODE_DIR,
+    VNODE_FILE,
 } vnode_type_t;
 
 typedef enum {

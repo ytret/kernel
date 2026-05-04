@@ -15,10 +15,10 @@ file_err_t file_open_node(vnode_t *node, file_t *file) {
     bool ok_type = false;
     int bad_flags;
     switch (node->type) {
-    case VFS_NODE_NONE:
+    case VNODE_NONE:
         LOG_ERROR("invalid node type VFS_NODE_NONE");
         return FILE_ERR_CANNOT_OPEN;
-    case VFS_NODE_FILE:
+    case VNODE_FILE:
         bad_flags = file->flags & ~FILE_FLAGS_FILE;
         if (bad_flags) {
             LOG_ERROR("bad flags for file: 0x%08x", bad_flags);
@@ -26,7 +26,7 @@ file_err_t file_open_node(vnode_t *node, file_t *file) {
         }
         ok_type = true;
         break;
-    case VFS_NODE_DIR:
+    case VNODE_DIR:
         bad_flags = file->flags & ~FILE_FLAGS_DIR;
         if (bad_flags) {
             LOG_ERROR("bad flags for directory: 0x%08x", bad_flags);
@@ -96,7 +96,7 @@ file_err_t file_seek(file_t *file, off_t offset, file_seek_t whence) {
         LOG_ERROR("file %p not opened", file);
         return FILE_ERR_NOT_OPENED;
     }
-    if (file->node->type != VFS_NODE_FILE) {
+    if (file->node->type != VNODE_FILE) {
         LOG_ERROR("node type %d does not support seek", file->node->type);
         return FILE_ERR_NOT_SUPP;
     }
@@ -134,7 +134,7 @@ file_err_t file_read(file_t *file, void *buf, size_t num_bytes,
         LOG_ERROR("file %p not opened", file);
         return FILE_ERR_NOT_OPENED;
     }
-    if (file->node->type != VFS_NODE_FILE) {
+    if (file->node->type != VNODE_FILE) {
         LOG_ERROR("node %p type %d does not support read", file->node,
                   file->node->type);
         return FILE_ERR_NOT_SUPP;
