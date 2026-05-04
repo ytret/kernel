@@ -1,8 +1,8 @@
-#include "vfs/vfs_node.h"
 #include <gtest/gtest.h>
 
 extern "C" {
 #include "vfs/vfs_path.h"
+#include "vfs/vnode.h"
 }
 
 class VfsPathTest : public testing::Test {

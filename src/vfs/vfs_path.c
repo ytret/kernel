@@ -2,8 +2,8 @@
 
 #include "heap.h"
 #include "memfun.h"
-#include "vfs/vfs_node.h"
 #include "vfs/vfs_path.h"
+#include "vfs/vnode.h"
 
 vfs_err_t vfs_path_from_str(const char *path_str, vfs_path_t *out_path) {
     kmemset(out_path, 0, sizeof(*out_path));
