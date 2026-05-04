@@ -16,7 +16,7 @@
 #include "taskmgr.h"
 #include "term.h"
 #include "vfs/file.h"
-#include "vfs/vfs.h"
+#include "vfs/vnode.h"
 
 #include "arch/x86/apic/lapic.h"
 
@@ -37,9 +37,9 @@ void init_bsp_task(void) {
 
     devmgr_init_blkdev_parts();
 
-    vfs_init();
+    vnode_root_init();
 
-    vnode_t *const root_node = vfs_root_node();
+    vnode_t *const root_node = vnode_root_node();
     ASSERT(root_node);
 
     ramfs_ctx_t *ramfs = ramfs_init(1024);

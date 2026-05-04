@@ -1,6 +1,6 @@
 #include "heap.h"
 #include "memfun.h"
-#include "vfs/vfs.h"
+#include "vfs/vnode.h"
 
 typedef struct {
     vnode_t *root_node;
@@ -8,7 +8,7 @@ typedef struct {
 
 static vfs_ctx_t g_vfs;
 
-void vfs_init(void) {
+void vnode_root_init(void) {
     g_vfs.root_node = heap_alloc(sizeof(*g_vfs.root_node));
     kmemset(g_vfs.root_node, 0, sizeof(*g_vfs.root_node));
 
@@ -16,29 +16,29 @@ void vfs_init(void) {
     g_vfs.root_node->ops = NULL;
 }
 
-vnode_t *vfs_root_node(void) {
+vnode_t *vnode_root_node(void) {
     return g_vfs.root_node;
 }
 
-vnode_t *vfs_alloc_node(void) {
+vnode_t *vnode_alloc(void) {
     vnode_t *const node = heap_alloc(sizeof(*node));
     kmemset(node, 0, sizeof(*node));
     return node;
 }
 
-void vfs_free_node(vnode_t *node) {
+void vnode_free(vnode_t *node) {
     heap_free(node);
 }
 
-vpath_err_t vfs_resolve_path_str(const char *path_str, vnode_t **out_node) {
+vpath_err_t vnode_resolve_path_str(const char *path_str, vnode_t **out_node) {
     vpath_t path;
     vpath_err_t err = vpath_from_str(path_str, &path);
     if (err != VPATH_ERR_NONE) { return err; }
 
-    return vfs_resolve_path(&path, out_node);
+    return vnode_resolve_path(&path, out_node);
 }
 
-vpath_err_t vfs_resolve_path(const vpath_t *path, vnode_t **out_node) {
+vpath_err_t vnode_resolve_path(const vpath_t *path, vnode_t **out_node) {
     if (!path->is_absolute) { return VPATH_ERR_MUST_BE_ABSOLUTE; }
 
     vnode_t *vfs_node = g_vfs.root_node;

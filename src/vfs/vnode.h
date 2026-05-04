@@ -3,6 +3,7 @@
 #include <stddef.h>
 
 #include "vfs/vfs_err.h"
+#include "vfs/vpath.h"
 
 #define VNODE_MAX_NAME_SIZE 256
 
@@ -39,6 +40,15 @@ struct vnode {
     const vnode_ops_t *ops;
     size_t size;
 
-    void *fs_ctx; //!< File system context, shared by all of its nodes.
+    void *fs_ctx;  //!< File system context, shared by all of its nodes.
     void *fs_data; //!< File-system-specific data, referenced only by this node.
 };
+
+void vnode_root_init(void);
+vnode_t *vnode_root_node(void);
+
+vnode_t *vnode_alloc(void);
+void vnode_free(vnode_t *node);
+
+vpath_err_t vnode_resolve_path_str(const char *path_str, vnode_t **out_node);
+vpath_err_t vnode_resolve_path(const vpath_t *path, vnode_t **out_node);

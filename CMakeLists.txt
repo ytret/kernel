@@ -127,7 +127,7 @@ add_executable(kernel
     src/term.c
     src/vfs/file.c
     src/vfs/vfs_err.c
-    src/vfs/vfs.c
+    src/vfs/vnode.c
     src/vfs/vpath.c
     src/vga.c
 

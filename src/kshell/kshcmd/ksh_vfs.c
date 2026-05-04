@@ -3,7 +3,7 @@
 #include "kshell/ksharg.h"
 #include "kshell/kshcmd/ksh_vfs.h"
 #include "kstring.h"
-#include "vfs/vfs.h"
+#include "vfs/vnode.h"
 
 static ksharg_posarg_desc_t g_ksh_vfs_posargs[] = {
     {
@@ -228,7 +228,7 @@ static void prv_ksh_vfs_mkfile(const char *path_str) {
 }
 
 static bool prv_ksh_vfs_resolve_path(const char *path, vnode_t **out_node) {
-    vpath_err_t err = vfs_resolve_path_str(path, out_node);
+    vpath_err_t err = vnode_resolve_path_str(path, out_node);
     if (err == VPATH_ERR_NONE) {
         return true;
     } else {
@@ -261,12 +261,12 @@ static bool prv_ksh_vfs_get_parent_node(const char *path_str,
     const char *const basename = path_last_part->name;
 
     vnode_t *parent_node;
-    vpath_err_t err = vfs_resolve_path(&path, &parent_node);
+    vpath_err_t err = vnode_resolve_path(&path, &parent_node);
     if (err != VPATH_ERR_NONE) {
         kprintf("ksh_vfs: failed to resolve '%s' without its last part, error "
                 "%u: %s\n",
                 path_str, err, vpath_err_str(err));
-        vfs_free_node(parent_node);
+        vnode_free(parent_node);
         vpath_free(&path);
         return false;
     }

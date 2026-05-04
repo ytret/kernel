@@ -2,7 +2,7 @@
 #include "kinttypes.h"
 #include "log.h"
 #include "vfs/file.h"
-#include "vfs/vfs.h"
+#include "vfs/vnode.h"
 
 #define FILE_FLAGS_FILE (FILE_RDONLY | FILE_WRONLY | FILE_RDWR | FILE_EXEC)
 #define FILE_FLAGS_DIR  (FILE_SEARCH)
@@ -51,7 +51,7 @@ file_err_t file_open_path(const vpath_t *path, file_t *file) {
     DEBUG_ASSERT(file != NULL);
 
     vnode_t *node;
-    vpath_err_t err = vfs_resolve_path(path, &node);
+    vpath_err_t err = vnode_resolve_path(path, &node);
     if (err != VPATH_ERR_NONE) {
         LOG_ERROR("failed to resolve path: %s", vpath_err_str(err));
         return FILE_ERR_NOT_FOUND;
@@ -65,7 +65,7 @@ file_err_t file_open_path_str(const char *path_str, file_t *file) {
     DEBUG_ASSERT(file != NULL);
 
     vnode_t *node;
-    vpath_err_t err = vfs_resolve_path_str(path_str, &node);
+    vpath_err_t err = vnode_resolve_path_str(path_str, &node);
     if (err != VPATH_ERR_NONE) {
         LOG_ERROR("failed to resolve path '%s': %s", path_str,
                   vpath_err_str(err));

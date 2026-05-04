@@ -4,7 +4,7 @@
 #include "kstring.h"
 #include "log.h"
 #include "memfun.h"
-#include "vfs/vfs.h"
+#include "vfs/vnode.h"
 
 typedef enum {
     RAMFS_DATA_DIR,
@@ -152,7 +152,7 @@ vfs_err_t ramfs_node_mknode(vnode_t *dir_node, vnode_t **out_node,
         return VFS_ERR_NODE_BAD_ARGS;
     }
 
-    vnode_t *const new_node = vfs_alloc_node();
+    vnode_t *const new_node = vnode_alloc();
     new_node->type = node_type;
     new_node->flags = 0;
     new_node->ops = &g_ramfs_node_ops;
@@ -165,7 +165,7 @@ vfs_err_t ramfs_node_mknode(vnode_t *dir_node, vnode_t **out_node,
 
     err = prv_ramfs_add_child(ctx, data, name, new_data);
     if (err != VFS_ERR_NONE) {
-        vfs_free_node(new_node);
+        vnode_free(new_node);
         prv_ramfs_free_data(ctx, new_data);
         return err;
     }
@@ -215,7 +215,7 @@ vfs_err_t ramfs_node_lookup(vnode_t *node, vnode_t **out_node,
     }
 
     if (!child_data->vfs_node) {
-        vnode_t *const vfs_node = vfs_alloc_node();
+        vnode_t *const vfs_node = vnode_alloc();
         vfs_node->flags = 0;
         vfs_node->ops = &g_ramfs_node_ops;
         vfs_node->fs_ctx = node->fs_ctx;
