@@ -36,4 +36,4 @@ typedef struct {
      * @returns An error code, see #vfs_err_t.
      */
     vfs_err_t (*f_unmount)(void *ctx, vnode_t *node);
-} vfs_fs_desc_t;
+} fs_desc_t;

@@ -29,7 +29,7 @@ struct ramfs_data {
     };
 };
 
-static const vfs_fs_desc_t g_ramfs_desc = {
+static const fs_desc_t g_ramfs_desc = {
     .name = "ramfs",
     .f_mount = ramfs_mount,
 };
@@ -76,7 +76,7 @@ void ramfs_free(ramfs_ctx_t *ctx) {
     heap_free(ctx);
 }
 
-const vfs_fs_desc_t *ramfs_get_desc(void) {
+const fs_desc_t *ramfs_get_desc(void) {
     return &g_ramfs_desc;
 }
 

@@ -44,7 +44,7 @@ void init_bsp_task(void) {
 
     ramfs_ctx_t *ramfs = ramfs_init(1024);
     ASSERT(ramfs);
-    const vfs_fs_desc_t *ramfs_desc = ramfs_get_desc();
+    const fs_desc_t *ramfs_desc = ramfs_get_desc();
 
     vfs_err_t vfs_err = ramfs_desc->f_mount(ramfs, root_node);
     if (vfs_err) { PANIC("mount err %d: %s", vfs_err, vfs_err_str(vfs_err)); }

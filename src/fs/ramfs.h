@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 
-#include "vfs/vfs_fs.h"
+#include "vfs/fs_desc.h"
 
 typedef struct ramfs_data ramfs_data_t;
 
@@ -14,7 +14,7 @@ typedef struct {
 
 ramfs_ctx_t *ramfs_init(size_t num_bytes);
 void ramfs_free(ramfs_ctx_t *ctx);
-const vfs_fs_desc_t *ramfs_get_desc(void);
+const fs_desc_t *ramfs_get_desc(void);
 
 vfs_err_t ramfs_mount(void *v_ctx, vnode_t *node);
 vfs_err_t ramfs_unmount(void *v_ctx, vnode_t *node);
