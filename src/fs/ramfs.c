@@ -33,7 +33,7 @@ static const vfs_fs_desc_t g_ramfs_desc = {
     .name = "ramfs",
     .f_mount = ramfs_mount,
 };
-static const vfs_node_ops_t g_ramfs_node_ops = {
+static const vnode_ops_t g_ramfs_node_ops = {
     .f_mknode = ramfs_node_mknode,
     .f_readdir = ramfs_node_readdir,
     .f_lookup = ramfs_node_lookup,
@@ -156,8 +156,7 @@ vfs_err_t ramfs_node_mknode(vnode_t *dir_node, vnode_t **out_node,
     new_node->type = node_type;
     new_node->flags = 0;
     new_node->ops = &g_ramfs_node_ops;
-    new_node->size =
-        node_type == VNODE_FILE ? new_data->file_data.buf_size : 0;
+    new_node->size = node_type == VNODE_FILE ? new_data->file_data.buf_size : 0;
     new_node->fs_ctx = ctx;
     new_node->fs_data = new_data;
 
@@ -192,8 +191,7 @@ vfs_err_t ramfs_node_readdir(vnode_t *node, void *dirent_buf, size_t buf_len,
     const size_t copy_len = data->dir_data.num_children <= buf_len
                                 ? data->dir_data.num_children
                                 : buf_len;
-    kmemcpy(dirent_buf, data->dir_data.dirents,
-            copy_len * sizeof(dirent_t));
+    kmemcpy(dirent_buf, data->dir_data.dirents, copy_len * sizeof(dirent_t));
     *out_len = copy_len;
 
     return VFS_ERR_NONE;
@@ -331,8 +329,7 @@ static vfs_err_t prv_ramfs_make_dir_data(ramfs_ctx_t *ctx,
     }
 
     dir_data->dir_data.num_children = num_children;
-    dir_data->dir_data.dirents =
-        heap_alloc(num_children * sizeof(dirent_t));
+    dir_data->dir_data.dirents = heap_alloc(num_children * sizeof(dirent_t));
     dir_data->dir_data.children =
         heap_alloc(num_children * sizeof(ramfs_data_t *));
 

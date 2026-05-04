@@ -31,12 +31,12 @@ typedef struct {
                           const char *name);
     vfs_err_t (*f_read)(vnode_t *node, size_t offset, void *buf,
                         size_t num_bytes, size_t *out_read);
-} vfs_node_ops_t;
+} vnode_ops_t;
 
 struct vnode {
     vnode_type_t type;
     vnode_flags_t flags;
-    const vfs_node_ops_t *ops;
+    const vnode_ops_t *ops;
     size_t size;
 
     void *fs_ctx;
