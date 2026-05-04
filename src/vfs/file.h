@@ -1,8 +1,8 @@
 #pragma once
 
 #include "types.h"
-#include "vfs_path.h"
-#include "vnode.h"
+#include "vfs/vnode.h"
+#include "vfs/vpath.h"
 
 typedef enum {
     FILE_RDONLY = 1 << 0,

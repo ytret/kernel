@@ -1,7 +1,7 @@
 #pragma once
 
-#include "vfs/vfs_path.h"
 #include "vfs/vnode.h"
+#include "vfs/vpath.h"
 
 void vfs_init(void);
 vnode_t *vfs_root_node(void);

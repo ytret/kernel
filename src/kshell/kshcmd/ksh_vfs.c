@@ -242,12 +242,12 @@ static bool prv_ksh_vfs_get_parent_node(const char *path_str,
                                         vnode_t **out_node,
                                         char **out_basename) {
     vpath_t path;
-    vpath_err_t path_err = vfs_path_from_str(path_str, &path);
+    vpath_err_t path_err = vpath_from_str(path_str, &path);
     if (path_err != VPATH_ERR_NONE) {
         kprintf(
             "ksh_vfs: failed to convert '%s' to a path object, error %u: %s\n",
             path_str, path_err, vpath_err_str(path_err));
-        vfs_path_free(&path);
+        vpath_free(&path);
         return false;
     }
 
@@ -267,13 +267,13 @@ static bool prv_ksh_vfs_get_parent_node(const char *path_str,
                 "%u: %s\n",
                 path_str, err, vpath_err_str(err));
         vfs_free_node(parent_node);
-        vfs_path_free(&path);
+        vpath_free(&path);
         return false;
     }
 
     if (out_node) { *out_node = parent_node; }
     if (out_basename) { *out_basename = string_dup(basename); }
 
-    vfs_path_free(&path);
+    vpath_free(&path);
     return true;
 }

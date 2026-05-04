@@ -32,7 +32,7 @@ void vfs_free_node(vnode_t *node) {
 
 vpath_err_t vfs_resolve_path_str(const char *path_str, vnode_t **out_node) {
     vpath_t path;
-    vpath_err_t err = vfs_path_from_str(path_str, &path);
+    vpath_err_t err = vpath_from_str(path_str, &path);
     if (err != VPATH_ERR_NONE) { return err; }
 
     return vfs_resolve_path(&path, out_node);

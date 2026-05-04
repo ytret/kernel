@@ -2,7 +2,7 @@
 
 #include "list.h"
 
-#define VFS_PATH_MAX_PARTS 256
+#define VPATH_MAX_PARTS 256
 
 typedef struct {
     list_t parts;
@@ -23,6 +23,6 @@ typedef enum {
     VPATH_ERR_BAD_NODE,
 } vpath_err_t;
 
-vpath_err_t vfs_path_from_str(const char *path, vpath_t *out_path);
-void vfs_path_free(vpath_t *path);
+vpath_err_t vpath_from_str(const char *path, vpath_t *out_path);
+void vpath_free(vpath_t *path);
 const char *vpath_err_str(vpath_err_t err);

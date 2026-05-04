@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 extern "C" {
-#include "vfs/vfs_path.h"
 #include "vfs/vnode.h"
+#include "vfs/vpath.h"
 }
 
 class VfsPathTest : public testing::Test {
@@ -11,7 +11,7 @@ class VfsPathTest : public testing::Test {
     }
 
     void TearDown() override {
-        vfs_path_free(&path);
+        vpath_free(&path);
     }
 
     void expect_part_eq(size_t part_idx, const std::string &eq) {
@@ -21,8 +21,8 @@ class VfsPathTest : public testing::Test {
              node = node->p_next, idx++) {
             if (idx == part_idx) {
                 found_idx = true;
-                vfs_path_part_t *const part =
-                    LIST_NODE_TO_STRUCT(node, vfs_path_part_t, list_node);
+                vpath_part_t *const part =
+                    LIST_NODE_TO_STRUCT(node, vpath_part_t, list_node);
                 EXPECT_EQ(std::string(part->name), eq);
                 break;
             }
@@ -30,33 +30,33 @@ class VfsPathTest : public testing::Test {
         ASSERT_TRUE(found_idx) << "no part at index " << part_idx;
     }
 
-    vfs_path_t path;
-    vfs_err_t err;
+    vpath_t path;
+    vpath_err_t err;
 };
 
 TEST_F(VfsPathTest, EmptyString) {
-    err = vfs_path_from_str("", &path);
-    ASSERT_EQ(err, VFS_ERR_PATH_EMPTY);
+    err = vpath_from_str("", &path);
+    ASSERT_EQ(err, VPATH_ERR_EMPTY);
     EXPECT_FALSE(path.is_absolute);
     EXPECT_TRUE(list_is_empty(&path.parts));
 }
 
 TEST_F(VfsPathTest, SingleSlashRoot) {
-    err = vfs_path_from_str("/", &path);
+    err = vpath_from_str("/", &path);
     ASSERT_EQ(err, VFS_ERR_NONE);
     EXPECT_TRUE(path.is_absolute);
     EXPECT_TRUE(list_is_empty(&path.parts));
 }
 
 TEST_F(VfsPathTest, MultipleSlashesRoot) {
-    err = vfs_path_from_str("///", &path);
+    err = vpath_from_str("///", &path);
     ASSERT_EQ(err, VFS_ERR_NONE);
     EXPECT_TRUE(path.is_absolute);
     EXPECT_TRUE(list_is_empty(&path.parts));
 }
 
 TEST_F(VfsPathTest, AbsolutePath1Part) {
-    err = vfs_path_from_str("/foo", &path);
+    err = vpath_from_str("/foo", &path);
     ASSERT_EQ(err, VFS_ERR_NONE);
     EXPECT_TRUE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 1);
@@ -64,7 +64,7 @@ TEST_F(VfsPathTest, AbsolutePath1Part) {
 }
 
 TEST_F(VfsPathTest, AbsolutePath2Parts) {
-    err = vfs_path_from_str("/foo/bar", &path);
+    err = vpath_from_str("/foo/bar", &path);
     ASSERT_EQ(err, VFS_ERR_NONE);
     EXPECT_TRUE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 2);
@@ -73,7 +73,7 @@ TEST_F(VfsPathTest, AbsolutePath2Parts) {
 }
 
 TEST_F(VfsPathTest, AbsolutePath3Parts) {
-    err = vfs_path_from_str("/a/bb/cdefgh", &path);
+    err = vpath_from_str("/a/bb/cdefgh", &path);
     ASSERT_EQ(err, VFS_ERR_NONE);
     EXPECT_TRUE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 3);
@@ -83,7 +83,7 @@ TEST_F(VfsPathTest, AbsolutePath3Parts) {
 }
 
 TEST_F(VfsPathTest, AbsolutePath3PartsMultipleSlashes) {
-    err = vfs_path_from_str("/////a/////bb///cdefgh", &path);
+    err = vpath_from_str("/////a/////bb///cdefgh", &path);
     ASSERT_EQ(err, VFS_ERR_NONE);
     EXPECT_TRUE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 3);
@@ -93,7 +93,7 @@ TEST_F(VfsPathTest, AbsolutePath3PartsMultipleSlashes) {
 }
 
 TEST_F(VfsPathTest, AbsolutePath3PartsTrailingSlash) {
-    err = vfs_path_from_str("/0/1/2/", &path);
+    err = vpath_from_str("/0/1/2/", &path);
     ASSERT_EQ(err, VFS_ERR_NONE);
     EXPECT_TRUE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 3);
@@ -103,7 +103,7 @@ TEST_F(VfsPathTest, AbsolutePath3PartsTrailingSlash) {
 }
 
 TEST_F(VfsPathTest, AbsolutePath3PartsTrailingSlashes) {
-    err = vfs_path_from_str("/0/1/2////", &path);
+    err = vpath_from_str("/0/1/2////", &path);
     ASSERT_EQ(err, VFS_ERR_NONE);
     EXPECT_TRUE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 3);
@@ -113,28 +113,28 @@ TEST_F(VfsPathTest, AbsolutePath3PartsTrailingSlashes) {
 }
 
 TEST_F(VfsPathTest, RelativePath1Part) {
-    err = vfs_path_from_str("foo-bar", &path);
+    err = vpath_from_str("foo-bar", &path);
     ASSERT_EQ(err, VFS_ERR_NONE);
     EXPECT_FALSE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 1);
     expect_part_eq(0, "foo-bar");
 }
 TEST_F(VfsPathTest, RelativePath1PartTrailingSlash) {
-    err = vfs_path_from_str("foo-bar/", &path);
+    err = vpath_from_str("foo-bar/", &path);
     ASSERT_EQ(err, VFS_ERR_NONE);
     EXPECT_FALSE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 1);
     expect_part_eq(0, "foo-bar");
 }
 TEST_F(VfsPathTest, RelativePath1PartTrailingSlashes) {
-    err = vfs_path_from_str("foo-bar///", &path);
+    err = vpath_from_str("foo-bar///", &path);
     ASSERT_EQ(err, VFS_ERR_NONE);
     EXPECT_FALSE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 1);
     expect_part_eq(0, "foo-bar");
 }
 TEST_F(VfsPathTest, RelativePath2Parts) {
-    err = vfs_path_from_str("foo/bar", &path);
+    err = vpath_from_str("foo/bar", &path);
     ASSERT_EQ(err, VFS_ERR_NONE);
     EXPECT_FALSE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 2);
@@ -142,7 +142,7 @@ TEST_F(VfsPathTest, RelativePath2Parts) {
     expect_part_eq(1, "bar");
 }
 TEST_F(VfsPathTest, RelativePath3Parts) {
-    err = vfs_path_from_str("foo/bar/xyz", &path);
+    err = vpath_from_str("foo/bar/xyz", &path);
     ASSERT_EQ(err, VFS_ERR_NONE);
     EXPECT_FALSE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 3);
@@ -154,12 +154,12 @@ TEST_F(VfsPathTest, RelativePath3Parts) {
 TEST_F(VfsPathTest, EqMaxNameLen) {
     const std::string part1_str = "foo";
     std::string part2_str;
-    for (size_t idx = 0; idx < VNODE_MAX_NAME_SIZEE - 1; idx++) {
+    for (size_t idx = 0; idx < VNODE_MAX_NAME_SIZE - 1; idx++) {
         part2_str += "a";
     }
     const std::string path_str = part1_str + "/" + part2_str;
 
-    err = vfs_path_from_str(path_str.c_str(), &path);
+    err = vpath_from_str(path_str.c_str(), &path);
     ASSERT_EQ(err, VFS_ERR_NONE);
     EXPECT_FALSE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 2);
@@ -169,18 +169,18 @@ TEST_F(VfsPathTest, EqMaxNameLen) {
 TEST_F(VfsPathTest, JustAboveMaxNameLen) {
     const std::string part1_str = "foo";
     std::string part2_str;
-    for (size_t idx = 0; idx < VNODE_MAX_NAME_SIZEE; idx++) {
+    for (size_t idx = 0; idx < VNODE_MAX_NAME_SIZE; idx++) {
         part2_str += "a";
     }
     const std::string path_str = part1_str + "/" + part2_str;
 
-    err = vfs_path_from_str(path_str.c_str(), &path);
-    ASSERT_EQ(err, VFS_ERR_PATH_PART_TOO_LONG);
+    err = vpath_from_str(path_str.c_str(), &path);
+    ASSERT_EQ(err, VPATH_ERR_PART_TOO_LONG);
 }
 
 TEST_F(VfsPathTest, TooManyParts) {
     std::vector<std::string> parts;
-    for (size_t idx = 0; idx < VFS_PATH_MAX_PARTS + 1; idx++) {
+    for (size_t idx = 0; idx < VPATH_MAX_PARTS + 1; idx++) {
         parts.push_back("abc");
     }
     std::string path_str;
@@ -188,6 +188,6 @@ TEST_F(VfsPathTest, TooManyParts) {
         path_str += "/" + part;
     }
 
-    err = vfs_path_from_str(path_str.c_str(), &path);
-    ASSERT_EQ(err, VFS_ERR_PATH_TOO_MANY_PARTS);
+    err = vpath_from_str(path_str.c_str(), &path);
+    ASSERT_EQ(err, VPATH_ERR_TOO_MANY_PARTS);
 }

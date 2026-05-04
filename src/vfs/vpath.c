@@ -2,10 +2,10 @@
 
 #include "heap.h"
 #include "memfun.h"
-#include "vfs/vfs_path.h"
 #include "vfs/vnode.h"
+#include "vfs/vpath.h"
 
-vpath_err_t vfs_path_from_str(const char *path_str, vpath_t *out_path) {
+vpath_err_t vpath_from_str(const char *path_str, vpath_t *out_path) {
     kmemset(out_path, 0, sizeof(*out_path));
     list_init(&out_path->parts, NULL);
 
@@ -20,7 +20,7 @@ vpath_err_t vfs_path_from_str(const char *path_str, vpath_t *out_path) {
             if ((substr_len + 1) > VNODE_MAX_NAME_SIZE) {
                 return VPATH_ERR_PART_TOO_LONG;
             }
-            if (num_parts >= VFS_PATH_MAX_PARTS) {
+            if (num_parts >= VPATH_MAX_PARTS) {
                 return VPATH_ERR_TOO_MANY_PARTS;
             }
             if (idx == 0 && ch == 0) { return VPATH_ERR_EMPTY; }
@@ -52,7 +52,7 @@ vpath_err_t vfs_path_from_str(const char *path_str, vpath_t *out_path) {
     return VPATH_ERR_NONE;
 }
 
-void vfs_path_free(vpath_t *path) {
+void vpath_free(vpath_t *path) {
     list_node_t *node;
     while ((node = list_pop_first(&path->parts))) {
         vpath_part_t *const part =
