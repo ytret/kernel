@@ -154,7 +154,7 @@ TEST_F(VfsPathTest, RelativePath3Parts) {
 TEST_F(VfsPathTest, EqMaxNameLen) {
     const std::string part1_str = "foo";
     std::string part2_str;
-    for (size_t idx = 0; idx < VFS_NODE_MAX_NAME_SIZE - 1; idx++) {
+    for (size_t idx = 0; idx < VNODE_MAX_NAME_SIZEE - 1; idx++) {
         part2_str += "a";
     }
     const std::string path_str = part1_str + "/" + part2_str;
@@ -169,7 +169,7 @@ TEST_F(VfsPathTest, EqMaxNameLen) {
 TEST_F(VfsPathTest, JustAboveMaxNameLen) {
     const std::string part1_str = "foo";
     std::string part2_str;
-    for (size_t idx = 0; idx < VFS_NODE_MAX_NAME_SIZE; idx++) {
+    for (size_t idx = 0; idx < VNODE_MAX_NAME_SIZEE; idx++) {
         part2_str += "a";
     }
     const std::string path_str = part1_str + "/" + part2_str;

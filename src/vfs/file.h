@@ -31,12 +31,12 @@ typedef enum {
 
 typedef struct {
     bool opened;
-    vfs_node_t *node;
+    vnode_t *node;
     file_flags_t flags;
     off_t offset;
 } file_t;
 
-file_err_t file_open_node(vfs_node_t *node, file_t *file);
+file_err_t file_open_node(vnode_t *node, file_t *file);
 file_err_t file_open_path(const vfs_path_t *path, file_t *file);
 file_err_t file_open_path_str(const char *path_str, file_t *file);
 file_err_t file_close(file_t *file);

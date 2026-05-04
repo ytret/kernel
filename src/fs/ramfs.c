@@ -12,7 +12,7 @@ typedef enum {
 } ramfs_data_type_t;
 
 struct ramfs_data {
-    vfs_node_t *vfs_node;
+    vnode_t *vfs_node;
     ramfs_data_t *parent_data;
 
     ramfs_data_type_t type;
@@ -80,7 +80,7 @@ const vfs_fs_desc_t *ramfs_get_desc(void) {
     return &g_ramfs_desc;
 }
 
-vfs_err_t ramfs_mount(void *v_ctx, vfs_node_t *node) {
+vfs_err_t ramfs_mount(void *v_ctx, vnode_t *node) {
     ramfs_ctx_t *const ctx = v_ctx;
 
     if (ctx->root->vfs_node) { return VFS_ERR_FS_ALREADY_MOUNTED; }
@@ -97,7 +97,7 @@ vfs_err_t ramfs_mount(void *v_ctx, vfs_node_t *node) {
     return VFS_ERR_NONE;
 }
 
-vfs_err_t ramfs_unmount(void *v_ctx, vfs_node_t *node) {
+vfs_err_t ramfs_unmount(void *v_ctx, vnode_t *node) {
     ramfs_ctx_t *const ctx = v_ctx;
 
     if (node->fs_ctx != ctx) { return VFS_ERR_NODE_NOT_MOUNTED; }
@@ -112,12 +112,12 @@ vfs_err_t ramfs_unmount(void *v_ctx, vfs_node_t *node) {
     return VFS_ERR_NONE;
 }
 
-vfs_err_t ramfs_node_mknode(vfs_node_t *dir_node, vfs_node_t **out_node,
-                            const char *name, vfs_node_type_t node_type) {
+vfs_err_t ramfs_node_mknode(vnode_t *dir_node, vnode_t **out_node,
+                            const char *name, vnode_type_t node_type) {
     if (!dir_node) { return VFS_ERR_NODE_BAD_ARGS; }
     if (!out_node) { return VFS_ERR_NODE_BAD_ARGS; }
     if (!name) { return VFS_ERR_NODE_BAD_ARGS; }
-    if (string_len(name) + 1 > VFS_NODE_MAX_NAME_SIZE) {
+    if (string_len(name) + 1 > VNODE_MAX_NAME_SIZE) {
         return VFS_ERR_NODE_NAME_TOO_LONG;
     }
 
@@ -152,7 +152,7 @@ vfs_err_t ramfs_node_mknode(vfs_node_t *dir_node, vfs_node_t **out_node,
         return VFS_ERR_NODE_BAD_ARGS;
     }
 
-    vfs_node_t *const new_node = vfs_alloc_node();
+    vnode_t *const new_node = vfs_alloc_node();
     new_node->type = node_type;
     new_node->flags = 0;
     new_node->ops = &g_ramfs_node_ops;
@@ -176,7 +176,7 @@ vfs_err_t ramfs_node_mknode(vfs_node_t *dir_node, vfs_node_t **out_node,
     return VFS_ERR_NONE;
 }
 
-vfs_err_t ramfs_node_readdir(vfs_node_t *node, void *dirent_buf, size_t buf_len,
+vfs_err_t ramfs_node_readdir(vnode_t *node, void *dirent_buf, size_t buf_len,
                              size_t *out_len) {
     if (!node) { return VFS_ERR_NODE_BAD_ARGS; }
     if (node->type != VFS_NODE_DIR) { return VFS_ERR_NODE_NOT_DIR; }
@@ -199,7 +199,7 @@ vfs_err_t ramfs_node_readdir(vfs_node_t *node, void *dirent_buf, size_t buf_len,
     return VFS_ERR_NONE;
 }
 
-vfs_err_t ramfs_node_lookup(vfs_node_t *node, vfs_node_t **out_node,
+vfs_err_t ramfs_node_lookup(vnode_t *node, vnode_t **out_node,
                             const char *name) {
     if (!node) { return VFS_ERR_NODE_BAD_ARGS; }
     if (node->type != VFS_NODE_DIR) { return VFS_ERR_NODE_NOT_DIR; }
@@ -217,7 +217,7 @@ vfs_err_t ramfs_node_lookup(vfs_node_t *node, vfs_node_t **out_node,
     }
 
     if (!child_data->vfs_node) {
-        vfs_node_t *const vfs_node = vfs_alloc_node();
+        vnode_t *const vfs_node = vfs_alloc_node();
         vfs_node->flags = 0;
         vfs_node->ops = &g_ramfs_node_ops;
         vfs_node->fs_ctx = node->fs_ctx;
@@ -239,7 +239,7 @@ vfs_err_t ramfs_node_lookup(vfs_node_t *node, vfs_node_t **out_node,
     return VFS_ERR_NONE;
 }
 
-vfs_err_t ramfs_node_read(vfs_node_t *node, size_t offset, void *buf,
+vfs_err_t ramfs_node_read(vnode_t *node, size_t offset, void *buf,
                           size_t num_bytes, size_t *out_read) {
     if (!node) { return VFS_ERR_NODE_BAD_ARGS; }
     if (node->type != VFS_NODE_FILE) { return VFS_ERR_NODE_NOT_DIR; }

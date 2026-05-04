@@ -17,7 +17,7 @@ vfs_err_t vfs_path_from_str(const char *path_str, vfs_path_t *out_path) {
     for (;;) {
         const char ch = path_str[idx];
         if (ch == '/' || ch == 0) {
-            if ((substr_len + 1) > VFS_NODE_MAX_NAME_SIZE) {
+            if ((substr_len + 1) > VNODE_MAX_NAME_SIZE) {
                 return VFS_ERR_PATH_PART_TOO_LONG;
             }
             if (num_parts >= VFS_PATH_MAX_PARTS) {

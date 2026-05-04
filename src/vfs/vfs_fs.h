@@ -25,7 +25,7 @@ typedef struct {
      *
      * @returns An error code, see #vfs_err_t.
      */
-    vfs_err_t (*f_mount)(void *ctx, vfs_node_t *node);
+    vfs_err_t (*f_mount)(void *ctx, vnode_t *node);
 
     /**
      * Unmount the filesystem @a ctx from the VFS node @a node.
@@ -35,5 +35,5 @@ typedef struct {
      *
      * @returns An error code, see #vfs_err_t.
      */
-    vfs_err_t (*f_unmount)(void *ctx, vfs_node_t *node);
+    vfs_err_t (*f_unmount)(void *ctx, vnode_t *node);
 } vfs_fs_desc_t;

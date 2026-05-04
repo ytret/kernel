@@ -4,37 +4,37 @@
 
 #include "vfs/vfs_err.h"
 
-#define VFS_NODE_MAX_NAME_SIZE 256
+#define VNODE_MAX_NAME_SIZE 256
 
-typedef struct vfs_node vfs_node_t;
+typedef struct vnode vnode_t;
 
 typedef struct {
-    char name[VFS_NODE_MAX_NAME_SIZE];
+    char name[VNODE_MAX_NAME_SIZE];
 } vfs_dirent_t;
 
 typedef enum {
     VFS_NODE_NONE,
     VFS_NODE_DIR,
     VFS_NODE_FILE,
-} vfs_node_type_t;
+} vnode_type_t;
 
 typedef enum {
     VFS_NODE_ROOT = 1 << 0,
 } vfs_node_flags_t;
 
 typedef struct {
-    vfs_err_t (*f_mknode)(vfs_node_t *dir_node, vfs_node_t **out_node,
-                          const char *name, vfs_node_type_t node_type);
-    vfs_err_t (*f_readdir)(vfs_node_t *node, void *dirent_buf, size_t buf_len,
+    vfs_err_t (*f_mknode)(vnode_t *dir_node, vnode_t **out_node,
+                          const char *name, vnode_type_t node_type);
+    vfs_err_t (*f_readdir)(vnode_t *node, void *dirent_buf, size_t buf_len,
                            size_t *out_len);
-    vfs_err_t (*f_lookup)(vfs_node_t *dir_node, vfs_node_t **out_node,
+    vfs_err_t (*f_lookup)(vnode_t *dir_node, vnode_t **out_node,
                           const char *name);
-    vfs_err_t (*f_read)(vfs_node_t *node, size_t offset, void *buf,
+    vfs_err_t (*f_read)(vnode_t *node, size_t offset, void *buf,
                         size_t num_bytes, size_t *out_read);
 } vfs_node_ops_t;
 
-struct vfs_node {
-    vfs_node_type_t type;
+struct vnode {
+    vnode_type_t type;
     vfs_node_flags_t flags;
     const vfs_node_ops_t *ops;
     size_t size;

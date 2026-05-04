@@ -43,9 +43,9 @@ static void prv_ksh_vfs_ls(const char *path);
 static void prv_ksh_vfs_mkdir(const char *path_str);
 static void prv_ksh_vfs_mkfile(const char *path_str);
 
-static bool prv_ksh_vfs_resolve_path(const char *path, vfs_node_t **out_node);
+static bool prv_ksh_vfs_resolve_path(const char *path, vnode_t **out_node);
 static bool prv_ksh_vfs_get_parent_node(const char *path_str,
-                                        vfs_node_t **out_node,
+                                        vnode_t **out_node,
                                         char **out_basename);
 
 void ksh_vfs(list_t *arg_list) {
@@ -117,7 +117,7 @@ void ksh_vfs(list_t *arg_list) {
 }
 
 static void prv_ksh_vfs_ls(const char *path) {
-    vfs_node_t *node;
+    vnode_t *node;
     if (!prv_ksh_vfs_resolve_path(path, &node)) { return; }
 
     if (!node->ops) {
@@ -158,7 +158,7 @@ static void prv_ksh_vfs_ls(const char *path) {
 
 static void prv_ksh_vfs_mkdir(const char *path_str) {
     vfs_err_t err;
-    vfs_node_t *parent_node;
+    vnode_t *parent_node;
     char *basename;
 
     if (!prv_ksh_vfs_get_parent_node(path_str, &parent_node, &basename)) {
@@ -178,7 +178,7 @@ static void prv_ksh_vfs_mkdir(const char *path_str) {
         return;
     }
 
-    vfs_node_t *child_node;
+    vnode_t *child_node;
     auto f_mknode = parent_node->ops->f_mknode;
     err = f_mknode(parent_node, &child_node, basename, VFS_NODE_DIR);
     if (err != VFS_ERR_NONE) {
@@ -194,7 +194,7 @@ static void prv_ksh_vfs_mkdir(const char *path_str) {
 
 static void prv_ksh_vfs_mkfile(const char *path_str) {
     vfs_err_t err;
-    vfs_node_t *parent_node;
+    vnode_t *parent_node;
     char *basename;
 
     if (!prv_ksh_vfs_get_parent_node(path_str, &parent_node, &basename)) {
@@ -214,7 +214,7 @@ static void prv_ksh_vfs_mkfile(const char *path_str) {
         return;
     }
 
-    vfs_node_t *child_node;
+    vnode_t *child_node;
     auto f_mknode = parent_node->ops->f_mknode;
     err = f_mknode(parent_node, &child_node, basename, VFS_NODE_FILE);
     if (err != VFS_ERR_NONE) {
@@ -228,7 +228,7 @@ static void prv_ksh_vfs_mkfile(const char *path_str) {
     heap_free(basename);
 }
 
-static bool prv_ksh_vfs_resolve_path(const char *path, vfs_node_t **out_node) {
+static bool prv_ksh_vfs_resolve_path(const char *path, vnode_t **out_node) {
     vfs_err_t err = vfs_resolve_path_str(path, out_node);
     if (err == VFS_ERR_NONE) {
         return true;
@@ -240,7 +240,7 @@ static bool prv_ksh_vfs_resolve_path(const char *path, vfs_node_t **out_node) {
 }
 
 static bool prv_ksh_vfs_get_parent_node(const char *path_str,
-                                        vfs_node_t **out_node,
+                                        vnode_t **out_node,
                                         char **out_basename) {
     vfs_err_t err;
     vfs_path_t path;
@@ -262,7 +262,7 @@ static bool prv_ksh_vfs_get_parent_node(const char *path_str,
         LIST_NODE_TO_STRUCT(basename_lnode, vfs_path_part_t, list_node);
     const char *const basename = path_last_part->name;
 
-    vfs_node_t *parent_node;
+    vnode_t *parent_node;
     err = vfs_resolve_path(&path, &parent_node);
     if (err != VFS_ERR_NONE) {
         kprintf("ksh_vfs: failed to resolve '%s' without its last part, error "
