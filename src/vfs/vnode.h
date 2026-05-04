@@ -19,8 +19,8 @@ typedef enum {
 } vnode_type_t;
 
 typedef enum {
-    VFS_NODE_ROOT = 1 << 0,
-} vfs_node_flags_t;
+    VNODE_ROOT = 1 << 0,
+} vnode_flags_t;
 
 typedef struct {
     vfs_err_t (*f_mknode)(vnode_t *dir_node, vnode_t **out_node,
@@ -35,7 +35,7 @@ typedef struct {
 
 struct vnode {
     vnode_type_t type;
-    vfs_node_flags_t flags;
+    vnode_flags_t flags;
     const vfs_node_ops_t *ops;
     size_t size;
 

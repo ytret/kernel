@@ -87,7 +87,7 @@ vfs_err_t ramfs_mount(void *v_ctx, vnode_t *node) {
     if (node->fs_ctx) { return VFS_ERR_NODE_ALREADY_MOUNTED; }
     if (node->type != VFS_NODE_DIR) { return VFS_ERR_NODE_NOT_DIR; }
 
-    node->flags |= VFS_NODE_ROOT;
+    node->flags |= VNODE_ROOT;
     node->ops = &g_ramfs_node_ops;
     node->fs_ctx = ctx;
     node->fs_data = ctx->root;
@@ -102,7 +102,7 @@ vfs_err_t ramfs_unmount(void *v_ctx, vnode_t *node) {
 
     if (node->fs_ctx != ctx) { return VFS_ERR_NODE_NOT_MOUNTED; }
 
-    node->flags &= ~VFS_NODE_ROOT;
+    node->flags &= ~VNODE_ROOT;
     node->ops = NULL;
     node->fs_ctx = NULL;
     node->fs_data = NULL;
