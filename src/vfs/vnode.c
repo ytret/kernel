@@ -15,6 +15,7 @@ static vfs_ctx_t g_vfs;
 void vnode_root_init(void) {
     g_vfs.root_node = heap_alloc(sizeof(*g_vfs.root_node));
     kmemset(g_vfs.root_node, 0, sizeof(*g_vfs.root_node));
+    mutex_init(&g_vfs.root_node->lock);
 
     g_vfs.root_node->refcount = 1;
     g_vfs.root_node->type = VNODE_DIR;
@@ -28,6 +29,7 @@ vnode_t *vnode_root_node(void) {
 vnode_t *vnode_get(void) {
     vnode_t *const node = heap_alloc(sizeof(*node));
     kmemset(node, 0, sizeof(*node));
+    mutex_init(&node->lock);
     node->refcount = 1;
     return node;
 }

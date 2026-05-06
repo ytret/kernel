@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 
+#include "kmutex.h"
 #include "vfs/vfs_err.h"
 #include "vfs/vpath.h"
 
@@ -35,6 +36,7 @@ typedef struct {
 } vnode_ops_t;
 
 struct vnode {
+    task_mutex_t lock;
     _Atomic int refcount;
 
     vnode_type_t type;
