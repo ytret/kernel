@@ -41,13 +41,17 @@ void vnode_ref(vnode_t *node) {
     node->refcount++;
 }
 
-void vnode_put(vnode_t *node) {
+bool vnode_put(vnode_t *node) {
     if (node->refcount == 0) { PANIC("vnode_put called with refcount 0"); }
+
     node->refcount--;
     if (node->refcount == 0) {
         LOG_FLOW("free node %p", node);
         heap_free(node);
+        return true;
     }
+
+    return false;
 }
 
 vpath_err_t vnode_resolve_path_str(const char *path_str, vnode_t **out_node) {

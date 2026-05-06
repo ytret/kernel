@@ -53,7 +53,7 @@ vnode_t *vnode_root_node(void);
 
 vnode_t *vnode_get(void);
 void vnode_ref(vnode_t *node);
-void vnode_put(vnode_t *node);
+bool vnode_put(vnode_t *node);
 
 vpath_err_t vnode_resolve_path_str(const char *path_str, vnode_t **out_node);
 vpath_err_t vnode_resolve_path(const vpath_t *path, vnode_t **out_node);
