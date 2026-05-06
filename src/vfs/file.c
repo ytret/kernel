@@ -12,16 +12,20 @@ file_err_t file_open_node(vnode_t *node, file_t *file) {
     DEBUG_ASSERT(node != NULL);
     DEBUG_ASSERT(file != NULL);
 
+    mutex_acquire(&node->lock);
+
     bool ok_type = false;
     int bad_flags;
     switch (node->type) {
     case VNODE_NONE:
         LOG_ERROR("invalid node type VNODE_NONE");
+        mutex_release(&node->lock);
         return FILE_ERR_CANNOT_OPEN;
     case VNODE_FILE:
         bad_flags = file->flags & ~FILE_FLAGS_FILE;
         if (bad_flags) {
             LOG_ERROR("bad flags for file: 0x%08x", bad_flags);
+            mutex_release(&node->lock);
             return FILE_ERR_BAD_FLAGS;
         }
         ok_type = true;
@@ -30,6 +34,7 @@ file_err_t file_open_node(vnode_t *node, file_t *file) {
         bad_flags = file->flags & ~FILE_FLAGS_DIR;
         if (bad_flags) {
             LOG_ERROR("bad flags for directory: 0x%08x", bad_flags);
+            mutex_release(&node->lock);
             return FILE_ERR_BAD_FLAGS;
         }
         ok_type = true;
@@ -41,6 +46,8 @@ file_err_t file_open_node(vnode_t *node, file_t *file) {
     file->node = node;
     // file->flags are set already.
     file->offset = 0;
+
+    mutex_release(&node->lock);
 
     return FILE_ERR_NONE;
 }
@@ -85,7 +92,9 @@ file_err_t file_close(file_t *file) {
 
     file->opened = false;
 
-    vnode_put(file->node);
+    vnode_t *const node = file->node;
+    mutex_acquire(&node->lock);
+    if (!vnode_put(node)) { mutex_release(&node->lock); }
 
     return FILE_ERR_NONE;
 }
@@ -98,10 +107,15 @@ file_err_t file_seek(file_t *file, off_t offset, file_seek_t whence) {
         LOG_ERROR("file %p not opened", file);
         return FILE_ERR_NOT_OPENED;
     }
-    if (file->node->type != VNODE_FILE) {
-        LOG_ERROR("node type %d does not support seek", file->node->type);
+
+    vnode_t *const node = file->node;
+    mutex_acquire(&node->lock);
+    if (node->type != VNODE_FILE) {
+        LOG_ERROR("node type %d does not support seek", node->type);
+        mutex_release(&node->lock);
         return FILE_ERR_NOT_SUPP;
     }
+    mutex_release(&node->lock);
 
     off_t new_offset;
     switch (whence) {
@@ -136,25 +150,31 @@ file_err_t file_read(file_t *file, void *buf, size_t num_bytes,
         LOG_ERROR("file %p not opened", file);
         return FILE_ERR_NOT_OPENED;
     }
-    if (file->node->type != VNODE_FILE) {
-        LOG_ERROR("node %p type %d does not support read", file->node,
-                  file->node->type);
+
+    vnode_t *const node = file->node;
+    mutex_acquire(&node->lock);
+    if (node->type != VNODE_FILE) {
+        LOG_ERROR("node %p type %d does not support read", node, node->type);
+        mutex_release(&node->lock);
         return FILE_ERR_NOT_SUPP;
     }
-    if (!file->node->ops->f_read) {
-        LOG_ERROR("node %p file system does not support read", file->node);
+    if (!node->ops->f_read) {
+        LOG_ERROR("node %p file system does not support read", node);
+        mutex_release(&node->lock);
         return FILE_ERR_NOT_SUPP;
     }
 
     ASSERT(file->offset >= 0);
 
-    vfs_err_t err = file->node->ops->f_read(file->node, (size_t)file->offset,
-                                            buf, num_bytes, out_read);
+    vfs_err_t err =
+        node->ops->f_read(node, (size_t)file->offset, buf, num_bytes, out_read);
+
+    mutex_release(&node->lock);
+
     if (err == VFS_ERR_NONE) {
         return FILE_ERR_NONE;
     } else {
-        LOG_ERROR("node %p read returned %d: %s", file->node, err,
-                  vfs_err_str(err));
+        LOG_ERROR("node %p read returned %d: %s", node, err, vfs_err_str(err));
         return FILE_ERR_IO;
     }
 }
