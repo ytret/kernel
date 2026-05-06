@@ -266,7 +266,7 @@ static bool prv_ksh_vfs_get_parent_node(const char *path_str,
         kprintf("ksh_vfs: failed to resolve '%s' without its last part, error "
                 "%u: %s\n",
                 path_str, err, vpath_err_str(err));
-        vnode_free(parent_node);
+        vnode_put(parent_node);
         vpath_free(&path);
         return false;
     }

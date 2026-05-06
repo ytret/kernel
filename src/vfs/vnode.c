@@ -1,5 +1,9 @@
+#include <limits.h>
+
 #include "heap.h"
+#include "log.h"
 #include "memfun.h"
+#include "panic.h"
 #include "vfs/vnode.h"
 
 typedef struct {
@@ -12,6 +16,7 @@ void vnode_root_init(void) {
     g_vfs.root_node = heap_alloc(sizeof(*g_vfs.root_node));
     kmemset(g_vfs.root_node, 0, sizeof(*g_vfs.root_node));
 
+    g_vfs.root_node->refcount = 1;
     g_vfs.root_node->type = VNODE_DIR;
     g_vfs.root_node->ops = NULL;
 }
@@ -20,14 +25,27 @@ vnode_t *vnode_root_node(void) {
     return g_vfs.root_node;
 }
 
-vnode_t *vnode_alloc(void) {
+vnode_t *vnode_get(void) {
     vnode_t *const node = heap_alloc(sizeof(*node));
     kmemset(node, 0, sizeof(*node));
+    node->refcount = 1;
     return node;
 }
 
-void vnode_free(vnode_t *node) {
-    heap_free(node);
+void vnode_ref(vnode_t *node) {
+    if (node->refcount == INT_MAX) {
+        PANIC("vnode_ref called with refcount INT_MAX (%d)", INT_MAX);
+    }
+    node->refcount++;
+}
+
+void vnode_put(vnode_t *node) {
+    if (node->refcount == 0) { PANIC("vnode_put called with refcount 0"); }
+    node->refcount--;
+    if (node->refcount == 0) {
+        LOG_FLOW("free node %p", node);
+        heap_free(node);
+    }
 }
 
 vpath_err_t vnode_resolve_path_str(const char *path_str, vnode_t **out_node) {

@@ -35,6 +35,8 @@ typedef struct {
 } vnode_ops_t;
 
 struct vnode {
+    _Atomic int refcount;
+
     vnode_type_t type;
     vnode_flags_t flags;
     const vnode_ops_t *ops;
@@ -47,8 +49,9 @@ struct vnode {
 void vnode_root_init(void);
 vnode_t *vnode_root_node(void);
 
-vnode_t *vnode_alloc(void);
-void vnode_free(vnode_t *node);
+vnode_t *vnode_get(void);
+void vnode_ref(vnode_t *node);
+void vnode_put(vnode_t *node);
 
 vpath_err_t vnode_resolve_path_str(const char *path_str, vnode_t **out_node);
 vpath_err_t vnode_resolve_path(const vpath_t *path, vnode_t **out_node);
