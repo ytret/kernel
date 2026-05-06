@@ -16,7 +16,7 @@ file_err_t file_open_node(vnode_t *node, file_t *file) {
     int bad_flags;
     switch (node->type) {
     case VNODE_NONE:
-        LOG_ERROR("invalid node type VFS_NODE_NONE");
+        LOG_ERROR("invalid node type VNODE_NONE");
         return FILE_ERR_CANNOT_OPEN;
     case VNODE_FILE:
         bad_flags = file->flags & ~FILE_FLAGS_FILE;

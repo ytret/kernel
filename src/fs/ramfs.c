@@ -12,7 +12,7 @@ typedef enum {
 } ramfs_data_type_t;
 
 struct ramfs_data {
-    vnode_t *vfs_node;
+    vnode_t *vnode;
     ramfs_data_t *parent_data;
 
     ramfs_data_type_t type;
@@ -83,7 +83,7 @@ const fs_desc_t *ramfs_get_desc(void) {
 vfs_err_t ramfs_mount(void *v_ctx, vnode_t *node) {
     ramfs_ctx_t *const ctx = v_ctx;
 
-    if (ctx->root->vfs_node) { return VFS_ERR_FS_ALREADY_MOUNTED; }
+    if (ctx->root->vnode) { return VFS_ERR_FS_ALREADY_MOUNTED; }
     if (node->fs_ctx) { return VFS_ERR_NODE_ALREADY_MOUNTED; }
     if (node->type != VNODE_DIR) { return VFS_ERR_NODE_NOT_DIR; }
 
@@ -92,7 +92,7 @@ vfs_err_t ramfs_mount(void *v_ctx, vnode_t *node) {
     node->fs_ctx = ctx;
     node->fs_data = ctx->root;
 
-    ctx->root->vfs_node = node;
+    ctx->root->vnode = node;
 
     return VFS_ERR_NONE;
 }
@@ -107,7 +107,7 @@ vfs_err_t ramfs_unmount(void *v_ctx, vnode_t *node) {
     node->fs_ctx = NULL;
     node->fs_data = NULL;
 
-    ctx->root->vfs_node = NULL;
+    ctx->root->vnode = NULL;
 
     return VFS_ERR_NONE;
 }
@@ -161,7 +161,7 @@ vfs_err_t ramfs_node_mknode(vnode_t *dir_node, vnode_t **out_node,
     new_node->fs_data = new_data;
 
     new_data->parent_data = data;
-    new_data->vfs_node = new_node;
+    new_data->vnode = new_node;
 
     err = prv_ramfs_add_child(ctx, data, name, new_data);
     if (err != VFS_ERR_NONE) {
@@ -214,26 +214,26 @@ vfs_err_t ramfs_node_lookup(vnode_t *node, vnode_t **out_node,
         return VFS_ERR_NODE_NOT_FOUND;
     }
 
-    if (!child_data->vfs_node) {
-        vnode_t *const vfs_node = vnode_alloc();
-        vfs_node->flags = 0;
-        vfs_node->ops = &g_ramfs_node_ops;
-        vfs_node->fs_ctx = node->fs_ctx;
-        vfs_node->fs_data = child_data;
+    if (!child_data->vnode) {
+        vnode_t *const vnode = vnode_alloc();
+        vnode->flags = 0;
+        vnode->ops = &g_ramfs_node_ops;
+        vnode->fs_ctx = node->fs_ctx;
+        vnode->fs_data = child_data;
 
         switch (child_data->type) {
         case RAMFS_DATA_DIR:
-            vfs_node->type = VNODE_DIR;
+            vnode->type = VNODE_DIR;
             break;
         case RAMFS_DATA_FILE:
-            vfs_node->type = VNODE_FILE;
+            vnode->type = VNODE_FILE;
             break;
         }
 
-        child_data->vfs_node = vfs_node;
+        child_data->vnode = vnode;
     }
 
-    *out_node = child_data->vfs_node;
+    *out_node = child_data->vnode;
     return VFS_ERR_NONE;
 }
 
