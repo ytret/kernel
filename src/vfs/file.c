@@ -85,6 +85,8 @@ file_err_t file_close(file_t *file) {
 
     file->opened = false;
 
+    vnode_put(file->node);
+
     return FILE_ERR_NONE;
 }
 
