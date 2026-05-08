@@ -319,6 +319,14 @@ static ramfs_node_t *prv_ramfs_new_file(ramfs_ctx_t *ctx, const char *name,
     node->file.buf = NULL;
     node->file.buf_size = 0;
 
+    // FIXME: remove this test
+    node->file.buf = heap_realloc(node->file.buf, 16, 4);
+    node->file.buf_size = 16;
+    uint8_t *buf = node->file.buf;
+    for (size_t idx = 0; idx < node->file.buf_size; idx++) {
+        buf[idx] = 2 * idx;
+    }
+
     return node;
 }
 
