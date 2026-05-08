@@ -7,7 +7,6 @@
 #include "panic.h"
 
 #define RAMFS_PREALLOC_DIRENTS 0
-#define RAMFS_PREALLOC_FILE    0
 
 typedef struct {
     ramfs_node_t **children;
@@ -317,8 +316,8 @@ static ramfs_node_t *prv_ramfs_new_file(ramfs_ctx_t *ctx, const char *name,
     node->name = string_dup(name);
     node->parent = parent;
     node->type = RAMFS_FILE;
-    node->file.buf = heap_alloc(RAMFS_PREALLOC_FILE);
-    node->file.buf_size = RAMFS_PREALLOC_FILE;
+    node->file.buf = NULL;
+    node->file.buf_size = 0;
 
     return node;
 }
