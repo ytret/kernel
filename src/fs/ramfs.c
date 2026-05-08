@@ -35,11 +35,13 @@ struct ramfs_node {
 
 static vfs_err_t prv_ramfs_fs_mount(void *v_ctx, vnode_t *vnode);
 static vfs_err_t prv_ramfs_fs_unmount(void *v_ctx, vnode_t *vnode);
+static void prv_ramfs_on_free_vnode(void *v_ctx, vnode_t *vnode);
 
 static const fs_desc_t g_ramfs_desc = {
     .name = "ramfs",
     .f_mount = prv_ramfs_fs_mount,
     .f_unmount = prv_ramfs_fs_unmount,
+    .f_on_free_vnode = prv_ramfs_on_free_vnode,
 };
 
 vfs_err_t prv_ramfs_vnode_mknode(vnode_t *vnode, vnode_t **out_vnode,
@@ -112,6 +114,7 @@ static vfs_err_t prv_ramfs_fs_mount(void *v_ctx, vnode_t *vnode) {
     // vnode duplication in case of allowing multitple mount points?
 
     vnode->ops = &g_ramfs_node_ops;
+    vnode->fs_desc = &g_ramfs_desc;
     vnode->fs_ctx = v_ctx;
     vnode->fs_data = ctx->root;
 
@@ -132,6 +135,17 @@ static vfs_err_t prv_ramfs_fs_unmount(void *v_ctx, vnode_t *vnode) {
     vnode->fs_data = NULL;
 
     return VFS_ERR_NONE;
+}
+
+static void prv_ramfs_on_free_vnode(void *v_ctx, vnode_t *vnode) {
+    LOG_FLOW("v_ctx %p vnode %p", v_ctx, vnode);
+    DEBUG_ASSERT(v_ctx != NULL);
+    DEBUG_ASSERT(vnode != NULL);
+
+    ramfs_node_t *const node = vnode->fs_data;
+    ASSERT(node != NULL);
+
+    node->vnode = NULL;
 }
 
 vfs_err_t prv_ramfs_vnode_mknode(vnode_t *vnode, vnode_t **out_vnode,
@@ -379,6 +393,7 @@ static void prv_ramfs_fill_vnode(ramfs_ctx_t *ctx, ramfs_node_t *node) {
     vnode->flags = 0;
     vnode->ops = &g_ramfs_node_ops;
     vnode->size = vnode_type == VNODE_FILE ? node->file.buf_size : 0;
+    vnode->fs_desc = &g_ramfs_desc;
     vnode->fs_ctx = ctx;
     vnode->fs_data = node;
 

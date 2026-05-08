@@ -3,11 +3,13 @@
 #include <stddef.h>
 
 #include "kmutex.h"
+#include "vfs/fs_desc.h"
 #include "vfs/vfs_err.h"
 #include "vfs/vpath.h"
 
 #define VNODE_MAX_NAME_SIZE 256
 
+typedef struct fs_desc fs_desc_t;
 typedef struct vnode vnode_t;
 
 typedef struct {
@@ -43,6 +45,9 @@ struct vnode {
     vnode_flags_t flags;
     const vnode_ops_t *ops;
     size_t size;
+
+    // TODO: add a "mounted file system" abstraction.
+    const fs_desc_t *fs_desc;
 
     void *fs_ctx;  //!< File system context, shared by all of its nodes.
     void *fs_data; //!< File-system-specific data, referenced only by this node.

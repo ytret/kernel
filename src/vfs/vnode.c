@@ -47,6 +47,9 @@ bool vnode_put(vnode_t *node) {
     node->refcount--;
     if (node->refcount == 0) {
         LOG_FLOW("free node %p", node);
+        if (node->fs_desc && node->fs_desc->f_on_free_vnode) {
+            node->fs_desc->f_on_free_vnode(node->fs_ctx, node);
+        }
         heap_free(node);
         return true;
     }

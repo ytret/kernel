@@ -3,12 +3,14 @@
 #include "vfs/vfs_err.h"
 #include "vfs/vnode.h"
 
+typedef struct vnode vnode_t;
+
 /**
  * Filesystem descriptor.
  *
  * Each filesystem has only one struct of this type.
  */
-typedef struct {
+struct fs_desc {
     /**
      * ASCII filesystem name.
      *
@@ -36,4 +38,15 @@ typedef struct {
      * @returns An error code, see #vfs_err_t.
      */
     vfs_err_t (*f_unmount)(void *ctx, vnode_t *node);
-} fs_desc_t;
+
+    /**
+     * Function called right before a vnode is freed.
+     *
+     * The intention is to let the file system driver to unset the weak vnode
+     * pointer in its corresponding node structure.
+     *
+     * @param ctx  Filesystem context pointer.
+     * @param node VFS node to be freed.
+     */
+    void (*f_on_free_vnode)(void *ctx, vnode_t *node);
+};
