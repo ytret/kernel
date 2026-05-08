@@ -8,6 +8,11 @@
 
 #define RAMFS_PREALLOC_DIRENTS 0
 
+typedef enum {
+    RAMFS_FILE,
+    RAMFS_DIR,
+} ramfs_node_type_t;
+
 typedef struct {
     ramfs_node_t **children;
     dirent_t *dirents;
@@ -19,10 +24,7 @@ struct ramfs_node {
     ramfs_node_t *parent;
     vnode_t *vnode;
 
-    enum {
-        RAMFS_FILE,
-        RAMFS_DIR,
-    } type;
+    ramfs_node_type_t type;
     union {
         struct {
             void *buf;
@@ -72,6 +74,7 @@ static vfs_err_t prv_ramfs_add_child(ramfs_ctx_t *ctx, ramfs_node_t *dir_node,
                                      ramfs_node_t *child_node);
 
 static void prv_ramfs_fill_vnode(ramfs_ctx_t *ctx, ramfs_node_t *node);
+static vnode_type_t prv_ramfs_vnode_type(ramfs_node_type_t node_type);
 
 static void *prv_ramfs_alloc(ramfs_ctx_t *ctx, size_t size, size_t align);
 static void *prv_ramfs_realloc(ramfs_ctx_t *ctx, void *ptr, size_t old_size,
@@ -385,15 +388,7 @@ static vfs_err_t prv_ramfs_add_child(ramfs_ctx_t *ctx, ramfs_node_t *dir_node,
 static void prv_ramfs_fill_vnode(ramfs_ctx_t *ctx, ramfs_node_t *node) {
     if (node->vnode) { PANIC("vnode already set"); }
 
-    vnode_type_t vnode_type;
-    switch (node->type) {
-    case RAMFS_FILE:
-        vnode_type = VNODE_FILE;
-        break;
-    case RAMFS_DIR:
-        vnode_type = VNODE_DIR;
-        break;
-    }
+    const vnode_type_t vnode_type = prv_ramfs_vnode_type(node->type);
 
     vnode_t *const vnode = vnode_get();
     vnode->type = vnode_type;
@@ -405,6 +400,16 @@ static void prv_ramfs_fill_vnode(ramfs_ctx_t *ctx, ramfs_node_t *node) {
     vnode->fs_data = node;
 
     node->vnode = vnode;
+}
+
+static vnode_type_t prv_ramfs_vnode_type(ramfs_node_type_t node_type) {
+    switch (node_type) {
+    case RAMFS_DIR:
+        return VNODE_DIR;
+    case RAMFS_FILE:
+        return VNODE_FILE;
+    }
+    PANIC("not implemented for ramfs type %d", node_type);
 }
 
 static void *prv_ramfs_alloc(ramfs_ctx_t *ctx, size_t size, size_t align) {
