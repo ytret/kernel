@@ -4,10 +4,10 @@
 
 #include "vfs/fs_desc.h"
 
-typedef struct ramfs_data ramfs_data_t;
+typedef struct ramfs_node ramfs_node_t;
 
 typedef struct {
-    ramfs_data_t *root;
+    ramfs_node_t *root;
     size_t size;
     size_t bytes_used;
 } ramfs_ctx_t;

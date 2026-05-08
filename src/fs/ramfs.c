@@ -7,22 +7,22 @@
 #include "vfs/vnode.h"
 
 typedef enum {
-    RAMFS_DATA_DIR,
-    RAMFS_DATA_FILE,
-} ramfs_data_type_t;
+    RAMFS_DIR,
+    RAMFS_FILE,
+} ramfs_node_type_t;
 
-struct ramfs_data {
+struct ramfs_node {
     vnode_t *vnode;
-    ramfs_data_t *parent_data;
+    ramfs_node_t *parent_node;
 
-    ramfs_data_type_t type;
+    ramfs_node_type_t type;
     union {
         struct {
             void *buf;
             size_t buf_size;
         } file_data;
         struct {
-            ramfs_data_t **children;
+            ramfs_node_t **children;
             dirent_t *dirents;
             size_t num_children;
         } dir_data;
@@ -40,18 +40,18 @@ static const vnode_ops_t g_ramfs_node_ops = {
     .f_read = ramfs_node_read,
 };
 
-static ramfs_data_t *prv_ramfs_alloc_data(ramfs_ctx_t *ctx,
-                                          ramfs_data_type_t type);
-static void prv_ramfs_free_data(ramfs_ctx_t *ctx, ramfs_data_t *data);
+static ramfs_node_t *prv_ramfs_alloc_node(ramfs_ctx_t *ctx,
+                                          ramfs_node_type_t type);
+static void prv_ramfs_free_node(ramfs_ctx_t *ctx, ramfs_node_t *fsnode);
 
-static bool prv_ramfs_find_child(ramfs_data_t *dir_data, const char *name,
-                                 ramfs_data_t **child_data);
-static vfs_err_t prv_ramfs_make_dir_data(ramfs_ctx_t *ctx,
-                                         ramfs_data_t *parent_data,
-                                         ramfs_data_t **out_dir_data);
-static vfs_err_t prv_ramfs_add_child(ramfs_ctx_t *ctx, ramfs_data_t *dir_data,
+static bool prv_ramfs_find_child(ramfs_node_t *dir_fsnode, const char *name,
+                                 ramfs_node_t **child_fsnode);
+static vfs_err_t prv_ramfs_make_dir_node(ramfs_ctx_t *ctx,
+                                         ramfs_node_t *parent_fsnode,
+                                         ramfs_node_t **out_dir_fsnode);
+static vfs_err_t prv_ramfs_add_child(ramfs_ctx_t *ctx, ramfs_node_t *dir_fsnode,
                                      const char *child_name,
-                                     ramfs_data_t *child_data);
+                                     ramfs_node_t *child_fsnode);
 
 ramfs_ctx_t *ramfs_init(size_t num_bytes) {
     if (num_bytes < sizeof(ramfs_ctx_t)) { return NULL; }
@@ -62,9 +62,9 @@ ramfs_ctx_t *ramfs_init(size_t num_bytes) {
     ctx->bytes_used = sizeof(ramfs_ctx_t);
     ctx->size = num_bytes;
 
-    vfs_err_t err = prv_ramfs_make_dir_data(ctx, NULL, &ctx->root);
+    vfs_err_t err = prv_ramfs_make_dir_node(ctx, NULL, &ctx->root);
     if (err != VFS_ERR_NONE) {
-        LOG_ERROR("failed to create root dir data: %u", err);
+        LOG_ERROR("failed to create root dir node: %u", err);
         return NULL;
     }
 
@@ -72,7 +72,7 @@ ramfs_ctx_t *ramfs_init(size_t num_bytes) {
 }
 
 void ramfs_free(ramfs_ctx_t *ctx) {
-    // TODO: iterate through the tree and free every node data.
+    // TODO: iterate through the tree and free every node node.
     heap_free(ctx);
 }
 
@@ -122,31 +122,31 @@ vfs_err_t ramfs_node_mknode(vnode_t *dir_node, vnode_t **out_node,
     }
 
     ramfs_ctx_t *const ctx = dir_node->fs_ctx;
-    ramfs_data_t *const data = dir_node->fs_data;
+    ramfs_node_t *const fsnode = dir_node->fs_data;
     if (!ctx) { return VFS_ERR_NODE_NO_FS; }
-    if (!data) { return VFS_ERR_NODE_NO_DATA; }
+    if (!fsnode) { return VFS_ERR_NODE_NO_DATA; }
 
-    if (prv_ramfs_find_child(data, name, NULL)) { return VFS_ERR_NAME_TAKEN; }
+    if (prv_ramfs_find_child(fsnode, name, NULL)) { return VFS_ERR_NAME_TAKEN; }
 
     vfs_err_t err;
-    ramfs_data_t *new_data = NULL;
+    ramfs_node_t *new_fsnode = NULL;
     if (node_type == VNODE_FILE) {
-        new_data = prv_ramfs_alloc_data(ctx, RAMFS_DATA_FILE);
-        if (!new_data) { return VFS_ERR_FS_NO_SPACE; }
+        new_fsnode = prv_ramfs_alloc_node(ctx, RAMFS_FILE);
+        if (!new_fsnode) { return VFS_ERR_FS_NO_SPACE; }
 
         // Prefill files with data.
         size_t prefill_size = 32;
         if (ctx->bytes_used + prefill_size > ctx->size) {
             return VFS_ERR_FS_NO_SPACE;
         }
-        new_data->file_data.buf = heap_alloc(prefill_size);
-        new_data->file_data.buf_size = prefill_size;
+        new_fsnode->file_data.buf = heap_alloc(prefill_size);
+        new_fsnode->file_data.buf_size = prefill_size;
         for (size_t idx = 0; idx < prefill_size; idx++) {
-            uint8_t *ptr = &((uint8_t *)new_data->file_data.buf)[idx];
+            uint8_t *ptr = &((uint8_t *)new_fsnode->file_data.buf)[idx];
             *ptr = 2 * idx;
         }
     } else if (node_type == VNODE_DIR) {
-        err = prv_ramfs_make_dir_data(ctx, data, &new_data);
+        err = prv_ramfs_make_dir_node(ctx, fsnode, &new_fsnode);
         if (err != VFS_ERR_NONE) { return err; }
     } else {
         return VFS_ERR_NODE_BAD_ARGS;
@@ -156,17 +156,18 @@ vfs_err_t ramfs_node_mknode(vnode_t *dir_node, vnode_t **out_node,
     new_node->type = node_type;
     new_node->flags = 0;
     new_node->ops = &g_ramfs_node_ops;
-    new_node->size = node_type == VNODE_FILE ? new_data->file_data.buf_size : 0;
+    new_node->size =
+        node_type == VNODE_FILE ? new_fsnode->file_data.buf_size : 0;
     new_node->fs_ctx = ctx;
-    new_node->fs_data = new_data;
+    new_node->fs_data = new_fsnode;
 
-    new_data->parent_data = data;
-    new_data->vnode = new_node;
+    new_fsnode->parent_node = fsnode;
+    new_fsnode->vnode = new_node;
 
-    err = prv_ramfs_add_child(ctx, data, name, new_data);
+    err = prv_ramfs_add_child(ctx, fsnode, name, new_fsnode);
     if (err != VFS_ERR_NONE) {
         vnode_put(new_node);
-        prv_ramfs_free_data(ctx, new_data);
+        prv_ramfs_free_node(ctx, new_fsnode);
         return err;
     }
 
@@ -184,14 +185,14 @@ vfs_err_t ramfs_node_readdir(vnode_t *node, void *dirent_buf, size_t buf_len,
     if (!out_len) { return VFS_ERR_NODE_BAD_ARGS; }
 
     ramfs_ctx_t *const ctx = node->fs_ctx;
-    ramfs_data_t *const data = node->fs_data;
+    ramfs_node_t *const fsnode = node->fs_data;
     if (!ctx) { return VFS_ERR_NODE_NO_FS; }
-    if (!data) { return VFS_ERR_NODE_NO_DATA; }
+    if (!fsnode) { return VFS_ERR_NODE_NO_DATA; }
 
-    const size_t copy_len = data->dir_data.num_children <= buf_len
-                                ? data->dir_data.num_children
+    const size_t copy_len = fsnode->dir_data.num_children <= buf_len
+                                ? fsnode->dir_data.num_children
                                 : buf_len;
-    kmemcpy(dirent_buf, data->dir_data.dirents, copy_len * sizeof(dirent_t));
+    kmemcpy(dirent_buf, fsnode->dir_data.dirents, copy_len * sizeof(dirent_t));
     *out_len = copy_len;
 
     return VFS_ERR_NONE;
@@ -205,35 +206,35 @@ vfs_err_t ramfs_node_lookup(vnode_t *node, vnode_t **out_node,
     if (!name) { return VFS_ERR_NODE_BAD_ARGS; }
 
     ramfs_ctx_t *const ctx = node->fs_ctx;
-    ramfs_data_t *const data = node->fs_data;
+    ramfs_node_t *const data = node->fs_data;
     if (!ctx) { return VFS_ERR_NODE_NO_FS; }
     if (!data) { return VFS_ERR_NODE_NO_DATA; }
 
-    ramfs_data_t *child_data;
-    if (!prv_ramfs_find_child(data, name, &child_data)) {
+    ramfs_node_t *child_fsnode;
+    if (!prv_ramfs_find_child(data, name, &child_fsnode)) {
         return VFS_ERR_NODE_NOT_FOUND;
     }
 
-    if (!child_data->vnode) {
+    if (!child_fsnode->vnode) {
         vnode_t *const vnode = vnode_get();
         vnode->flags = 0;
         vnode->ops = &g_ramfs_node_ops;
         vnode->fs_ctx = node->fs_ctx;
-        vnode->fs_data = child_data;
+        vnode->fs_data = child_fsnode;
 
-        switch (child_data->type) {
-        case RAMFS_DATA_DIR:
+        switch (child_fsnode->type) {
+        case RAMFS_DIR:
             vnode->type = VNODE_DIR;
             break;
-        case RAMFS_DATA_FILE:
+        case RAMFS_FILE:
             vnode->type = VNODE_FILE;
             break;
         }
 
-        child_data->vnode = vnode;
+        child_fsnode->vnode = vnode;
     }
 
-    *out_node = child_data->vnode;
+    *out_node = child_fsnode->vnode;
     return VFS_ERR_NONE;
 }
 
@@ -245,138 +246,140 @@ vfs_err_t ramfs_node_read(vnode_t *node, size_t offset, void *buf,
     if (!buf) { return VFS_ERR_NODE_BAD_ARGS; }
 
     ramfs_ctx_t *const ctx = node->fs_ctx;
-    ramfs_data_t *const data = node->fs_data;
+    ramfs_node_t *const fsnode = node->fs_data;
     if (!ctx) { return VFS_ERR_NODE_NO_FS; }
-    if (!data) { return VFS_ERR_NODE_NO_DATA; }
+    if (!fsnode) { return VFS_ERR_NODE_NO_DATA; }
 
-    ASSERT(data->type == RAMFS_DATA_FILE);
-    DEBUG_ASSERT(node->size == data->file_data.buf_size);
+    ASSERT(fsnode->type == RAMFS_FILE);
+    DEBUG_ASSERT(node->size == fsnode->file_data.buf_size);
 
     // FIXME: check for overflow
     if (offset + num_bytes >= node->size) { num_bytes = node->size - offset; }
 
-    kmemcpy(buf, (void *)((uintptr_t)data->file_data.buf + offset), num_bytes);
+    kmemcpy(buf, (void *)((uintptr_t)fsnode->file_data.buf + offset),
+            num_bytes);
     *out_read = num_bytes;
 
     return VFS_ERR_NONE;
 }
 
-static ramfs_data_t *prv_ramfs_alloc_data(ramfs_ctx_t *ctx,
-                                          ramfs_data_type_t type) {
-    const size_t req_size = sizeof(ramfs_data_t);
+static ramfs_node_t *prv_ramfs_alloc_node(ramfs_ctx_t *ctx,
+                                          ramfs_node_type_t type) {
+    const size_t req_size = sizeof(ramfs_node_t);
     if (ctx->bytes_used + req_size > ctx->size) {
         // out of space
         return NULL;
     }
 
-    ramfs_data_t *const data = heap_alloc(sizeof(*data));
-    kmemset(data, 0, sizeof(*data));
-    data->type = type;
+    ramfs_node_t *const fsnode = heap_alloc(sizeof(*fsnode));
+    kmemset(fsnode, 0, sizeof(*fsnode));
+    fsnode->type = type;
 
     ctx->bytes_used += req_size;
 
-    return data;
+    return fsnode;
 }
 
-static void prv_ramfs_free_data(ramfs_ctx_t *ctx, ramfs_data_t *data) {
-    switch (data->type) {
-    case RAMFS_DATA_DIR:
-        if (data->dir_data.children) { heap_free(data->dir_data.children); }
-        if (data->dir_data.dirents) { heap_free(data->dir_data.children); }
+static void prv_ramfs_free_node(ramfs_ctx_t *ctx, ramfs_node_t *fsnode) {
+    switch (fsnode->type) {
+    case RAMFS_DIR:
+        if (fsnode->dir_data.children) { heap_free(fsnode->dir_data.children); }
+        if (fsnode->dir_data.dirents) { heap_free(fsnode->dir_data.children); }
         ctx->bytes_used -=
-            sizeof(ramfs_data_t) +
-            data->dir_data.num_children * sizeof(data->dir_data.children[0]) +
-            data->dir_data.num_children * sizeof(data->dir_data.dirents[0]);
+            sizeof(ramfs_node_t) +
+            fsnode->dir_data.num_children *
+                sizeof(fsnode->dir_data.children[0]) +
+            fsnode->dir_data.num_children * sizeof(fsnode->dir_data.dirents[0]);
         break;
-    case RAMFS_DATA_FILE:
-        if (data->file_data.buf) { heap_free(data->file_data.buf); }
-        ctx->bytes_used -= sizeof(ramfs_data_t) + data->file_data.buf_size;
+    case RAMFS_FILE:
+        if (fsnode->file_data.buf) { heap_free(fsnode->file_data.buf); }
+        ctx->bytes_used -= sizeof(ramfs_node_t) + fsnode->file_data.buf_size;
         break;
     }
 
-    heap_free(data);
+    heap_free(fsnode);
 }
 
-static bool prv_ramfs_find_child(ramfs_data_t *dir_data, const char *name,
-                                 ramfs_data_t **child_data) {
-    for (size_t idx = 0; idx < dir_data->dir_data.num_children; idx++) {
-        const dirent_t *const dirent = &dir_data->dir_data.dirents[idx];
+static bool prv_ramfs_find_child(ramfs_node_t *dir_node, const char *name,
+                                 ramfs_node_t **child_node) {
+    for (size_t idx = 0; idx < dir_node->dir_data.num_children; idx++) {
+        const dirent_t *const dirent = &dir_node->dir_data.dirents[idx];
         if (string_equals(name, dirent->name)) {
-            if (child_data) { *child_data = dir_data->dir_data.children[idx]; }
+            if (child_node) { *child_node = dir_node->dir_data.children[idx]; }
             return true;
         }
     }
     return false;
 }
 
-static vfs_err_t prv_ramfs_make_dir_data(ramfs_ctx_t *ctx,
-                                         ramfs_data_t *parent_data,
-                                         ramfs_data_t **out_dir_data) {
-    if (parent_data) { ASSERT(parent_data->type == RAMFS_DATA_DIR); }
+static vfs_err_t prv_ramfs_make_dir_node(ramfs_ctx_t *ctx,
+                                         ramfs_node_t *parent_node,
+                                         ramfs_node_t **out_dir_node) {
+    if (parent_node) { ASSERT(parent_node->type == RAMFS_DIR); }
 
-    ramfs_data_t *const dir_data = prv_ramfs_alloc_data(ctx, RAMFS_DATA_DIR);
-    if (!dir_data) { return VFS_ERR_FS_NO_SPACE; }
+    ramfs_node_t *const dir_fsnode = prv_ramfs_alloc_node(ctx, RAMFS_DIR);
+    if (!dir_fsnode) { return VFS_ERR_FS_NO_SPACE; }
 
-    if (!parent_data) { parent_data = dir_data; }
-    dir_data->parent_data = parent_data;
+    if (!parent_node) { parent_node = dir_fsnode; }
+    dir_fsnode->parent_node = parent_node;
 
     const size_t num_children = 2; // '.' and '..'
-    const size_t child_size = sizeof(ramfs_data_t *) + sizeof(dirent_t);
+    const size_t child_size = sizeof(ramfs_node_t *) + sizeof(dirent_t);
     const size_t req_size = num_children * child_size;
     if (ctx->bytes_used + req_size > ctx->size) {
-        prv_ramfs_free_data(ctx, dir_data);
+        prv_ramfs_free_node(ctx, dir_fsnode);
         return VFS_ERR_FS_NO_SPACE;
     }
 
-    dir_data->dir_data.num_children = num_children;
-    dir_data->dir_data.dirents = heap_alloc(num_children * sizeof(dirent_t));
-    dir_data->dir_data.children =
-        heap_alloc(num_children * sizeof(ramfs_data_t *));
+    dir_fsnode->dir_data.num_children = num_children;
+    dir_fsnode->dir_data.dirents = heap_alloc(num_children * sizeof(dirent_t));
+    dir_fsnode->dir_data.children =
+        heap_alloc(num_children * sizeof(ramfs_node_t *));
 
     const char *const name_curr_dir = ".";
     const char *const name_parent_dir = "..";
-    kmemcpy(dir_data->dir_data.dirents[0].name, name_curr_dir, 2);
-    kmemcpy(dir_data->dir_data.dirents[1].name, name_parent_dir, 3);
+    kmemcpy(dir_fsnode->dir_data.dirents[0].name, name_curr_dir, 2);
+    kmemcpy(dir_fsnode->dir_data.dirents[1].name, name_parent_dir, 3);
 
-    dir_data->dir_data.children[0] = dir_data;
-    dir_data->dir_data.children[1] = parent_data;
+    dir_fsnode->dir_data.children[0] = dir_fsnode;
+    dir_fsnode->dir_data.children[1] = parent_node;
 
-    *out_dir_data = dir_data;
+    *out_dir_node = dir_fsnode;
     return VFS_ERR_NONE;
 }
 
-static vfs_err_t prv_ramfs_add_child(ramfs_ctx_t *ctx, ramfs_data_t *dir_data,
+static vfs_err_t prv_ramfs_add_child(ramfs_ctx_t *ctx, ramfs_node_t *dir_fsnode,
                                      const char *child_name,
-                                     ramfs_data_t *child_data) {
-    ASSERT(dir_data->type == RAMFS_DATA_DIR);
+                                     ramfs_node_t *child_fsnode) {
+    ASSERT(dir_fsnode->type == RAMFS_DIR);
 
-    const size_t new_idx = dir_data->dir_data.num_children;
+    const size_t new_idx = dir_fsnode->dir_data.num_children;
     const size_t new_len = new_idx + 1;
 
-    const size_t req_size = sizeof(ramfs_data_t *) + sizeof(dirent_t);
+    const size_t req_size = sizeof(ramfs_node_t *) + sizeof(dirent_t);
     if (ctx->bytes_used + req_size > ctx->size) { return VFS_ERR_FS_NO_SPACE; }
     ctx->bytes_used += req_size;
 
-    if (dir_data->dir_data.dirents) {
-        dir_data->dir_data.dirents = heap_realloc(
-            dir_data->dir_data.dirents, new_len * sizeof(dirent_t), 4);
+    if (dir_fsnode->dir_data.dirents) {
+        dir_fsnode->dir_data.dirents = heap_realloc(
+            dir_fsnode->dir_data.dirents, new_len * sizeof(dirent_t), 4);
     } else {
-        dir_data->dir_data.dirents = heap_alloc(new_len * sizeof(dirent_t));
+        dir_fsnode->dir_data.dirents = heap_alloc(new_len * sizeof(dirent_t));
     }
 
-    if (dir_data->dir_data.children) {
-        dir_data->dir_data.children =
-            heap_realloc(dir_data->dir_data.children,
-                         new_len * sizeof(dir_data->dir_data.children[0]), 4);
+    if (dir_fsnode->dir_data.children) {
+        dir_fsnode->dir_data.children =
+            heap_realloc(dir_fsnode->dir_data.children,
+                         new_len * sizeof(dir_fsnode->dir_data.children[0]), 4);
     } else {
-        dir_data->dir_data.children =
-            heap_alloc(new_len * sizeof(ramfs_data_t *));
+        dir_fsnode->dir_data.children =
+            heap_alloc(new_len * sizeof(ramfs_node_t *));
     }
 
-    dir_data->dir_data.children[new_idx] = child_data;
-    kmemcpy(dir_data->dir_data.dirents[new_idx].name, child_name,
+    dir_fsnode->dir_data.children[new_idx] = child_fsnode;
+    kmemcpy(dir_fsnode->dir_data.dirents[new_idx].name, child_name,
             string_len(child_name) + 1);
-    dir_data->dir_data.num_children = new_len;
+    dir_fsnode->dir_data.num_children = new_len;
 
     return VFS_ERR_NONE;
 }
