@@ -18,6 +18,7 @@ typedef enum {
     VFS_ERR_NODE_NAME_TOO_LONG,
     VFS_ERR_NODE_NOT_FOUND,
     VFS_ERR_NODE_BAD_OFFSET,
+    VFS_ERR_NODE_USED,
 
     VFS_ERR_NAME_TAKEN,
 } vfs_err_t;

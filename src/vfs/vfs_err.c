@@ -32,6 +32,8 @@ const char *vfs_err_str(vfs_err_t err) {
         return "VFS_ERR_NODE_NOT_FOUND";
     case VFS_ERR_NODE_BAD_OFFSET:
         return "VFS_ERR_NODE_BAD_OFFSET";
+    case VFS_ERR_NODE_USED:
+        return "VFS_ERR_NODE_USED";
     case VFS_ERR_NAME_TAKEN:
         return "VFS_ERR_NAME_TAKEN";
     }
