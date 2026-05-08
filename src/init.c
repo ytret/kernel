@@ -60,13 +60,13 @@ void init_bsp_task(void) {
     err = file_open_path_str("/foo", &file);
     if (err != FILE_ERR_NONE) { PANIC("open error %d", err); }
 
-    size_t buf_size = 16;
+    size_t buf_size = 32;
     void *buf = heap_alloc(buf_size);
     size_t num_read = 0;
     err = file_read(&file, buf, buf_size, &num_read);
     if (err != FILE_ERR_NONE) { PANIC("read error %d", err); }
 
-    LOG_INFO("num_read = %zu", num_read);
+    LOG_INFO("num_read = %zu, wanted to read %zu", num_read, buf_size);
     size_t max_dump_size = 4096;
     char *dump = heap_alloc(max_dump_size);
     size_t dump_offset = 0;
