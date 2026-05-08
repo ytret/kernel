@@ -42,7 +42,7 @@ void init_bsp_task(void) {
     vnode_t *const root_node = vnode_root_node();
     ASSERT(root_node);
 
-    ramfs_ctx_t *ramfs = ramfs_init(1024);
+    ramfs_ctx_t *ramfs = ramfs_new(1024);
     ASSERT(ramfs);
     const fs_desc_t *ramfs_desc = ramfs_get_desc();
 
@@ -50,7 +50,7 @@ void init_bsp_task(void) {
     if (vfs_err) { PANIC("mount err %d: %s", vfs_err, vfs_err_str(vfs_err)); }
 
     vnode_t *foo_node = NULL;
-    vfs_err = ramfs_node_mknode(root_node, &foo_node, "foo", VNODE_FILE);
+    vfs_err = root_node->ops->f_mknode(root_node, &foo_node, "foo", VNODE_FILE);
     if (vfs_err) { PANIC("mknode err %d: %s", vfs_err, vfs_err_str(vfs_err)); }
 
     file_t file = {0};
