@@ -8,22 +8,11 @@ typedef struct ramfs_node ramfs_node_t;
 
 typedef struct {
     ramfs_node_t *root;
-    size_t size;
-    size_t bytes_used;
+
+    size_t used_size;
+    size_t allowed_size;
 } ramfs_ctx_t;
 
-ramfs_ctx_t *ramfs_init(size_t num_bytes);
-void ramfs_free(ramfs_ctx_t *ctx);
+void ramfs_init(ramfs_ctx_t *ctx, size_t allowed_size);
+ramfs_ctx_t *ramfs_new(size_t allowed_size);
 const fs_desc_t *ramfs_get_desc(void);
-
-vfs_err_t ramfs_mount(void *v_ctx, vnode_t *node);
-vfs_err_t ramfs_unmount(void *v_ctx, vnode_t *node);
-
-vfs_err_t ramfs_node_mknode(vnode_t *dir_node, vnode_t **out_node,
-                            const char *name, vnode_type_t node_type);
-vfs_err_t ramfs_node_readdir(vnode_t *node, void *dirent_buf, size_t buf_len,
-                             size_t *out_len);
-vfs_err_t ramfs_node_lookup(vnode_t *dir_node, vnode_t **out_node,
-                            const char *name);
-vfs_err_t ramfs_node_read(vnode_t *node, size_t offset, void *buf,
-                          size_t num_bytes, size_t *out_read);
