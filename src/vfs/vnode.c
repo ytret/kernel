@@ -50,6 +50,9 @@ bool vnode_put(vnode_t *node) {
         if (node->fs_desc && node->fs_desc->f_on_free_vnode) {
             node->fs_desc->f_on_free_vnode(node->fs_ctx, node);
         }
+        if (node->lock.waiting_tasks.p_first_node) {
+            PANIC("cannot free node which has waiting tasks");
+        }
         heap_free(node);
         return true;
     }
