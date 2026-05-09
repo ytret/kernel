@@ -27,6 +27,7 @@ typedef enum {
 typedef struct {
     vfs_err_t (*f_mknode)(vnode_t *dir_node, vnode_t **out_node,
                           const char *name, vnode_type_t node_type);
+    vfs_err_t (*f_unlink)(vnode_t *node, const char *name);
     vfs_err_t (*f_readdir)(vnode_t *node, void *dirent_buf, size_t buf_len,
                            size_t *out_len);
     vfs_err_t (*f_lookup)(vnode_t *dir_node, vnode_t **out_node,

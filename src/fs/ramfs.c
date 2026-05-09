@@ -46,6 +46,7 @@ static const fs_desc_t g_ramfs_desc = {
 
 vfs_err_t prv_ramfs_vnode_mknode(vnode_t *vnode, vnode_t **out_vnode,
                                  const char *name, vnode_type_t vnode_type);
+vfs_err_t prv_ramfs_vnode_unlink(vnode_t *vnode, const char *name);
 vfs_err_t prv_ramfs_vnode_readdir(vnode_t *vnode, void *dirent_buf,
                                   size_t buf_items, size_t *out_items);
 vfs_err_t prv_ramfs_vnode_lookup(vnode_t *vnode, vnode_t **out_vnode,
@@ -55,6 +56,7 @@ vfs_err_t prv_ramfs_vnode_read(vnode_t *vnode, size_t offset, void *buf,
 
 static const vnode_ops_t g_ramfs_node_ops = {
     .f_mknode = prv_ramfs_vnode_mknode,
+    .f_unlink = prv_ramfs_vnode_unlink,
     .f_readdir = prv_ramfs_vnode_readdir,
     .f_lookup = prv_ramfs_vnode_lookup,
     .f_read = prv_ramfs_vnode_read,
@@ -67,10 +69,13 @@ static ramfs_node_t *prv_ramfs_new_file(ramfs_ctx_t *ctx, const char *name,
 static vfs_err_t prv_ramfs_free_node(ramfs_ctx_t *ctx, ramfs_node_t *node);
 
 static bool prv_ramfs_find_child(ramfs_node_t *dir_node, const char *name,
-                                 ramfs_node_t **child_node);
+                                 ramfs_node_t **child_node, size_t *child_idx);
 static vfs_err_t prv_ramfs_add_child(ramfs_ctx_t *ctx, ramfs_node_t *dir_node,
                                      const char *child_name,
                                      ramfs_node_t *child_node);
+static vfs_err_t prv_ramfs_remove_child(ramfs_ctx_t *ctx,
+                                        ramfs_node_t *dir_node,
+                                        size_t child_idx);
 
 static void prv_ramfs_fill_vnode(ramfs_ctx_t *ctx, ramfs_node_t *node);
 static vnode_type_t prv_ramfs_vnode_type(ramfs_node_type_t node_type);
@@ -175,7 +180,9 @@ vfs_err_t prv_ramfs_vnode_mknode(vnode_t *vnode, vnode_t **out_vnode,
     if (!ctx) { return VFS_ERR_NODE_NO_FS; }
     if (!node) { return VFS_ERR_NODE_NO_DATA; }
 
-    if (prv_ramfs_find_child(node, name, NULL)) { return VFS_ERR_NAME_TAKEN; }
+    if (prv_ramfs_find_child(node, name, NULL, NULL)) {
+        return VFS_ERR_NAME_TAKEN;
+    }
 
     ramfs_node_t *new_node = NULL;
     bool type_ok = false;
@@ -216,6 +223,32 @@ vfs_err_t prv_ramfs_vnode_mknode(vnode_t *vnode, vnode_t **out_vnode,
     *out_vnode = new_node->vnode;
 
     return VFS_ERR_NONE;
+}
+
+vfs_err_t prv_ramfs_vnode_unlink(vnode_t *vnode, const char *name) {
+    LOG_FLOW("vnode %p name %s", vnode, name);
+
+    if (!vnode) { return VFS_ERR_NODE_BAD_ARGS; }
+    if (vnode->type != VNODE_DIR) { return VFS_ERR_NODE_NOT_DIR; }
+    if (!name) { return VFS_ERR_NODE_BAD_ARGS; }
+
+    ramfs_ctx_t *const ctx = vnode->fs_ctx;
+    ramfs_node_t *const node = vnode->fs_data;
+    if (!ctx) { return VFS_ERR_NODE_NO_FS; }
+    if (!node) { return VFS_ERR_NODE_NO_DATA; }
+
+    ramfs_node_t *child;
+    size_t child_idx;
+    if (!prv_ramfs_find_child(node, name, &child, &child_idx)) {
+        return VFS_ERR_NODE_NOT_FOUND;
+    }
+
+    if (child->vnode) {
+        vnode_put(child->vnode);
+        child->vnode = NULL;
+    }
+
+    return prv_ramfs_remove_child(ctx, node, child_idx);
 }
 
 vfs_err_t prv_ramfs_vnode_readdir(vnode_t *vnode, void *dirent_buf,
@@ -269,7 +302,7 @@ vfs_err_t prv_ramfs_vnode_lookup(vnode_t *vnode, vnode_t **out_vnode,
     if (!node) { return VFS_ERR_NODE_NO_DATA; }
 
     ramfs_node_t *found_node;
-    if (!prv_ramfs_find_child(node, name, &found_node)) {
+    if (!prv_ramfs_find_child(node, name, &found_node, NULL)) {
         return VFS_ERR_NODE_NOT_FOUND;
     }
 
@@ -371,7 +404,7 @@ static vfs_err_t prv_ramfs_free_node(ramfs_ctx_t *ctx, ramfs_node_t *node) {
 }
 
 static bool prv_ramfs_find_child(ramfs_node_t *dir_node, const char *name,
-                                 ramfs_node_t **child_node) {
+                                 ramfs_node_t **child_node, size_t *child_idx) {
     ASSERT(dir_node->type == RAMFS_DIR);
 
     ramfs_dir_data_t *const dir = &dir_node->dir;
@@ -388,6 +421,7 @@ static bool prv_ramfs_find_child(ramfs_node_t *dir_node, const char *name,
                                        sizeof(ramfs_node_t *));
                 ASSERT(get_ok);
             }
+            if (child_idx) { *child_idx = idx; }
             return true;
         }
     }
@@ -424,6 +458,25 @@ static vfs_err_t prv_ramfs_add_child(ramfs_ctx_t *ctx, ramfs_node_t *dir_node,
     }
 
     DEBUG_ASSERT(dir->children.num_items == dir->dirents.num_items);
+
+    return VFS_ERR_NONE;
+}
+
+static vfs_err_t prv_ramfs_remove_child(ramfs_ctx_t *ctx,
+                                        ramfs_node_t *dir_node,
+                                        size_t child_idx) {
+    DEBUG_ASSERT(ctx != NULL);
+    DEBUG_ASSERT(dir_node != NULL);
+    ASSERT(dir_node->type == RAMFS_DIR);
+
+    ramfs_dir_data_t *const dir = &dir_node->dir;
+
+    prv_ramfs_arr_take_at(ctx, &dir->children, child_idx, NULL, 0);
+
+    dirent_t *rm_dirent;
+    prv_ramfs_arr_take_at(ctx, &dir->dirents, child_idx, &rm_dirent,
+                          sizeof(dirent_t *));
+    prv_ramfs_free(ctx, rm_dirent, sizeof(dirent_t));
 
     return VFS_ERR_NONE;
 }
