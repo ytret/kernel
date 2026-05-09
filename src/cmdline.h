@@ -1,17 +1,6 @@
 #pragma once
 
-#include "dynarr.h"
-
-typedef struct {
-    char *key;
-    size_t key_len;
-    char *value;
-    size_t value_len;
-} cmdline_item_t;
-
-typedef struct {
-    dynarr_t items; // item type: cmdline_item_t
-} cmdline_t;
+#include <stddef.h>
 
 bool cmdline_init(const char *str);
 

@@ -1,10 +1,22 @@
 #include "assert.h"
 #include "cmdline.h"
+#include "dynarr.h"
 #include "heap.h"
 #include "kshell/kshscan.h"
 #include "kstring.h"
 #include "log.h"
 #include "memfun.h"
+
+typedef struct {
+    char *key;
+    size_t key_len;
+    char *value;
+    size_t value_len;
+} cmdline_item_t;
+
+typedef struct {
+    dynarr_t items; // item type: cmdline_item_t
+} cmdline_t;
 
 static cmdline_t g_cmdline;
 
