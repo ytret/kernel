@@ -34,34 +34,49 @@ target_compile_options(common PRIVATE
 )
 target_include_directories(common PUBLIC ${SRCDIR} ${INCDIR})
 
-add_library(fakes STATIC
+add_library(test-fakes STATIC
     fakes/heap.c
     fakes/kprintf.c
     fakes/kstring.c
     fakes/memfun.c
 )
-target_compile_options(fakes PRIVATE
+target_compile_options(test-fakes PRIVATE
     -Wall -Wextra -fdiagnostics-color=always
 )
-target_include_directories(fakes PUBLIC fakes)
+target_include_directories(test-fakes PUBLIC fakes)
 
-function(add_unit_test name mod extra_src)
-    add_executable(${name}
-        ${name}.cc
-        ${mod}
-        ${extra_src}
+function(add_test)
+    set(options)
+    set(oneValueArgs NAME)
+    set(multiValueArgs SOURCES DEFINES)
+    cmake_parse_arguments(PARSE_ARGV 0 arg
+        "${options}" "${oneValueArgs}" "${multiValueArgs}"
     )
+
+    set(name "${arg_NAME}")
+
+    list(APPEND sources "${name}.cc")
+    list(APPEND sources ${arg_SOURCES})
+
+    list(APPEND compile_defs ${arg_DEFINES})
+
+    add_executable(${name} ${sources})
     target_compile_options(${name} PRIVATE
         -Wall -Wextra -fdiagnostics-color=always
     )
-    target_include_directories(${name} PRIVATE ${SRCDIR} ${INCDIR})
+    target_compile_definitions(${name} PRIVATE ${compile_defs})
     target_link_libraries(${name}
-        fakes common GTest::gtest_main GTest::gmock_main
+        test-fakes common GTest::gtest_main GTest::gmock_main
     )
+    target_include_directories(${name} PRIVATE ${SRCDIR} ${INCDIR})
+
     gtest_discover_tests(${name})
 endfunction()
 
-add_unit_test(kshscan_test ${SRCDIR}/kshell/kshscan.c "")
-add_unit_test(ksharg_test ${SRCDIR}/kshell/ksharg.c ${SRCDIR}/kshell/kshscan.c)
-add_unit_test(vfspath_test ${SRCDIR}/vfs/vpath.c "")
-add_unit_test(list_test ${SRCDIR}/list.c "")
+add_test(NAME kshscan_test SOURCES ${SRCDIR}/kshell/kshscan.c)
+add_test(
+    NAME ksharg_test
+    SOURCES ${SRCDIR}/kshell/ksharg.c ${SRCDIR}/kshell/kshscan.c
+)
+add_test(NAME vfspath_test SOURCES ${SRCDIR}/vfs/vpath.c)
+add_test(NAME list_test SOURCES ${SRCDIR}/list.c)
