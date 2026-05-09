@@ -44,7 +44,6 @@ struct vnode {
     vnode_type_t type;
     vnode_flags_t flags;
     const vnode_ops_t *ops;
-    size_t size;
 
     // TODO: add a "mounted file system" abstraction.
     const fs_desc_t *fs_desc;

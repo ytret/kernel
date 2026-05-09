@@ -350,7 +350,6 @@ vfs_err_t prv_ramfs_vnode_read(vnode_t *vnode, size_t offset, void *buf,
 
     if (!vnode) { return VFS_ERR_NODE_BAD_ARGS; }
     if (vnode->type != VNODE_FILE) { return VFS_ERR_NODE_BAD_ARGS; }
-    if (offset >= vnode->size) { return VFS_ERR_NODE_BAD_ARGS; }
     if (!buf) { return VFS_ERR_NODE_BAD_ARGS; }
 
     ramfs_ctx_t *const ctx = vnode->fs_ctx;
@@ -359,10 +358,11 @@ vfs_err_t prv_ramfs_vnode_read(vnode_t *vnode, size_t offset, void *buf,
     if (!node) { return VFS_ERR_NODE_NO_DATA; }
 
     ASSERT(node->type == RAMFS_FILE);
-    DEBUG_ASSERT(vnode->size == node->file.buf_size);
+    const size_t file_size = node->file.buf_size;
+    if (offset >= file_size) { return VFS_ERR_NODE_BAD_ARGS; }
 
     // FIXME: check for overflow
-    if (offset + num_bytes >= vnode->size) { num_bytes = vnode->size - offset; }
+    if (offset + num_bytes >= file_size) { num_bytes = file_size - offset; }
 
     kmemcpy(buf, (void *)((uintptr_t)node->file.buf + offset), num_bytes);
     *out_read = num_bytes;
@@ -521,7 +521,6 @@ static void prv_ramfs_fill_vnode(ramfs_ctx_t *ctx, ramfs_node_t *node) {
     vnode->type = vnode_type;
     vnode->flags = 0;
     vnode->ops = &g_ramfs_node_ops;
-    vnode->size = vnode_type == VNODE_FILE ? node->file.buf_size : 0;
     vnode->fs_desc = &g_ramfs_desc;
     vnode->fs_ctx = ctx;
     vnode->fs_data = node;
