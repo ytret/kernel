@@ -43,7 +43,7 @@ add_library(test-fakes STATIC
 target_compile_options(test-fakes PRIVATE
     -Wall -Wextra -fdiagnostics-color=always
 )
-target_include_directories(test-fakes PUBLIC fakes)
+target_include_directories(test-fakes PUBLIC fakes ${SRCDIR} ${INCDIR})
 
 function(add_test)
     set(options)
@@ -68,7 +68,6 @@ function(add_test)
     target_link_libraries(${name}
         test-fakes common GTest::gtest_main GTest::gmock_main
     )
-    target_include_directories(${name} PRIVATE ${SRCDIR} ${INCDIR})
 
     gtest_discover_tests(${name})
 endfunction()
