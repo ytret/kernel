@@ -368,19 +368,37 @@ static vfs_err_t prv_ramfs_add_child(ramfs_ctx_t *ctx, ramfs_node_t *dir_node,
     const size_t new_len = old_len + 1;
     const size_t new_idx = old_len;
 
-    size_t old_size = old_len * sizeof(dirent_t);
-    size_t new_size = new_len * sizeof(dirent_t);
-    dir->dirents = prv_ramfs_realloc(ctx, dir->dirents, old_size, new_size,
-                                     _Alignof(dirent_t));
+    const size_t old_dirents_size = old_len * sizeof(dirent_t);
+    const size_t new_dirents_size = new_len * sizeof(dirent_t);
+    dirent_t *const new_dirents =
+        prv_ramfs_alloc(ctx, new_dirents_size, _Alignof(dirent_t));
+    if (!new_dirents) { return VFS_ERR_FS_NO_SPACE; }
 
-    old_size = old_len * sizeof(ramfs_node_t *);
-    new_size = new_len * sizeof(ramfs_node_t *);
-    dir->children = prv_ramfs_realloc(ctx, dir->children, old_size, new_size,
-                                      _Alignof(ramfs_node_t *));
+    const size_t old_children_size = old_len * sizeof(ramfs_node_t *);
+    const size_t new_children_size = new_len * sizeof(ramfs_node_t *);
+    ramfs_node_t **const new_children =
+        prv_ramfs_alloc(ctx, new_children_size, _Alignof(ramfs_node_t *));
+    if (!new_children) {
+        prv_ramfs_free(ctx, new_dirents, new_dirents_size);
+        return VFS_ERR_FS_NO_SPACE;
+    }
 
-    dir->children[new_idx] = child_node;
-    kmemcpy(dir->dirents[new_idx].name, child_name, string_len(child_name) + 1);
+    kmemcpy(new_dirents, dir->dirents, old_dirents_size);
+    kmemset(&new_dirents[new_idx], 0, sizeof(dirent_t));
+    kmemcpy(new_children, dir->children, old_children_size);
+
+    new_children[new_idx] = child_node;
+    kmemcpy(new_dirents[new_idx].name, child_name, string_len(child_name) + 1);
+
+    void *const old_dirents = dir->dirents;
+    void *const old_children = dir->children;
+
+    dir->dirents = new_dirents;
+    dir->children = new_children;
     dir->num_children = new_len;
+
+    prv_ramfs_free(ctx, old_dirents, old_dirents_size);
+    prv_ramfs_free(ctx, old_children, old_children_size);
 
     return VFS_ERR_NONE;
 }
