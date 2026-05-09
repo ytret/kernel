@@ -164,6 +164,7 @@ add_executable(kernel
     src/kshell/kshscan.c
     src/kshell/vasview.c
 
+    src/dynarr.c
     src/kmutex.c
     src/ksemaphore.c
     src/kspinlock.c
