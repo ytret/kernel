@@ -79,3 +79,4 @@ add_test(
 )
 add_test(NAME vfspath_test SOURCES ${SRCDIR}/vfs/vpath.c)
 add_test(NAME list_test SOURCES ${SRCDIR}/list.c)
+add_test(NAME dynarr_test SOURCES ${SRCDIR}/dynarr.c)
