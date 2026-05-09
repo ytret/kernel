@@ -103,6 +103,11 @@ bool dynarr_get_at(dynarr_t *arr, size_t idx, void *buf, size_t buf_size) {
     return true;
 }
 
+const void *dynarr_ptr_at(const dynarr_t *arr, size_t idx) {
+    if (idx >= arr->num_items) { return NULL; }
+    return DYNARR_ITEM_PTR(arr, idx);
+}
+
 static void prv_dynarr_alloc_cap(dynarr_t *arr, size_t new_cap) {
     arr->buf_size = new_cap * arr->item_size;
     if (arr->buf) {
