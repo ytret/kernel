@@ -260,13 +260,13 @@ static bool prv_ksh_vfs_get_parent_node(const char *path_str,
         LIST_NODE_TO_STRUCT(basename_lnode, vpath_part_t, list_node);
     const char *const basename = path_last_part->name;
 
-    vnode_t *parent_node;
+    vnode_t *parent_node = NULL;
     vpath_err_t err = vnode_resolve_path(&path, &parent_node);
     if (err != VPATH_ERR_NONE) {
         kprintf("ksh_vfs: failed to resolve '%s' without its last part, error "
                 "%u: %s\n",
                 path_str, err, vpath_err_str(err));
-        vnode_put(parent_node);
+        if (parent_node) { vnode_put(parent_node); }
         vpath_free(&path);
         return false;
     }
