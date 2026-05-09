@@ -88,8 +88,6 @@ static void prv_ramfs_arr_take_at(ramfs_ctx_t *ctx, dynarr_t *arr, size_t idx,
                                   void *item, size_t item_size);
 
 static void *prv_ramfs_alloc(ramfs_ctx_t *ctx, size_t size, size_t align);
-static void *prv_ramfs_realloc(ramfs_ctx_t *ctx, void *ptr, size_t old_size,
-                               size_t new_size, size_t align);
 static void prv_ramfs_free(ramfs_ctx_t *ctx, void *ptr, size_t size);
 
 void ramfs_init(ramfs_ctx_t *ctx, size_t allowed_size) {
@@ -558,24 +556,6 @@ static void *prv_ramfs_alloc(ramfs_ctx_t *ctx, size_t size, size_t align) {
     void *const ptr = heap_alloc_aligned(size, align);
     ctx->used_size = new_size;
     return ptr;
-}
-
-static void *prv_ramfs_realloc(ramfs_ctx_t *ctx, void *ptr, size_t old_size,
-                               size_t new_size, size_t align) {
-    ASSERT(old_size <= ctx->used_size);
-
-    // TODO: check for overflow
-    const size_t new_used_size = ctx->used_size + new_size;
-    if (new_used_size > ctx->allowed_size) {
-        LOG_ERROR(
-            "failed to allocate %zu bytes for ramfs %p: %zu used / %zu allowed",
-            new_size, ctx, ctx->used_size, ctx->allowed_size);
-        return NULL;
-    }
-
-    void *const new_ptr = heap_realloc(ptr, new_size, align);
-    ctx->used_size = ctx->used_size - old_size + new_size;
-    return new_ptr;
 }
 
 static void prv_ramfs_free(ramfs_ctx_t *ctx, void *ptr, size_t size) {
