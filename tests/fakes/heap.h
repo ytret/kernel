@@ -6,8 +6,10 @@
 extern "C" {
 #endif
 
-void *heap_alloc(size_t num_bytes);
-void heap_free(void *p_addr);
+void *heap_alloc(size_t size);
+void *heap_alloc_aligned(size_t size, size_t align);
+void *heap_realloc(void *ptr, size_t size, size_t align);
+void heap_free(void *ptr);
 
 #ifdef __cplusplus
 }
