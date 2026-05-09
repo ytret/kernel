@@ -117,18 +117,23 @@ file_err_t file_seek(file_t *file, off_t offset, file_seek_t whence) {
     }
     mutex_release(&node->lock);
 
+    bool whence_ok = false;
     off_t new_offset;
     switch (whence) {
     case FILE_SEEK_SET:
+        whence_ok = true;
         new_offset = offset;
         break;
     case FILE_SEEK_CUR:
+        whence_ok = true;
         new_offset = file->offset + offset;
         break;
     case FILE_SEEK_END:
+        whence_ok = true;
         PANIC("TODO FILE_SEEK_END");
         break;
     }
+    if (!whence_ok) { return FILE_ERR_BAD_ARGS; }
 
     if (new_offset < 0) {
         LOG_ERROR("negative offset (%" PRIdOFF ")", new_offset);
