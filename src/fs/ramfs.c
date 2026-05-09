@@ -47,6 +47,7 @@ static const fs_desc_t g_ramfs_desc = {
 vfs_err_t prv_ramfs_vnode_mknode(vnode_t *vnode, vnode_t **out_vnode,
                                  const char *name, vnode_type_t vnode_type);
 vfs_err_t prv_ramfs_vnode_unlink(vnode_t *vnode, const char *name);
+vfs_err_t prv_ramfs_vnode_rmdir(vnode_t *vnode, const char *name);
 vfs_err_t prv_ramfs_vnode_readdir(vnode_t *vnode, void *dirent_buf,
                                   size_t buf_items, size_t *out_items);
 vfs_err_t prv_ramfs_vnode_lookup(vnode_t *vnode, vnode_t **out_vnode,
@@ -57,6 +58,7 @@ vfs_err_t prv_ramfs_vnode_read(vnode_t *vnode, size_t offset, void *buf,
 static const vnode_ops_t g_ramfs_node_ops = {
     .f_mknode = prv_ramfs_vnode_mknode,
     .f_unlink = prv_ramfs_vnode_unlink,
+    .f_rmdir = prv_ramfs_vnode_rmdir,
     .f_readdir = prv_ramfs_vnode_readdir,
     .f_lookup = prv_ramfs_vnode_lookup,
     .f_read = prv_ramfs_vnode_read,
@@ -240,6 +242,37 @@ vfs_err_t prv_ramfs_vnode_unlink(vnode_t *vnode, const char *name) {
     if (!prv_ramfs_find_child(node, name, &child, &child_idx)) {
         return VFS_ERR_NODE_NOT_FOUND;
     }
+
+    if (child->type != RAMFS_FILE) { return VFS_ERR_NODE_NOT_FILE; }
+
+    if (child->vnode) {
+        vnode_put(child->vnode);
+        child->vnode = NULL;
+    }
+
+    return prv_ramfs_remove_child(ctx, node, child_idx);
+}
+
+vfs_err_t prv_ramfs_vnode_rmdir(vnode_t *vnode, const char *name) {
+    LOG_FLOW("vnode %p name %s", vnode, name);
+
+    if (!vnode) { return VFS_ERR_NODE_BAD_ARGS; }
+    if (vnode->type != VNODE_DIR) { return VFS_ERR_NODE_NOT_DIR; }
+    if (!name) { return VFS_ERR_NODE_BAD_ARGS; }
+
+    ramfs_ctx_t *const ctx = vnode->fs_ctx;
+    ramfs_node_t *const node = vnode->fs_data;
+    if (!ctx) { return VFS_ERR_NODE_NO_FS; }
+    if (!node) { return VFS_ERR_NODE_NO_DATA; }
+
+    ramfs_node_t *child;
+    size_t child_idx;
+    if (!prv_ramfs_find_child(node, name, &child, &child_idx)) {
+        return VFS_ERR_NODE_NOT_FOUND;
+    }
+
+    if (child->type != RAMFS_DIR) { return VFS_ERR_NODE_NOT_DIR; }
+    if (child->dir.children.num_items != 0) { return VFS_ERR_NODE_NOT_EMPTY; }
 
     if (child->vnode) {
         vnode_put(child->vnode);
