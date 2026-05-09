@@ -156,9 +156,9 @@ static void prv_ramfs_on_free_vnode(void *v_ctx, vnode_t *vnode) {
     DEBUG_ASSERT(vnode != NULL);
 
     ramfs_node_t *const node = vnode->fs_data;
-    ASSERT(node != NULL);
-
-    node->vnode = NULL;
+    // NOTE: `node` can be NULL if the file/dir was deleted while the node still
+    // was being referenced somewhere.
+    if (node) { node->vnode = NULL; }
 }
 
 vfs_err_t prv_ramfs_vnode_mknode(vnode_t *vnode, vnode_t **out_vnode,
@@ -246,7 +246,7 @@ vfs_err_t prv_ramfs_vnode_unlink(vnode_t *vnode, const char *name) {
     if (child->type != RAMFS_FILE) { return VFS_ERR_NODE_NOT_FILE; }
 
     if (child->vnode) {
-        vnode_put(child->vnode);
+        child->vnode->fs_data = NULL;
         child->vnode = NULL;
     }
 
@@ -275,7 +275,7 @@ vfs_err_t prv_ramfs_vnode_rmdir(vnode_t *vnode, const char *name) {
     if (child->dir.children.num_items != 0) { return VFS_ERR_NODE_NOT_EMPTY; }
 
     if (child->vnode) {
-        vnode_put(child->vnode);
+        child->vnode->fs_data = NULL;
         child->vnode = NULL;
     }
 
