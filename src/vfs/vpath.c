@@ -2,7 +2,7 @@
 
 #include "heap.h"
 #include "memfun.h"
-#include "vfs/vnode.h"
+#include "vfs/vfs_defs.h"
 #include "vfs/vpath.h"
 
 vpath_err_t vpath_from_str(const char *path_str, vpath_t *out_path) {
@@ -17,7 +17,7 @@ vpath_err_t vpath_from_str(const char *path_str, vpath_t *out_path) {
     for (;;) {
         const char ch = path_str[idx];
         if (ch == '/' || ch == 0) {
-            if ((substr_len + 1) > VNODE_MAX_NAME_SIZE) {
+            if ((substr_len + 1) > VFS_MAX_NAME_SIZE) {
                 return VPATH_ERR_PART_TOO_LONG;
             }
             if (num_parts >= VPATH_MAX_PARTS) {

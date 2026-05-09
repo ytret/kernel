@@ -160,7 +160,7 @@ vfs_err_t prv_ramfs_vnode_mknode(vnode_t *vnode, vnode_t **out_vnode,
     if (vnode->type != VNODE_DIR) { return VFS_ERR_NODE_BAD_ARGS; }
     if (!out_vnode) { return VFS_ERR_NODE_BAD_ARGS; }
     if (!name) { return VFS_ERR_NODE_BAD_ARGS; }
-    if (string_len(name) + 1 > VNODE_MAX_NAME_SIZE) {
+    if (string_len(name) + 1 > VFS_MAX_NAME_SIZE) {
         // FIXME: check for overflow in the condition
         return VFS_ERR_NODE_NAME_TOO_LONG;
     }
@@ -246,7 +246,7 @@ vfs_err_t prv_ramfs_vnode_lookup(vnode_t *vnode, vnode_t **out_vnode,
     if (vnode->type != VNODE_DIR) { return VFS_ERR_NODE_NOT_DIR; }
     if (!out_vnode) { return VFS_ERR_NODE_BAD_ARGS; }
     if (!name) { return VFS_ERR_NODE_BAD_ARGS; }
-    if (string_len(name) + 1 > VNODE_MAX_NAME_SIZE) {
+    if (string_len(name) + 1 > VFS_MAX_NAME_SIZE) {
         // FIXME: check for overflow in the condition
         return VFS_ERR_NODE_NAME_TOO_LONG;
     }

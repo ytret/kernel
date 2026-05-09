@@ -4,15 +4,14 @@
 
 #include "kmutex.h"
 #include "vfs/fs_desc.h"
+#include "vfs/vfs_defs.h"
 #include "vfs/vfs_err.h"
 #include "vfs/vpath.h"
-
-#define VNODE_MAX_NAME_SIZE 256
 
 typedef struct vnode vnode_t;
 
 typedef struct {
-    char name[VNODE_MAX_NAME_SIZE];
+    char name[VFS_MAX_NAME_SIZE];
 } dirent_t;
 
 typedef enum {
