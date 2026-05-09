@@ -1,7 +1,6 @@
 #pragma once
 
 #include "vfs/vfs_err.h"
-#include "vfs/vnode.h"
 
 typedef struct vnode vnode_t;
 
@@ -10,7 +9,7 @@ typedef struct vnode vnode_t;
  *
  * Each filesystem has only one struct of this type.
  */
-struct fs_desc {
+typedef struct {
     /**
      * ASCII filesystem name.
      *
@@ -49,4 +48,4 @@ struct fs_desc {
      * @param node VFS node to be freed.
      */
     void (*f_on_free_vnode)(void *ctx, vnode_t *node);
-};
+} fs_desc_t;

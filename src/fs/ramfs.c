@@ -5,6 +5,7 @@
 #include "log.h"
 #include "memfun.h"
 #include "panic.h"
+#include "vfs/vnode.h"
 
 #define RAMFS_PREALLOC_DIRENTS 0
 

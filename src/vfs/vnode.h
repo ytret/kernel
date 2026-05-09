@@ -9,7 +9,6 @@
 
 #define VNODE_MAX_NAME_SIZE 256
 
-typedef struct fs_desc fs_desc_t;
 typedef struct vnode vnode_t;
 
 typedef struct {
