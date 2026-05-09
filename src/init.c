@@ -61,22 +61,38 @@ void init_bsp_task(void) {
     err = file_open_path_str("/foo", &file);
     if (err != FILE_ERR_NONE) { PANIC("open error %d", err); }
 
+    LOG_INFO("before unlink:");
+    LOG_INFO("  foo_node->fs_data = %p", foo_node->fs_data);
+    LOG_INFO("  foo_node->refcount = %d", foo_node->refcount);
+
+    vfs_err = root_node->ops->f_unlink(root_node, "foo");
+    if (vfs_err) { PANIC("unlink err %d: %s", vfs_err, vfs_err_str(vfs_err)); }
+
+    LOG_INFO("after unlink:");
+    LOG_INFO("  foo_node->fs_data = %p", foo_node->fs_data);
+    LOG_INFO("  foo_node->refcount = %d", foo_node->refcount);
+
     size_t buf_size = 32;
     void *buf = heap_alloc(buf_size);
     size_t num_read = 0;
     err = file_read(&file, buf, buf_size, &num_read);
-    if (err != FILE_ERR_NONE) { PANIC("read error %d", err); }
+    if (err == FILE_ERR_NONE) {
+        LOG_INFO("num_read = %zu, wanted to read %zu", num_read, buf_size);
+        size_t max_dump_size = 4096;
+        char *dump = heap_alloc(max_dump_size);
+        size_t dump_offset = 0;
+        for (size_t idx = 0; idx < num_read; idx++) {
+            dump_offset +=
+                ksnprintf(&dump[dump_offset], max_dump_size - dump_offset,
+                          "%02x ", ((uint8_t *)buf)[idx]);
+        }
+        LOG_INFO("%s", dump);
 
-    LOG_INFO("num_read = %zu, wanted to read %zu", num_read, buf_size);
-    size_t max_dump_size = 4096;
-    char *dump = heap_alloc(max_dump_size);
-    size_t dump_offset = 0;
-    for (size_t idx = 0; idx < num_read; idx++) {
-        dump_offset +=
-            ksnprintf(&dump[dump_offset], max_dump_size - dump_offset, "%02x ",
-                      ((uint8_t *)buf)[idx]);
+    } else {
+        LOG_ERROR("read error %d", err);
     }
-    LOG_INFO("%s", dump);
+
+    LOG_INFO("refcount before file close: %d", foo_node->refcount);
 
     err = file_close(&file);
     if (err != FILE_ERR_NONE) { PANIC("close error %d", err); }
