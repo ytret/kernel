@@ -54,7 +54,6 @@ add_library(klibc STATIC
 )
 target_compile_options(klibc PRIVATE
     -Wall -Wextra -Wmissing-prototypes
-    ${OPTIMIZATION_FLAGS}
 )
 target_include_directories(klibc PUBLIC klibc/include)
 target_include_directories(klibc PRIVATE include klibc)
@@ -174,7 +173,6 @@ add_executable(kernel
 )
 target_compile_options(kernel PRIVATE
     -Wall -Wextra -Wmissing-prototypes
-    ${OPTIMIZATION_FLAGS}
 )
 target_include_directories(kernel PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/generated
@@ -182,7 +180,6 @@ target_include_directories(kernel PRIVATE
     include/ytkernel
 )
 target_link_options(kernel PRIVATE
-    ${OPTIMIZATION_FLAGS}
     -T${CMAKE_SOURCE_DIR}/src/arch/x86/linker.ld
 )
 target_link_libraries(kernel ytalloc ytprintf lua klibc gcc)
