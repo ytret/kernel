@@ -97,6 +97,7 @@ add_executable(kernel
     src/blkdev/blkdev.c
     src/blkdev/blkpart.c
     src/blkdev/gpt.c
+    src/cmdline.c
     src/cpu.c
     src/devmgr.c
     src/elf.c

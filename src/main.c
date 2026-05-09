@@ -3,6 +3,7 @@
 
 #include "acpi/acpi.h"
 #include "arch.h"
+#include "cmdline.h"
 #include "devmgr.h"
 #include "heap.h"
 #include "init.h"
@@ -55,7 +56,11 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     pmm_init(&g_mmap);
 
     heap_init();
+
     mbi_save_on_heap();
+    if (mbi_ptr()->flags & MBI_FLAG_CMDLINE) {
+        cmdline_init((const char *)mbi_ptr()->cmdline);
+    }
 
     term_init_history();
     term_clear();

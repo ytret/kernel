@@ -41,6 +41,13 @@ void mbi_save_on_heap(void) {
         char *const cmdline = heap_alloc(cmdline_len + 1);
         kmemcpy(cmdline, (void *)p_src->cmdline, cmdline_len + 1);
         gp_mbi->cmdline = (uint32_t)cmdline;
+
+        if (cmdline_len > 0) {
+            LOG_DEBUG("mbi cmdline (len %zu): %s", cmdline_len,
+                      (const char *)gp_mbi->cmdline);
+        } else {
+            LOG_DEBUG("mbi cmdline (len %zu) is empty", cmdline_len);
+        }
     }
     if (p_src->flags & MBI_FLAG_MODS) {
         // Copy the modules info.
