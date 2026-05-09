@@ -214,7 +214,7 @@ vfs_err_t prv_ramfs_vnode_readdir(vnode_t *vnode, void *dirent_buf,
              buf_items, out_items);
 
     if (!vnode) { return VFS_ERR_NODE_BAD_ARGS; }
-    if (vnode->type != VNODE_DIR) { return VFS_ERR_NODE_BAD_ARGS; }
+    if (vnode->type != VNODE_DIR) { return VFS_ERR_NODE_NOT_DIR; }
     if (!dirent_buf) { return VFS_ERR_NODE_BAD_ARGS; }
     if (buf_items == 0) { return VFS_ERR_NODE_BAD_ARGS; }
     if (!out_items) { return VFS_ERR_NODE_BAD_ARGS; }
