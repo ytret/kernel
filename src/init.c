@@ -10,6 +10,7 @@
 #include "heap.h"
 #include "init.h"
 #include "kprintf.h"
+#include "kshell/kshell.h"
 #include "log.h"
 #include "panic.h"
 #include "smp.h"
@@ -79,6 +80,8 @@ void init_bsp_task(void) {
 
     err = file_close(&file);
     if (err != FILE_ERR_NONE) { PANIC("close error %d", err); }
+
+    kshell();
 
     PANIC("kshell returned");
 }
