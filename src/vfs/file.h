@@ -1,5 +1,6 @@
 #pragma once
 
+#include "kmutex.h"
 #include "types.h"
 #include "vfs/vnode.h"
 #include "vfs/vpath.h"
@@ -31,6 +32,7 @@ typedef enum {
 } file_seek_t;
 
 typedef struct {
+    task_mutex_t lock;
     bool opened;
     vnode_t *node;
     file_flags_t flags;

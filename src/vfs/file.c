@@ -12,6 +12,8 @@ file_err_t file_open_node(vnode_t *node, file_t *file) {
     DEBUG_ASSERT(node != NULL);
     DEBUG_ASSERT(file != NULL);
 
+    mutex_init(&file->lock);
+
     mutex_acquire(&node->lock);
 
     bool ok_type = false;
@@ -85,8 +87,11 @@ file_err_t file_close(file_t *file) {
     LOG_FLOW("file %p", file);
     DEBUG_ASSERT(file != NULL);
 
+    mutex_acquire(&file->lock);
+
     if (!file->opened) {
         LOG_ERROR("file %p not opened", file);
+        mutex_release(&file->lock);
         return FILE_ERR_NOT_OPENED;
     }
 
@@ -96,6 +101,7 @@ file_err_t file_close(file_t *file) {
     mutex_acquire(&node->lock);
     if (!vnode_put(node)) { mutex_release(&node->lock); }
 
+    mutex_release(&file->lock);
     return FILE_ERR_NONE;
 }
 
@@ -103,8 +109,11 @@ file_err_t file_seek(file_t *file, off_t offset, file_seek_t whence) {
     LOG_FLOW("file %p offset %" PRIdOFF " whence %d", file, offset, whence);
     DEBUG_ASSERT(file != NULL);
 
+    mutex_acquire(&file->lock);
+
     if (!file->opened) {
         LOG_ERROR("file %p not opened", file);
+        mutex_release(&file->lock);
         return FILE_ERR_NOT_OPENED;
     }
 
@@ -113,6 +122,7 @@ file_err_t file_seek(file_t *file, off_t offset, file_seek_t whence) {
     if (node->type != VNODE_FILE) {
         LOG_ERROR("node type %d does not support seek", node->type);
         mutex_release(&node->lock);
+        mutex_release(&file->lock);
         return FILE_ERR_NOT_SUPP;
     }
     mutex_release(&node->lock);
@@ -133,13 +143,18 @@ file_err_t file_seek(file_t *file, off_t offset, file_seek_t whence) {
         PANIC("TODO FILE_SEEK_END");
         break;
     }
-    if (!whence_ok) { return FILE_ERR_BAD_ARGS; }
+    if (!whence_ok) {
+        mutex_release(&file->lock);
+        return FILE_ERR_BAD_ARGS;
+    }
 
     if (new_offset < 0) {
         LOG_ERROR("negative offset (%" PRIdOFF ")", new_offset);
+        mutex_release(&file->lock);
         return FILE_ERR_NEG_OFFSET;
     }
 
+    mutex_release(&file->lock);
     return FILE_ERR_NONE;
 }
 
@@ -151,8 +166,11 @@ file_err_t file_read(file_t *file, void *buf, size_t num_bytes,
     DEBUG_ASSERT(buf != NULL);
     DEBUG_ASSERT(out_read != NULL);
 
+    mutex_acquire(&file->lock);
+
     if (!file->opened) {
         LOG_ERROR("file %p not opened", file);
+        mutex_release(&file->lock);
         return FILE_ERR_NOT_OPENED;
     }
 
@@ -161,20 +179,23 @@ file_err_t file_read(file_t *file, void *buf, size_t num_bytes,
     if (node->type != VNODE_FILE) {
         LOG_ERROR("node %p type %d does not support read", node, node->type);
         mutex_release(&node->lock);
+        mutex_release(&file->lock);
         return FILE_ERR_NOT_SUPP;
     }
     if (!node->ops->f_read) {
         LOG_ERROR("node %p file system does not support read", node);
         mutex_release(&node->lock);
+        mutex_release(&file->lock);
         return FILE_ERR_NOT_SUPP;
     }
 
     ASSERT(file->offset >= 0);
 
-    vfs_err_t err =
+    const vfs_err_t err =
         node->ops->f_read(node, (size_t)file->offset, buf, num_bytes, out_read);
 
     mutex_release(&node->lock);
+    mutex_release(&file->lock);
 
     if (err == VFS_ERR_NONE) {
         return FILE_ERR_NONE;
