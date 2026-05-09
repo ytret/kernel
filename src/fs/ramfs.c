@@ -198,7 +198,11 @@ vfs_err_t prv_ramfs_vnode_mknode(vnode_t *vnode, vnode_t **out_vnode,
 
     const vfs_err_t err = prv_ramfs_add_child(ctx, node, name, new_node);
     if (err != VFS_ERR_NONE) {
-        prv_ramfs_free_node(ctx, new_node);
+        const vfs_err_t free_err = prv_ramfs_free_node(ctx, new_node);
+        if (free_err != VFS_ERR_NONE) {
+            PANIC("failed to free supposedly empty dir node %p: %d", new_node,
+                  free_err);
+        }
         return err;
     }
 
@@ -336,8 +340,19 @@ static ramfs_node_t *prv_ramfs_new_file(ramfs_ctx_t *ctx, const char *name,
 static vfs_err_t prv_ramfs_free_node(ramfs_ctx_t *ctx, ramfs_node_t *node) {
     if (node->vnode && node->vnode->refcount != 0) { return VFS_ERR_NODE_USED; }
 
-    if (node->type == RAMFS_DIR) { PANIC("TODO handle RAMFS_DIR"); }
-    prv_ramfs_free(ctx, node->file.buf, node->file.buf_size);
+    bool type_ok = false;
+    switch (node->type) {
+    case RAMFS_FILE:
+        type_ok = true;
+        prv_ramfs_free(ctx, node->file.buf, node->file.buf_size);
+        break;
+    case RAMFS_DIR:
+        type_ok = true;
+        if (node->dir.num_children > 0) { return VFS_ERR_NODE_NOT_EMPTY; }
+        // FIXME: do allocation sizes always reflect num_children?
+        break;
+    }
+    ASSERT(type_ok);
 
     prv_ramfs_free(ctx, node, sizeof(*node));
 
