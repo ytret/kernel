@@ -27,6 +27,7 @@ set(CMAKE_C_FLAGS_RELEASE "-O3 -g")
 #############
 set(YTKERNEL_STACKTRACE_ON_PANIC ON CACHE BOOL
     "Print stacktrace on kernel panic.")
+set(YTKERNEL_ENABLE_TESTS ON CACHE BOOL "Enable the kernel test subsystem.")
 set(YTKERNEL_TERM_LOG_LEVEL 2 CACHE STRING
     "Maximum verbosity level of logs printed on the terminal.")
 configure_file(
@@ -89,7 +90,7 @@ build_lua()
 ############
 ## Kernel ##
 ############
-add_executable(kernel
+list(APPEND KERNEL_SOURCES
     src/main.c
 
     src/acpi/acpi.c
@@ -172,6 +173,10 @@ add_executable(kernel
     src/queue.c
 
 )
+if(YTKERNEL_ENABLE_TESTS)
+    list(APPEND KERNEL_SOURCES src/test/vmctl.c)
+endif()
+add_executable(kernel ${KERNEL_SOURCES})
 target_compile_options(kernel PRIVATE
     -Wall -Wextra -Wmissing-prototypes
 )
