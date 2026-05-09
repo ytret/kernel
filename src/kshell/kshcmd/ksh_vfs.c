@@ -42,6 +42,7 @@ static const ksharg_parser_desc_t g_ksh_vfs_parser = {
 static void prv_ksh_vfs_ls(const char *path);
 static void prv_ksh_vfs_mkdir(const char *path_str);
 static void prv_ksh_vfs_mkfile(const char *path_str);
+static void prv_ksh_vfs_unlink(const char *path_str);
 
 static bool prv_ksh_vfs_resolve_path(const char *path, vnode_t **out_node);
 static bool prv_ksh_vfs_get_parent_node(const char *path_str,
@@ -109,6 +110,8 @@ void ksh_vfs(list_t *arg_list) {
         prv_ksh_vfs_mkdir(path_str);
     } else if (string_equals(action_str, "mkfile")) {
         prv_ksh_vfs_mkfile(path_str);
+    } else if (string_equals(action_str, "unlink")) {
+        prv_ksh_vfs_unlink(path_str);
     } else {
         kprintf("ksh_vfs: unrecognized action '%s'\n", action_str);
     }
@@ -224,6 +227,41 @@ static void prv_ksh_vfs_mkfile(const char *path_str) {
     }
 
     kprintf("ksh_vfs: created file node at '%s'\n", path_str);
+    heap_free(basename);
+}
+
+static void prv_ksh_vfs_unlink(const char *path_str) {
+    vfs_err_t err;
+    vnode_t *parent_node;
+    char *basename;
+
+    if (!prv_ksh_vfs_get_parent_node(path_str, &parent_node, &basename)) {
+        // ^ should have printed the error message.
+        return;
+    }
+
+    if (!parent_node->ops) {
+        kprintf("ksh_vfs: node at path '%s' has no ops\n", path_str);
+        heap_free(basename);
+        return;
+    }
+    if (!parent_node->ops->f_unlink) {
+        kprintf("ksh_vfs: node at path '%s' does not support op 'unlink'\n",
+                path_str);
+        heap_free(basename);
+        return;
+    }
+
+    auto f_unlink = parent_node->ops->f_unlink;
+    err = f_unlink(parent_node, basename);
+    if (err != VFS_ERR_NONE) {
+        kprintf("ksh_vfs: op 'unlink' returned error code %u: %s\n", err,
+                vfs_err_str(err));
+        heap_free(basename);
+        return;
+    }
+
+    kprintf("ksh_vfs: removed file node at '%s'\n", path_str);
     heap_free(basename);
 }
 
