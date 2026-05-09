@@ -1,4 +1,5 @@
 #include "assert.h"
+#include "dynarr.h"
 #include "fs/ramfs.h"
 #include "heap.h"
 #include "kstring.h"
@@ -7,17 +8,14 @@
 #include "panic.h"
 #include "vfs/vnode.h"
 
-#define RAMFS_PREALLOC_DIRENTS 0
-
 typedef enum {
     RAMFS_FILE,
     RAMFS_DIR,
 } ramfs_node_type_t;
 
 typedef struct {
-    ramfs_node_t **children;
-    dirent_t *dirents;
-    size_t num_children;
+    dynarr_t children; // item type: `ramfs_node_t *`
+    dynarr_t dirents;  // item type: `dirent_t *`
 } ramfs_dir_data_t;
 
 struct ramfs_node {
@@ -76,6 +74,13 @@ static vfs_err_t prv_ramfs_add_child(ramfs_ctx_t *ctx, ramfs_node_t *dir_node,
 
 static void prv_ramfs_fill_vnode(ramfs_ctx_t *ctx, ramfs_node_t *node);
 static vnode_type_t prv_ramfs_vnode_type(ramfs_node_type_t node_type);
+
+static bool prv_ramfs_arr_push(ramfs_ctx_t *ctx, dynarr_t *arr,
+                               const void *item);
+static bool prv_ramfs_arr_insert_at(ramfs_ctx_t *ctx, dynarr_t *arr, size_t idx,
+                                    const void *item);
+static void prv_ramfs_arr_take_at(ramfs_ctx_t *ctx, dynarr_t *arr, size_t idx,
+                                  void *item, size_t item_size);
 
 static void *prv_ramfs_alloc(ramfs_ctx_t *ctx, size_t size, size_t align);
 static void *prv_ramfs_realloc(ramfs_ctx_t *ctx, void *ptr, size_t old_size,
@@ -229,10 +234,17 @@ vfs_err_t prv_ramfs_vnode_readdir(vnode_t *vnode, void *dirent_buf,
     if (!ctx) { return VFS_ERR_NODE_NO_FS; }
     if (!node) { return VFS_ERR_NODE_NO_DATA; }
 
-    const size_t copy_items = node->dir.num_children <= buf_items
-                                  ? node->dir.num_children
+    dirent_t *const dest_dirents = dirent_buf;
+    const size_t copy_items = node->dir.children.num_items <= buf_items
+                                  ? node->dir.children.num_items
                                   : buf_items;
-    kmemcpy(dirent_buf, node->dir.dirents, copy_items * sizeof(dirent_t));
+    for (size_t idx = 0; idx < copy_items; idx++) {
+        dirent_t *idx_dirent;
+        const bool get_ok = dynarr_get_at(&node->dir.dirents, idx, &idx_dirent,
+                                          sizeof(dirent_t *));
+        ASSERT(get_ok);
+        kmemcpy(&dest_dirents[idx], idx_dirent, sizeof(dirent_t));
+    }
     *out_items = copy_items;
 
     return VFS_ERR_NONE;
@@ -304,12 +316,10 @@ static ramfs_node_t *prv_ramfs_new_dir(ramfs_ctx_t *ctx, const char *name,
     node->name = string_dup(name);
     node->parent = parent;
     node->type = RAMFS_DIR;
-    node->dir.children =
-        prv_ramfs_alloc(ctx, RAMFS_PREALLOC_DIRENTS * sizeof(ramfs_node_t *),
-                        _Alignof(ramfs_node_t *));
-    node->dir.dirents = prv_ramfs_alloc(
-        ctx, RAMFS_PREALLOC_DIRENTS * sizeof(dirent_t), _Alignof(dirent_t));
-    node->dir.num_children = 0;
+    dynarr_init(&node->dir.children, sizeof(ramfs_node_t *),
+                _Alignof(ramfs_node_t *), 0);
+    dynarr_init(&node->dir.dirents, sizeof(dirent_t *), _Alignof(dirent_t *),
+                0);
 
     return node;
 }
@@ -349,7 +359,7 @@ static vfs_err_t prv_ramfs_free_node(ramfs_ctx_t *ctx, ramfs_node_t *node) {
         break;
     case RAMFS_DIR:
         type_ok = true;
-        if (node->dir.num_children > 0) { return VFS_ERR_NODE_NOT_EMPTY; }
+        if (node->dir.children.num_items > 0) { return VFS_ERR_NODE_NOT_EMPTY; }
         // FIXME: do allocation sizes always reflect num_children?
         break;
     }
@@ -363,13 +373,25 @@ static vfs_err_t prv_ramfs_free_node(ramfs_ctx_t *ctx, ramfs_node_t *node) {
 static bool prv_ramfs_find_child(ramfs_node_t *dir_node, const char *name,
                                  ramfs_node_t **child_node) {
     ASSERT(dir_node->type == RAMFS_DIR);
-    for (size_t idx = 0; idx < dir_node->dir.num_children; idx++) {
-        const dirent_t *const dirent = &dir_node->dir.dirents[idx];
+
+    ramfs_dir_data_t *const dir = &dir_node->dir;
+
+    for (size_t idx = 0; idx < dir_node->dir.children.num_items; idx++) {
+        const dirent_t *dirent;
+        bool get_ok =
+            dynarr_get_at(&dir->dirents, idx, &dirent, sizeof(dirent_t *));
+        ASSERT(get_ok);
+
         if (string_equals(name, dirent->name)) {
-            if (child_node) { *child_node = dir_node->dir.children[idx]; }
+            if (child_node) {
+                get_ok = dynarr_get_at(&dir_node->dir.children, idx, child_node,
+                                       sizeof(ramfs_node_t *));
+                ASSERT(get_ok);
+            }
             return true;
         }
     }
+
     return false;
 }
 
@@ -380,41 +402,28 @@ static vfs_err_t prv_ramfs_add_child(ramfs_ctx_t *ctx, ramfs_node_t *dir_node,
 
     ramfs_dir_data_t *const dir = &dir_node->dir;
 
-    const size_t old_len = dir_node->dir.num_children;
-    const size_t new_len = old_len + 1;
-    const size_t new_idx = old_len;
+    ramfs_node_t *const new_child_node = child_node;
+    dirent_t *const new_dirent =
+        prv_ramfs_alloc(ctx, sizeof(dirent_t), _Alignof(dirent_t));
+    if (!new_dirent) { return VFS_ERR_FS_NO_SPACE; }
 
-    const size_t old_dirents_size = old_len * sizeof(dirent_t);
-    const size_t new_dirents_size = new_len * sizeof(dirent_t);
-    dirent_t *const new_dirents =
-        prv_ramfs_alloc(ctx, new_dirents_size, _Alignof(dirent_t));
-    if (!new_dirents) { return VFS_ERR_FS_NO_SPACE; }
+    kmemcpy(new_dirent->name, child_name, string_len(child_name) + 1);
 
-    const size_t old_children_size = old_len * sizeof(ramfs_node_t *);
-    const size_t new_children_size = new_len * sizeof(ramfs_node_t *);
-    ramfs_node_t **const new_children =
-        prv_ramfs_alloc(ctx, new_children_size, _Alignof(ramfs_node_t *));
-    if (!new_children) {
-        prv_ramfs_free(ctx, new_dirents, new_dirents_size);
+    bool push_ok = prv_ramfs_arr_push(ctx, &dir->children, &new_child_node);
+    if (!push_ok) {
+        heap_free(new_dirent);
         return VFS_ERR_FS_NO_SPACE;
     }
 
-    kmemcpy(new_dirents, dir->dirents, old_dirents_size);
-    kmemset(&new_dirents[new_idx], 0, sizeof(dirent_t));
-    kmemcpy(new_children, dir->children, old_children_size);
+    push_ok = prv_ramfs_arr_push(ctx, &dir->dirents, &new_dirent);
+    if (!push_ok) {
+        prv_ramfs_arr_take_at(ctx, &dir->children, dir->children.num_items - 1,
+                              NULL, 0);
+        prv_ramfs_free(ctx, new_dirent, sizeof(dirent_t));
+        return VFS_ERR_FS_NO_SPACE;
+    }
 
-    new_children[new_idx] = child_node;
-    kmemcpy(new_dirents[new_idx].name, child_name, string_len(child_name) + 1);
-
-    void *const old_dirents = dir->dirents;
-    void *const old_children = dir->children;
-
-    dir->dirents = new_dirents;
-    dir->children = new_children;
-    dir->num_children = new_len;
-
-    prv_ramfs_free(ctx, old_dirents, old_dirents_size);
-    prv_ramfs_free(ctx, old_children, old_children_size);
+    DEBUG_ASSERT(dir->children.num_items == dir->dirents.num_items);
 
     return VFS_ERR_NONE;
 }
@@ -444,6 +453,43 @@ static vnode_type_t prv_ramfs_vnode_type(ramfs_node_type_t node_type) {
         return VNODE_FILE;
     }
     PANIC("not implemented for ramfs type %d", node_type);
+}
+
+static bool prv_ramfs_arr_push(ramfs_ctx_t *ctx, dynarr_t *arr,
+                               const void *item) {
+    return prv_ramfs_arr_insert_at(ctx, arr, arr->num_items, item);
+}
+
+static bool prv_ramfs_arr_insert_at(ramfs_ctx_t *ctx, dynarr_t *arr, size_t idx,
+                                    const void *item) {
+    // NOTE: dynarr may preallocate items, but this function only checks the
+    // used array size.
+    const size_t new_size = ctx->used_size + arr->item_size;
+    if (new_size > ctx->allowed_size) {
+        LOG_ERROR("failed to insert item %p at idx %zu of arr %p", item, idx,
+                  arr);
+        return false;
+    }
+
+    const bool ok = dynarr_insert_at(arr, idx, item);
+    if (!ok) {
+        PANIC("dynarr_insert_at failed for arr %p idx %zu item %p", arr, idx,
+              item);
+    }
+
+    return true;
+}
+
+static void prv_ramfs_arr_take_at(ramfs_ctx_t *ctx, dynarr_t *arr, size_t idx,
+                                  void *buf, size_t buf_size) {
+    const bool ok = dynarr_take_at(arr, idx, buf, buf_size);
+    if (!ok) {
+        PANIC("dynarr_take_at failed for arr %p idx %zu buf %p size %zu", arr,
+              idx, buf, buf_size);
+    }
+
+    ASSERT(arr->item_size <= ctx->used_size);
+    ctx->used_size -= arr->item_size;
 }
 
 static void *prv_ramfs_alloc(ramfs_ctx_t *ctx, size_t size, size_t align) {
