@@ -1,4 +1,5 @@
 #include "fs/ramfs.h"
+#include "heap.h"
 #include "test/ktest.h"
 #include "test/ktest_smp.h"
 #include "vfs/vnode.h"
@@ -23,9 +24,9 @@ KTEST(VNodeSMP, Refcount) {
     ramfs_ctx_t fs_ctx;
     ramfs_init(&fs_ctx, SIZE_MAX);
 
-    ramfs_node_t *node;
+    ramfs_node_t *node = NULL;
 
-    vnode_t *vnode;
+    vnode_t *vnode = NULL;
     vnode_t *const root = vnode_root_node();
     KTEST_ASSERT_NE(root, NULL);
 
@@ -51,4 +52,8 @@ KTEST(VNodeSMP, Refcount) {
 
     KTEST_ASSERT_EQ(vnode->refcount, 0);
     KTEST_ASSERT(!node->deleted);
+
+cleanup:
+    if (vnode) { heap_free(vnode); }
+    if (node) { ramfs_free_node(&fs_ctx, node); }
 }

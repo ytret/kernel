@@ -40,7 +40,7 @@
             testctx->failed = true;                                            \
             ksnprintf(testctx->msg, sizeof(testctx->msg),                      \
                       "assertion '%s' failed, line %d", #cond, __LINE__);      \
-            return;                                                            \
+            goto cleanup;                                                      \
         }                                                                      \
     } while (0)
 
