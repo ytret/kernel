@@ -359,7 +359,7 @@ vfs_err_t prv_ramfs_vnode_read(vnode_t *vnode, size_t offset, void *buf,
 
     ASSERT(node->type == RAMFS_FILE);
     const size_t file_size = node->file.buf_size;
-    if (offset >= file_size) { return VFS_ERR_NODE_BAD_ARGS; }
+    if (offset >= file_size) { return VFS_ERR_NODE_BAD_OFFSET; }
 
     // FIXME: check for overflow
     if (offset + num_bytes >= file_size) { num_bytes = file_size - offset; }
