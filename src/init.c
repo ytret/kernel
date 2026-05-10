@@ -74,6 +74,7 @@ void init_ap_task(void) {
     }
 
 #ifdef YTKERNEL_ENABLE_TESTS
+    spinlock_init(&smp_get_running_proc()->ktest_lock);
     for (;;) {
         ktest_smpjob_do_local_job();
         __asm__ volatile("pause");

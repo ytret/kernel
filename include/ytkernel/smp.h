@@ -33,6 +33,7 @@ typedef struct {
     taskmgr_t *taskmgr;
 
 #ifdef YTKERNEL_ENABLE_TESTS
+    spinlock_t ktest_lock;
     ktest_smpjob_t *ktest_job;
     bool ktest_job_done;
 #endif
