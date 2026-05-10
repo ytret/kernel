@@ -5,7 +5,7 @@
 
 typedef struct {
     /// The task that has acquired the mutex.
-    task_t *locking_task;
+    _Atomic(task_t *) locking_task;
 
     /// List of tasks waiting to acquire the mutex.
     list_t waiting_tasks;
