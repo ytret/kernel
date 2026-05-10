@@ -73,6 +73,13 @@ void init_ap_task(void) {
         __asm__ volatile("pause" ::: "memory");
     }
 
+#ifdef YTKERNEL_ENABLE_TESTS
+    for (;;) {
+        ktest_smpjob_do_local_job();
+        __asm__ volatile("pause");
+    }
+#endif
+
     for (;;) {
         __asm__ volatile("hlt");
     }
