@@ -235,8 +235,8 @@ void *heap_realloc(void *ptr, size_t size, size_t align) {
 }
 
 static void prv_heap_lock(void) {
-    g_heap.nested_lock_cnt++;
     if (!mutex_caller_owns(&g_heap.lock)) { mutex_acquire(&g_heap.lock); }
+    g_heap.nested_lock_cnt++;
 }
 
 static void prv_heap_unlock(void) {
