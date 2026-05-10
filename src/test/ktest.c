@@ -39,14 +39,11 @@ void ktest_run_stage(ktest_stage_t stage) {
                 LOG_ERROR("test is defined at %s line %d", test->file,
                           test->line);
                 LOG_ERROR("test message: %s", testctx.msg);
-                goto exit;
             } else {
                 LOG_INFO("test %s.%s OK", test->suite_name, test->test_name);
             }
         }
     }
-
-exit:
 }
 
 bool ktest_should_exit_at_end(int *exitcode) {
