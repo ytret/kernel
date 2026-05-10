@@ -2,8 +2,11 @@
 
 #include <stddef.h>
 
+#include "kprintf.h" // IWYU pragma: keep
+
 #define KTEST_SUITE_NAME_MAX_SIZE 32
 #define KTEST_TEST_NAME_MAX_SIZE  64
+#define KTEST_TEST_MSG_MAX_SIZE   256
 
 #define KTEST_SUITE(Stage, SuiteName)                                          \
     static const ktest_suite_t ktest_suite_##SuiteName                         \
@@ -27,6 +30,20 @@
     static void ktest_fn_##SuiteName##_##TestName(__attribute__((unused))      \
                                                   ktest_testctx_t *testctx)
 
+#define KTEST_ASSERT_EQ(act, exp) KTEST_ASSERT((act) == (exp))
+
+#define KTEST_ASSERT_NE(act, rhs) KTEST_ASSERT((act) != (rhs))
+
+#define KTEST_ASSERT(cond)                                                     \
+    do {                                                                       \
+        if (!(cond)) {                                                         \
+            testctx->failed = true;                                            \
+            ksnprintf(testctx->msg, sizeof(testctx->msg),                      \
+                      "assertion '%s' failed, line %d", #cond, __LINE__);      \
+            return;                                                            \
+        }                                                                      \
+    } while (0)
+
 typedef enum {
     KTEST_EARLY_BOOT,
     KTEST_PRE_SMP,
@@ -40,7 +57,7 @@ typedef struct {
 
 typedef struct {
     bool failed;
-    char *msg;
+    char msg[KTEST_TEST_MSG_MAX_SIZE];
 } ktest_testctx_t;
 
 typedef struct {
