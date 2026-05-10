@@ -44,9 +44,9 @@
         }                                                                      \
     } while (0)
 
-#define KTEST_PCALL(fn_name)                                                   \
+#define KTEST_PCALL(fn_name, ...)                                              \
     do {                                                                       \
-        (fn_name)(testctx);                                                    \
+        (fn_name)(testctx, ##__VA_ARGS__);                                     \
         if (testctx->failed) { goto cleanup; }                                 \
     } while (0)
 
