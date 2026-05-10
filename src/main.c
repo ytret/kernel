@@ -4,7 +4,7 @@
 #include "acpi/acpi.h"
 #include "arch.h"
 #include "cmdline.h"
-#include "config.h" // IWYU pragma: keep
+#include "config.h"
 #include "devmgr.h"
 #include "heap.h"
 #include "init.h"
@@ -18,11 +18,11 @@
 #include "smp.h"
 #include "taskmgr.h"
 #include "term.h"
+#include "vfs/vnode.h"
 #include "vmm.h"
 
 #ifdef YTKERNEL_ENABLE_TESTS
 #include "test/ktest.h"
-#include "test/vmctl.h"
 #endif
 
 #define MULTIBOOT_MAGIC_NUM 0x2BADB002U
@@ -91,30 +91,9 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     // NOTE: main() is executed only by the bootstrap processor (BSP). Hence,
     // everything below is also executed only by the BSP.
 
-#ifdef YTKERNEL_ENABLE_TESTS
-    ktest_run_stage(KTEST_SMP);
-#endif
-
     devmgr_init();
 
-#ifdef YTKERNEL_ENABLE_TESTS
-    int ktest_exitcode;
-    if (ktest_should_exit_at_end(&ktest_exitcode)) {
-        const ktest_globalctx_t *const ktest_ctx = ktest_get_globalctx();
-        const int ratio_x1000 =
-            ktest_ctx->tests_passed * 1000 / ktest_ctx->tests_run;
-
-        LOG_INFO("ktest results:");
-        LOG_INFO("%zu.%zu%% tests passed, %zu failed out of %zu",
-                 ratio_x1000 / (size_t)10, ratio_x1000 % (size_t)10,
-                 ktest_ctx->tests_failed, ktest_ctx->tests_run);
-        vmctl_exit(ktest_exitcode);
-    } else {
-        taskmgr_local_init(init_bsp_task);
-    }
-#else
     taskmgr_local_init(init_bsp_task);
-#endif
 
     LOG_ERROR("end of main");
 }

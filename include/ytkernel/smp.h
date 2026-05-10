@@ -3,9 +3,14 @@
 #include <stdint.h>
 
 #include "acpi/acpi.h"
+#include "config.h"
 #include "taskmgr.h"
 
 #include "arch/x86/gdt.h"
+
+#ifdef YTKERNEL_ENABLE_TESTS
+#include "test/ktest_smp.h"
+#endif
 
 #define SMP_VEC_HALT          0xF1 //!< Halt on panic.
 #define SMP_VEC_TLB_SHOOTDOWN 0xF2 //!< TLB shootdown.
@@ -26,6 +31,11 @@ typedef struct {
     void *df_stack_top;
 
     taskmgr_t *taskmgr;
+
+#ifdef YTKERNEL_ENABLE_TESTS
+    ktest_smpjob_t *ktest_job;
+    bool ktest_job_done;
+#endif
 } smp_proc_t;
 
 void smp_init(void);
