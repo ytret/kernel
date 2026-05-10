@@ -48,7 +48,6 @@ static ramfs_node_t *prv_ramfs_new_dir(ramfs_ctx_t *ctx, const char *name,
                                        ramfs_node_t *parent);
 static ramfs_node_t *prv_ramfs_new_file(ramfs_ctx_t *ctx, const char *name,
                                         ramfs_node_t *parent);
-static vfs_err_t prv_ramfs_free_node(ramfs_ctx_t *ctx, ramfs_node_t *node);
 
 static bool prv_ramfs_find_child(ramfs_node_t *dir_node, const char *name,
                                  ramfs_node_t **child_node, size_t *child_idx);
@@ -93,6 +92,34 @@ ramfs_ctx_t *ramfs_new(size_t allowed_size) {
 const fs_desc_t *ramfs_get_desc(void) {
     return &g_ramfs_desc;
 }
+
+vfs_err_t ramfs_free_node(ramfs_ctx_t *ctx, ramfs_node_t *node) {
+    if (node->vnode && node->vnode->refcount != 0) { return VFS_ERR_NODE_USED; }
+
+#ifdef YTKERNEL_ENABLE_TESTS
+    (void)ctx;
+    node->deleted = true;
+#else
+    bool type_ok = false;
+    switch (node->type) {
+    case RAMFS_FILE:
+        type_ok = true;
+        prv_ramfs_free(ctx, node->file.buf, node->file.buf_size);
+        break;
+    case RAMFS_DIR:
+        type_ok = true;
+        if (node->dir.children.num_items > 0) { return VFS_ERR_NODE_NOT_EMPTY; }
+        // FIXME: do allocation sizes always reflect num_children?
+        break;
+    }
+    ASSERT(type_ok);
+
+    prv_ramfs_free(ctx, node, sizeof(*node));
+#endif
+
+    return VFS_ERR_NONE;
+}
+
 
 static vfs_err_t prv_ramfs_fs_mount(void *v_ctx, vnode_t *vnode) {
     LOG_FLOW("v_ctx %p vnode %p", v_ctx, vnode);
@@ -191,7 +218,7 @@ vfs_err_t prv_ramfs_vnode_mknode(vnode_t *vnode, vnode_t **out_vnode,
 
     const vfs_err_t err = prv_ramfs_add_child(ctx, node, name, new_node);
     if (err != VFS_ERR_NONE) {
-        const vfs_err_t free_err = prv_ramfs_free_node(ctx, new_node);
+        const vfs_err_t free_err = ramfs_free_node(ctx, new_node);
         if (free_err != VFS_ERR_NONE) {
             PANIC("failed to free supposedly empty dir node %p: %d", new_node,
                   free_err);
@@ -416,33 +443,6 @@ static ramfs_node_t *prv_ramfs_new_file(ramfs_ctx_t *ctx, const char *name,
     node->file.buf_size = 0;
 
     return node;
-}
-
-static vfs_err_t prv_ramfs_free_node(ramfs_ctx_t *ctx, ramfs_node_t *node) {
-    if (node->vnode && node->vnode->refcount != 0) { return VFS_ERR_NODE_USED; }
-
-#ifdef YTKERNEL_ENABLE_TESTS
-    (void)ctx;
-    node->deleted = true;
-#else
-    bool type_ok = false;
-    switch (node->type) {
-    case RAMFS_FILE:
-        type_ok = true;
-        prv_ramfs_free(ctx, node->file.buf, node->file.buf_size);
-        break;
-    case RAMFS_DIR:
-        type_ok = true;
-        if (node->dir.children.num_items > 0) { return VFS_ERR_NODE_NOT_EMPTY; }
-        // FIXME: do allocation sizes always reflect num_children?
-        break;
-    }
-    ASSERT(type_ok);
-
-    prv_ramfs_free(ctx, node, sizeof(*node));
-#endif
-
-    return VFS_ERR_NONE;
 }
 
 static bool prv_ramfs_find_child(ramfs_node_t *dir_node, const char *name,

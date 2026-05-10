@@ -47,3 +47,4 @@ typedef struct {
 void ramfs_init(ramfs_ctx_t *ctx, size_t allowed_size);
 ramfs_ctx_t *ramfs_new(size_t allowed_size);
 const fs_desc_t *ramfs_get_desc(void);
+vfs_err_t ramfs_free_node(ramfs_ctx_t *ctx, ramfs_node_t *node);
