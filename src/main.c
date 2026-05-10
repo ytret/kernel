@@ -4,6 +4,7 @@
 #include "acpi/acpi.h"
 #include "arch.h"
 #include "cmdline.h"
+#include "config.h"
 #include "devmgr.h"
 #include "heap.h"
 #include "init.h"
@@ -18,6 +19,11 @@
 #include "taskmgr.h"
 #include "term.h"
 #include "vmm.h"
+
+#ifdef YTKERNEL_ENABLE_TESTS
+#include "test/ktest.h"
+#include "test/vmctl.h"
+#endif
 
 #define MULTIBOOT_MAGIC_NUM 0x2BADB002U
 
@@ -65,19 +71,31 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     term_init_history();
     term_clear();
 
+    ktest_run_stage(KTEST_EARLY_BOOT);
+
     acpi_init();
 
     taskmgr_global_init();
 
     arch_init_2();
 
+    ktest_run_stage(KTEST_PRE_SMP);
+
     smp_init();
     // NOTE: main() is executed only by the bootstrap processor (BSP). Hence,
     // everything below is also executed only by the BSP.
 
+    ktest_run_stage(KTEST_SMP);
+
     devmgr_init();
 
-    taskmgr_local_init(init_bsp_task);
+    int ktest_exitcode;
+    if (ktest_should_exit_at_end(&ktest_exitcode)) {
+        vmctl_exit(ktest_exitcode);
+    } else {
+        taskmgr_local_init(init_bsp_task);
+    }
+
     LOG_ERROR("end of main");
 }
 
