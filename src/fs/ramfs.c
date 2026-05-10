@@ -10,31 +10,6 @@
 
 #define RAMFS_FILE_BUF_ALIGN 32
 
-typedef enum {
-    RAMFS_FILE,
-    RAMFS_DIR,
-} ramfs_node_type_t;
-
-typedef struct {
-    dynarr_t children; // item type: `ramfs_node_t *`
-    dynarr_t dirents;  // item type: `dirent_t *`
-} ramfs_dir_data_t;
-
-struct ramfs_node {
-    char *name;
-    ramfs_node_t *parent;
-    vnode_t *vnode;
-
-    ramfs_node_type_t type;
-    union {
-        struct {
-            void *buf;
-            size_t buf_size;
-        } file;
-        ramfs_dir_data_t dir;
-    };
-};
-
 static vfs_err_t prv_ramfs_fs_mount(void *v_ctx, vnode_t *vnode);
 static vfs_err_t prv_ramfs_fs_unmount(void *v_ctx, vnode_t *vnode);
 static void prv_ramfs_on_free_vnode(void *v_ctx, vnode_t *vnode);
@@ -446,6 +421,10 @@ static ramfs_node_t *prv_ramfs_new_file(ramfs_ctx_t *ctx, const char *name,
 static vfs_err_t prv_ramfs_free_node(ramfs_ctx_t *ctx, ramfs_node_t *node) {
     if (node->vnode && node->vnode->refcount != 0) { return VFS_ERR_NODE_USED; }
 
+#ifdef YTKERNEL_ENABLE_TESTS
+    (void)ctx;
+    node->deleted = true;
+#else
     bool type_ok = false;
     switch (node->type) {
     case RAMFS_FILE:
@@ -461,6 +440,7 @@ static vfs_err_t prv_ramfs_free_node(ramfs_ctx_t *ctx, ramfs_node_t *node) {
     ASSERT(type_ok);
 
     prv_ramfs_free(ctx, node, sizeof(*node));
+#endif
 
     return VFS_ERR_NONE;
 }
