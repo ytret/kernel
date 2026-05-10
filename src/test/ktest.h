@@ -54,6 +54,12 @@
         }                                                                      \
     } while (0)
 
+#define KTEST_PCALL(fn_name)                                                   \
+    do {                                                                       \
+        (fn_name)(testctx);                                                    \
+        if (testctx->failed) { goto cleanup; }                                  \
+    } while (0)
+
 typedef enum {
     KTEST_EARLY_BOOT,
     KTEST_PRE_SMP,
