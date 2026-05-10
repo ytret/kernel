@@ -73,5 +73,19 @@ SECTIONS
                 *(.bss)
         } :data
 
+        .ktest_suites :
+        {
+            ld_ktest_suites_start = .;
+            KEEP(*(.ktest_suites))
+            ld_ktest_suites_end = .;
+        } :data
+
+        .ktest_tests :
+        {
+            ld_ktest_tests_start = .;
+            KEEP(*(.ktest_tests))
+            ld_ktest_tests_end = .;
+        } :data
+
         ld_vmm_kernel_end = ALIGN(4K);
 }

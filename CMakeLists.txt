@@ -174,7 +174,12 @@ list(APPEND KERNEL_SOURCES
 
 )
 if(YTKERNEL_ENABLE_TESTS)
-    list(APPEND KERNEL_SOURCES src/test/vmctl.c)
+    list(APPEND KERNEL_SOURCES
+
+        src/test/ktest.c
+        src/test/vmctl.c
+
+    )
 endif()
 add_executable(kernel ${KERNEL_SOURCES})
 target_compile_options(kernel PRIVATE
