@@ -4,7 +4,7 @@
 #include "acpi/acpi.h"
 #include "arch.h"
 #include "cmdline.h"
-#include "config.h"
+#include "config.h" // IWYU pragma: keep
 #include "devmgr.h"
 #include "heap.h"
 #include "init.h"
@@ -71,7 +71,9 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     term_init_history();
     term_clear();
 
+#ifdef YTKERNEL_ENABLE_TESTS
     ktest_run_stage(KTEST_EARLY_BOOT);
+#endif
 
     acpi_init();
 
@@ -79,16 +81,21 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     arch_init_2();
 
+#ifdef YTKERNEL_ENABLE_TESTS
     ktest_run_stage(KTEST_PRE_SMP);
+#endif
 
     smp_init();
     // NOTE: main() is executed only by the bootstrap processor (BSP). Hence,
     // everything below is also executed only by the BSP.
 
+#ifdef YTKERNEL_ENABLE_TESTS
     ktest_run_stage(KTEST_SMP);
+#endif
 
     devmgr_init();
 
+#ifdef YTKERNEL_ENABLE_TESTS
     int ktest_exitcode;
     if (ktest_should_exit_at_end(&ktest_exitcode)) {
         const ktest_globalctx_t *const ktest_ctx = ktest_get_globalctx();
@@ -103,6 +110,9 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     } else {
         taskmgr_local_init(init_bsp_task);
     }
+#else
+    taskmgr_local_init(init_bsp_task);
+#endif
 
     LOG_ERROR("end of main");
 }
