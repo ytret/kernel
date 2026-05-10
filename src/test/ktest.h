@@ -30,6 +30,16 @@
     static void ktest_fn_##SuiteName##_##TestName(__attribute__((unused))      \
                                                   ktest_testctx_t *testctx)
 
+#define KTEST_SMPJOB_FN(JobName)  ktest_smpjob_fn_##JobName
+#define KTEST_SMPJOB_REF(JobName) ktest_smpjob_##JobName
+#define KTEST_SMPJOB(JobName)                                                  \
+    static void KTEST_SMPJOB_FN(JobName)(void *arg);                           \
+    static ktest_smpjob_t KTEST_SMPJOB_REF(JobName) = {                        \
+        .name = #JobName,                                                      \
+        .fn = KTEST_SMPJOB_FN(JobName),                                        \
+    };                                                                         \
+    static void KTEST_SMPJOB_FN(JobName)(void *arg)
+
 #define KTEST_ASSERT_EQ(act, exp) KTEST_ASSERT((act) == (exp))
 
 #define KTEST_ASSERT_NE(act, rhs) KTEST_ASSERT((act) != (rhs))
