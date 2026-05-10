@@ -137,8 +137,8 @@ void *heap_alloc_aligned(size_t size, size_t align) {
             pmm_page_t *const metadata = pmm_paddr_to_page(i_addr);
             metadata->type = PMM_ALLOC_LARGE;
             metadata->large = large;
-            LOG_FLOW("mark page 0x%08" PRIxPTR " as a large allocation %p",
-                     i_addr, large);
+            LOG_FLOW("mark page 0x%016llx as a large allocation %p", i_addr,
+                     large);
         }
 
         // The PMM pools are identity mapped at this point.
