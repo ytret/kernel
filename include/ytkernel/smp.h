@@ -34,8 +34,7 @@ typedef struct {
 
 #ifdef YTKERNEL_ENABLE_TESTS
     spinlock_t ktest_lock;
-    ktest_smpjob_t *ktest_job;
-    bool ktest_job_done;
+    ktest_smpjob_local_t ktest_job;
 #endif
 } smp_proc_t;
 

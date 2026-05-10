@@ -13,7 +13,7 @@ void ktest_smpbar_wait(const ktest_smpbar_t *barrier) {
     }
 }
 
-void ktest_smpjob_broadcast(ktest_smpjob_t *job) {
+void ktest_smpjob_broadcast(ktest_smpjob_t *job, void *fn_arg) {
     const uint8_t num_procs = smp_get_num_procs();
 
     ktest_smpbar_init(&job->barrier, num_procs);
@@ -21,8 +21,10 @@ void ktest_smpjob_broadcast(ktest_smpjob_t *job) {
     for (uint8_t proc_num = 0; proc_num < smp_get_num_procs(); proc_num++) {
         smp_proc_t *const proc = smp_get_proc(proc_num);
         spinlock_acquire(&proc->ktest_lock);
-        proc->ktest_job = job;
-        proc->ktest_job_done = false;
+        proc->ktest_job.done = false;
+        proc->ktest_job.job = job;
+        proc->ktest_job.fn_arg = fn_arg;
+        proc->ktest_job.testctx = fn_arg;
         spinlock_release(&proc->ktest_lock);
     }
 
@@ -37,12 +39,15 @@ void ktest_smpjob_do_local_job(void) {
     smp_proc_t *const proc = smp_get_running_proc();
 
     spinlock_acquire(&proc->ktest_lock);
-    if (proc->ktest_job && !proc->ktest_job_done) {
+    if (proc->ktest_job.job && !proc->ktest_job.done) {
         LOG_FLOW("proc num %u, do job %s", proc->proc_num,
-                 proc->ktest_job->name);
-        proc->ktest_job->fn(proc->ktest_job->fn_arg);
-        proc->ktest_job->barrier.arrived++;
-        proc->ktest_job_done = true;
+                 proc->ktest_job.job->name);
+
+        proc->ktest_job.job->fn(proc->ktest_job.testctx,
+                                proc->ktest_job.fn_arg);
+        proc->ktest_job.job->barrier.arrived++;
+
+        proc->ktest_job.done = true;
     }
     spinlock_release(&proc->ktest_lock);
 }

@@ -61,8 +61,7 @@ KTEST(SMPSuiteVNode, RefCount) {
     node = vnode->fs_data;
     KTEST_ASSERT_NE(node, NULL);
 
-    KTEST_SMPJOB_REF(RefCountJob).fn_arg = vnode;
-    ktest_smpjob_broadcast(&KTEST_SMPJOB_REF(RefCountJob));
+    ktest_smpjob_broadcast(&KTEST_SMPJOB_REF(RefCountJob), vnode);
     ktest_smpjob_wait(&KTEST_SMPJOB_REF(RefCountJob));
 
     KTEST_ASSERT_EQ(vnode->refcount, 1);
