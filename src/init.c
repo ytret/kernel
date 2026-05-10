@@ -61,19 +61,21 @@ void init_bsp_task(void) {
     err = file_open_path_str("/foo", &file);
     if (err != FILE_ERR_NONE) { PANIC("open error %d", err); }
 
-    LOG_INFO("before unlink:");
-    LOG_INFO("  foo_node->fs_data = %p", foo_node->fs_data);
-    LOG_INFO("  foo_node->refcount = %d", foo_node->refcount);
-
-    vfs_err = root_node->ops->f_unlink(root_node, "foo");
-    if (vfs_err) { PANIC("unlink err %d: %s", vfs_err, vfs_err_str(vfs_err)); }
-
-    LOG_INFO("after unlink:");
-    LOG_INFO("  foo_node->fs_data = %p", foo_node->fs_data);
-    LOG_INFO("  foo_node->refcount = %d", foo_node->refcount);
-
     size_t buf_size = 32;
-    void *buf = heap_alloc(buf_size);
+    uint8_t *buf = heap_alloc(buf_size);
+    for (size_t idx = 0; idx < buf_size; idx++) {
+        buf[idx] = 2 * idx;
+    }
+
+    size_t write_size = 16;
+    size_t num_written = 0;
+    err = file_write(&file, buf, write_size, &num_written);
+    if (err == FILE_ERR_NONE) {
+        LOG_INFO("num_written = %zu, wanted to write %zu", num_written, write_size);
+    } else {
+        LOG_ERROR("write error %d", err);
+    }
+
     size_t num_read = 0;
     err = file_read(&file, buf, buf_size, &num_read);
     if (err == FILE_ERR_NONE) {
@@ -87,7 +89,6 @@ void init_bsp_task(void) {
                           "%02x ", ((uint8_t *)buf)[idx]);
         }
         LOG_INFO("%s", dump);
-
     } else {
         LOG_ERROR("read error %d", err);
     }
