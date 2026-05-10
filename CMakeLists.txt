@@ -178,6 +178,7 @@ if(YTKERNEL_ENABLE_TESTS)
 
         src/test/ktest.c
         src/test/ktest_smp.c
+        src/test/smp/smpsuite_vnode.c
         src/test/vmctl.c
 
     )
