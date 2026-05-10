@@ -51,6 +51,8 @@ KTEST(SMPSuiteVNode, Refcount) {
     vnode_put(vnode);
 
     KTEST_ASSERT_EQ(vnode->refcount, 0);
+    KTEST_ASSERT_EQ(vnode->magic, VNODE_MAGIC_DEAD);
+    KTEST_ASSERT_EQ(vnode_get_destroy_cnt(), 1);
     KTEST_ASSERT(!node->deleted);
 
 cleanup:
