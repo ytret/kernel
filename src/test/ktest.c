@@ -3,7 +3,6 @@
 #include "log.h"
 #include "memfun.h"
 #include "test/ktest.h"
-#include "test/vmctl.h"
 
 extern const ktest_suite_t ld_ktest_suites_start[];
 extern const ktest_suite_t ld_ktest_suites_end[];
@@ -46,7 +45,6 @@ void ktest_run_stage(ktest_stage_t stage) {
     }
 
 exit:
-    vmctl_exit(0);
 }
 
 bool ktest_should_exit_at_end(int *exitcode) {
