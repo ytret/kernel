@@ -4,6 +4,20 @@
 
 #include "test/ktest.h"
 
+#define KTEST_SMPJOB_FN(JobName) ktest_smpjob_fn_##JobName
+
+#define KTEST_SMPJOB_REF(JobName) ktest_smpjob_##JobName
+
+#define KTEST_SMPJOB(JobName)                                                  \
+    static void KTEST_SMPJOB_FN(JobName)(                                      \
+        __attribute__((unused)) ktest_testctx_t * testctx, void *arg);         \
+    static ktest_smpjob_t KTEST_SMPJOB_REF(JobName) = {                        \
+        .name = #JobName,                                                      \
+        .fn = KTEST_SMPJOB_FN(JobName),                                        \
+    };                                                                         \
+    static void KTEST_SMPJOB_FN(JobName)(                                      \
+        __attribute__((unused)) ktest_testctx_t * testctx, void *arg)
+
 typedef void (*ktest_smpjob_fn_t)(ktest_testctx_t *test, void *arg);
 
 typedef struct {
