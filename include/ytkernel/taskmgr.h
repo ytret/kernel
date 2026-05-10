@@ -132,7 +132,7 @@ struct taskmgr {
      * Initial value must be 1 and it is decremented after the scheduler is
      * initialized in #taskmgr_local_init().
      */
-    int scheduler_lock;
+    _Atomic int scheduler_lock;
 
     /**
      * Running task.
