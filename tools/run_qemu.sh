@@ -65,6 +65,7 @@ done
             -drive file="$HD_PATH",format=raw,if=none,id=disk \
             -device ahci,id=ahci                              \
             -device ide-hd,drive=disk,bus=ahci.0              \
+            -device isa-debug-exit,iobase=0xf4,iosize=0x04    \
             -boot order=d                                     \
             -serial stdio                                     \
             -d guest_errors                                   \
