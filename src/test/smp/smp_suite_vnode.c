@@ -50,28 +50,6 @@ KTEST_SMPJOB(RefCountJob) {
     }
 }
 
-typedef struct {
-    vnode_t *exp_vnode;
-    const char *path;
-} SMPSuiteVNode_ResolveJob_arg_t;
-
-KTEST_SMPJOB(ResolveJob) {
-    const SMPSuiteVNode_ResolveJob_arg_t *const st_arg = arg;
-    vnode_t *resolved_vnode = NULL;
-    const char *const path = st_arg->path;
-    const smp_proc_t *const proc = smp_get_running_proc();
-
-    for (size_t idx = 0; idx < 10; idx++) {
-        // Resolve `/dir/file`.
-        const char *const path_str = "/dir/file";
-        const vpath_err_t resolve_err =
-            vnode_resolve_path_str(path_str, &resolved_vnode);
-        // KTEST_JOB_ASSERT_EQ(resolve_err, VPATH_ERR_NONE);
-        // KTEST_JOB_ASSERT_EQ(resolved_vnode, file_vnode);
-        // KTEST_JOB_ASSERT_EQ(resolved_vnode->refcount, 1);
-    }
-}
-
 KTEST(SMPSuiteVNode, RefCount) {
     SMPSuiteVNode_ctx_t *const ctx = &g_SMPSuiteVNode_ctx;
     ramfs_node_t *node = NULL;
@@ -101,6 +79,28 @@ KTEST(SMPSuiteVNode, RefCount) {
 cleanup:
     if (vnode) { heap_free(vnode); }
     SMPSuiteVNode_test_cleanup(testctx);
+}
+
+typedef struct {
+    vnode_t *exp_vnode;
+    const char *path;
+} SMPSuiteVNode_ResolveJob_arg_t;
+
+KTEST_SMPJOB(ResolveJob) {
+    const SMPSuiteVNode_ResolveJob_arg_t *const st_arg = arg;
+    vnode_t *resolved_vnode = NULL;
+    const char *const path_str = st_arg->path;
+
+    for (size_t idx = 0; idx < 10; idx++) {
+        const vpath_err_t resolve_err =
+            vnode_resolve_path_str(path_str, &resolved_vnode);
+        KTEST_ASSERT_EQ(resolve_err, VPATH_ERR_NONE);
+        KTEST_ASSERT_EQ(resolved_vnode, st_arg->exp_vnode);
+        KTEST_ASSERT_EQ(resolved_vnode->refcount, 1);
+    }
+
+cleanup:
+    if (resolved_vnode) { heap_free(resolved_vnode); }
 }
 
 KTEST(SMPSuiteVNode, ConcurrentResolve) {
