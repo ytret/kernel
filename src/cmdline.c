@@ -54,33 +54,39 @@ bool cmdline_init(const char *str) {
     return true;
 }
 
-bool cmdline_has_key(const char *key) {
+size_t cmdline_num_values(const char *key) {
     DEBUG_ASSERT(key != NULL);
+
+    size_t num_values = 0;
 
     for (size_t idx = 0; idx < g_cmdline.items.num_items; idx++) {
         const cmdline_item_t *const item = dynarr_ptr_at(&g_cmdline.items, idx);
         ASSERT(item != NULL);
 
-        if (string_equals(key, item->key)) { return true; }
+        if (string_equals(key, item->key)) { num_values++; }
     }
 
-    return false;
+    return num_values;
 }
 
-size_t cmdline_get_value(const char *key, char *buf, size_t buf_size) {
+size_t cmdline_get_value(const char *key, size_t value_idx, char *buf,
+                         size_t buf_size) {
     DEBUG_ASSERT(key != NULL);
 
     if (!buf) { return 0; }
 
+    size_t at_value_idx = 0;
     for (size_t idx = 0; idx < g_cmdline.items.num_items; idx++) {
         const cmdline_item_t *const item = dynarr_ptr_at(&g_cmdline.items, idx);
         ASSERT(item != NULL);
 
         if (string_equals(key, item->key)) {
+            if (at_value_idx++ != value_idx) { continue; }
             const size_t copy_size = buf_size >= (item->value_len + 1)
                                          ? (item->value_len + 1)
                                          : buf_size;
             kmemcpy(buf, item->value, copy_size);
+            // FIXME: nul byte?
             return true;
         }
     }
