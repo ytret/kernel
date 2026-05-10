@@ -88,7 +88,7 @@ KTEST(SMPSuiteVNode, RefCount) {
     KTEST_ASSERT_NE(node, NULL);
 
     ktest_smpjob_broadcast(&KTEST_SMPJOB_REF(RefCountJob), vnode);
-    ktest_smpjob_wait(&KTEST_SMPJOB_REF(RefCountJob));
+    KTEST_PCALL(ktest_smpjob_wait, &KTEST_SMPJOB_REF(RefCountJob));
 
     KTEST_ASSERT_EQ(vnode->refcount, 1);
     vnode_put(vnode);
@@ -125,7 +125,7 @@ KTEST(SMPSuiteVNode, ConcurrentResolve) {
     arg->exp_vnode = file_vnode;
     arg->path = "/dir/file";
     ktest_smpjob_broadcast(&KTEST_SMPJOB_REF(ResolveJob), arg);
-    ktest_smpjob_wait(&KTEST_SMPJOB_REF(ResolveJob));
+    KTEST_PCALL(ktest_smpjob_wait, &KTEST_SMPJOB_REF(ResolveJob));
 
 cleanup:
     heap_free(arg);
