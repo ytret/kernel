@@ -1,5 +1,6 @@
 #include "fs/ramfs.h"
 #include "heap.h"
+#include "smp.h"
 #include "test/ktest.h"
 #include "test/ktest_smp.h"
 #include "vfs/vnode.h"
@@ -49,6 +50,28 @@ KTEST_SMPJOB(RefCountJob) {
     }
 }
 
+typedef struct {
+    vnode_t *exp_vnode;
+    const char *path;
+} SMPSuiteVNode_ResolveJob_arg_t;
+
+KTEST_SMPJOB(ResolveJob) {
+    const SMPSuiteVNode_ResolveJob_arg_t *const st_arg = arg;
+    vnode_t *resolved_vnode = NULL;
+    const char *const path = st_arg->path;
+    const smp_proc_t *const proc = smp_get_running_proc();
+
+    for (size_t idx = 0; idx < 10; idx++) {
+        // Resolve `/dir/file`.
+        const char *const path_str = "/dir/file";
+        const vpath_err_t resolve_err =
+            vnode_resolve_path_str(path_str, &resolved_vnode);
+        // KTEST_JOB_ASSERT_EQ(resolve_err, VPATH_ERR_NONE);
+        // KTEST_JOB_ASSERT_EQ(resolved_vnode, file_vnode);
+        // KTEST_JOB_ASSERT_EQ(resolved_vnode->refcount, 1);
+    }
+}
+
 KTEST(SMPSuiteVNode, RefCount) {
     SMPSuiteVNode_ctx_t *const ctx = &g_SMPSuiteVNode_ctx;
     ramfs_node_t *node = NULL;
@@ -77,5 +100,36 @@ KTEST(SMPSuiteVNode, RefCount) {
 
 cleanup:
     if (vnode) { heap_free(vnode); }
+    SMPSuiteVNode_test_cleanup(testctx);
+}
+
+KTEST(SMPSuiteVNode, ConcurrentResolve) {
+    SMPSuiteVNode_ctx_t *const ctx = &g_SMPSuiteVNode_ctx;
+    vnode_t *dir_vnode = NULL;
+    vnode_t *file_vnode = NULL;
+    SMPSuiteVNode_ResolveJob_arg_t *arg = NULL;
+
+    KTEST_PCALL(SMPSuiteVNode_test_setup);
+
+    // Create vnode at `/dir/file`.
+    const vfs_err_t mkdir_err =
+        ctx->root->ops->f_mknode(ctx->root, &dir_vnode, "dir", VNODE_DIR);
+    KTEST_ASSERT_EQ(mkdir_err, VFS_ERR_NONE);
+    KTEST_ASSERT_NE(dir_vnode, NULL);
+    const vfs_err_t mkfile_err =
+        ctx->root->ops->f_mknode(dir_vnode, &file_vnode, "file", VNODE_FILE);
+    KTEST_ASSERT_EQ(mkfile_err, VFS_ERR_NONE);
+    KTEST_ASSERT_NE(file_vnode, NULL);
+
+    arg = heap_alloc(sizeof(*arg));
+    arg->exp_vnode = file_vnode;
+    arg->path = "/dir/file";
+    ktest_smpjob_broadcast(&KTEST_SMPJOB_REF(ResolveJob), arg);
+    ktest_smpjob_wait(&KTEST_SMPJOB_REF(ResolveJob));
+
+cleanup:
+    heap_free(arg);
+    heap_free(file_vnode);
+    heap_free(dir_vnode);
     SMPSuiteVNode_test_cleanup(testctx);
 }
