@@ -31,7 +31,10 @@ void mutex_acquire(task_mutex_t *mutex) {
     if (__sync_bool_compare_and_swap(&mutex->locking_task, NULL, caller_task)) {
         // The mutex has been acquired. Also see below for another path that
         // leads to mutex acquisition.
-        if (caller_task) { caller_task->num_owned_mutexes++; }
+        if (caller_task) {
+            caller_task->num_owned_mutexes++;
+            caller_task->last_owned_mutex = mutex;
+        }
         return;
     }
 
@@ -54,6 +57,7 @@ void mutex_acquire(task_mutex_t *mutex) {
         // the waiting list lock, which guarantees that the previous mutex owner
         // has returned from mutex_release().
         caller_task->num_owned_mutexes++;
+        caller_task->last_owned_mutex = mutex;
         spinlock_release(&mutex->list_lock);
         return;
     }
@@ -107,6 +111,7 @@ void mutex_release(task_mutex_t *mutex) {
         }
 
         waiting_task->num_owned_mutexes++;
+        waiting_task->last_owned_mutex = mutex;
         taskmgr_unblock(waiting_task);
     } else {
         mutex->locking_task = NULL;

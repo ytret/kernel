@@ -93,6 +93,13 @@ typedef struct {
     _Atomic size_t num_owned_mutexes;
 
     /**
+     * Last owned mutex pointer saved for debugging.
+     * This value is managed by #mutex_acquire() and must be updated every time
+     * #task_t.num_owned_mutexes is incremented.
+     */
+    void *last_owned_mutex;
+
+    /**
      * Target counter value to unblock the sleeping task at.
      * Relevant only if #task_t.is_sleeping is `true`.
      */
