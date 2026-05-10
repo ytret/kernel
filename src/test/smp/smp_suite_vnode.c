@@ -4,6 +4,37 @@
 #include "test/ktest_smp.h"
 #include "vfs/vnode.h"
 
+typedef struct {
+    ramfs_ctx_t *fs;
+    vnode_t *root;
+} SMPSuiteVNode_ctx_t;
+
+static SMPSuiteVNode_ctx_t g_SMPSuiteVNode_ctx;
+
+static void SMPSuiteVNode_test_setup(ktest_testctx_t *testctx) {
+    SMPSuiteVNode_ctx_t *const ctx = &g_SMPSuiteVNode_ctx;
+
+    ctx->fs = ramfs_new(SIZE_MAX);
+    KTEST_ASSERT_NE(ctx->fs, NULL);
+
+    ctx->root = vnode_root_node();
+    KTEST_ASSERT_NE(ctx->root, NULL);
+
+    const vfs_err_t mountfs_err = ramfs_get_desc()->f_mount(ctx->fs, ctx->root);
+    KTEST_ASSERT_EQ(mountfs_err, VFS_ERR_NONE);
+    KTEST_ASSERT_NE(ctx->root->ops, NULL);
+    KTEST_ASSERT_NE(ctx->root->ops->f_mknode, NULL);
+
+cleanup:
+    if (testctx->failed) {
+        if (ctx->fs) { ramfs_free(ctx->fs); }
+    }
+}
+
+static void SMPSuiteVNode_test_cleanup(ktest_testctx_t *testctx) {
+    (void)testctx;
+}
+
 KTEST_SUITE(KTEST_SMP, SMPSuiteVNode);
 
 KTEST_SMPJOB(RefCountJob) {
@@ -16,22 +47,14 @@ KTEST_SMPJOB(RefCountJob) {
 }
 
 KTEST(SMPSuiteVNode, RefCount) {
-    ramfs_ctx_t fs_ctx;
-    ramfs_init(&fs_ctx, SIZE_MAX);
-
+    SMPSuiteVNode_ctx_t *const ctx = &g_SMPSuiteVNode_ctx;
     ramfs_node_t *node = NULL;
-
     vnode_t *vnode = NULL;
-    vnode_t *const root = vnode_root_node();
-    KTEST_ASSERT_NE(root, NULL);
 
-    const vfs_err_t mountfs_err = ramfs_get_desc()->f_mount(&fs_ctx, root);
-    KTEST_ASSERT_EQ(mountfs_err, VFS_ERR_NONE);
-    KTEST_ASSERT_NE(root->ops, NULL);
-    KTEST_ASSERT_NE(root->ops->f_mknode, NULL);
+    KTEST_PCALL(SMPSuiteVNode_test_setup);
 
     const vfs_err_t mknode_err =
-        root->ops->f_mknode(root, &vnode, "vnode", VNODE_FILE);
+        ctx->root->ops->f_mknode(ctx->root, &vnode, "vnode", VNODE_FILE);
     KTEST_ASSERT_EQ(mknode_err, VFS_ERR_NONE);
     KTEST_ASSERT_EQ(vnode->refcount, 1);
 
@@ -52,5 +75,6 @@ KTEST(SMPSuiteVNode, RefCount) {
 
 cleanup:
     if (vnode) { heap_free(vnode); }
-    if (node) { ramfs_free_node(&fs_ctx, node); }
+    if (node) { ramfs_free_node(ctx->fs, node); }
+    SMPSuiteVNode_test_cleanup(testctx);
 }
