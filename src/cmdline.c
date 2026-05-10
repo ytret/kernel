@@ -107,7 +107,7 @@ static bool prv_cmdline_add_kv(const char *kv) {
         return false;
     }
 
-    const size_t key_len = has_val ? value_idx - 1 : 0;
+    const size_t key_len = has_val ? value_idx - 1 : kv_len;
     item.key = heap_alloc(key_len + 1);
     kmemcpy(item.key, kv, key_len);
     item.key[key_len] = '\0';
