@@ -47,3 +47,5 @@ file_err_t file_close(file_t *file);
 file_err_t file_seek(file_t *file, off_t offset, file_seek_t whence);
 file_err_t file_read(file_t *file, void *buf, size_t num_bytes,
                      size_t *out_read);
+file_err_t file_write(file_t *file, const void *buf, size_t num_bytes,
+                      size_t *out_written);

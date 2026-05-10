@@ -204,3 +204,50 @@ file_err_t file_read(file_t *file, void *buf, size_t num_bytes,
         return FILE_ERR_IO;
     }
 }
+
+file_err_t file_write(file_t *file, const void *buf, size_t num_bytes,
+                      size_t *out_written) {
+    LOG_FLOW("file %p buf %p num_bytes %zu out_written %p", file, buf,
+             num_bytes, out_written);
+    DEBUG_ASSERT(file != NULL);
+    DEBUG_ASSERT(buf != NULL);
+    DEBUG_ASSERT(out_written != NULL);
+
+    mutex_acquire(&file->lock);
+
+    if (!file->opened) {
+        LOG_ERROR("file %p not opened", file);
+        mutex_release(&file->lock);
+        return FILE_ERR_NOT_OPENED;
+    }
+
+    vnode_t *const node = file->node;
+    mutex_acquire(&node->lock);
+    if (node->type != VNODE_FILE) {
+        LOG_ERROR("node %p type %d does not support write", node, node->type);
+        mutex_release(&node->lock);
+        mutex_release(&file->lock);
+        return FILE_ERR_NOT_SUPP;
+    }
+    if (!node->ops->f_write) {
+        LOG_ERROR("node %p file system does not support write", node);
+        mutex_release(&node->lock);
+        mutex_release(&file->lock);
+        return FILE_ERR_NOT_SUPP;
+    }
+
+    ASSERT(file->offset >= 0);
+
+    const vfs_err_t err = node->ops->f_write(node, (size_t)file->offset, buf,
+                                             num_bytes, out_written);
+
+    mutex_release(&node->lock);
+    mutex_release(&file->lock);
+
+    if (err == VFS_ERR_NONE) {
+        return FILE_ERR_NONE;
+    } else {
+        LOG_ERROR("node %p read returned %d: %s", node, err, vfs_err_str(err));
+        return FILE_ERR_IO;
+    }
+}
