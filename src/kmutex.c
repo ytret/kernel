@@ -70,7 +70,10 @@ void mutex_acquire(task_mutex_t *mutex) {
     taskmgr_block_running_task(&mutex->waiting_tasks);
 
     spinlock_release(&mutex->list_lock);
-    taskmgr_local_reschedule();
+    for (;;) {
+        if (taskmgr_local_reschedule()) { break; }
+        __asm__ volatile("pause" ::: "memory");
+    }
 }
 
 void mutex_release(task_mutex_t *mutex) {
