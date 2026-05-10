@@ -89,6 +89,16 @@ ramfs_ctx_t *ramfs_new(size_t allowed_size) {
     return ctx;
 }
 
+void ramfs_deinit(ramfs_ctx_t *ctx) {
+    // TODO
+    (void)ctx;
+}
+
+void ramfs_free(ramfs_ctx_t *ctx) {
+    ramfs_deinit(ctx);
+    heap_free(ctx);
+}
+
 const fs_desc_t *ramfs_get_desc(void) {
     return &g_ramfs_desc;
 }
@@ -119,7 +129,6 @@ vfs_err_t ramfs_free_node(ramfs_ctx_t *ctx, ramfs_node_t *node) {
 
     return VFS_ERR_NONE;
 }
-
 
 static vfs_err_t prv_ramfs_fs_mount(void *v_ctx, vnode_t *vnode) {
     LOG_FLOW("v_ctx %p vnode %p", v_ctx, vnode);
