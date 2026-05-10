@@ -8,6 +8,8 @@
 #include "panic.h"
 #include "vfs/vnode.h"
 
+#define RAMFS_FILE_BUF_ALIGN 32
+
 typedef enum {
     RAMFS_FILE,
     RAMFS_DIR,
@@ -54,6 +56,8 @@ vfs_err_t prv_ramfs_vnode_lookup(vnode_t *vnode, vnode_t **out_vnode,
                                  const char *name);
 vfs_err_t prv_ramfs_vnode_read(vnode_t *vnode, size_t offset, void *buf,
                                size_t num_bytes, size_t *out_read);
+vfs_err_t prv_ramfs_vnode_write(vnode_t *vnode, size_t offset, const void *buf,
+                                size_t num_bytes, size_t *out_written);
 
 static const vnode_ops_t g_ramfs_node_ops = {
     .f_mknode = prv_ramfs_vnode_mknode,
@@ -62,6 +66,7 @@ static const vnode_ops_t g_ramfs_node_ops = {
     .f_readdir = prv_ramfs_vnode_readdir,
     .f_lookup = prv_ramfs_vnode_lookup,
     .f_read = prv_ramfs_vnode_read,
+    .f_write = prv_ramfs_vnode_write,
 };
 
 static ramfs_node_t *prv_ramfs_new_dir(ramfs_ctx_t *ctx, const char *name,
@@ -370,6 +375,40 @@ vfs_err_t prv_ramfs_vnode_read(vnode_t *vnode, size_t offset, void *buf,
     return VFS_ERR_NONE;
 }
 
+vfs_err_t prv_ramfs_vnode_write(vnode_t *vnode, size_t offset, const void *buf,
+                                size_t num_bytes, size_t *out_written) {
+    LOG_FLOW("vnode %p offset %zu buf %p num_bytes %zu out_written %p", vnode,
+             offset, buf, num_bytes, out_written);
+
+    if (!vnode) { return VFS_ERR_NODE_BAD_ARGS; }
+    if (vnode->type != VNODE_FILE) { return VFS_ERR_NODE_BAD_ARGS; }
+    if (!buf) { return VFS_ERR_NODE_BAD_ARGS; }
+
+    ramfs_ctx_t *const ctx = vnode->fs_ctx;
+    ramfs_node_t *const node = vnode->fs_data;
+    if (!ctx) { return VFS_ERR_NODE_NO_FS; }
+    if (!node) { return VFS_ERR_NODE_NO_DATA; }
+
+    ASSERT(node->type == RAMFS_FILE);
+
+    const size_t old_size = node->file.buf_size;
+    const size_t write_end = offset + num_bytes;
+    const size_t new_size = write_end > old_size ? write_end : old_size;
+    if (new_size > old_size) {
+        node->file.buf =
+            heap_realloc(node->file.buf, new_size, RAMFS_FILE_BUF_ALIGN);
+        node->file.buf_size = new_size;
+
+        kmemset((void *)((uintptr_t)node->file.buf + old_size), 0,
+                new_size - old_size);
+    }
+
+    kmemcpy((void *)((uintptr_t)node->file.buf + offset), buf, num_bytes);
+    *out_written = num_bytes;
+
+    return VFS_ERR_NONE;
+}
+
 static ramfs_node_t *prv_ramfs_new_dir(ramfs_ctx_t *ctx, const char *name,
                                        ramfs_node_t *parent) {
     ramfs_node_t *const node =
@@ -400,14 +439,6 @@ static ramfs_node_t *prv_ramfs_new_file(ramfs_ctx_t *ctx, const char *name,
     node->type = RAMFS_FILE;
     node->file.buf = NULL;
     node->file.buf_size = 0;
-
-    // FIXME: remove this test
-    node->file.buf = heap_realloc(node->file.buf, 16, 4);
-    node->file.buf_size = 16;
-    uint8_t *buf = node->file.buf;
-    for (size_t idx = 0; idx < node->file.buf_size; idx++) {
-        buf[idx] = 2 * idx;
-    }
 
     return node;
 }

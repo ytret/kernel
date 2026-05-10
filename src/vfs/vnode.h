@@ -35,6 +35,8 @@ typedef struct {
                           const char *name);
     vfs_err_t (*f_read)(vnode_t *node, size_t offset, void *buf,
                         size_t num_bytes, size_t *out_read);
+    vfs_err_t (*f_write)(vnode_t *node, size_t offset, const void *buf,
+                         size_t num_bytes, size_t *out_written);
 } vnode_ops_t;
 
 struct vnode {
