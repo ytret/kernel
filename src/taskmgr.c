@@ -156,11 +156,11 @@ void taskmgr_local_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
     PANIC("initial task entry has returned");
 }
 
-void taskmgr_local_schedule(void) {
+bool taskmgr_local_schedule(void) {
     taskmgr_t *const taskmgr = smp_get_running_taskmgr();
-    if (!taskmgr) { return; }
+    if (!taskmgr) { return false; }
 
-    if (taskmgr->scheduler_lock > 0) { return; }
+    if (taskmgr->scheduler_lock > 0) { return false; }
 
     wake_up_sleeping_tasks();
 
@@ -179,7 +179,7 @@ void taskmgr_local_schedule(void) {
             if (caller_task->is_blocked) {
                 PANIC("no tasks to preempt the blocked running task");
             } else {
-                return;
+                return false;
             }
         }
 
@@ -191,18 +191,20 @@ void taskmgr_local_schedule(void) {
     smp_proc_t *const proc = smp_get_running_proc();
     taskmgr->running_task = next_task;
     taskmgr_switch_tasks(&caller_task->tcb, &next_task->tcb, proc->tss);
+
+    return true;
 }
 
-void taskmgr_local_reschedule(void) {
+bool taskmgr_local_reschedule(void) {
     bool b_restore_int = false;
     if (cpu_get_int_flag()) {
         b_restore_int = true;
         __asm__ volatile("cli");
     }
 
-    taskmgr_local_schedule();
-
+    const bool did_resched = taskmgr_local_schedule();
     if (b_restore_int) { __asm__ volatile("sti"); }
+    return did_resched;
 }
 
 void taskmgr_local_lock_scheduler(void) {

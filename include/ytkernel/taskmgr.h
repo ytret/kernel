@@ -232,17 +232,22 @@ void taskmgr_local_init([[gnu::noreturn]] void (*p_init_entry)(void));
 
 /**
  * Performs a scheduling step.
- * It is intented, but this is not necessary, to be called inside an ISR context
- * -- either in the timer IRQ ISR, or in the syscall ISR.
+ *
+ * @returns `true` if returned from a subsequent rescheduling, `false` if no
+ * rescheduling occurred.
  */
-void taskmgr_local_schedule(void);
+bool taskmgr_local_schedule(void);
 
 /**
  * Forces a scheduling step inside or outside of an ISR context.
+ *
  * Can be called in ordinary kernel tasks when a resource is blocked and
  * rescheduling is required.
+ *
+ * @returns `false` if no rescheduling happened, `true` if returned after a
+ * subsequent rescheduling.
  */
-void taskmgr_local_reschedule(void);
+bool taskmgr_local_reschedule(void);
 
 /**
  * Increments the lock counter of the local task manager.
