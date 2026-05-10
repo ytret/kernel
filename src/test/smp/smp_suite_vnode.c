@@ -33,6 +33,9 @@ cleanup:
 
 static void SMPSuiteVNode_test_cleanup(ktest_testctx_t *testctx) {
     (void)testctx;
+
+    SMPSuiteVNode_ctx_t *const ctx = &g_SMPSuiteVNode_ctx;
+    if (ctx->fs) { ramfs_free(ctx->fs); }
 }
 
 KTEST_SUITE(KTEST_SMP, SMPSuiteVNode);
@@ -74,6 +77,5 @@ KTEST(SMPSuiteVNode, RefCount) {
 
 cleanup:
     if (vnode) { heap_free(vnode); }
-    if (node) { ramfs_free_node(ctx->fs, node); }
     SMPSuiteVNode_test_cleanup(testctx);
 }
