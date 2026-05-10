@@ -176,7 +176,6 @@ list(APPEND KERNEL_SOURCES
 if(YTKERNEL_ENABLE_TESTS)
     list(APPEND KERNEL_SOURCES
 
-        src/test/early/suite_dummy.c
         src/test/ktest.c
         src/test/vmctl.c
 
