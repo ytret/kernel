@@ -8,6 +8,10 @@
 
 typedef struct {
     vnode_t *root_node;
+
+#ifdef YTKERNEL_ENABLE_TESTS
+    _Atomic size_t vnode_destroy_cnt;
+#endif
 } vfs_ctx_t;
 
 static vfs_ctx_t g_vfs;
@@ -31,6 +35,11 @@ vnode_t *vnode_get(void) {
     kmemset(node, 0, sizeof(*node));
     mutex_init(&node->lock);
     node->refcount = 1;
+
+#ifdef YTKERNEL_ENABLE_TESTS
+    node->magic = VNODE_MAGIC_LIVE;
+#endif
+
     return node;
 }
 
@@ -53,7 +62,12 @@ bool vnode_put(vnode_t *node) {
         if (node->lock.waiting_tasks.p_first_node) {
             PANIC("cannot free node which has waiting tasks");
         }
+#ifdef YTKERNEL_ENABLE_TESTS
+        node->magic = VNODE_MAGIC_DEAD;
+        g_vfs.vnode_destroy_cnt++;
+#else
         heap_free(node);
+#endif
         return true;
     }
 
@@ -93,3 +107,9 @@ vpath_err_t vnode_resolve_path(const vpath_t *path, vnode_t **out_node) {
     *out_node = vfs_node;
     return VPATH_ERR_NONE;
 }
+
+#ifdef YTKERNEL_ENABLE_TESTS
+size_t vnode_get_destroy_cnt(void) {
+    return g_vfs.vnode_destroy_cnt;
+}
+#endif

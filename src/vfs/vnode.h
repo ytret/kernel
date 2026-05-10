@@ -2,11 +2,17 @@
 
 #include <stddef.h>
 
+#include "config.h"
 #include "kmutex.h"
 #include "vfs/fs_desc.h"
 #include "vfs/vfs_defs.h"
 #include "vfs/vfs_err.h"
 #include "vfs/vpath.h"
+
+#ifdef YTKERNEL_ENABLE_TESTS
+#define VNODE_MAGIC_LIVE 0xCAFEBABE
+#define VNODE_MAGIC_DEAD 0xDEADBEEF
+#endif
 
 typedef struct vnode vnode_t;
 
@@ -52,6 +58,10 @@ struct vnode {
 
     void *fs_ctx;  //!< File system context, shared by all of its nodes.
     void *fs_data; //!< File-system-specific data, referenced only by this node.
+
+#ifdef YTKERNEL_ENABLE_TESTS
+    uint32_t magic;
+#endif
 };
 
 void vnode_root_init(void);
@@ -63,3 +73,7 @@ bool vnode_put(vnode_t *node);
 
 vpath_err_t vnode_resolve_path_str(const char *path_str, vnode_t **out_node);
 vpath_err_t vnode_resolve_path(const vpath_t *path, vnode_t **out_node);
+
+#ifdef YTKERNEL_ENABLE_TESTS
+size_t vnode_get_destroy_cnt(void);
+#endif
