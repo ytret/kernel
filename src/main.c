@@ -81,6 +81,8 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     arch_init_2();
 
+    vnode_root_init();
+
 #ifdef YTKERNEL_ENABLE_TESTS
     ktest_run_stage(KTEST_PRE_SMP);
 #endif

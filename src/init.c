@@ -33,8 +33,6 @@ void init_bsp_task(void) {
 
     devmgr_init_blkdev_parts();
 
-    vnode_root_init();
-
     kshell();
 
     PANIC("kshell returned");
