@@ -1,6 +1,5 @@
 #include "fs/ramfs.h"
 #include "heap.h"
-#include "smp.h"
 #include "test/ktest.h"
 #include "test/ktest_smp.h"
 #include "vfs/vnode.h"
