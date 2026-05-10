@@ -4,6 +4,8 @@
 #include "memfun.h"
 #include "test/ktest.h"
 
+static ktest_globalctx_t g_ktest_globalctx;
+
 extern const ktest_suite_t ld_ktest_suites_start[];
 extern const ktest_suite_t ld_ktest_suites_end[];
 
@@ -52,6 +54,10 @@ bool ktest_should_exit_at_end(int *exitcode) {
     return true;
 }
 
+ktest_globalctx_t *ktest_get_globalctx(void) {
+    return &g_ktest_globalctx;
+}
+
 static bool prv_ktest_should_run_suite(const ktest_suite_t *suite) {
     (void)suite;
     LOG_FLOW("check suite '%s' stage %d", suite->name, suite->stage);
@@ -79,5 +85,13 @@ static bool prv_ktest_should_run_test(const ktest_test_t *test) {
 
 static void prv_ktest_run_test(const ktest_test_t *test, ktest_testctx_t *ctx) {
     LOG_DEBUG("run test %s.%s", test->suite_name, test->test_name);
+
     test->fn(ctx);
+
+    g_ktest_globalctx.tests_run++;
+    if (ctx->failed) {
+        g_ktest_globalctx.tests_failed++;
+    } else {
+        g_ktest_globalctx.tests_passed++;
+    }
 }

@@ -1,7 +1,9 @@
 #pragma once
 
+#include <stddef.h>
+
 #define KTEST_SUITE_NAME_MAX_SIZE 32
-#define KTEST_TEST_NAME_MAX_SIZE 64
+#define KTEST_TEST_NAME_MAX_SIZE  64
 
 #define KTEST_SUITE(Stage, SuiteName)                                          \
     static const ktest_suite_t ktest_suite_##SuiteName                         \
@@ -47,5 +49,14 @@ typedef struct {
     void (*const fn)(ktest_testctx_t *testctx);
 } ktest_test_t;
 
+typedef struct {
+    size_t tests_run;
+    size_t tests_passed;
+    size_t tests_failed;
+
+    bool abort_requested;
+} ktest_globalctx_t;
+
 void ktest_run_stage(ktest_stage_t stage);
 bool ktest_should_exit_at_end(int *exitcode);
+ktest_globalctx_t *ktest_get_globalctx(void);
