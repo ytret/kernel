@@ -7,7 +7,8 @@
 
 #define KTEST_SUITE(Stage, SuiteName)                                          \
     static const ktest_suite_t ktest_suite_##SuiteName                         \
-        __attribute__((used, section(".ktest_suites"))) = {                    \
+        __attribute__((used, section(".ktest_suites"),                         \
+                       aligned(__alignof__(ktest_suite_t)))) = {               \
             .name = #SuiteName,                                                \
             .stage = Stage,                                                    \
     };
@@ -15,7 +16,8 @@
 #define KTEST(SuiteName, TestName)                                             \
     static void ktest_fn_##SuiteName##_##TestName(ktest_testctx_t *testctx);   \
     static const ktest_test_t ktest_##SuiteName##_##TestName                   \
-        __attribute__((used, section(".ktest_tests"))) = {                     \
+        __attribute__((used, section(".ktest_tests"),                          \
+                       aligned(__alignof__(ktest_test_t)))) = {                \
             .suite_name = #SuiteName,                                          \
             .test_name = #TestName,                                            \
             .file = __FILE_NAME__,                                             \
