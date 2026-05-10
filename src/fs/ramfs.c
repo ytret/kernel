@@ -1,3 +1,5 @@
+#define LOG_LEVEL LOG_LEVEL_DEBUG
+
 #include "assert.h"
 #include "dynarr.h"
 #include "fs/ramfs.h"
