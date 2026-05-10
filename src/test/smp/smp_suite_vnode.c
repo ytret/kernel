@@ -4,9 +4,9 @@
 #include "test/ktest_smp.h"
 #include "vfs/vnode.h"
 
-KTEST_SUITE(KTEST_SMP, VNodeSMP);
+KTEST_SUITE(KTEST_SMP, SMPSuiteVNode);
 
-static void VNodeSMP_Refcount_job_fn(void *arg) {
+static void SMPSuiteVNode_Refcount_job_fn(void *arg) {
     vnode_t *const vnode = arg;
     for (size_t idx = 0; idx < 1000000; idx++) {
         vnode_ref(vnode);
@@ -15,12 +15,12 @@ static void VNodeSMP_Refcount_job_fn(void *arg) {
     }
 }
 
-static ktest_smpjob_t VNodeSMP_Refcount_job = {
-    .name = "VNodeSMP_Refcount",
-    .fn = VNodeSMP_Refcount_job_fn,
+static ktest_smpjob_t SMPSuiteVNode_Refcount_job = {
+    .name = "SMPSuiteVNode_Refcount",
+    .fn = SMPSuiteVNode_Refcount_job_fn,
 };
 
-KTEST(VNodeSMP, Refcount) {
+KTEST(SMPSuiteVNode, Refcount) {
     ramfs_ctx_t fs_ctx;
     ramfs_init(&fs_ctx, SIZE_MAX);
 
@@ -43,9 +43,9 @@ KTEST(VNodeSMP, Refcount) {
     node = vnode->fs_data;
     KTEST_ASSERT_NE(node, NULL);
 
-    VNodeSMP_Refcount_job.fn_arg = vnode;
-    ktest_smpjob_broadcast(&VNodeSMP_Refcount_job);
-    ktest_smpjob_wait(&VNodeSMP_Refcount_job);
+    SMPSuiteVNode_Refcount_job.fn_arg = vnode;
+    ktest_smpjob_broadcast(&SMPSuiteVNode_Refcount_job);
+    ktest_smpjob_wait(&SMPSuiteVNode_Refcount_job);
 
     KTEST_ASSERT_EQ(vnode->refcount, 1);
     vnode_put(vnode);
