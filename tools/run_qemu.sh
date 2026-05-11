@@ -23,6 +23,7 @@ MACOS_QEMU_WIDTH="${MACOS_QEMU_WIDTH:-800}"
 MACOS_QEMU_HEIGHT="${MACOS_QEMU_HEIGHT:-600}"
 MACOS_QEMU_X="${MACOS_QEMU_X:-80}"
 MACOS_QEMU_Y="${MACOS_QEMU_Y:-60}"
+QEMU_SERIAL_STDIO="${QEMU_SERIAL_STDIO:-yes}"
 
 declare -a QEMU_ARGS_DISPLAY
 if [[ $OSTYPE == darwin* ]]; then
@@ -50,6 +51,11 @@ fi
 declare -a QEMU_ARGS_SMP
 QEMU_ARGS_SMP+=(-smp $QEMU_SMP)
 
+declare -a QEMU_ARGS_SERIAL
+if [[ $QEMU_SERIAL_STDIO == yes ]]; then
+    QEMU_ARGS_SERIAL+=(-serial stdio)
+fi
+
 for arg in "$@"; do
     case "$arg" in
         -smp)
@@ -67,8 +73,8 @@ done
             -device ide-hd,drive=disk,bus=ahci.0              \
             -device isa-debug-exit,iobase=0xf4,iosize=0x04    \
             -boot order=d                                     \
-            -serial stdio                                     \
             -d guest_errors                                   \
             "${QEMU_ARGS_SMP[@]}"                             \
             "${QEMU_ARGS_DISPLAY[@]}"                         \
+            "${QEMU_ARGS_SERIAL[@]}"                          \
             "$@"
