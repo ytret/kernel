@@ -3,4 +3,4 @@ CompileFlags:
   Remove: -fanalyzer
 Diagnostics:
   Includes:
-    IgnoreHeader: kinttypes\.h
+    IgnoreHeader: [ kinttypes\.h, config\.h ]
