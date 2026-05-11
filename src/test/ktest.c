@@ -109,6 +109,7 @@ static void prv_ktest_tap_testpoint(bool ok, uint32_t number,
 static void prv_ktest_puts(const char *str) {
     chardev_t *const chardev = g_ktest_globalctx.chardev;
     if (!chardev) { return; }
+    if (chardev->type == CHARDEV_UNINIT) { return; }
 
     const size_t len = string_len(str);
     chardev->ops->f_write(chardev->ctx, str, len);
