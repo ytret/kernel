@@ -1,171 +1,176 @@
 # ytret's kernel
 
-## Kernel features
+An experimental x86 kernel written in C.
 
-* Text-mode or framebuffer terminal
-* Kernel-mode shell
-* Device manager with Convenital PCI enumeration
-* Symmetric Multiprocessing (SMP) support
-* Per-processor round-robin task scheduler
-* Task synchronization primitives: spinlocks, mutexes, semaphores, FIFO queues
-* Asynchronous block device layer
-* AHCI driver with read/write support
-* GUID Partition Table parsing
-* Bare-bones syscall support for usermode tasks
+This README covers the fastest path to build, run, debug, and test the kernel
+locally.
 
+## Highlights
 
-## Building and running
+* Text-mode and framebuffer terminals
+* Kernel shell with a live Lua REPL
+* Device manager with Conventional PCI enumeration
+* Per-processor round-robin scheduler with SMP support
+* Asynchronous block device layer for disks and GPT partitions
+* AHCI driver with read and write support
+* Basic syscall support for user-mode tasks
+* In-kernel tests for complex subsystems
+
+## Build and run
 
 ### Requirements
 
-You can use [`nix`](https://nixos.org/download/#download-nix) to create a build
-environment with all required packages, or you can install the required
-packages manually.
+You can either:
 
-If you choose to use `nix`, run one of these commands to enter a shell, in
-which you will be able to build the kernel:
+1. Use [`nix`](https://nixos.org/download/#download-nix) to enter a ready-made
+   development environment.
+2. Install the required packages manually.
 
+If you use `nix`, enter a development shell with one of the following commands:
+
+```bash
+nix develop .           # enter the default devShell from flake.nix
+nix develop '.#minimal' # enter the minimal devShell from flake.nix
+nix develop . -c fish   # use fish instead of bash
+nix develop -i .        # clean environment; QEMU will not be available
 ```
-nix develop .           # to enter the 'default' devShell from 'flake.nix'
-nix develop '.#minimal' # to enter the 'minimal' devShell from 'flake.nix'
-nix develop . -c fish   # to use fish instead of bash
-nix develop -i .        # for a clean build environment (QEMU won't work)
-```
 
-If you choose to install the packages manually, the list is provided below. Arch
-Linux and macOS homebrew package names are provided in parentheses.
+If you install dependencies manually, you will need:
 
-1. Building:
+1. For building:
+   * `binutils` and `gcc` targeting `i686-elf`
+   * `cmake`
+   * Optional: `ninja`
+   * Optional: `doxygen`
+2. For creating a bootable ISO:
+   * `xorriso`
+3. For creating a virtual disk image:
+   * `qemu-img`
+   * `mkfs.ext4`
+4. For running the kernel in an emulator:
+   * `qemu-system-i386` or an equivalent QEMU x86 system package
 
-  * binutils and GCC targeting i686-elf
-  * CMake (`cmake`)
-  * Optionally: Ninja (`ninja`)
-  * Optionally: Doxygen (`doxygen`)
-
-2. Creating a bootable ISO:
-
-  * xorriso (`libisoburn`)
-
-3. Creating a virtual disk:
-
-  * QEMU disk image manipulation tools (`qemu-img`)
-  * mkfs.ext4 (`e2fsprogs`)
-
-4. Running in an emulator:
-
-  * QEMU desktop for x86 (`qemu-desktop`, `qemu-system-x86`)
+Arch Linux and Homebrew package names may differ slightly from the generic names
+above.
 
 ### Building
 
-Whether you choose to use a nix devShell or install the packages yourself, run
-these commands to build the kernel:
+Configure and build from a separate build directory:
 
-```
-$ mkdir build
-$ cd build
-$ cmake .. -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake -DCMAKE_BUILD_TYPE=Debug
-$ make  # or ninja
+```bash
+mkdir build
+cd build
+cmake .. -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake -DCMAKE_BUILD_TYPE=Debug
+make
 ```
 
-Optionally, pass `-GNinja` to `cmake` to use Ninja instead of GNU Make.
+If you prefer Ninja:
+
+```bash
+cmake .. -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake -DCMAKE_BUILD_TYPE=Debug -GNinja
+ninja
+```
 
 ### Running
 
-1. Create an ISO containing GRUB and the kernel:
+1. Create a bootable ISO with Limine and the kernel:
 
-   ```
-    $ ./create_iso.sh
-   ```
-
-2. Create an empty virtual disk image:
-
-   ```
-    $ qemu-img create hd.img 4M
+   ```bash
+   ./create_iso.sh
    ```
 
-3. Optionally, partition the disk and create a file system:
+2. Create an empty virtual disk image from the repository root:
 
-   ```
-    $ fdisk hd.img
-    > g  # new GUID partition table (GPT)
-    > n  # new partition, accept the default values
-    > t  # change the partition type
-    >> F0516EBC-2D9E-4206-ABFC-B14EC7A626CE
-    > w  # write changes and exit
-
-    $ ./tools/loop-hd-image.sh
-    $ sudo mkfs.ext4 /dev/loop0p1
-    $ sudo losetup -d /dev/loop0
+   ```bash
+   qemu-img create hd.img 4M
    ```
 
-4. Run QEMU:
+3. Optionally partition the disk image and create a filesystem:
 
+   ```bash
+   fdisk hd.img
+   # g  -> create a new GPT
+   # n  -> create a new partition and accept the defaults
+   # t  -> change the partition type
+   # F0516EBC-2D9E-4206-ABFC-B14EC7A626CE
+   # w  -> write changes and exit
+
+   ./tools/loop-hd-image.sh
+   sudo mkfs.ext4 /dev/loop0p1
+   sudo losetup -d /dev/loop0
    ```
-    $ ./run_qemu.sh
+
+4. Start QEMU from the build directory:
+
+   ```bash
+   ./run_qemu.sh
    ```
+
+The `create_iso.sh` and `run_qemu.sh` helper scripts are generated in the build
+directory by CMake.
 
 ### Debugging
 
-You can use GDB to debug the kernel running inside QEMU.
+You can debug the kernel with GDB while it runs inside QEMU.
 
-1. Run QEMU with the following flags:
+1. Start QEMU with GDB support enabled:
 
-   * `-S` to freeze the CPU at startup
-   * `-s` to listen for GDB on port 1234
-
-   ```
-   $ ./run_qemu.sh -S -s
+   ```bash
+   ./run_qemu.sh -S -s
    ```
 
-2. Run GDB in the build directory:
+   `-S` starts the VM in a paused state, and `-s` opens a GDB server on port
+   `1234`.
 
+2. In the build directory, start GDB:
+
+   ```bash
+   gdb kernel
    ```
-    $ cd build
-    $ gdb kernel
-    > continue  # to unfreeze the emulation
+
+3. Once GDB connects, continue execution:
+
+   ```gdb
+   continue
    ```
 
-   CMake should have placed a special `.gdbinit` file in the build directory
-   that automatically connects to QEMU on port 1234.
-
+CMake places a `.gdbinit` file in the build directory that automatically
+connects GDB to QEMU on port `1234`.
 
 ## Testing
 
-This project contains two independent testing systems.
+This project has two separate test layers.
 
 ### Host tests
 
-Host tests are ordinary tests executed on the build machine via CMake/CTest.
-They are used for isolated modules that are easily decoupled from the kernel.
+Host tests run on the build machine through CMake and CTest. They are intended
+for components that can be tested outside the live kernel.
 
 ```bash
 mkdir tests/build
 cd tests/build
 cmake .. -DCMAKE_BUILD_TYPE=Release -GNinja
 ninja
+ctest --output-on-failure
 ```
 
 ### Kernel tests
 
-Kernel tests are executed by the kernel itself in QEMU. They validate kernel
-subsystems that are tightly integrated with each other or require a live kernel
-environment.
+Kernel tests run inside QEMU and cover subsystems that depend on a real kernel
+environment or tighter integration across components.
 
 ```bash
-# See the build section above on which CMake options to use during the first
-# CMake invocation. This command enables tests in an already configured build
-# directory:
+# Run from the main build directory after the initial CMake configure step.
 cmake .. -DYTKERNEL_ENABLE_TESTS=ON
 ninja
 ./create_iso.sh -c "ktest.run-all-suites ktest.exit-vm" -o kernel-ktest.iso
 ./ktest.sh
 ```
 
-The `ktest.sh` script runs QEMU in a configuration that redirects kernel logs
-to a file (instead of stdout) and prints test results to stdout:
+`ktest.sh` starts QEMU in a test-oriented configuration, redirects kernel logs
+to a file, and prints TAP-style results to stdout:
 
-```
-$ ./ktest.sh
+```text
 TAP version 14
 ok 1 - SMPSuiteMutex.Contention
 ok 2 - SMPSuiteMutex.Handoff
