@@ -25,6 +25,9 @@ MACOS_QEMU_X="${MACOS_QEMU_X:-80}"
 MACOS_QEMU_Y="${MACOS_QEMU_Y:-60}"
 QEMU_SERIAL_STDIO="${QEMU_SERIAL_STDIO:-yes}"
 
+declare -a QEMU_ARGS_CDROM
+QEMU_ARGS_CDROM+=(-cdrom "$ISO_PATH")
+
 declare -a QEMU_ARGS_DISPLAY
 if [[ $OSTYPE == darwin* ]]; then
     # Make the window resizable.
@@ -58,16 +61,13 @@ fi
 
 for arg in "$@"; do
     case "$arg" in
-        -smp)
-            QEMU_ARGS_SMP=()
-            ;;
-        -display)
-            QEMU_ARGS_DISPLAY=()
-            ;;
+        -cdrom) QEMU_ARGS_CDROM=();;
+        -display) QEMU_ARGS_DISPLAY=();;
+        -smp) QEMU_ARGS_SMP=();;
     esac
 done
 
-"$QEMU_BIN" -cdrom "$ISO_PATH"                                \
+"$QEMU_BIN" "${QEMU_ARGS_CDROM[@]}" \
             -drive file="$HD_PATH",format=raw,if=none,id=disk \
             -device ahci,id=ahci                              \
             -device ide-hd,drive=disk,bus=ahci.0              \
