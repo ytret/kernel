@@ -13,6 +13,7 @@
 #include "libshim.h"
 #include "log.h"
 #include "mbi.h"
+#include "memfun.h"
 #include "panic.h"
 #include "pmm.h"
 #include "serial.h"
@@ -51,8 +52,9 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     g_earlycon_serial.port_base = SERIAL_COM1_BASE;
     g_earlycon_serial.baudrate_div = SERIAL_BAUDRATE_115200_DIV;
-    serial_init(&g_earlycon_serial);
-    serial_set_chardev(&g_earlycon_serial, &g_earlycon_chardev);
+    if (serial_init(&g_earlycon_serial)) {
+        serial_set_chardev(&g_earlycon_serial, &g_earlycon_chardev);
+    }
     log_set_chardev(&g_earlycon_chardev);
 
     term_init();
@@ -83,10 +85,12 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 #ifdef YTKERNEL_ENABLE_TESTS
     serial_ctx_t *const ktest_serial = heap_alloc(sizeof(serial_ctx_t));
     chardev_t *const ktest_chardev = heap_alloc(sizeof(chardev_t));
+    kmemset(ktest_chardev, 0, sizeof(*ktest_chardev));
     ktest_serial->port_base = SERIAL_COM2_BASE;
     ktest_serial->baudrate_div = SERIAL_BAUDRATE_115200_DIV;
-    serial_init(ktest_serial);
-    serial_set_chardev(ktest_serial, ktest_chardev);
+    if (serial_init(ktest_serial)) {
+        serial_set_chardev(ktest_serial, ktest_chardev);
+    }
     ktest_set_chardev(ktest_chardev);
 
     ktest_announce();
