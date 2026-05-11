@@ -81,6 +81,15 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     term_clear();
 
 #ifdef YTKERNEL_ENABLE_TESTS
+    serial_ctx_t *const ktest_serial = heap_alloc(sizeof(serial_ctx_t));
+    chardev_t *const ktest_chardev = heap_alloc(sizeof(chardev_t));
+    ktest_serial->port_base = SERIAL_COM2_BASE;
+    ktest_serial->baudrate_div = SERIAL_BAUDRATE_115200_DIV;
+    serial_init(ktest_serial);
+    serial_set_chardev(ktest_serial, ktest_chardev);
+    ktest_set_chardev(ktest_chardev);
+
+    ktest_announce();
     ktest_run_stage(KTEST_EARLY_BOOT);
 #endif
 
