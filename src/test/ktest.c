@@ -3,6 +3,7 @@
 #include "log.h"
 #include "memfun.h"
 #include "test/ktest.h"
+#include "test/vmctl.h"
 
 static ktest_globalctx_t g_ktest_globalctx;
 
@@ -60,9 +61,18 @@ void ktest_run_stage(ktest_stage_t stage) {
     }
 }
 
-bool ktest_should_exit_at_end(int *exitcode) {
-    if (exitcode) { *exitcode = 0; }
-    return true;
+void ktest_end(void) {
+    int ktest_exitcode = 0;
+
+    const ktest_globalctx_t *const ktest_ctx = ktest_get_globalctx();
+    const int ratio_x1000 =
+        ktest_ctx->tests_passed * 1000 / ktest_ctx->tests_run;
+
+    LOG_INFO("ktest results:");
+    LOG_INFO("%zu.%zu%% tests passed, %zu failed out of %zu",
+             ratio_x1000 / (size_t)10, ratio_x1000 % (size_t)10,
+             ktest_ctx->tests_failed, ktest_ctx->tests_run);
+    vmctl_exit(ktest_exitcode);
 }
 
 ktest_globalctx_t *ktest_get_globalctx(void) {

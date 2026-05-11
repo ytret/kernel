@@ -18,7 +18,6 @@
 
 #ifdef YTKERNEL_ENABLE_TESTS
 #include "test/ktest.h"
-#include "test/vmctl.h"
 #endif
 
 [[gnu::noreturn]]
@@ -31,21 +30,7 @@ void init_bsp_task(void) {
 
 #ifdef YTKERNEL_ENABLE_TESTS
     ktest_run_stage(KTEST_SMP);
-
-    int ktest_exitcode;
-    if (ktest_should_exit_at_end(&ktest_exitcode)) {
-        const ktest_globalctx_t *const ktest_ctx = ktest_get_globalctx();
-        const int ratio_x1000 =
-            ktest_ctx->tests_passed * 1000 / ktest_ctx->tests_run;
-
-        LOG_INFO("ktest results:");
-        LOG_INFO("%zu.%zu%% tests passed, %zu failed out of %zu",
-                 ratio_x1000 / (size_t)10, ratio_x1000 % (size_t)10,
-                 ktest_ctx->tests_failed, ktest_ctx->tests_run);
-        vmctl_exit(ktest_exitcode);
-    } else {
-        taskmgr_local_init(init_bsp_task);
-    }
+    ktest_end();
 #endif
 
     taskmgr_local_new_kernel_task("term", (uint32_t)term_task);

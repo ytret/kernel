@@ -93,5 +93,5 @@ typedef struct {
 void ktest_set_chardev(chardev_t *chardev);
 void ktest_announce(void);
 void ktest_run_stage(ktest_stage_t stage);
-bool ktest_should_exit_at_end(int *exitcode);
+void ktest_end(void);
 ktest_globalctx_t *ktest_get_globalctx(void);
