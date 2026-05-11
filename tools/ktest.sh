@@ -5,9 +5,11 @@ declare -r SCRIPT_DIR="$(dirname -- "${BASH_SOURCE[0]}")"
 declare -r CONN_TIMEOUT=2
 
 declare -r DEFAULT_BUILD_DIR="$PWD"
+declare -r DEFAULT_ISO_PATH="$PWD/kernel-ktest.iso"
 declare -r DEFAULT_SOCKET="ktest.sock"
 
 declare OPT_BUILD_DIR="$DEFAULT_BUILD_DIR"
+declare OPT_ISO_PATH="$DEFAULT_ISO_PATH"
 declare OPT_SOCKET="$DEFAULT_SOCKET"
 
 function usage {
@@ -19,18 +21,71 @@ function usage {
 	        Use BUILDDIR as the build directory (default: $DEFAULT_BUILD_DIR).
 	    -h, --help
 	        Print this message and exit.
+	    -i, --iso ISOPATH
+	        Boot the kernel from an ISO at ISOPATH (defualt: $DEFAULT_ISO_PATH).
 	    -s, --socket SOCK
 	        Bind to a socket named SOCK in the build directory (default: $DEFAULT_SOCKET).
 	EOF
 }
 
+function parse_args {
+	while (( $# > 0 )); do
+		case "$1" in
+			-b|--build-dir)
+				if (( $# < 2 )); then
+					echo "Error: $1: expected a build directory" 1>&2
+					exit 1
+				fi
+				OPT_BUILD_DIR="$2"
+				shift 2
+				;;
+			-h|--help)
+				usage
+				exit 0
+				;;
+			-i|--iso)
+				if (( $# < 2 )); then
+					echo "Error: $1: expected an ISO path" 1>&2
+					exit 1
+				fi
+				OPT_ISO_PATH="$2"
+				shift 2
+				;;
+			-s|--socket)
+				if (( $# < 2 )); then
+					echo "Error: $1: expected a file name" 1>&2
+					exit 1
+				fi
+				OPT_SOCKET="$2"
+				shift 2
+				;;
+			-*)
+				echo "Error: unrecognized option '$1'" 1>&2
+				exit 1
+				;;
+			*)
+				echo "Error: unexpected argument '$1'" 1>&2
+				exit 1
+				;;
+		esac
+	done
+}
+
 function run_qemu {
 	local -a qemu_args
+
+	qemu_args+=(-cdrom "$OPT_ISO_PATH")
+
+	# Serial 1 - used by the log module.
 	qemu_args+=(-chardev file,id=log,path=ktest-serial-log.txt)
-	qemu_args+=(-chardev socket,id=ktest,path=ktest.sock,server=on,wait=on)
 	qemu_args+=(-serial chardev:log)
+
+	# Serial 2 - used by ktest to output test results in TAP format.
+	qemu_args+=(-chardev socket,id=ktest,path=ktest.sock,server=on,wait=on)
 	qemu_args+=(-serial chardev:ktest)
+
 	qemu_args+=(-display none)
+
 	export QEMU_SERIAL_STDIO=no
 	"$SCRIPT_DIR"/run_qemu.sh "${qemu_args[@]}"
 }
@@ -49,38 +104,12 @@ function wait_for_socket {
 	return 1
 }
 
-while (( $# > 0 )); do
-	case "$1" in
-		-b|--build-dir)
-			if (( $# < 2 )); then
-				echo "Error: $1: expected a build directory" 1>&2
-				exit 1
-			fi
-			OPT_BUILD_DIR="$2"
-			shift 2
-			;;
-		-h|--help)
-			usage
-			exit 0
-			;;
-		-s|--socket)
-			if (( $# < 2 )); then
-				echo "Error: $1: expected a file name" 1>&2
-				exit 1
-			fi
-			OPT_SOCKET="$2"
-			shift 2
-			;;
-        -*)
-            echo "Error: unrecognized option '$1'" 1>&2
-            exit 1
-            ;;
-        *)
-            echo "Error: unexpected argument '$1'" 1>&2
-            exit 1
-            ;;
-	esac
-done
+parse_args "$@"
+
+if [[ ! -f "$OPT_ISO_PATH" ]]; then
+	echo "Error: ISO path '$OPT_ISO_PATH' does not exist or is not a regular file" 1>&2
+	exit 1
+fi
 
 declare -r SOCKET_PATH="$OPT_BUILD_DIR/$OPT_SOCKET"
 
