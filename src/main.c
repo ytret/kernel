@@ -13,7 +13,6 @@
 #include "libshim.h"
 #include "log.h"
 #include "mbi.h"
-#include "memfun.h"
 #include "panic.h"
 #include "pmm.h"
 #include "serial.h"
@@ -24,6 +23,7 @@
 #include "vmm.h"
 
 #ifdef YTKERNEL_ENABLE_TESTS
+#include "memfun.h"
 #include "test/ktest.h"
 #endif
 
