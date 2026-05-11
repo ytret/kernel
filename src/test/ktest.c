@@ -20,6 +20,7 @@ static void prv_ktest_puts(const char *str);
 
 static bool prv_ktest_should_run_suite(const ktest_suite_t *suite);
 static bool prv_ktest_should_run_test(const ktest_test_t *test);
+static bool prv_ktest_should_exit_vm(void);
 static void prv_ktest_run_test(const ktest_test_t *test, ktest_testctx_t *ctx);
 
 void ktest_set_chardev(chardev_t *chardev) {
@@ -74,7 +75,8 @@ void ktest_end(void) {
     LOG_INFO("%zu.%zu%% tests passed, %zu failed out of %zu",
              ratio_x1000 / (size_t)10, ratio_x1000 % (size_t)10,
              ktest_ctx->tests_failed, ktest_ctx->tests_run);
-    vmctl_exit(ktest_exitcode);
+
+    if (prv_ktest_should_exit_vm()) { vmctl_exit(ktest_exitcode); }
 }
 
 ktest_globalctx_t *ktest_get_globalctx(void) {
@@ -150,6 +152,10 @@ static bool prv_ktest_should_run_test(const ktest_test_t *test) {
     LOG_FLOW("check test '%s' from suite '%s'", test->test_name,
              test->suite_name);
     return true;
+}
+
+static bool prv_ktest_should_exit_vm(void) {
+    return cmdline_num_values("ktest.exit-vm");
 }
 
 static void prv_ktest_run_test(const ktest_test_t *test,
