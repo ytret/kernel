@@ -66,7 +66,9 @@ void ktest_end(void) {
 
     const ktest_globalctx_t *const ktest_ctx = ktest_get_globalctx();
     const int ratio_x1000 =
-        ktest_ctx->tests_passed * 1000 / ktest_ctx->tests_run;
+        ktest_ctx->tests_run == 0
+            ? 0
+            : ktest_ctx->tests_passed * 1000 / ktest_ctx->tests_run;
 
     LOG_INFO("ktest results:");
     LOG_INFO("%zu.%zu%% tests passed, %zu failed out of %zu",
