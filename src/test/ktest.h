@@ -2,11 +2,15 @@
 
 #include <stddef.h>
 
+#include "chardev.h"
 #include "kprintf.h" // IWYU pragma: keep
 
 #define KTEST_SUITE_NAME_MAX_SIZE 32
 #define KTEST_TEST_NAME_MAX_SIZE  64
 #define KTEST_TEST_MSG_MAX_SIZE   256
+#define KTEST_TAP_MSG_MAX_SIZE    256
+#define KTEST_TAP_DESC_MAX_SIZE                                                \
+    (KTEST_SUITE_NAME_MAX_SIZE + KTEST_TEST_NAME_MAX_SIZE)
 
 #define KTEST_SUITE(Stage, SuiteName)                                          \
     static const ktest_suite_t ktest_suite_##SuiteName                         \
@@ -75,6 +79,10 @@ typedef struct {
 } ktest_test_t;
 
 typedef struct {
+    chardev_t *chardev;
+    char tap_msg[KTEST_TAP_MSG_MAX_SIZE];
+    char tap_desc[KTEST_TAP_DESC_MAX_SIZE];
+
     size_t tests_run;
     size_t tests_passed;
     size_t tests_failed;
@@ -82,6 +90,8 @@ typedef struct {
     bool abort_requested;
 } ktest_globalctx_t;
 
+void ktest_set_chardev(chardev_t *chardev);
+void ktest_announce(void);
 void ktest_run_stage(ktest_stage_t stage);
 bool ktest_should_exit_at_end(int *exitcode);
 ktest_globalctx_t *ktest_get_globalctx(void);

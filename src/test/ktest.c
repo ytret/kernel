@@ -12,9 +12,23 @@ extern const ktest_suite_t ld_ktest_suites_end[];
 extern const ktest_test_t ld_ktest_tests_start[];
 extern const ktest_test_t ld_ktest_tests_end[];
 
+static void prv_ktest_tap_version(void);
+static void prv_ktest_tap_plan(void);
+static void prv_ktest_tap_testpoint(bool ok, uint32_t number, const char *desc);
+static void prv_ktest_puts(const char *str);
+
 static bool prv_ktest_should_run_suite(const ktest_suite_t *suite);
 static bool prv_ktest_should_run_test(const ktest_test_t *test);
 static void prv_ktest_run_test(const ktest_test_t *test, ktest_testctx_t *ctx);
+
+void ktest_set_chardev(chardev_t *chardev) {
+    g_ktest_globalctx.chardev = chardev;
+}
+
+void ktest_announce(void) {
+    prv_ktest_tap_version();
+    prv_ktest_tap_plan();
+}
 
 void ktest_run_stage(ktest_stage_t stage) {
     ktest_testctx_t testctx;
@@ -55,6 +69,51 @@ ktest_globalctx_t *ktest_get_globalctx(void) {
     return &g_ktest_globalctx;
 }
 
+static void prv_ktest_tap_version(void) {
+    prv_ktest_puts("TAP version 14\n");
+}
+
+static void prv_ktest_tap_plan(void) {
+    // TODO
+}
+
+static void prv_ktest_tap_testpoint(bool ok, uint32_t number,
+                                    const char *desc) {
+    char *const buf = g_ktest_globalctx.tap_msg;
+    size_t buf_off = 0;
+    size_t left = KTEST_TAP_MSG_MAX_SIZE;
+
+    buf_off += klsnprintf(buf, left, "%s", ok ? "ok" : "not ok");
+    left = KTEST_TAP_MSG_MAX_SIZE - buf_off;
+
+    if (number > 0) {
+        buf_off += klsnprintf(&buf[buf_off], left, " %u", number);
+        left = KTEST_TAP_MSG_MAX_SIZE - buf_off;
+    }
+
+    if (desc) {
+        buf_off += klsnprintf(&buf[buf_off], left, " - %s", desc);
+        left = KTEST_TAP_MSG_MAX_SIZE - buf_off;
+    }
+
+    if (left == 0) {
+        buf[buf_off - 1] = '\0';
+    } else {
+        buf[buf_off] = '\n';
+        buf[buf_off + 1] = '\0';
+    }
+
+    prv_ktest_puts(buf);
+}
+
+static void prv_ktest_puts(const char *str) {
+    chardev_t *const chardev = g_ktest_globalctx.chardev;
+    if (!chardev) { return; }
+
+    const size_t len = string_len(str);
+    chardev->ops->f_write(chardev->ctx, str, len);
+}
+
 static bool prv_ktest_should_run_suite(const ktest_suite_t *suite) {
     (void)suite;
     LOG_FLOW("check suite '%s' stage %d", suite->name, suite->stage);
@@ -80,15 +139,25 @@ static bool prv_ktest_should_run_test(const ktest_test_t *test) {
     return true;
 }
 
-static void prv_ktest_run_test(const ktest_test_t *test, ktest_testctx_t *ctx) {
+static void prv_ktest_run_test(const ktest_test_t *test,
+                               ktest_testctx_t *testctx) {
     LOG_DEBUG("run test %s.%s", test->suite_name, test->test_name);
+    ktest_globalctx_t *const globalctx = &g_ktest_globalctx;
 
-    test->fn(ctx);
+    test->fn(testctx);
 
-    g_ktest_globalctx.tests_run++;
-    if (ctx->failed) {
-        g_ktest_globalctx.tests_failed++;
+    globalctx->tests_run++;
+    if (testctx->failed) {
+        globalctx->tests_failed++;
     } else {
-        g_ktest_globalctx.tests_passed++;
+        globalctx->tests_passed++;
     }
+
+    const int desc_len = ksnprintf(globalctx->tap_desc, KTEST_TAP_DESC_MAX_SIZE,
+                                   "%s.%s", test->suite_name, test->test_name);
+    if (desc_len == KTEST_TAP_DESC_MAX_SIZE) {
+        globalctx->tap_desc[desc_len - 1] = '\0';
+    }
+    prv_ktest_tap_testpoint(!testctx->failed, globalctx->tests_run,
+                            globalctx->tap_desc);
 }
