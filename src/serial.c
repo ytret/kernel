@@ -103,12 +103,17 @@ int serial_write(void *v_serial, const void *buf, size_t buf_size) {
 
     serial_ctx_t *const serial = v_serial;
     if (!serial->ready) { return 0; }
+    // NOTE: the serial device is assumed to be initialized in a
+    // single-threaded, no-interrupts context, therefore the `ready` flag is not
+    // guarded by a lock.
 
+    spinlock_acquire(&serial->lock);
     const uint8_t *const buf_u8 = buf;
     for (size_t idx = 0; idx < buf_size; idx++) {
         // FIXME: check if the buffer is not full?
         prv_serial_transmit(serial, buf_u8[idx]);
     }
+    spinlock_release(&serial->lock);
 
     return buf_size;
 }

@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "chardev.h"
+#include "kspinlock.h"
 
 #define SERIAL_COM1_BASE 0x03F8
 #define SERIAL_COM2_BASE 0x02F8
@@ -20,6 +21,7 @@ typedef struct {
     uint16_t port_base;
     uint16_t baudrate_div;
 
+    spinlock_t lock;
     bool ready;
 } serial_ctx_t;
 
