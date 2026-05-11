@@ -67,3 +67,20 @@ int kvsnprintf(char *str, size_t size, const char *fmt, va_list ap) {
     va_end(ap_copy);
     return ret;
 }
+
+int klsnprintf(char *str, size_t size, const char *fmt, ...) {
+    int ret;
+    va_list ap;
+
+    va_start(ap, fmt);
+    ret = kvlsnprintf(str, size, fmt, ap);
+    va_end(ap);
+
+    return ret;
+}
+
+int kvlsnprintf(char *str, size_t size, const char *fmt, va_list ap) {
+    int ret = kvsnprintf(str, size, fmt, ap);
+    if (ret >= (int)size) { return (int)size; }
+    return ret;
+}
