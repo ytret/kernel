@@ -238,3 +238,13 @@ file(CREATE_LINK
     ${CMAKE_BINARY_DIR}/run_qemu.sh
     SYMBOLIC
 )
+file(CREATE_LINK
+    ${CMAKE_SOURCE_DIR}/tools/ktest.sh
+    ${CMAKE_BINARY_DIR}/ktest.sh
+    SYMBOLIC
+)
+file(CREATE_LINK
+    ${CMAKE_SOURCE_DIR}/tools/tapview.sh
+    ${CMAKE_BINARY_DIR}/tapview.sh
+    SYMBOLIC
+)
