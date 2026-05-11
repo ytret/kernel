@@ -4,6 +4,7 @@ build*/
 *.img
 *.iso
 *.log
+*.sock
 flake.local.nix
 
 isodir/*
