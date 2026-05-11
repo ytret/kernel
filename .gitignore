@@ -7,5 +7,6 @@ build*/
 *.sock
 flake.local.nix
 
-isodir/*
-!isodir/boot/
+isodir/boot/limine/limine.conf
+isodir/*.elf
+isodir/kshell.lua
