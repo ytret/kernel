@@ -1,16 +1,12 @@
+#include <stddef.h>
 #include <stdint.h>
 
+#include "assert.h"
 #include "kinttypes.h"
-#include "panic.h"
 #include "port.h"
 #include "serial.h"
 
 #define BIT(x) (1 << (x))
-
-#define SERIAL_COM_BASE            0x03F8
-#define SERIAL_BAUDRATE_115200_DIV 1
-// NOTE: the actual baudrate depends on the crystal. Setting the divisor to 1
-// makes the chip use the crystal frequency.
 
 #define SERIAL_REG_RBR 0 //!< Receiver Buffer (r/o).
 #define SERIAL_REG_THR 0 //!< Transmitter Holding (w/o).
@@ -65,12 +61,9 @@
 #define SERIAL_LSR_TEMT BIT(6) //!< THRE, Shift Register, and TX FIFO are empty.
 #define SERIAL_LSR_     BIT(6) //!< Transmitter Empty.
 
-typedef struct {
-    uint16_t base;
-    uint16_t div;
-} serial_ctx_t;
-
-static serial_ctx_t g_serial;
+static const chardev_ops_t g_serial_ops = {
+    .f_write = serial_write,
+};
 
 static uint8_t prv_serial_read_reg(serial_ctx_t *serial, uint16_t offset);
 static void prv_serial_write_reg(serial_ctx_t *serial, uint16_t offset,
@@ -84,41 +77,49 @@ static void prv_serial_set_mcr(serial_ctx_t *serial);
 
 static void prv_serial_transmit(serial_ctx_t *serial, uint8_t data);
 
-void serial_init(void) {
-    g_serial.base = SERIAL_COM_BASE;
-    g_serial.div = SERIAL_BAUDRATE_115200_DIV;
+void serial_init(serial_ctx_t *serial) {
+    ASSERT(!serial->ready);
+    ASSERT(serial->port_base != 0);
 
-    prv_serial_set_div(&g_serial);
-    prv_serial_set_fcr(&g_serial);
-    prv_serial_set_lcr(&g_serial);
-    prv_serial_set_mcr(&g_serial);
+    prv_serial_set_div(serial);
+    prv_serial_set_fcr(serial);
+    prv_serial_set_lcr(serial);
+    prv_serial_set_mcr(serial);
+
+    serial->ready = true;
 }
 
-void serial_puts(const char *str) {
-    if (!str) { return; }
-    if (g_serial.base == 0) { return; }
-    while (*str) {
+void serial_set_chardev(serial_ctx_t *serial, chardev_t *chardev) {
+    chardev->type = CHARDEV_SERIAL;
+    chardev->ctx = serial;
+    chardev->ops = &g_serial_ops;
+}
+
+int serial_write(void *v_serial, const void *buf, size_t buf_size) {
+    DEBUG_ASSERT(v_serial != NULL);
+
+    if (!buf) { return 0; }
+    if (buf_size == 0) { return 0; }
+
+    serial_ctx_t *const serial = v_serial;
+    if (!serial->ready) { return 0; }
+
+    const uint8_t *const buf_u8 = buf;
+    for (size_t idx = 0; idx < buf_size; idx++) {
         // FIXME: check if the buffer is not full?
-        prv_serial_transmit(&g_serial, *str);
-        str++;
+        prv_serial_transmit(serial, buf_u8[idx]);
     }
+
+    return buf_size;
 }
 
 static uint8_t prv_serial_read_reg(serial_ctx_t *serial, uint16_t offset) {
-    if (g_serial.base == 0) {
-        PANIC("tried to read register 0x%04" PRIx32 " in uninitialized state",
-              (uint32_t)offset);
-    }
-    return port_inb(serial->base + offset);
+    return port_inb(serial->port_base + offset);
 }
 
 static void prv_serial_write_reg(serial_ctx_t *serial, uint16_t offset,
                                  uint8_t data) {
-    if (g_serial.base == 0) {
-        PANIC("tried to write register 0x%04" PRIx32 " in uninitialized state",
-              (uint32_t)offset);
-    }
-    port_outb(serial->base + offset, data);
+    port_outb(serial->port_base + offset, data);
 }
 
 static void prv_serial_set_dlab(serial_ctx_t *serial, bool on) {
@@ -128,7 +129,7 @@ static void prv_serial_set_dlab(serial_ctx_t *serial, bool on) {
 }
 
 static void prv_serial_set_div(serial_ctx_t *serial) {
-    const uint16_t div = serial->div;
+    const uint16_t div = serial->baudrate_div;
 
     prv_serial_set_dlab(serial, true);
     prv_serial_write_reg(serial, SERIAL_REG_DLH, (uint8_t)(div >> 8));

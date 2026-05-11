@@ -3,6 +3,7 @@
 
 #include "acpi/acpi.h"
 #include "arch.h"
+#include "chardev.h"
 #include "cmdline.h"
 #include "config.h"
 #include "devmgr.h"
@@ -35,6 +36,9 @@ static pmm_mmap_t g_mmap;
 static pmm_region_t g_kernel_region;
 static pmm_region_t g_cut_region;
 
+static serial_ctx_t g_earlycon_serial;
+static chardev_t g_earlycon_chardev;
+
 static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr);
 static paddr_t prv_main_find_kernel_phys_end(void);
 static void prv_main_add_kernel_region(pmm_mmap_t *mmap, paddr_t region_start,
@@ -45,7 +49,12 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     mbi_init((paddr_t)mbi_addr);
 
-    serial_init();
+    g_earlycon_serial.port_base = SERIAL_COM1_BASE;
+    g_earlycon_serial.baudrate_div = SERIAL_BAUDRATE_115200_DIV;
+    serial_init(&g_earlycon_serial);
+    serial_set_chardev(&g_earlycon_serial, &g_earlycon_chardev);
+    log_set_chardev(&g_earlycon_chardev);
+
     term_init();
 
     LOG_INFO("Hello, World!");

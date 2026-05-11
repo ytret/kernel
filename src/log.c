@@ -1,28 +1,32 @@
 #include <lua.h>
 
-#include "config.h"
-
 #include "assert.h"
+#include "config.h"
 #include "kprintf.h"
 #include "kspinlock.h"
+#include "kstring.h"
 #include "log.h"
 #include "memfun.h"
-#include "serial.h"
 
 #define LOG_BUF_SIZE 256
 
+static chardev_t *g_log_chardev;
 // FIXME: both kprintf and this module have separate buffers, but they have the
 // same contents.
 static char g_log_buf[LOG_BUF_SIZE];
-
 static spinlock_t g_log_lock;
 
+static void prv_log_puts(const char *str);
 static const char *prv_log_level_str(int level);
 
 static int prv_log_lua_debug(lua_State *L);
 static int prv_log_lua_debug_raw(lua_State *L);
 static void prv_log_get_lua_caller(lua_State *L, char *file, const char **func,
                                    int *line);
+
+void log_set_chardev(chardev_t *chardev) {
+    g_log_chardev = chardev;
+}
 
 int log_printf(const char *file, const char *func, int line, int level,
                const char *fmt, ...) {
@@ -52,14 +56,14 @@ int log_vprintf(const char *file, const char *func, int line, int level,
     }
     ret += ksnprintf(g_log_buf, LOG_BUF_SIZE, "%s %27s:%04d ", level_str, func,
                      line);
-    serial_puts(g_log_buf);
+    prv_log_puts(g_log_buf);
 
     if (level <= YTKERNEL_TERM_LOG_LEVEL) { kvprintf(fmt, ap); }
     ret += kvsnprintf(g_log_buf, LOG_BUF_SIZE, fmt, ap);
-    serial_puts(g_log_buf);
+    prv_log_puts(g_log_buf);
 
     if (level <= YTKERNEL_TERM_LOG_LEVEL) { kprintf("\n"); }
-    serial_puts("\n");
+    prv_log_puts("\n");
     ret += 1;
 
     spinlock_release(&g_log_lock);
@@ -85,6 +89,13 @@ int log_init_lua(void *v_L) {
 
     ASSERT(lua_gettop(L) == base);
     return 0;
+}
+
+static void prv_log_puts(const char *str) {
+    const size_t str_len = string_len(str);
+    if (g_log_chardev) {
+        g_log_chardev->ops->f_write(g_log_chardev->ctx, str, str_len);
+    }
 }
 
 static const char *prv_log_level_str(int level) {
