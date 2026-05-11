@@ -127,3 +127,48 @@ You can use GDB to debug the kernel running inside QEMU.
 
    CMake should have placed a special `.gdbinit` file in the build directory
    that automatically connects to QEMU on port 1234.
+
+
+## Testing
+
+This project contains two independent testing systems.
+
+### Host tests
+
+Host tests are ordinary tests executed on the build machine via CMake/CTest.
+They are used for isolated modules that are easily decoupled from the kernel.
+
+```bash
+mkdir tests/build
+cd tests/build
+cmake .. -DCMAKE_BUILD_TYPE=Release -GNinja
+ninja
+```
+
+### Kernel tests
+
+Kernel tests are executed by the kernel itself in QEMU. They validate kernel
+subsystems that are tightly integrated with each other or require a live kernel
+environment.
+
+```bash
+# See the build section above on which CMake options to use during the first
+# CMake invocation. This command enables tests in an already configured build
+# directory:
+cmake .. -DYTKERNEL_ENABLE_TESTS=ON
+ninja
+./create_iso.sh -c "ktest.run-all-suites ktest.exit-vm" -o kernel-ktest.iso
+./ktest.sh
+```
+
+The `ktest.sh` script runs QEMU in a configuration that redirects kernel logs
+to a file (instead of stdout) and prints test results to stdout:
+
+```
+$ ./ktest.sh
+TAP version 14
+ok 1 - SMPSuiteMutex.Contention
+ok 2 - SMPSuiteMutex.Handoff
+ok 3 - SMPSuiteVNode.RefCount
+ok 4 - SMPSuiteVNode.ConcurrentResolve
+```
