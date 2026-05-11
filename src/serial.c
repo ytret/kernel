@@ -61,10 +61,14 @@
 #define SERIAL_LSR_TEMT BIT(6) //!< THRE, Shift Register, and TX FIFO are empty.
 #define SERIAL_LSR_     BIT(6) //!< Transmitter Empty.
 
+#define SERIAL_PROBE_VAL_0 0x55
+#define SERIAL_PROBE_VAL_1 0xAA
+
 static const chardev_ops_t g_serial_ops = {
     .f_write = serial_write,
 };
 
+static bool prv_serial_probe(serial_ctx_t *serial);
 static uint8_t prv_serial_read_reg(serial_ctx_t *serial, uint16_t offset);
 static void prv_serial_write_reg(serial_ctx_t *serial, uint16_t offset,
                                  uint8_t data);
@@ -77,9 +81,11 @@ static void prv_serial_set_mcr(serial_ctx_t *serial);
 
 static void prv_serial_transmit(serial_ctx_t *serial, uint8_t data);
 
-void serial_init(serial_ctx_t *serial) {
+bool serial_init(serial_ctx_t *serial) {
     ASSERT(!serial->ready);
     ASSERT(serial->port_base != 0);
+
+    if (!prv_serial_probe(serial)) { return false; }
 
     prv_serial_set_div(serial);
     prv_serial_set_fcr(serial);
@@ -87,6 +93,8 @@ void serial_init(serial_ctx_t *serial) {
     prv_serial_set_mcr(serial);
 
     serial->ready = true;
+
+    return true;
 }
 
 void serial_set_chardev(serial_ctx_t *serial, chardev_t *chardev) {
@@ -116,6 +124,26 @@ int serial_write(void *v_serial, const void *buf, size_t buf_size) {
     spinlock_release(&serial->lock);
 
     return buf_size;
+}
+
+static bool prv_serial_probe(serial_ctx_t *serial) {
+    const uint8_t orig_val = prv_serial_read_reg(serial, SERIAL_REG_SR);
+
+    uint8_t probe_val;
+    uint8_t readback;
+
+    probe_val = SERIAL_PROBE_VAL_0;
+    prv_serial_write_reg(serial, SERIAL_REG_SR, probe_val);
+    readback = prv_serial_read_reg(serial, SERIAL_REG_SR);
+    if (readback != probe_val) { return false; }
+
+    probe_val = SERIAL_PROBE_VAL_1;
+    prv_serial_write_reg(serial, SERIAL_REG_SR, probe_val);
+    readback = prv_serial_read_reg(serial, SERIAL_REG_SR);
+    if (readback != probe_val) { return false; }
+
+    prv_serial_write_reg(serial, SERIAL_REG_SR, orig_val);
+    return true;
 }
 
 static uint8_t prv_serial_read_reg(serial_ctx_t *serial, uint16_t offset) {

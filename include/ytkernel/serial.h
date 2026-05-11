@@ -26,14 +26,17 @@ typedef struct {
 } serial_ctx_t;
 
 /**
- * Initializes a serial device @a serial.
+ * Tries to initializes a serial device @a serial.
  *
  * The fields #serial_ctx_t.port_base and #serial_ctx_t.baudrate_div must be
  * initialized.
  *
  * @param serial Serial device context.
+ *
+ * @returns `true` if the device was successfully initialized, otherwise
+ * `false`.
  */
-void serial_init(serial_ctx_t *serial);
+bool serial_init(serial_ctx_t *serial);
 
 /**
  * Initializes @a serial as a @a chardev.
