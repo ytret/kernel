@@ -2,8 +2,8 @@
  * @file framebuf.h
  * Framebuffer terminal.
  *
- * See #output_impl_t in @link term.c @endlink for the terminal interface that
- * this module implements.
+ * See #output_impl_t in @link textdisp.c @endlink for the terminal interface
+ * that this module implements.
  */
 
 #pragma once

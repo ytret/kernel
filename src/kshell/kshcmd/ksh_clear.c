@@ -1,7 +1,7 @@
 #include "kprintf.h"
 #include "kshell/ksharg.h"
 #include "kshell/kshcmd/ksh_clear.h"
-#include "term.h"
+#include "textdisp.h"
 
 static ksharg_posarg_desc_t g_ksh_clear_posargs[] = {};
 

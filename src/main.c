@@ -18,7 +18,7 @@
 #include "serial.h"
 #include "smp.h"
 #include "taskmgr.h"
-#include "term.h"
+#include "textdisp.h"
 #include "vfs/vnode.h"
 #include "vmm.h"
 
