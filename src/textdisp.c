@@ -22,8 +22,8 @@ typedef struct {
  * The terminal mutex.
  *
  * To maintain coherent output in the terminal, each task that wants to print
- * must lock the terminal mutex. See #term_acquire_mutex(),
- * #term_release_mutex(), #term_owns_mutex().
+ * must lock the terminal mutex. See #textdisp_lock(), #textdisp_unlock(),
+ * #textdisp_owns_lock().
  */
 static task_mutex_t g_term_mutex;
 
@@ -52,7 +52,7 @@ static inline void put_cursor_at(size_t row, size_t col) {
     g_col = col;
 }
 
-void term_early_init(void) {
+void textdisp_early_init(void) {
     mbi_t const *p_mbi = mbi_ptr();
 
     if ((p_mbi->flags & MBI_FLAG_FRAMEBUF) &&
@@ -93,39 +93,39 @@ void term_early_init(void) {
     mutex_init(&g_term_mutex);
 }
 
-void term_init(void) {
+void textdisp_init(void) {
     if (g_output_impl.p_init) { g_output_impl.p_init(); }
 }
 
-void term_map_iomem(void) {
+void textdisp_map_iomem(void) {
     if (g_output_impl.p_map_iomem) { g_output_impl.p_map_iomem(); }
 }
 
 [[gnu::noreturn]]
-void term_task(void) {
+void textdisp_task(void) {
     kbd_event_t event;
     for (;;) {
         queue_read(kbd_sysevent_queue(), &event, sizeof(kbd_event_t));
     }
 }
 
-void term_acquire_mutex(void) {
+void textdisp_lock(void) {
     if (!gb_panic_mode) { mutex_acquire(&g_term_mutex); }
 }
 
-void term_release_mutex(void) {
+void textdisp_unlock(void) {
     if (!gb_panic_mode) { mutex_release(&g_term_mutex); }
 }
 
-bool term_owns_mutex(void) {
+bool textdisp_owns_lock(void) {
     return mutex_caller_owns(&g_term_mutex);
 }
 
-void term_enter_panic_mode(void) {
+void textdisp_begin_panic(void) {
     gb_panic_mode = true;
 }
 
-void term_clear(void) {
+void textdisp_clear(void) {
     if (!g_term_has_impl) { return; }
 
     assert_owns_mutex();
@@ -133,14 +133,14 @@ void term_clear(void) {
     put_cursor_at(0, 0);
 }
 
-void term_clear_rows(size_t start_row, size_t num_rows) {
+void textdisp_clear_rows(size_t start_row, size_t num_rows) {
     if (!g_term_has_impl) { return; }
 
     assert_owns_mutex();
     g_output_impl.p_clear_rows(start_row, num_rows);
 }
 
-void term_print_str(char const *p_str) {
+void textdisp_print_str(char const *p_str) {
     if (!g_term_has_impl) { return; }
 
     assert_owns_mutex();
@@ -149,10 +149,10 @@ void term_print_str(char const *p_str) {
         put_char(ch);
         p_str++;
     }
-    term_put_cursor_at(g_row, g_col);
+    textdisp_put_cursor_at(g_row, g_col);
 }
 
-void term_print_str_len(char const *p_str, size_t len) {
+void textdisp_print_str_len(char const *p_str, size_t len) {
     if (!g_term_has_impl) { return; }
 
     assert_owns_mutex();
@@ -162,37 +162,37 @@ void term_print_str_len(char const *p_str, size_t len) {
     put_cursor_at(g_row, g_col);
 }
 
-void term_put_char_at(size_t row, size_t col, char ch) {
+void textdisp_put_char_at(size_t row, size_t col, char ch) {
     if (!g_term_has_impl) { return; }
 
     assert_owns_mutex();
     g_output_impl.p_put_char_at(row, col, ch);
 }
 
-void term_put_cursor_at(size_t row, size_t col) {
+void textdisp_put_cursor_at(size_t row, size_t col) {
     if (!g_term_has_impl) { return; }
 
     assert_owns_mutex();
     put_cursor_at(row, col);
 }
 
-size_t term_row(void) {
+size_t textdisp_row(void) {
     return g_row;
 }
 
-size_t term_col(void) {
+size_t textdisp_col(void) {
     return g_col;
 }
 
-size_t term_height(void) {
+size_t textdisp_height(void) {
     return g_max_row;
 }
 
-size_t term_width(void) {
+size_t textdisp_width(void) {
     return g_max_col;
 }
 
-void term_read_kbd_event(kbd_event_t *p_event) {
+void textdisp_read_kbd_event(kbd_event_t *p_event) {
     kbd_event_t event;
     queue_read(kbd_event_queue(), &event, sizeof(kbd_event_t));
     *p_event = event;

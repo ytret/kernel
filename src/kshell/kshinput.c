@@ -32,7 +32,7 @@ const char *kshinput_line(void) {
     bool b_enter = false;
     while (!b_enter) {
         kbd_event_t event;
-        term_read_kbd_event(&event);
+        textdisp_read_kbd_event(&event);
         b_enter = parse_kbd_event(&event);
     }
 
@@ -75,12 +75,12 @@ static bool parse_kbd_event(kbd_event_t *p_event) {
         // buffer.
         if (g_cmd_buf_pos == 0) { return false; }
 
-        term_acquire_mutex();
-        size_t row = term_row();
-        size_t col = term_col();
+        textdisp_lock();
+        size_t row = textdisp_row();
+        size_t col = textdisp_col();
 
         if ((row == 0) && (col == 0)) {
-            term_release_mutex();
+            textdisp_unlock();
             return false;
         }
 
@@ -88,12 +88,12 @@ static bool parse_kbd_event(kbd_event_t *p_event) {
             col--;
         } else if (row > 0) {
             row--;
-            col = (term_width() - 1);
+            col = (textdisp_width() - 1);
         }
 
-        term_put_char_at(row, col, ' ');
-        term_put_cursor_at(row, col);
-        term_release_mutex();
+        textdisp_put_char_at(row, col, ' ');
+        textdisp_put_cursor_at(row, col);
+        textdisp_unlock();
 
         // Remove one char from the buffer.
         buf_remove();

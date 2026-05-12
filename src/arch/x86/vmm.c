@@ -75,7 +75,7 @@ void vmm_init(void) {
 
     prv_vmm_unmap_zero_page();
 
-    term_map_iomem();
+    textdisp_map_iomem();
 
     vmm_load_dir(gp_kvas_dir);
 }

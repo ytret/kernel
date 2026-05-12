@@ -54,21 +54,21 @@ void vasview(uint32_t pgdir_virt) {
     g_dir_idx = 0;
     g_tbl_idx = 0;
 
-    term_acquire_mutex();
+    textdisp_lock();
     update_full();
-    term_release_mutex();
+    textdisp_unlock();
 
     while (!gb_exit) {
         kbd_event_t kbd_event;
-        term_read_kbd_event(&kbd_event);
+        textdisp_read_kbd_event(&kbd_event);
         parse_kbd_event(&kbd_event);
     }
 
     // Before returning to kshell, put the cursor on the last row, to make the
     // prompt appear there.
-    term_acquire_mutex();
-    term_put_cursor_at((term_height() - 1), 0);
-    term_release_mutex();
+    textdisp_lock();
+    textdisp_put_cursor_at((textdisp_height() - 1), 0);
+    textdisp_unlock();
 }
 
 static void update_full(void) {
@@ -92,8 +92,8 @@ static void update_view(void) {
 }
 
 static void update_info(void) {
-    term_clear_rows(INFO_START_ROW, INFO_ROWS);
-    term_put_cursor_at(INFO_START_ROW, 0);
+    textdisp_clear_rows(INFO_START_ROW, INFO_ROWS);
+    textdisp_put_cursor_at(INFO_START_ROW, 0);
 
     uint32_t entry = entry_at_cursor();
     uint32_t start_addr = (g_dir_idx << 22);
@@ -173,11 +173,11 @@ static void update_cursor(void) {
     uint32_t row = (VIEW_START_ROW + (idx / VIEW_COLS));
     uint32_t col = (VIEW_START_COL + (idx % VIEW_COLS));
 
-    term_put_cursor_at(row, col);
+    textdisp_put_cursor_at(row, col);
 }
 
 static void show_dir(void) {
-    term_clear();
+    textdisp_clear();
     kprintf("Dir %P", gp_pgdir);
 
     for (size_t view_row = 0; view_row < VIEW_ROWS; view_row++) {
@@ -187,11 +187,11 @@ static void show_dir(void) {
 
             uint32_t entry = gp_pgdir[dir_idx];
             if (entry & FLAG_PRESENT) {
-                term_put_char_at((VIEW_START_ROW + view_row),
-                                 (VIEW_START_COL + view_col), '+');
+                textdisp_put_char_at((VIEW_START_ROW + view_row),
+                                     (VIEW_START_COL + view_col), '+');
             } else {
-                term_put_char_at((VIEW_START_ROW + view_row),
-                                 (VIEW_START_COL + view_col), '.');
+                textdisp_put_char_at((VIEW_START_ROW + view_row),
+                                     (VIEW_START_COL + view_col), '.');
             }
         }
     }
@@ -202,7 +202,7 @@ static void show_dir(void) {
 static void show_tbl(void) {
     uint32_t *p_tbl = ((uint32_t *)(gp_pgdir[g_dir_idx] & ~0xFFF));
 
-    term_clear();
+    textdisp_clear();
     kprintf("Dir %P, table %P", gp_pgdir, p_tbl);
 
     for (size_t view_row = 0; view_row < VIEW_ROWS; view_row++) {
@@ -212,11 +212,11 @@ static void show_tbl(void) {
 
             uint32_t entry = p_tbl[tbl_idx];
             if (entry & FLAG_PRESENT) {
-                term_put_char_at((VIEW_START_ROW + view_row),
-                                 (VIEW_START_COL + view_col), '+');
+                textdisp_put_char_at((VIEW_START_ROW + view_row),
+                                     (VIEW_START_COL + view_col), '+');
             } else {
-                term_put_char_at((VIEW_START_ROW + view_row),
-                                 (VIEW_START_COL + view_col), '.');
+                textdisp_put_char_at((VIEW_START_ROW + view_row),
+                                     (VIEW_START_COL + view_col), '.');
             }
         }
     }
@@ -260,7 +260,7 @@ static uint32_t idx_at_cursor(void) {
 static void parse_kbd_event(kbd_event_t *p_event) {
     if (p_event->b_released) { return; }
 
-    term_acquire_mutex();
+    textdisp_lock();
 
     switch (p_event->key) {
     case KEY_LEFTARROW:
@@ -292,7 +292,7 @@ static void parse_kbd_event(kbd_event_t *p_event) {
         break;
     }
 
-    term_release_mutex();
+    textdisp_unlock();
 }
 
 static void move_cursor(int32_t inc_idx) {

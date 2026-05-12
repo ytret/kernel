@@ -10,7 +10,7 @@ void kbdlog(size_t num_events) {
 
     kbd_event_t event;
     for (size_t idx = 0; idx < num_events; idx++) {
-        term_read_kbd_event(&event);
+        textdisp_read_kbd_event(&event);
 
         kprintf("kbdlog: %3u: key = %u, ", idx, event.key);
         if (event.b_released) {

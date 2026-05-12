@@ -58,9 +58,9 @@ void ksh_clear(list_t *arg_list) {
     if (do_help) {
         ksharg_print_help(&g_ksh_clear_parser);
     } else {
-        term_acquire_mutex();
-        term_clear();
-        term_release_mutex();
+        textdisp_lock();
+        textdisp_clear();
+        textdisp_unlock();
     }
 
     ksharg_free_parser_inst(parser);
