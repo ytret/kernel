@@ -30,6 +30,9 @@ static bool g_fb_cursor_en = true;
 static size_t g_fb_cursor_row;
 static size_t g_fb_cursor_col;
 
+// See arch/x86/boot.s.
+extern uint32_t framebuf_pgtbl[];
+
 static void prv_fb_draw_sh_glyph(size_t sh_row, size_t sh_col, char ch);
 static void prv_fb_draw_real_glyph(size_t fb_row, size_t fb_col, char ch);
 static void prv_fb_draw_glyph_in(uint8_t *p_buf, size_t y, size_t x, char ch);
@@ -52,7 +55,16 @@ void framebuf_early_init(void) {
     g_fb_pitch_px = p_mbi->framebuffer_pitch;
     g_fb_bpp = p_mbi->framebuffer_bpp;
 
-    LOG_DEBUG("framebuffer address %p", gp_framebuf);
+    const size_t fb_size = g_fb_pitch_px * g_fb_height_px;
+
+    LOG_DEBUG("framebuf address %p", gp_framebuf);
+    LOG_DEBUG("size 0x%08" PRIx32, fb_size);
+    LOG_DEBUG("height %zu width %zu", g_fb_height_px, g_fb_width_px);
+    LOG_DEBUG("pitch %" PRIu32 " bpp %u", g_fb_pitch_px, g_fb_bpp);
+
+    const bool fb_mapped =
+        vmm_kmap_region_in(framebuf_pgtbl, (uint32_t)gp_framebuf, fb_size);
+    ASSERT(fb_mapped);
 
     const mbi_mod_t *p_mod = mbi_find_mod("font");
     if (!p_mod) {
