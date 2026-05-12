@@ -5,31 +5,31 @@
 
 #include "kbd.h"
 
-void term_early_init(void);
-void term_init(void);
-void term_map_iomem(void);
-[[gnu::noreturn]] void term_task(void);
+void textdisp_early_init(void);
+void textdisp_init(void);
+void textdisp_map_iomem(void);
+[[gnu::noreturn]] void textdisp_task(void);
 
 /* Output-related functions */
-void term_acquire_mutex(void);
-void term_release_mutex(void);
-bool term_owns_mutex(void);
-void term_enter_panic_mode(void);
+void textdisp_lock(void);
+void textdisp_unlock(void);
+bool textdisp_owns_lock(void);
+void textdisp_begin_panic(void);
 
-void term_clear(void);
-void term_clear_rows(size_t start_row, size_t num_rows);
+void textdisp_clear(void);
+void textdisp_clear_rows(size_t start_row, size_t num_rows);
 
-void term_print_str(char const *p_str);
-void term_print_str_len(char const *p_str, size_t len);
+void textdisp_print_str(char const *p_str);
+void textdisp_print_str_len(char const *p_str, size_t len);
 
-void term_put_char_at(size_t row, size_t col, char ch);
-void term_put_cursor_at(size_t row, size_t col);
+void textdisp_put_char_at(size_t row, size_t col, char ch);
+void textdisp_put_cursor_at(size_t row, size_t col);
 
-size_t term_row(void);
-size_t term_col(void);
+size_t textdisp_row(void);
+size_t textdisp_col(void);
 
-size_t term_height(void);
-size_t term_width(void);
+size_t textdisp_height(void);
+size_t textdisp_width(void);
 
 /* Input-related functions */
-void term_read_kbd_event(kbd_event_t *p_event);
+void textdisp_read_kbd_event(kbd_event_t *p_event);
