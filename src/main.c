@@ -57,7 +57,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     }
     log_set_chardev(&g_earlycon_chardev);
 
-    term_init();
+    term_early_init();
 
     LOG_INFO("Hello, World!");
     check_bootloader(magic_num, mbi_addr);
@@ -73,13 +73,13 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     pmm_init(&g_mmap);
 
     heap_init();
+    term_init();
 
     mbi_save_on_heap();
     if (mbi_ptr()->flags & MBI_FLAG_CMDLINE) {
         cmdline_init((const char *)mbi_ptr()->cmdline);
     }
 
-    term_init_history();
     term_clear();
 
 #ifdef YTKERNEL_ENABLE_TESTS

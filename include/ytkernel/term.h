@@ -5,8 +5,8 @@
 
 #include "kbd.h"
 
+void term_early_init(void);
 void term_init(void);
-void term_init_history(void);
 void term_map_iomem(void);
 [[gnu::noreturn]] void term_task(void);
 
@@ -18,8 +18,6 @@ void term_enter_panic_mode(void);
 
 void term_clear(void);
 void term_clear_rows(size_t start_row, size_t num_rows);
-
-size_t term_history_pos(void);
 
 void term_print_str(char const *p_str);
 void term_print_str_len(char const *p_str, size_t len);

@@ -9,19 +9,13 @@
 #include "vga.h"
 
 typedef struct {
+    void (*p_init)(void);
     void (*p_map_iomem)(void);
 
     void (*p_put_char_at)(size_t row, size_t col, char ch);
     void (*p_put_cursor_at)(size_t row, size_t col);
     void (*p_clear_rows)(size_t start_row, size_t num_rows);
     void (*p_scroll_new_row)(void);
-
-    void (*p_init_history)(void);
-    void (*p_clear_history)(void);
-    size_t (*p_history_screens)(void);
-    size_t (*p_history_pos)(void);
-    void (*p_set_history_mode)(size_t row_from_start);
-    bool (*p_is_history_mode_active)(void);
 } output_impl_t;
 
 /**
@@ -34,7 +28,6 @@ typedef struct {
 static task_mutex_t g_term_mutex;
 
 static bool gb_panic_mode;
-static bool gb_history_mode;
 static output_impl_t g_output_impl;
 static bool g_term_has_impl;
 
@@ -59,53 +52,40 @@ static inline void put_cursor_at(size_t row, size_t col) {
     g_col = col;
 }
 
-void term_init(void) {
+void term_early_init(void) {
     mbi_t const *p_mbi = mbi_ptr();
 
     if ((p_mbi->flags & MBI_FLAG_FRAMEBUF) &&
         (MBI_FRAMEBUF_EGA != p_mbi->framebuffer_type)) {
         LOG_DEBUG("terminal type - framebuffer");
 
-        framebuf_init();
+        framebuf_early_init();
 
         g_max_row = framebuf_height_chars();
         g_max_col = framebuf_width_chars();
 
+        g_output_impl.p_init = framebuf_init;
         g_output_impl.p_map_iomem = framebuf_map_iomem;
 
         g_output_impl.p_put_char_at = framebuf_put_char_at;
         g_output_impl.p_put_cursor_at = framebuf_put_cursor_at;
         g_output_impl.p_clear_rows = framebuf_clear_rows;
         g_output_impl.p_scroll_new_row = framebuf_scroll_new_row;
-
-        g_output_impl.p_init_history = framebuf_init_history;
-        g_output_impl.p_clear_history = framebuf_clear_history;
-        g_output_impl.p_history_screens = framebuf_history_screens;
-        g_output_impl.p_history_pos = framebuf_history_pos;
-        g_output_impl.p_set_history_mode = framebuf_set_history_mode;
-        g_output_impl.p_is_history_mode_active =
-            framebuf_is_history_mode_active;
     } else {
         LOG_DEBUG("terminal type - VGA text mode");
 
-        vga_init();
+        vga_early_init();
 
         g_max_row = vga_height_chars();
         g_max_col = vga_width_chars();
 
+        g_output_impl.p_init = NULL;
         g_output_impl.p_map_iomem = vga_map_iomem;
 
         g_output_impl.p_put_char_at = vga_put_char_at;
         g_output_impl.p_put_cursor_at = vga_put_cursor_at;
         g_output_impl.p_clear_rows = vga_clear_rows;
         g_output_impl.p_scroll_new_row = vga_scroll_new_row;
-
-        g_output_impl.p_init_history = vga_init_history;
-        g_output_impl.p_clear_history = vga_clear_history;
-        g_output_impl.p_history_screens = vga_history_screens;
-        g_output_impl.p_history_pos = vga_history_pos;
-        g_output_impl.p_set_history_mode = vga_set_history_mode;
-        g_output_impl.p_is_history_mode_active = vga_is_history_mode_active;
     }
 
     g_term_has_impl = true;
@@ -113,8 +93,8 @@ void term_init(void) {
     mutex_init(&g_term_mutex);
 }
 
-void term_init_history(void) {
-    if (g_output_impl.p_init_history) { g_output_impl.p_init_history(); }
+void term_init(void) {
+    if (g_output_impl.p_init) { g_output_impl.p_init(); }
 }
 
 void term_map_iomem(void) {
@@ -124,26 +104,8 @@ void term_map_iomem(void) {
 [[gnu::noreturn]]
 void term_task(void) {
     kbd_event_t event;
-    size_t history_pos;
     for (;;) {
         queue_read(kbd_sysevent_queue(), &event, sizeof(kbd_event_t));
-
-        term_acquire_mutex();
-        history_pos = g_output_impl.p_history_pos();
-        if (event.key == KEY_PAGEUP) {
-            if (history_pos >= 1) {
-                g_output_impl.p_set_history_mode(history_pos - 1);
-            }
-        } else if (event.key == KEY_PAGEDOWN) {
-            if (history_pos <
-                (g_output_impl.p_history_screens() - 1) * g_max_row) {
-                g_output_impl.p_set_history_mode(history_pos + 1);
-            }
-        }
-
-        gb_history_mode = g_output_impl.p_is_history_mode_active();
-
-        term_release_mutex();
     }
 }
 
@@ -169,8 +131,6 @@ void term_clear(void) {
     assert_owns_mutex();
     g_output_impl.p_clear_rows(0, g_max_row);
     put_cursor_at(0, 0);
-
-    g_output_impl.p_clear_history();
 }
 
 void term_clear_rows(size_t start_row, size_t num_rows) {
@@ -234,13 +194,8 @@ size_t term_width(void) {
 
 void term_read_kbd_event(kbd_event_t *p_event) {
     kbd_event_t event;
-    for (;;) {
-        queue_read(kbd_event_queue(), &event, sizeof(kbd_event_t));
-        if (!gb_history_mode) {
-            *p_event = event;
-            break;
-        }
-    }
+    queue_read(kbd_event_queue(), &event, sizeof(kbd_event_t));
+    *p_event = event;
 }
 
 static void put_char(char ch) {
