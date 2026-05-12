@@ -125,7 +125,7 @@ list(APPEND KERNEL_SOURCES
     src/smp.c
     src/stack.c
     src/taskmgr.c
-    src/term.c
+    src/textdisp.c
     src/vfs/file.c
     src/vfs/vfs_err.c
     src/vfs/vnode.c

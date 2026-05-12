@@ -4,7 +4,7 @@
 #include "kprintf.h"
 #include "kshell/kshinput.h"
 #include "panic.h"
-#include "term.h"
+#include "textdisp.h"
 
 #define CMD_BUF_SIZE 256
 

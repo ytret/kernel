@@ -5,7 +5,7 @@
 #include "mbi.h"
 #include "panic.h"
 #include "queue.h"
-#include "term.h"
+#include "textdisp.h"
 #include "vga.h"
 
 typedef struct {

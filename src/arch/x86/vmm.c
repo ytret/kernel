@@ -12,7 +12,7 @@
 #include "panic.h"
 #include "pmm.h"
 #include "smp.h"
-#include "term.h"
+#include "textdisp.h"
 #include "vmm.h"
 
 #define VMM_ADDR_DIR_IDX(addr) (((addr) >> 22) & 0x3FF)

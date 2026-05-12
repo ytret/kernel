@@ -6,7 +6,7 @@
 #include "kshell/vasview.h"
 #include "panic.h"
 #include "pmm.h"
-#include "term.h"
+#include "textdisp.h"
 
 #define VIEW_START_ROW 2
 #define VIEW_START_COL 8

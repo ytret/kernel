@@ -4,7 +4,7 @@
 #include <ytprintf.h>
 
 #include "kprintf.h"
-#include "term.h"
+#include "textdisp.h"
 
 #define KPRINTF_BUF_SIZE 256
 

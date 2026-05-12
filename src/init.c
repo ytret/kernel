@@ -12,7 +12,7 @@
 #include "panic.h"
 #include "smp.h"
 #include "taskmgr.h"
-#include "term.h"
+#include "textdisp.h"
 
 #include "arch/x86/apic/lapic.h"
 

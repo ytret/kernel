@@ -1,8 +1,7 @@
-#include "heap.h"
 #include "kbd.h"
 #include "kprintf.h"
 #include "kshell/kbdlog.h"
-#include "term.h"
+#include "textdisp.h"
 
 #define EVENT_BUF_LEN 20
 
