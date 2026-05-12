@@ -3,6 +3,7 @@
 
 #define LOG_LEVEL LOG_LEVEL_DEBUG
 
+#include "assert.h"
 #include "heap.h"
 #include "kinttypes.h"
 #include "kmutex.h"
@@ -220,6 +221,42 @@ void vmm_kmap_region_a(void *(*alloc)(size_t size), vaddr_t start,
 
 void vmm_kmap_region(vaddr_t start, vaddr_t size) {
     vmm_kmap_region_a(heap_alloc, start, size);
+}
+
+bool vmm_kmap_region_in(void *v_pgtbl, vaddr_t start, vaddr_t size) {
+    DEBUG_ASSERT(v_pgtbl != NULL);
+    DEBUG_ASSERT((uintptr_t)v_pgtbl % PMM_PAGE_SIZE == 0);
+    uint32_t *const pgtbl = v_pgtbl;
+
+    // FIXME: check for overflow
+    const vaddr_t end = start + size;
+
+    const uint32_t start_dir_idx = VMM_ADDR_DIR_IDX(start);
+    const uint32_t end_dir_idx = VMM_ADDR_DIR_IDX(end);
+    if (start_dir_idx != end_dir_idx) {
+        LOG_ERROR("region 0x%08" PRIx32 "..0x%08" PRIx32
+                  " cannot be mapped with one page table",
+                  start, end);
+        return false;
+    }
+
+    kmemset(pgtbl, 0, VMM_TABLE_SIZE);
+    const uint32_t phys_pgdir = prv_vmm_read_cr3();
+    uint32_t *const pgdir = (uint32_t *)phys_pgdir;
+    ASSERT(pgdir != NULL);
+
+    pgdir[start_dir_idx] = (uint32_t)v_pgtbl | VMM_TABLE_RW | VMM_TABLE_PRESENT;
+
+    const uint32_t start_page = PMM_PAGE_ALIGN_DOWN(start);
+    const uint32_t end_page = PMM_PAGE_ALIGN_UP(end);
+    for (uint32_t page = start_page; page < end_page; page += PMM_PAGE_SIZE) {
+        const uint32_t tbl_idx = VMM_ADDR_TBL_IDX(page);
+        const uint32_t flags = VMM_PAGE_RW | VMM_PAGE_PRESENT;
+        pgtbl[tbl_idx] = page | flags;
+        vmm_invlpg(page);
+    }
+
+    return true;
 }
 
 void vmm_kmap_buf(const void *buf, size_t size) {

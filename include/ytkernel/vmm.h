@@ -30,6 +30,7 @@ void vmm_unmap_kernel_page(uint32_t virt);
 void vmm_kmap_region_a(void *(*alloc)(size_t size), vaddr_t start,
                        vaddr_t size);
 void vmm_kmap_region(vaddr_t start, vaddr_t size);
+bool vmm_kmap_region_in(void *pgtbl, vaddr_t start, vaddr_t size);
 
 /**
  * Identity maps physical pages containing a buffer.
