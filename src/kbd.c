@@ -14,13 +14,19 @@
 
 #define CODE_BUF_LEN 10
 
-// Event queue length. One node is used as a dummy node, therefore only 31
-// events are stored. The number must be a multiple of 32 because of the queue
-// implementation.
+/**
+ * Event queue capacity.
+ *
+ * One node is used as a dummy node, so only 31 events are actually enqueuable.
+ * Also, the number must be a multiple of 32 because of the queue
+ * implementation.
+ */
 #define EVENT_QUEUE_LEN 32
 #define EVENT_BUF_LEN   EVENT_QUEUE_LEN
 
-// Buffer to store scancodes before they are parsed.
+/**
+ * Buffer to store scancodes in before they get parsed.
+ */
 static volatile uint8_t gp_kbd_code_buf[CODE_BUF_LEN];
 static volatile size_t g_kbd_code_buf_pos;
 
