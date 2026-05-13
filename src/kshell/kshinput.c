@@ -15,6 +15,8 @@ static volatile size_t g_cmd_buf_pos;
 // Keyboard state.
 static volatile bool gb_shifted;
 
+static textdisp_t *g_kshinput_disp;
+
 static void buf_append(char ch);
 static void buf_remove(void);
 static volatile char const *buf_get_cmd(void);
@@ -22,6 +24,10 @@ static volatile char const *buf_get_cmd(void);
 static bool parse_kbd_event(kbd_event_t *p_event);
 static void echo_key(uint8_t key);
 static char char_from_key(uint8_t key);
+
+void kshinput_init(void) {
+    g_kshinput_disp = textdisp_get_boot_disp();
+}
 
 /**
  * Synchronously reads a line from the user and returns it.
@@ -75,12 +81,12 @@ static bool parse_kbd_event(kbd_event_t *p_event) {
         // buffer.
         if (g_cmd_buf_pos == 0) { return false; }
 
-        textdisp_lock();
-        size_t row = textdisp_row();
-        size_t col = textdisp_col();
+        textdisp_lock(g_kshinput_disp);
+        size_t row = textdisp_row(g_kshinput_disp);
+        size_t col = textdisp_col(g_kshinput_disp);
 
         if ((row == 0) && (col == 0)) {
-            textdisp_unlock();
+            textdisp_unlock(g_kshinput_disp);
             return false;
         }
 
@@ -88,12 +94,12 @@ static bool parse_kbd_event(kbd_event_t *p_event) {
             col--;
         } else if (row > 0) {
             row--;
-            col = (textdisp_width() - 1);
+            col = (textdisp_width(g_kshinput_disp) - 1);
         }
 
-        textdisp_put_char_at(row, col, ' ');
-        textdisp_put_cursor_at(row, col);
-        textdisp_unlock();
+        textdisp_put_char_at(g_kshinput_disp, row, col, ' ');
+        textdisp_put_cursor_at(g_kshinput_disp, row, col);
+        textdisp_unlock(g_kshinput_disp);
 
         // Remove one char from the buffer.
         buf_remove();

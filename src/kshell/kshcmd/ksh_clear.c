@@ -58,9 +58,10 @@ void ksh_clear(list_t *arg_list) {
     if (do_help) {
         ksharg_print_help(&g_ksh_clear_parser);
     } else {
-        textdisp_lock();
-        textdisp_clear();
-        textdisp_unlock();
+        textdisp_t *const disp = textdisp_get_boot_disp();
+        textdisp_lock(disp);
+        textdisp_clear(disp);
+        textdisp_unlock(disp);
     }
 
     ksharg_free_parser_inst(parser);

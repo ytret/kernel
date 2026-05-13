@@ -57,7 +57,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     }
     log_set_chardev(&g_earlycon_chardev);
 
-    textdisp_early_init();
+    textdisp_early_init(textdisp_get_boot_disp());
 
     LOG_INFO("Hello, World!");
     check_bootloader(magic_num, mbi_addr);
@@ -73,14 +73,14 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     pmm_init(&g_mmap);
 
     heap_init();
-    textdisp_init();
+    textdisp_init(textdisp_get_boot_disp());
 
     mbi_save_on_heap();
     if (mbi_ptr()->flags & MBI_FLAG_CMDLINE) {
         cmdline_init((const char *)mbi_ptr()->cmdline);
     }
 
-    textdisp_clear();
+    textdisp_clear(textdisp_get_boot_disp());
 
 #ifdef YTKERNEL_ENABLE_TESTS
     serial_ctx_t *const ktest_serial = heap_alloc(sizeof(serial_ctx_t));
