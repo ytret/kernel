@@ -2,7 +2,7 @@
  * @file framebuf.h
  * Framebuffer terminal.
  *
- * See #output_impl_t in @link textdisp.c @endlink for the terminal interface
+ * See #textdisp_ops_t in @link textdisp.c @endlink for the terminal interface
  * that this module implements.
  */
 
@@ -12,6 +12,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "textdisp.h"
+
+const textdisp_ops_t *framebuf_textdisp_ops(void);
 void framebuf_early_init(void);
 void framebuf_init(void);
 void framebuf_map_iomem(void);

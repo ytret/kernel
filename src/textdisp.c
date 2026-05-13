@@ -8,16 +8,6 @@
 #include "textdisp.h"
 #include "vga.h"
 
-typedef struct {
-    void (*p_init)(void);
-    void (*p_map_iomem)(void);
-
-    void (*p_put_char_at)(size_t row, size_t col, char ch);
-    void (*p_put_cursor_at)(size_t row, size_t col);
-    void (*p_clear_rows)(size_t start_row, size_t num_rows);
-    void (*p_scroll_new_row)(void);
-} output_impl_t;
-
 struct textdisp {
     /**
      * Text display struct lock.
@@ -29,7 +19,7 @@ struct textdisp {
     task_mutex_t lock;
 
     bool panic_mode;
-    output_impl_t impl;
+    const textdisp_ops_t *ops;
     bool has_impl;
 
     size_t max_row;
@@ -60,7 +50,7 @@ static inline void assert_owns_mutex(textdisp_t *disp) {
 
 [[gnu::artificial]]
 static inline void put_cursor_at(textdisp_t *disp, size_t row, size_t col) {
-    disp->impl.p_put_cursor_at(row, col);
+    disp->ops->p_put_cursor_at(row, col);
     disp->row = row;
     disp->col = col;
 }
@@ -77,32 +67,16 @@ void textdisp_early_init(textdisp_t *disp) {
         LOG_DEBUG("terminal type - framebuffer");
 
         framebuf_early_init();
-
         disp->max_row = framebuf_height_chars();
         disp->max_col = framebuf_width_chars();
-
-        disp->impl.p_init = framebuf_init;
-        disp->impl.p_map_iomem = framebuf_map_iomem;
-
-        disp->impl.p_put_char_at = framebuf_put_char_at;
-        disp->impl.p_put_cursor_at = framebuf_put_cursor_at;
-        disp->impl.p_clear_rows = framebuf_clear_rows;
-        disp->impl.p_scroll_new_row = framebuf_scroll_new_row;
+        disp->ops = framebuf_textdisp_ops();
     } else {
         LOG_DEBUG("terminal type - VGA text mode");
 
         vga_early_init();
-
         disp->max_row = vga_height_chars();
         disp->max_col = vga_width_chars();
-
-        disp->impl.p_init = NULL;
-        disp->impl.p_map_iomem = vga_map_iomem;
-
-        disp->impl.p_put_char_at = vga_put_char_at;
-        disp->impl.p_put_cursor_at = vga_put_cursor_at;
-        disp->impl.p_clear_rows = vga_clear_rows;
-        disp->impl.p_scroll_new_row = vga_scroll_new_row;
+        disp->ops = vga_textdisp_ops();
     }
 
     disp->has_impl = true;
@@ -111,11 +85,11 @@ void textdisp_early_init(textdisp_t *disp) {
 }
 
 void textdisp_init(textdisp_t *disp) {
-    if (disp->impl.p_init) { disp->impl.p_init(); }
+    if (disp->ops->p_init) { disp->ops->p_init(); }
 }
 
 void textdisp_map_iomem(textdisp_t *disp) {
-    if (disp->impl.p_map_iomem) { disp->impl.p_map_iomem(); }
+    if (disp->ops->p_map_iomem) { disp->ops->p_map_iomem(); }
 }
 
 [[gnu::noreturn]]
@@ -146,7 +120,7 @@ void textdisp_clear(textdisp_t *disp) {
     if (!disp->has_impl) { return; }
 
     assert_owns_mutex(disp);
-    disp->impl.p_clear_rows(0, disp->max_row);
+    disp->ops->p_clear_rows(0, disp->max_row);
     put_cursor_at(disp, 0, 0);
 }
 
@@ -154,7 +128,7 @@ void textdisp_clear_rows(textdisp_t *disp, size_t start_row, size_t num_rows) {
     if (!disp->has_impl) { return; }
 
     assert_owns_mutex(disp);
-    disp->impl.p_clear_rows(start_row, num_rows);
+    disp->ops->p_clear_rows(start_row, num_rows);
 }
 
 void textdisp_print_str(textdisp_t *disp, char const *p_str) {
@@ -183,7 +157,7 @@ void textdisp_put_char_at(textdisp_t *disp, size_t row, size_t col, char ch) {
     if (!disp->has_impl) { return; }
 
     assert_owns_mutex(disp);
-    disp->impl.p_put_char_at(row, col, ch);
+    disp->ops->p_put_char_at(row, col, ch);
 }
 
 void textdisp_put_cursor_at(textdisp_t *disp, size_t row, size_t col) {
@@ -227,7 +201,7 @@ static void put_char(textdisp_t *disp, char ch) {
         break;
 
     default:
-        disp->impl.p_put_char_at(disp->row, disp->col, ch);
+        disp->ops->p_put_char_at(disp->row, disp->col, ch);
 
         disp->col++;
         if (disp->col >= disp->max_col) {
@@ -242,5 +216,5 @@ static void put_char(textdisp_t *disp, char ch) {
 }
 
 static void scroll_new_row(textdisp_t *disp) {
-    disp->impl.p_scroll_new_row();
+    disp->ops->p_scroll_new_row();
 }

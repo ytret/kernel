@@ -33,6 +33,15 @@ static size_t g_fb_cursor_col;
 // See arch/x86/boot.s.
 extern uint32_t framebuf_pgtbl[];
 
+static textdisp_ops_t g_framebuf_disp_ops = {
+    .p_init = framebuf_init,
+    .p_map_iomem = framebuf_map_iomem,
+    .p_put_char_at = framebuf_put_char_at,
+    .p_put_cursor_at = framebuf_put_cursor_at,
+    .p_clear_rows = framebuf_clear_rows,
+    .p_scroll_new_row = framebuf_scroll_new_row,
+};
+
 static void prv_fb_draw_sh_glyph(size_t sh_row, size_t sh_col, char ch);
 static void prv_fb_draw_real_glyph(size_t fb_row, size_t fb_col, char ch);
 static void prv_fb_draw_glyph_in(uint8_t *p_buf, size_t y, size_t x, char ch);
@@ -45,6 +54,10 @@ static void prv_fb_disable_cursor(void);
 static void prv_fb_draw_real_cursor(void);
 
 static void prv_fb_copy_sh_to_real(size_t fb_start_row, size_t fb_num_rows);
+
+const textdisp_ops_t *framebuf_textdisp_ops(void) {
+    return &g_framebuf_disp_ops;
+}
 
 void framebuf_early_init(void) {
     const mbi_t *p_mbi = mbi_ptr();

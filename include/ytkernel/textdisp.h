@@ -5,6 +5,16 @@
 
 #include "kbd.h"
 
+typedef struct {
+    void (*p_init)(void);
+    void (*p_map_iomem)(void);
+
+    void (*p_put_char_at)(size_t row, size_t col, char ch);
+    void (*p_put_cursor_at)(size_t row, size_t col);
+    void (*p_clear_rows)(size_t start_row, size_t num_rows);
+    void (*p_scroll_new_row)(void);
+} textdisp_ops_t;
+
 typedef struct textdisp textdisp_t;
 
 textdisp_t *textdisp_get_boot_disp(void);
