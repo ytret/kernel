@@ -9,12 +9,13 @@
 static mbi_t *gp_mbi;
 static pmm_region_t g_mbi_pmm_regions[MBI_PMM_MMAP_MAX_ENTRIES];
 
-/*
- * Sets the internal MBI struct pointer for the mbi_* functions to use.
+/**
+ * Sets an internal MBI struct pointer that mbi_* functions use.
  *
- * NOTE: lifetimes of the MBI struct and data it points to must span until
- * mbi_deep_copy() is called, which copies them to heap.  After that, the
- * original data may be overwritten.
+ * @warning
+ * Lifetimes of the MBI struct and the data it points to must span until
+ * #mbi_save_on_heap() is called.  After that, the original data may be
+ * discarded.
  */
 void mbi_init(paddr_t mbi_addr) {
     if (mbi_addr > VADDR_MAX) {
@@ -24,10 +25,8 @@ void mbi_init(paddr_t mbi_addr) {
     gp_mbi = (mbi_t *)(vaddr_t)mbi_addr;
 }
 
-/*
- * Makes a deep copy of the MBI on heap.
- *
- * NOTE: requires the heap to be initialized.
+/**
+ * Makes a deep copy of the MBI struct on heap.
  */
 void mbi_save_on_heap(void) {
     // The structure itself.
