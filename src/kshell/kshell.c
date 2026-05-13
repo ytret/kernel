@@ -7,6 +7,8 @@
 void kshell(void) {
     LOG_INFO("enter kshell");
 
+    kshinput_init();
+
     for (;;) {
         kprintf("> ");
         char const *p_cmd = kshinput_line();

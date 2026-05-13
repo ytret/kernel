@@ -18,7 +18,7 @@ typedef struct {
     void (*p_scroll_new_row)(void);
 } output_impl_t;
 
-typedef struct {
+struct textdisp {
     /**
      * Text display struct lock.
      *
@@ -37,7 +37,7 @@ typedef struct {
 
     size_t row;
     size_t col;
-} textdisp_t;
+};
 
 /**
  * Boot display context.
@@ -48,24 +48,28 @@ typedef struct {
  */
 static textdisp_t g_textdisp;
 
-static void put_char(char ch);
-static void scroll_new_row(void);
+static void put_char(textdisp_t *disp, char ch);
+static void scroll_new_row(textdisp_t *disp);
 
 [[gnu::artificial]]
-static inline void assert_owns_mutex(void) {
-    if (!mutex_caller_owns(&g_textdisp.lock) && !g_textdisp.panic_mode) {
+static inline void assert_owns_mutex(textdisp_t *disp) {
+    if (!mutex_caller_owns(&disp->lock) && !disp->panic_mode) {
         panic_nested();
     }
 }
 
 [[gnu::artificial]]
-static inline void put_cursor_at(size_t row, size_t col) {
-    g_textdisp.impl.p_put_cursor_at(row, col);
-    g_textdisp.row = row;
-    g_textdisp.col = col;
+static inline void put_cursor_at(textdisp_t *disp, size_t row, size_t col) {
+    disp->impl.p_put_cursor_at(row, col);
+    disp->row = row;
+    disp->col = col;
 }
 
-void textdisp_early_init(void) {
+textdisp_t *textdisp_get_boot_disp(void) {
+    return &g_textdisp;
+}
+
+void textdisp_early_init(textdisp_t *disp) {
     mbi_t const *p_mbi = mbi_ptr();
 
     if ((p_mbi->flags & MBI_FLAG_FRAMEBUF) &&
@@ -74,44 +78,44 @@ void textdisp_early_init(void) {
 
         framebuf_early_init();
 
-        g_textdisp.max_row = framebuf_height_chars();
-        g_textdisp.max_col = framebuf_width_chars();
+        disp->max_row = framebuf_height_chars();
+        disp->max_col = framebuf_width_chars();
 
-        g_textdisp.impl.p_init = framebuf_init;
-        g_textdisp.impl.p_map_iomem = framebuf_map_iomem;
+        disp->impl.p_init = framebuf_init;
+        disp->impl.p_map_iomem = framebuf_map_iomem;
 
-        g_textdisp.impl.p_put_char_at = framebuf_put_char_at;
-        g_textdisp.impl.p_put_cursor_at = framebuf_put_cursor_at;
-        g_textdisp.impl.p_clear_rows = framebuf_clear_rows;
-        g_textdisp.impl.p_scroll_new_row = framebuf_scroll_new_row;
+        disp->impl.p_put_char_at = framebuf_put_char_at;
+        disp->impl.p_put_cursor_at = framebuf_put_cursor_at;
+        disp->impl.p_clear_rows = framebuf_clear_rows;
+        disp->impl.p_scroll_new_row = framebuf_scroll_new_row;
     } else {
         LOG_DEBUG("terminal type - VGA text mode");
 
         vga_early_init();
 
-        g_textdisp.max_row = vga_height_chars();
-        g_textdisp.max_col = vga_width_chars();
+        disp->max_row = vga_height_chars();
+        disp->max_col = vga_width_chars();
 
-        g_textdisp.impl.p_init = NULL;
-        g_textdisp.impl.p_map_iomem = vga_map_iomem;
+        disp->impl.p_init = NULL;
+        disp->impl.p_map_iomem = vga_map_iomem;
 
-        g_textdisp.impl.p_put_char_at = vga_put_char_at;
-        g_textdisp.impl.p_put_cursor_at = vga_put_cursor_at;
-        g_textdisp.impl.p_clear_rows = vga_clear_rows;
-        g_textdisp.impl.p_scroll_new_row = vga_scroll_new_row;
+        disp->impl.p_put_char_at = vga_put_char_at;
+        disp->impl.p_put_cursor_at = vga_put_cursor_at;
+        disp->impl.p_clear_rows = vga_clear_rows;
+        disp->impl.p_scroll_new_row = vga_scroll_new_row;
     }
 
-    g_textdisp.has_impl = true;
+    disp->has_impl = true;
 
-    mutex_init(&g_textdisp.lock);
+    mutex_init(&disp->lock);
 }
 
-void textdisp_init(void) {
-    if (g_textdisp.impl.p_init) { g_textdisp.impl.p_init(); }
+void textdisp_init(textdisp_t *disp) {
+    if (disp->impl.p_init) { disp->impl.p_init(); }
 }
 
-void textdisp_map_iomem(void) {
-    if (g_textdisp.impl.p_map_iomem) { g_textdisp.impl.p_map_iomem(); }
+void textdisp_map_iomem(textdisp_t *disp) {
+    if (disp->impl.p_map_iomem) { disp->impl.p_map_iomem(); }
 }
 
 [[gnu::noreturn]]
@@ -122,87 +126,87 @@ void textdisp_task(void) {
     }
 }
 
-void textdisp_lock(void) {
-    if (!g_textdisp.panic_mode) { mutex_acquire(&g_textdisp.lock); }
+void textdisp_lock(textdisp_t *disp) {
+    if (!disp->panic_mode) { mutex_acquire(&disp->lock); }
 }
 
-void textdisp_unlock(void) {
-    if (!g_textdisp.panic_mode) { mutex_release(&g_textdisp.lock); }
+void textdisp_unlock(textdisp_t *disp) {
+    if (!disp->panic_mode) { mutex_release(&disp->lock); }
 }
 
-bool textdisp_owns_lock(void) {
-    return mutex_caller_owns(&g_textdisp.lock);
+bool textdisp_owns_lock(textdisp_t *disp) {
+    return mutex_caller_owns(&disp->lock);
 }
 
-void textdisp_begin_panic(void) {
-    g_textdisp.panic_mode = true;
+void textdisp_begin_panic(textdisp_t *disp) {
+    disp->panic_mode = true;
 }
 
-void textdisp_clear(void) {
-    if (!g_textdisp.has_impl) { return; }
+void textdisp_clear(textdisp_t *disp) {
+    if (!disp->has_impl) { return; }
 
-    assert_owns_mutex();
-    g_textdisp.impl.p_clear_rows(0, g_textdisp.max_row);
-    put_cursor_at(0, 0);
+    assert_owns_mutex(disp);
+    disp->impl.p_clear_rows(0, disp->max_row);
+    put_cursor_at(disp, 0, 0);
 }
 
-void textdisp_clear_rows(size_t start_row, size_t num_rows) {
-    if (!g_textdisp.has_impl) { return; }
+void textdisp_clear_rows(textdisp_t *disp, size_t start_row, size_t num_rows) {
+    if (!disp->has_impl) { return; }
 
-    assert_owns_mutex();
-    g_textdisp.impl.p_clear_rows(start_row, num_rows);
+    assert_owns_mutex(disp);
+    disp->impl.p_clear_rows(start_row, num_rows);
 }
 
-void textdisp_print_str(char const *p_str) {
-    if (!g_textdisp.has_impl) { return; }
+void textdisp_print_str(textdisp_t *disp, char const *p_str) {
+    if (!disp->has_impl) { return; }
 
-    assert_owns_mutex();
+    assert_owns_mutex(disp);
     while ((*p_str) != 0) {
         char ch = (*p_str);
-        put_char(ch);
+        put_char(disp, ch);
         p_str++;
     }
-    textdisp_put_cursor_at(g_textdisp.row, g_textdisp.col);
+    textdisp_put_cursor_at(disp, disp->row, disp->col);
 }
 
-void textdisp_print_str_len(char const *p_str, size_t len) {
-    if (!g_textdisp.has_impl) { return; }
+void textdisp_print_str_len(textdisp_t *disp, char const *p_str, size_t len) {
+    if (!disp->has_impl) { return; }
 
-    assert_owns_mutex();
+    assert_owns_mutex(disp);
     for (size_t idx = 0; idx < len; idx++) {
-        put_char(p_str[idx]);
+        put_char(disp, p_str[idx]);
     }
-    put_cursor_at(g_textdisp.row, g_textdisp.col);
+    put_cursor_at(disp, disp->row, disp->col);
 }
 
-void textdisp_put_char_at(size_t row, size_t col, char ch) {
-    if (!g_textdisp.has_impl) { return; }
+void textdisp_put_char_at(textdisp_t *disp, size_t row, size_t col, char ch) {
+    if (!disp->has_impl) { return; }
 
-    assert_owns_mutex();
-    g_textdisp.impl.p_put_char_at(row, col, ch);
+    assert_owns_mutex(disp);
+    disp->impl.p_put_char_at(row, col, ch);
 }
 
-void textdisp_put_cursor_at(size_t row, size_t col) {
-    if (!g_textdisp.has_impl) { return; }
+void textdisp_put_cursor_at(textdisp_t *disp, size_t row, size_t col) {
+    if (!disp->has_impl) { return; }
 
-    assert_owns_mutex();
-    put_cursor_at(row, col);
+    assert_owns_mutex(disp);
+    put_cursor_at(disp, row, col);
 }
 
-size_t textdisp_row(void) {
-    return g_textdisp.row;
+size_t textdisp_row(textdisp_t *disp) {
+    return disp->row;
 }
 
-size_t textdisp_col(void) {
-    return g_textdisp.col;
+size_t textdisp_col(textdisp_t *disp) {
+    return disp->col;
 }
 
-size_t textdisp_height(void) {
-    return g_textdisp.max_row;
+size_t textdisp_height(textdisp_t *disp) {
+    return disp->max_row;
 }
 
-size_t textdisp_width(void) {
-    return g_textdisp.max_col;
+size_t textdisp_width(textdisp_t *disp) {
+    return disp->max_col;
 }
 
 void textdisp_read_kbd_event(kbd_event_t *p_event) {
@@ -211,32 +215,32 @@ void textdisp_read_kbd_event(kbd_event_t *p_event) {
     *p_event = event;
 }
 
-static void put_char(char ch) {
+static void put_char(textdisp_t *disp, char ch) {
     switch (ch) {
     case '\n':
-        g_textdisp.col = 0;
-        g_textdisp.row++;
-        if (g_textdisp.row >= g_textdisp.max_row) {
-            g_textdisp.row = (g_textdisp.max_row - 1);
-            scroll_new_row();
+        disp->col = 0;
+        disp->row++;
+        if (disp->row >= disp->max_row) {
+            disp->row = (disp->max_row - 1);
+            scroll_new_row(disp);
         }
         break;
 
     default:
-        g_textdisp.impl.p_put_char_at(g_textdisp.row, g_textdisp.col, ch);
+        disp->impl.p_put_char_at(disp->row, disp->col, ch);
 
-        g_textdisp.col++;
-        if (g_textdisp.col >= g_textdisp.max_col) {
-            g_textdisp.col = 0;
-            g_textdisp.row++;
-            if (g_textdisp.row >= g_textdisp.max_row) {
-                g_textdisp.row = (g_textdisp.max_row - 1);
-                scroll_new_row();
+        disp->col++;
+        if (disp->col >= disp->max_col) {
+            disp->col = 0;
+            disp->row++;
+            if (disp->row >= disp->max_row) {
+                disp->row = (disp->max_row - 1);
+                scroll_new_row(disp);
             }
         }
     }
 }
 
-static void scroll_new_row(void) {
-    g_textdisp.impl.p_scroll_new_row();
+static void scroll_new_row(textdisp_t *disp) {
+    disp->impl.p_scroll_new_row();
 }

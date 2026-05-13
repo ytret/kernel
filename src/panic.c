@@ -135,7 +135,7 @@ static void prv_panic_var_helper(const char *file, const char *func, int line,
 
     kvsnprintf(g_panic_msg, PANIC_MSG_SIZE, fmt, ap);
 
-    textdisp_begin_panic();
+    textdisp_begin_panic(textdisp_get_boot_disp());
     LOG_ERROR("%s", "");
     LOG_ERROR("==== KERNEL PANIC ====");
     LOG_ERROR(" Message: %s", g_panic_msg);
