@@ -44,10 +44,23 @@
 static uint16_t *const gp_vga_buf = (uint16_t *)VGA_MMIO_START;
 static uint16_t gp_vga_shbuf[VGA_NUM_ROWS * VGA_NUM_COLS];
 
+static const textdisp_ops_t g_vga_disp_ops = {
+    .p_init = NULL,
+    .p_map_iomem = vga_map_iomem,
+    .p_put_char_at = vga_put_char_at,
+    .p_put_cursor_at = vga_put_cursor_at,
+    .p_clear_rows = vga_clear_rows,
+    .p_scroll_new_row = vga_scroll_new_row,
+};
+
 static void prv_vga_enable_cursor(void);
 static void prv_vga_disable_cursor(void);
 
 static void prv_vga_copy_shbuf(void);
+
+const textdisp_ops_t *vga_textdisp_ops(void) {
+    return &g_vga_disp_ops;
+}
 
 void vga_early_init(void) {
     prv_vga_enable_cursor();

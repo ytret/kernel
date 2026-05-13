@@ -2,7 +2,7 @@
  * @file vga.h
  * VGA text-mode terminal.
  *
- * See #output_impl_t in @link textdisp.c @endlink for the terminal interface
+ * See #textdisp_ops_t in @link textdisp.c @endlink for the terminal interface
  * that this module implements.
  */
 #pragma once
@@ -10,6 +10,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "textdisp.h"
+
+const textdisp_ops_t *vga_textdisp_ops(void);
 void vga_early_init(void);
 void vga_map_iomem(void);
 
