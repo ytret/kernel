@@ -74,13 +74,12 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     heap_init();
     textdisp_init(textdisp_get_boot_disp());
+    textdisp_clear(textdisp_get_boot_disp());
 
     mbi_save_on_heap();
     if (mbi_ptr()->flags & MBI_FLAG_CMDLINE) {
         cmdline_init((const char *)mbi_ptr()->cmdline);
     }
-
-    textdisp_clear(textdisp_get_boot_disp());
 
 #ifdef YTKERNEL_ENABLE_TESTS
     serial_ctx_t *const ktest_serial = heap_alloc(sizeof(serial_ctx_t));
