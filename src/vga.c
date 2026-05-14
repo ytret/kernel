@@ -18,11 +18,6 @@
 #define VGA_PITCH    (2 * VGA_NUM_COLS)
 
 /**
- * Size of output that the shadow buffer can save in screens.
- */
-#define VGA_NUM_SHADOW_SCREENS 3
-
-/**
  * @{
  * @name Memory-mapped register defines
  */
@@ -42,7 +37,6 @@
 /// @}
 
 static uint16_t *const gp_vga_buf = (uint16_t *)VGA_MMIO_START;
-static uint16_t gp_vga_shbuf[VGA_NUM_ROWS * VGA_NUM_COLS];
 
 static const textdisp_ops_t g_vga_disp_ops = {
     .p_init = NULL,
@@ -55,8 +49,6 @@ static const textdisp_ops_t g_vga_disp_ops = {
 
 static void prv_vga_enable_cursor(void);
 static void prv_vga_disable_cursor(void);
-
-static void prv_vga_copy_shbuf(void);
 
 const textdisp_ops_t *vga_textdisp_ops(void) {
     return &g_vga_disp_ops;
@@ -84,8 +76,7 @@ void vga_put_char_at(size_t row, size_t col, char ch) {
     ASSERT(row < VGA_NUM_ROWS && col < VGA_NUM_COLS);
 
     const size_t sh_idx = col + VGA_NUM_COLS * row;
-    gp_vga_shbuf[sh_idx] = (0x0F << 8) | ch;
-    gp_vga_buf[sh_idx] = gp_vga_shbuf[sh_idx];
+    gp_vga_buf[sh_idx] = (0x0F << 8) | ch;
 }
 
 void vga_put_cursor_at(size_t row, size_t col) {
@@ -100,23 +91,14 @@ void vga_put_cursor_at(size_t row, size_t col) {
 
 void vga_clear_rows(size_t start_row, size_t num_rows) {
     const size_t num_words = num_rows * VGA_NUM_COLS;
-    kmemset_word(&gp_vga_shbuf[start_row * VGA_NUM_COLS], 0x0F << 8, num_words);
-
-    size_t vga_num_words = num_rows * VGA_NUM_COLS;
-    kmemset_word(&gp_vga_buf[start_row * VGA_NUM_COLS], 0x0F << 8,
-                 vga_num_words);
+    kmemset_word(&gp_vga_buf[start_row * VGA_NUM_COLS], 0x0F << 8, num_words);
 }
 
 void vga_scroll_new_row(void) {
-    // Move every shadow row except the first one up.
-    kmemmove(gp_vga_shbuf, &gp_vga_shbuf[VGA_NUM_COLS * 1],
+    kmemmove(gp_vga_buf, &gp_vga_buf[VGA_NUM_COLS * 1],
              VGA_PITCH * (VGA_NUM_ROWS - 1));
-
-    // Clear the last shadow row.
-    kmemset_word(&gp_vga_shbuf[VGA_NUM_COLS * (VGA_NUM_ROWS - 1)], 0x0F << 8,
+    kmemset_word(&gp_vga_buf[VGA_NUM_COLS * (VGA_NUM_ROWS - 1)], 0x0F << 8,
                  VGA_NUM_COLS);
-
-    prv_vga_copy_shbuf();
 }
 
 static void prv_vga_enable_cursor(void) {
@@ -138,8 +120,4 @@ static void prv_vga_enable_cursor(void) {
 static void prv_vga_disable_cursor(void) {
     port_outb(VGA_PORT_CRTC_ADDR, VGA_CRTC_CURSOR_START);
     port_outb(VGA_PORT_CRTC_DATA, VGA_CRTC_CURSOR_START_CD);
-}
-
-static void prv_vga_copy_shbuf(void) {
-    kmemcpy(gp_vga_buf, gp_vga_shbuf, VGA_NUM_ROWS * VGA_PITCH);
 }
