@@ -22,7 +22,6 @@ textdisp_t *textdisp_get_boot_disp(void);
 void textdisp_early_init(textdisp_t *disp);
 void textdisp_init(textdisp_t *disp);
 void textdisp_map_iomem(textdisp_t *disp);
-[[gnu::noreturn]] void textdisp_task(void);
 
 void textdisp_lock(textdisp_t *disp);
 void textdisp_unlock(textdisp_t *disp);

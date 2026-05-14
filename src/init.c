@@ -33,7 +33,6 @@ void init_bsp_task(void) {
     ktest_end();
 #endif
 
-    taskmgr_local_new_kernel_task("term", (uint32_t)textdisp_task);
     taskmgr_local_new_kernel_task("blkdev", (uint32_t)blkdev_task_entry);
 
     LOG_FLOW("waiting for blkdev...");
