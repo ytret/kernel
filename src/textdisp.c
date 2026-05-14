@@ -92,14 +92,6 @@ void textdisp_map_iomem(textdisp_t *disp) {
     if (disp->ops->p_map_iomem) { disp->ops->p_map_iomem(); }
 }
 
-[[gnu::noreturn]]
-void textdisp_task(void) {
-    kbd_event_t event;
-    for (;;) {
-        queue_read(kbd_sysevent_queue(), &event, sizeof(kbd_event_t));
-    }
-}
-
 void textdisp_lock(textdisp_t *disp) {
     if (!disp->panic_mode) { mutex_acquire(&disp->lock); }
 }
