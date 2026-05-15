@@ -32,9 +32,6 @@ struct textdisp {
 
     size_t max_row;
     size_t max_col;
-
-    size_t row;
-    size_t col;
 };
 
 /**
@@ -54,8 +51,6 @@ static inline void assert_owns_mutex(textdisp_t *disp) {
 [[gnu::artificial]]
 static inline void put_cursor_at(textdisp_t *disp, size_t row, size_t col) {
     disp->ops->p_put_cursor_at(row, col);
-    disp->row = row;
-    disp->col = col;
 }
 
 textdisp_t *textdisp_get_boot_disp(void) {
