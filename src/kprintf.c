@@ -22,7 +22,6 @@ int kprintf(char const *restrict fmt, ...) {
 }
 
 int kvprintf(char const *restrict fmt, va_list ap) {
-    bool b_release_mutex = false;
     int ret;
     va_list ap_copy;
     textdisp_t *const disp = textdisp_get_boot_disp();
@@ -31,17 +30,14 @@ int kvprintf(char const *restrict fmt, va_list ap) {
     // pointer/counter is never advanced.
     va_copy(ap_copy, ap);
 
-    if (!textdisp_owns_lock(disp)) {
-        textdisp_lock(disp);
-        b_release_mutex = true;
-    }
+    textdisp_lock(disp);
 
     ret = yt_vsnprintf(g_kprintf_buf, KPRINTF_BUF_SIZE, fmt, ap_copy);
     if (ret > KPRINTF_BUF_SIZE) { ret = KPRINTF_BUF_SIZE; }
 
     textdisp_print_str(disp, g_kprintf_buf);
 
-    if (b_release_mutex) { textdisp_unlock(disp); }
+    textdisp_unlock(disp);
 
     va_end(ap_copy);
     return ret;

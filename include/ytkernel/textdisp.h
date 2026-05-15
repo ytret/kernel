@@ -25,7 +25,6 @@ void textdisp_map_iomem(textdisp_t *disp);
 
 void textdisp_lock(textdisp_t *disp);
 void textdisp_unlock(textdisp_t *disp);
-bool textdisp_owns_lock(textdisp_t *disp);
 void textdisp_begin_panic(textdisp_t *disp);
 
 void textdisp_clear(textdisp_t *disp);

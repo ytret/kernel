@@ -1,3 +1,4 @@
+#include "assert.h"
 #include "framebuf.h"
 #include "kbd.h"
 #include "kmutex.h"
@@ -13,10 +14,18 @@ struct textdisp {
      * Text display struct lock.
      *
      * To maintain coherent output on the display, each task that wants to print
-     * must lock this mutex. See #textdisp_lock(), #textdisp_unlock(),
-     * #textdisp_owns_lock().
+     * must lock this mutex.
+     *
+     * See #textdisp.lock_cnt.
      */
     task_mutex_t lock;
+
+    /**
+     * Nested lock counter for #textdisp.lock.
+     *
+     * See #textdisp_lock() and #textdisp_unlock().
+     */
+    _Atomic int lock_cnt;
 
     bool panic_mode;
     const textdisp_ops_t *ops;
@@ -93,15 +102,18 @@ void textdisp_map_iomem(textdisp_t *disp) {
 }
 
 void textdisp_lock(textdisp_t *disp) {
-    if (!disp->panic_mode) { mutex_acquire(&disp->lock); }
+    if (!disp->panic_mode) {
+        if (!mutex_caller_owns(&disp->lock)) { mutex_acquire(&disp->lock); }
+        disp->lock_cnt++;
+    }
 }
 
 void textdisp_unlock(textdisp_t *disp) {
-    if (!disp->panic_mode) { mutex_release(&disp->lock); }
-}
-
-bool textdisp_owns_lock(textdisp_t *disp) {
-    return mutex_caller_owns(&disp->lock);
+    if (!disp->panic_mode) {
+        ASSERT(disp->lock_cnt > 0);
+        disp->lock_cnt--;
+        if (disp->lock_cnt == 0) { mutex_release(&disp->lock); }
+    }
 }
 
 void textdisp_begin_panic(textdisp_t *disp) {
