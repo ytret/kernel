@@ -37,6 +37,8 @@ void textdisp_print_str_len(textdisp_t *disp, char const *p_str, size_t len);
 void textdisp_put_char_at(textdisp_t *disp, size_t row, size_t col, char ch);
 void textdisp_put_cursor_at(textdisp_t *disp, size_t row, size_t col);
 
+void textdisp_scroll(textdisp_t *disp);
+
 size_t textdisp_row(textdisp_t *disp);
 size_t textdisp_col(textdisp_t *disp);
 

@@ -159,6 +159,13 @@ void textdisp_put_cursor_at(textdisp_t *disp, size_t row, size_t col) {
     put_cursor_at(disp, row, col);
 }
 
+void textdisp_scroll(textdisp_t *disp) {
+    if (!disp->has_impl) { return; }
+
+    assert_owns_mutex(disp);
+    scroll_new_row(disp);
+}
+
 size_t textdisp_row(textdisp_t *disp) {
     return disp->row;
 }
