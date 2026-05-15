@@ -2,6 +2,7 @@
 
 #define LOG_LEVEL LOG_LEVEL_DEBUG
 
+#include "assert.h"
 #include "heap.h"
 #include "kinttypes.h"
 #include "kmutex.h"
@@ -95,17 +96,18 @@ void *heap_alloc_aligned(size_t size, size_t align) {
 
     prv_heap_lock();
 
-    void *ret_ptr;
-    if (size <= HEAP_MAX_SLAB_SIZE) {
-        // Items of size `align` will have the alignment of `align` - that's the
-        // property of the slab allocator.
-        const size_t eff_size = size >= align ? size : align;
+    // Items of size `align` will have the alignment of `align` - that's the
+    // property of a slab allocator.
+    const size_t eff_size = size >= align ? size : align;
 
+    void *ret_ptr;
+    if (eff_size <= HEAP_MAX_SLAB_SIZE) {
         // TODO: calculate the order more efficiently.
         size_t idx;
         for (idx = 0; idx < g_heap.num_slab_caches; idx++) {
             if (g_heap.slab_caches[idx].item_size >= eff_size) { break; }
         }
+        ASSERT(idx != g_heap.num_slab_caches);
 
         ret_ptr = slab_alloc(&g_heap.slab_caches[idx]);
         if (!ret_ptr) {
