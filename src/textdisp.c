@@ -25,7 +25,7 @@ struct textdisp {
      *
      * See #textdisp_lock() and #textdisp_unlock().
      */
-    _Atomic int lock_cnt;
+    int lock_cnt;
 
     bool panic_mode;
     const textdisp_ops_t *ops;

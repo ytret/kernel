@@ -4,7 +4,7 @@
 #include "kprintf.h"
 #include "kshell/kshinput.h"
 #include "panic.h"
-#include "textdisp.h"
+#include "console.h"
 
 #define CMD_BUF_SIZE 256
 
@@ -15,7 +15,7 @@ static volatile size_t g_cmd_buf_pos;
 // Keyboard state.
 static volatile bool gb_shifted;
 
-static textdisp_t *g_kshinput_disp;
+static console_t *g_kshinput_con;
 
 static void buf_append(char ch);
 static void buf_remove(void);
@@ -26,7 +26,7 @@ static void echo_key(uint8_t key);
 static char char_from_key(uint8_t key);
 
 void kshinput_init(void) {
-    g_kshinput_disp = textdisp_get_boot_disp();
+    g_kshinput_con = console_get_boot_con();
 }
 
 /**
@@ -81,12 +81,12 @@ static bool parse_kbd_event(kbd_event_t *p_event) {
         // buffer.
         if (g_cmd_buf_pos == 0) { return false; }
 
-        textdisp_lock(g_kshinput_disp);
-        size_t row = textdisp_row(g_kshinput_disp);
-        size_t col = textdisp_col(g_kshinput_disp);
+        console_lock(g_kshinput_con);
+        size_t row = g_kshinput_con->cursor_row;
+        size_t col = g_kshinput_con->cursor_col;
 
         if ((row == 0) && (col == 0)) {
-            textdisp_unlock(g_kshinput_disp);
+            console_unlock(g_kshinput_con);
             return false;
         }
 
@@ -94,12 +94,12 @@ static bool parse_kbd_event(kbd_event_t *p_event) {
             col--;
         } else if (row > 0) {
             row--;
-            col = (textdisp_width(g_kshinput_disp) - 1);
+            col = g_kshinput_con->cols - 1;
         }
 
-        textdisp_put_char_at(g_kshinput_disp, row, col, ' ');
-        textdisp_put_cursor_at(g_kshinput_disp, row, col);
-        textdisp_unlock(g_kshinput_disp);
+        console_put_char_at(g_kshinput_con, row, col, ' ');
+        console_put_cursor_at(g_kshinput_con, row, col);
+        console_unlock(g_kshinput_con);
 
         // Remove one char from the buffer.
         buf_remove();

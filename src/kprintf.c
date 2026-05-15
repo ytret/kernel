@@ -3,8 +3,8 @@
 #include <stddef.h>
 #include <ytprintf.h>
 
+#include "console.h"
 #include "kprintf.h"
-#include "textdisp.h"
 
 #define KPRINTF_BUF_SIZE 256
 
@@ -24,20 +24,18 @@ int kprintf(char const *restrict fmt, ...) {
 int kvprintf(char const *restrict fmt, va_list ap) {
     int ret;
     va_list ap_copy;
-    textdisp_t *const disp = textdisp_get_boot_disp();
+    console_t *const con = console_get_boot_con();
+    if (!con->ready) { return -1; }
 
     // NOTE: it is important to copy `ap`, otherwise the internal argument
     // pointer/counter is never advanced.
     va_copy(ap_copy, ap);
 
-    textdisp_lock(disp);
-
+    console_lock(con);
     ret = yt_vsnprintf(g_kprintf_buf, KPRINTF_BUF_SIZE, fmt, ap_copy);
     if (ret > KPRINTF_BUF_SIZE) { ret = KPRINTF_BUF_SIZE; }
-
-    textdisp_print_str(disp, g_kprintf_buf);
-
-    textdisp_unlock(disp);
+    console_put_str(con, g_kprintf_buf);
+    console_unlock(con);
 
     va_end(ap_copy);
     return ret;

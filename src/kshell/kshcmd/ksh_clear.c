@@ -1,7 +1,7 @@
+#include "console.h"
 #include "kprintf.h"
 #include "kshell/ksharg.h"
 #include "kshell/kshcmd/ksh_clear.h"
-#include "textdisp.h"
 
 static ksharg_posarg_desc_t g_ksh_clear_posargs[] = {};
 
@@ -58,10 +58,10 @@ void ksh_clear(list_t *arg_list) {
     if (do_help) {
         ksharg_print_help(&g_ksh_clear_parser);
     } else {
-        textdisp_t *const disp = textdisp_get_boot_disp();
-        textdisp_lock(disp);
-        textdisp_clear(disp);
-        textdisp_unlock(disp);
+        console_t *const con = console_get_boot_con();
+        console_lock(con);
+        console_clear(con);
+        console_unlock(con);
     }
 
     ksharg_free_parser_inst(parser);

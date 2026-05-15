@@ -1,8 +1,13 @@
 #pragma once
 
+#include "kmutex.h"
 #include "textdisp.h"
 
 typedef struct {
+    bool ready;
+    task_mutex_t lock;
+    size_t lock_cnt;
+
     textdisp_t *disp;
 
     size_t rows;
@@ -19,6 +24,8 @@ typedef struct {
 console_t *console_get_boot_con(void);
 
 void console_init(console_t *con);
+void console_lock(console_t *con);
+void console_unlock(console_t *con);
 
 bool console_attach(console_t *con, textdisp_t *disp);
 bool console_detach(console_t *con);
