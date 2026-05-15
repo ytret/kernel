@@ -27,7 +27,6 @@ struct textdisp {
      */
     int lock_cnt;
 
-    bool panic_mode;
     const textdisp_ops_t *ops;
     bool has_impl;
 
@@ -49,9 +48,7 @@ static textdisp_t g_textdisp;
 
 [[gnu::artificial]]
 static inline void assert_owns_mutex(textdisp_t *disp) {
-    if (!mutex_caller_owns(&disp->lock) && !disp->panic_mode) {
-        panic_nested();
-    }
+    if (!mutex_caller_owns(&disp->lock)) { panic_nested(); }
 }
 
 [[gnu::artificial]]
@@ -107,22 +104,14 @@ size_t textdisp_width(textdisp_t *disp) {
 }
 
 void textdisp_lock(textdisp_t *disp) {
-    if (!disp->panic_mode) {
-        if (!mutex_caller_owns(&disp->lock)) { mutex_acquire(&disp->lock); }
-        disp->lock_cnt++;
-    }
+    if (!mutex_caller_owns(&disp->lock)) { mutex_acquire(&disp->lock); }
+    disp->lock_cnt++;
 }
 
 void textdisp_unlock(textdisp_t *disp) {
-    if (!disp->panic_mode) {
-        ASSERT(disp->lock_cnt > 0);
-        disp->lock_cnt--;
-        if (disp->lock_cnt == 0) { mutex_release(&disp->lock); }
-    }
-}
-
-void textdisp_begin_panic(textdisp_t *disp) {
-    disp->panic_mode = true;
+    ASSERT(disp->lock_cnt > 0);
+    disp->lock_cnt--;
+    if (disp->lock_cnt == 0) { mutex_release(&disp->lock); }
 }
 
 void textdisp_clear(textdisp_t *disp) {
