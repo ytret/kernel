@@ -8,12 +8,18 @@
 #define CONSOLE_CACHE_CHAR_SIZE 1
 #define CONSOLE_CACHE_ALIGN     PMM_PAGE_SIZE
 
+static console_t g_console_boot_con;
+
 static void prv_console_scroll(console_t *con);
 
 static void prv_console_redraw_cache(console_t *con);
 static void prv_console_realloc_cache(console_t *con);
 static void prv_console_clear_cache(console_t *con, size_t start_row,
                                     size_t num_rows);
+
+console_t *console_get_boot_con(void) {
+    return &g_console_boot_con;
+}
 
 void console_init(console_t *con) {
     kmemset(con, 0, sizeof(*con));

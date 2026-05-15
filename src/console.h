@@ -16,6 +16,8 @@ typedef struct {
     size_t cursor_col;
 } console_t;
 
+console_t *console_get_boot_con(void);
+
 void console_init(console_t *con);
 
 bool console_attach(console_t *con, textdisp_t *disp);
