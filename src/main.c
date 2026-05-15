@@ -6,6 +6,7 @@
 #include "chardev.h"
 #include "cmdline.h"
 #include "config.h"
+#include "console.h"
 #include "devmgr.h"
 #include "heap.h"
 #include "init.h"
@@ -57,7 +58,8 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     }
     log_set_chardev(&g_earlycon_chardev);
 
-    textdisp_early_init(textdisp_get_boot_disp());
+    textdisp_t *const boot_disp = textdisp_get_boot_disp();
+    textdisp_early_init(boot_disp);
 
     LOG_INFO("Hello, World!");
     check_bootloader(magic_num, mbi_addr);
@@ -73,8 +75,12 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     pmm_init(&g_mmap);
 
     heap_init();
-    textdisp_init(textdisp_get_boot_disp());
-    textdisp_clear(textdisp_get_boot_disp());
+
+    console_t *const boot_con = console_get_boot_con();
+    textdisp_init(boot_disp);
+    console_init(boot_con);
+    console_attach(boot_con, boot_disp);
+    LOG_INFO("console attached");
 
     mbi_save_on_heap();
     if (mbi_ptr()->flags & MBI_FLAG_CMDLINE) {
