@@ -47,9 +47,6 @@ struct textdisp {
  */
 static textdisp_t g_textdisp;
 
-static void put_char(textdisp_t *disp, char ch);
-static void scroll_new_row(textdisp_t *disp);
-
 [[gnu::artificial]]
 static inline void assert_owns_mutex(textdisp_t *disp) {
     if (!mutex_caller_owns(&disp->lock) && !disp->panic_mode) {
@@ -101,6 +98,14 @@ void textdisp_map_iomem(textdisp_t *disp) {
     if (disp->ops->p_map_iomem) { disp->ops->p_map_iomem(); }
 }
 
+size_t textdisp_height(textdisp_t *disp) {
+    return disp->max_row;
+}
+
+size_t textdisp_width(textdisp_t *disp) {
+    return disp->max_col;
+}
+
 void textdisp_lock(textdisp_t *disp) {
     if (!disp->panic_mode) {
         if (!mutex_caller_owns(&disp->lock)) { mutex_acquire(&disp->lock); }
@@ -135,28 +140,6 @@ void textdisp_clear_rows(textdisp_t *disp, size_t start_row, size_t num_rows) {
     disp->ops->p_clear_rows(start_row, num_rows);
 }
 
-void textdisp_print_str(textdisp_t *disp, char const *p_str) {
-    if (!disp->has_impl) { return; }
-
-    assert_owns_mutex(disp);
-    while ((*p_str) != 0) {
-        char ch = (*p_str);
-        put_char(disp, ch);
-        p_str++;
-    }
-    textdisp_put_cursor_at(disp, disp->row, disp->col);
-}
-
-void textdisp_print_str_len(textdisp_t *disp, char const *p_str, size_t len) {
-    if (!disp->has_impl) { return; }
-
-    assert_owns_mutex(disp);
-    for (size_t idx = 0; idx < len; idx++) {
-        put_char(disp, p_str[idx]);
-    }
-    put_cursor_at(disp, disp->row, disp->col);
-}
-
 void textdisp_put_char_at(textdisp_t *disp, size_t row, size_t col, char ch) {
     if (!disp->has_impl) { return; }
 
@@ -175,57 +158,11 @@ void textdisp_scroll(textdisp_t *disp) {
     if (!disp->has_impl) { return; }
 
     assert_owns_mutex(disp);
-    scroll_new_row(disp);
-}
-
-size_t textdisp_row(textdisp_t *disp) {
-    return disp->row;
-}
-
-size_t textdisp_col(textdisp_t *disp) {
-    return disp->col;
-}
-
-size_t textdisp_height(textdisp_t *disp) {
-    return disp->max_row;
-}
-
-size_t textdisp_width(textdisp_t *disp) {
-    return disp->max_col;
+    disp->ops->p_scroll_new_row();
 }
 
 void textdisp_read_kbd_event(kbd_event_t *p_event) {
     kbd_event_t event;
     queue_read(kbd_event_queue(), &event, sizeof(kbd_event_t));
     *p_event = event;
-}
-
-static void put_char(textdisp_t *disp, char ch) {
-    switch (ch) {
-    case '\n':
-        disp->col = 0;
-        disp->row++;
-        if (disp->row >= disp->max_row) {
-            disp->row = (disp->max_row - 1);
-            scroll_new_row(disp);
-        }
-        break;
-
-    default:
-        disp->ops->p_put_char_at(disp->row, disp->col, ch);
-
-        disp->col++;
-        if (disp->col >= disp->max_col) {
-            disp->col = 0;
-            disp->row++;
-            if (disp->row >= disp->max_row) {
-                disp->row = (disp->max_row - 1);
-                scroll_new_row(disp);
-            }
-        }
-    }
-}
-
-static void scroll_new_row(textdisp_t *disp) {
-    disp->ops->p_scroll_new_row();
 }

@@ -23,6 +23,9 @@ void textdisp_early_init(textdisp_t *disp);
 void textdisp_init(textdisp_t *disp);
 void textdisp_map_iomem(textdisp_t *disp);
 
+size_t textdisp_height(textdisp_t *disp);
+size_t textdisp_width(textdisp_t *disp);
+
 void textdisp_lock(textdisp_t *disp);
 void textdisp_unlock(textdisp_t *disp);
 void textdisp_begin_panic(textdisp_t *disp);
@@ -30,18 +33,9 @@ void textdisp_begin_panic(textdisp_t *disp);
 void textdisp_clear(textdisp_t *disp);
 void textdisp_clear_rows(textdisp_t *disp, size_t start_row, size_t num_rows);
 
-void textdisp_print_str(textdisp_t *disp, char const *p_str);
-void textdisp_print_str_len(textdisp_t *disp, char const *p_str, size_t len);
-
 void textdisp_put_char_at(textdisp_t *disp, size_t row, size_t col, char ch);
 void textdisp_put_cursor_at(textdisp_t *disp, size_t row, size_t col);
 
 void textdisp_scroll(textdisp_t *disp);
-
-size_t textdisp_row(textdisp_t *disp);
-size_t textdisp_col(textdisp_t *disp);
-
-size_t textdisp_height(textdisp_t *disp);
-size_t textdisp_width(textdisp_t *disp);
 
 void textdisp_read_kbd_event(kbd_event_t *p_event);
