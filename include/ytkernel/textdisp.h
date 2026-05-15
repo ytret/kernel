@@ -26,9 +26,6 @@ void textdisp_map_iomem(textdisp_t *disp);
 size_t textdisp_height(textdisp_t *disp);
 size_t textdisp_width(textdisp_t *disp);
 
-void textdisp_lock(textdisp_t *disp);
-void textdisp_unlock(textdisp_t *disp);
-
 void textdisp_clear(textdisp_t *disp);
 void textdisp_clear_rows(textdisp_t *disp, size_t start_row, size_t num_rows);
 

@@ -35,20 +35,17 @@ void console_init(console_t *con) {
 void console_lock(console_t *con) {
     if (!mutex_caller_owns(&con->lock)) { mutex_acquire(&con->lock); }
     con->lock_cnt++;
-    textdisp_lock(con->disp);
 }
 
 void console_unlock(console_t *con) {
     ASSERT(con->lock_cnt > 0);
     con->lock_cnt--;
-    textdisp_unlock(con->disp);
     if (con->lock_cnt == 0) { mutex_release(&con->lock); }
 }
 
 bool console_attach(console_t *con, textdisp_t *disp) {
     DEBUG_ASSERT(con != NULL);
     DEBUG_ASSERT(disp != NULL);
-
     assert_owns_mutex(con);
 
     if (con->disp) {
@@ -64,16 +61,13 @@ bool console_attach(console_t *con, textdisp_t *disp) {
     ASSERT(con->rows != 0);
     ASSERT(con->cols != 0);
 
-    textdisp_lock(con->disp);
     prv_console_redraw_cache(con);
-    textdisp_unlock(con->disp);
 
     return true;
 }
 
 bool console_detach(console_t *con) {
     DEBUG_ASSERT(con != NULL);
-
     assert_owns_mutex(con);
 
     PANIC("TODO %s", __func__);
@@ -81,66 +75,45 @@ bool console_detach(console_t *con) {
 
 void console_clear(console_t *con) {
     DEBUG_ASSERT(con != NULL);
-
     assert_owns_mutex(con);
 
     prv_console_clear_cache(con, 0, con->rows);
-
-    textdisp_lock(con->disp);
     textdisp_clear(con->disp);
-    textdisp_unlock(con->disp);
-
     console_put_cursor_at(con, 0, 0);
 }
 
 void console_clear_rows(console_t *con, size_t start_row, size_t num_rows) {
     DEBUG_ASSERT(con != NULL);
-
     assert_owns_mutex(con);
 
     prv_console_clear_cache(con, start_row, num_rows);
-
-    textdisp_lock(con->disp);
     textdisp_clear_rows(con->disp, start_row, num_rows);
-    textdisp_unlock(con->disp);
 }
 
 void console_put_cursor_at(console_t *con, size_t row, size_t col) {
     DEBUG_ASSERT(con != NULL);
-
     assert_owns_mutex(con);
-
     DEBUG_ASSERT(row < con->rows);
     DEBUG_ASSERT(col < con->cols);
 
     if (con->cursor_row == row && con->cursor_col == col) { return; }
-
     con->cursor_row = row;
     con->cursor_col = col;
-
-    textdisp_lock(con->disp);
     textdisp_put_cursor_at(con->disp, row, col);
-    textdisp_unlock(con->disp);
 }
 
 void console_put_char_at(console_t *con, size_t row, size_t col, char ch) {
     DEBUG_ASSERT(con != NULL);
-
     assert_owns_mutex(con);
-
     DEBUG_ASSERT(row < con->rows);
     DEBUG_ASSERT(col < con->cols);
 
     con->cache[col + row * con->cache_row_pitch] = ch;
-
-    textdisp_lock(con->disp);
     textdisp_put_char_at(con->disp, row, col, ch);
-    textdisp_unlock(con->disp);
 }
 
 void console_put_char(console_t *con, char ch) {
     DEBUG_ASSERT(con != NULL);
-
     assert_owns_mutex(con);
 
     size_t row = con->cursor_row;
@@ -176,7 +149,6 @@ void console_put_char(console_t *con, char ch) {
 void console_put_str(console_t *con, const char *str) {
     DEBUG_ASSERT(con != NULL);
     DEBUG_ASSERT(str != NULL);
-
     assert_owns_mutex(con);
 
     char ch;
