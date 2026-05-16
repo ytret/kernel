@@ -11,6 +11,7 @@
 #include "devmgr.h"
 #include "heap.h"
 #include "init.h"
+#include "inputmgr.h"
 #include "kinttypes.h"
 #include "libshim.h"
 #include "log.h"
@@ -21,6 +22,7 @@
 #include "smp.h"
 #include "taskmgr.h"
 #include "textdisp.h"
+#include "tty.h"
 #include "vfs/vnode.h"
 #include "vmm.h"
 
@@ -76,11 +78,18 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     pmm_init(&g_mmap);
 
     heap_init();
+    textdisp_init(boot_disp);
 
     console_t *const boot_con = console_get_boot_con();
-    textdisp_init(boot_disp);
     console_init(boot_con);
     console_attach(boot_con, boot_disp);
+
+    tty_t *const boot_tty = tty_get_boot_tty();
+    tty_init(boot_tty);
+    tty_set_out(boot_tty, console_chardev(boot_con));
+
+    inputmgr_init();
+    inputmgr_set_tty(boot_tty);
     conmgr_init(9);
     LOG_INFO("console attached");
 
