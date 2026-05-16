@@ -85,11 +85,13 @@ bool console_attach(console_t *con, textdisp_t *disp) {
     return true;
 }
 
-bool console_detach(console_t *con) {
+textdisp_t *console_detach(console_t *con) {
     DEBUG_ASSERT(con != NULL);
     assert_owns_mutex(con);
 
-    PANIC("TODO %s", __func__);
+    textdisp_t *const disp = con->disp;
+    con->disp = NULL;
+    return disp;
 }
 
 bool console_is_ready(console_t *con) {

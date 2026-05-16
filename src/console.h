@@ -11,7 +11,7 @@ void console_lock(console_t *con);
 void console_unlock(console_t *con);
 
 bool console_attach(console_t *con, textdisp_t *disp);
-bool console_detach(console_t *con);
+textdisp_t *console_detach(console_t *con);
 
 bool console_is_ready(console_t *con);
 size_t console_cursor_row(console_t *con);
