@@ -1,0 +1,23 @@
+#pragma once
+
+#include <stddef.h>
+
+#include "chardev.h"
+
+typedef struct tty tty_t;
+
+tty_t *tty_get_boot_tty(void);
+
+void tty_init(tty_t *tty);
+tty_t *tty_new(void);
+
+bool tty_is_inited(tty_t *tty);
+void tty_lock(tty_t *tty);
+void tty_unlock(tty_t *tty);
+
+void tty_set_out(tty_t *tty, chardev_t *chardev);
+
+size_t tty_write_input(tty_t *tty, const void *buf, size_t buf_size);
+size_t tty_read_input(tty_t *tty, void *buf, size_t buf_size);
+
+size_t tty_write_output(tty_t *tty, const void *buf, size_t buf_size);
