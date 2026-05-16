@@ -5,7 +5,6 @@
 
 #include "blkdev/blkdev.h"
 #include "config.h"
-#include "conmgr.h"
 #include "devmgr.h"
 #include "init.h"
 #include "kshell/kshell.h"
@@ -13,7 +12,6 @@
 #include "panic.h"
 #include "smp.h"
 #include "taskmgr.h"
-#include "textdisp.h"
 
 #include "arch/x86/apic/lapic.h"
 
@@ -35,7 +33,6 @@ void init_bsp_task(void) {
 #endif
 
     taskmgr_local_new_kernel_task("blkdev", (uint32_t)blkdev_task_entry);
-    taskmgr_local_new_kernel_task("conmgr", (uint32_t)conmgr_task);
 
     LOG_FLOW("waiting for blkdev...");
     while (!blkdev_is_ready()) {}

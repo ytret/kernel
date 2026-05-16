@@ -4,31 +4,46 @@
 #include "conmgr.h"
 #include "console.h"
 #include "dynarr.h"
-#include "kbd.h"
+#include "inputmgr.h"
 #include "log.h"
+#include "tty.h"
 
 typedef struct {
     dynarr_t cons;
     console_t *active_con;
+
+    dynarr_t ttys;
+    tty_t *active_tty;
+
     textdisp_t *disp;
 } conmgr_t;
 
 static conmgr_t g_conmgr;
 
 void conmgr_init(size_t num_add_cons) {
+    textdisp_t *const boot_disp = textdisp_get_boot_disp();
+
     dynarr_init(&g_conmgr.cons, sizeof(console_t *), _Alignof(console_t *),
                 1 + num_add_cons);
-
-    textdisp_t *const boot_disp = textdisp_get_boot_disp();
     console_t *const boot_con = console_get_boot_con();
     ASSERT(dynarr_push(&g_conmgr.cons, &boot_con, NULL));
 
+    dynarr_init(&g_conmgr.ttys, sizeof(tty_t *), _Alignof(tty_t *),
+                1 + num_add_cons);
+    tty_t *const boot_tty = tty_get_boot_tty();
+    ASSERT(dynarr_push(&g_conmgr.ttys, &boot_tty, NULL));
+
     g_conmgr.active_con = boot_con;
+    g_conmgr.active_tty = boot_tty;
     g_conmgr.disp = boot_disp;
 
     for (size_t i = 0; i < num_add_cons; i++) {
         console_t *const con = console_new();
+        tty_t *const tty = tty_new();
+        tty_set_out(tty, console_chardev(con));
+
         ASSERT(dynarr_push(&g_conmgr.cons, &con, NULL));
+        ASSERT(dynarr_push(&g_conmgr.ttys, &tty, NULL));
     }
 }
 
@@ -46,6 +61,10 @@ bool conmgr_switch(size_t idx) {
     ASSERT(dynarr_get_at(&g_conmgr.cons, idx, &sel_con, sizeof(console_t *)));
     DEBUG_ASSERT(sel_con != NULL);
 
+    tty_t *sel_tty;
+    ASSERT(dynarr_get_at(&g_conmgr.ttys, idx, &sel_tty, sizeof(tty_t *)));
+    DEBUG_ASSERT(sel_tty != NULL);
+
     if (g_conmgr.active_con) {
         console_lock(g_conmgr.active_con);
         textdisp_t *const disp = console_detach(g_conmgr.active_con);
@@ -57,34 +76,14 @@ bool conmgr_switch(size_t idx) {
     const bool attached = console_attach(sel_con, g_conmgr.disp);
     console_unlock(sel_con);
 
+    tty_lock(sel_tty);
+    inputmgr_set_tty(sel_tty);
+    tty_unlock(sel_tty);
+
     if (attached) {
         g_conmgr.active_con = sel_con;
         return true;
     } else {
         return false;
     }
-}
-
-[[gnu::noreturn]] void conmgr_task(void) {
-    // taskmgr_switch_tasks() requires that task entries enable interrupts.
-    __asm__ volatile("sti");
-
-    kbd_event_t event;
-    queue_t *const sysevents = kbd_sysevent_queue();
-    for (;;) {
-        queue_read(sysevents, &event, sizeof(event));
-
-        if (event.key == KEY_1) { conmgr_switch(0); }
-        if (event.key == KEY_2) { conmgr_switch(1); }
-        if (event.key == KEY_3) { conmgr_switch(2); }
-        if (event.key == KEY_4) { conmgr_switch(3); }
-        if (event.key == KEY_5) { conmgr_switch(4); }
-        if (event.key == KEY_6) { conmgr_switch(5); }
-        if (event.key == KEY_7) { conmgr_switch(6); }
-        if (event.key == KEY_8) { conmgr_switch(7); }
-        if (event.key == KEY_9) { conmgr_switch(8); }
-        if (event.key == KEY_0) { conmgr_switch(9); }
-    }
-
-    PANIC("end of conmgr task");
 }
