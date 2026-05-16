@@ -16,6 +16,7 @@ struct console {
     task_mutex_t lock;
     size_t lock_cnt;
 
+    chardev_t chardev;
     textdisp_t *disp;
 
     size_t rows;
@@ -38,6 +39,13 @@ static void prv_console_realloc_cache(console_t *con);
 static void prv_console_clear_cache(console_t *con, size_t start_row,
                                     size_t num_rows);
 
+static int prv_console_chardev_write(void *ctx, const void *buf,
+                                     size_t buf_size);
+
+static const chardev_ops_t g_console_chardev_ops = {
+    .f_write = prv_console_chardev_write,
+};
+
 [[gnu::artificial]]
 static inline void assert_owns_mutex(console_t *con) {
     if (!mutex_caller_owns(&con->lock)) { panic_nested(); }
@@ -50,6 +58,11 @@ console_t *console_get_boot_con(void) {
 void console_init(console_t *con) {
     kmemset(con, 0, sizeof(*con));
     mutex_init(&con->lock);
+
+    con->chardev.type = CHARDEV_CONSOLE;
+    con->chardev.ctx = con;
+    con->chardev.ops = &g_console_chardev_ops;
+
     con->ready = true;
 }
 
@@ -102,6 +115,11 @@ textdisp_t *console_detach(console_t *con) {
     textdisp_t *const disp = con->disp;
     con->disp = NULL;
     return disp;
+}
+
+chardev_t *console_chardev(console_t *con) {
+    DEBUG_ASSERT(con != NULL);
+    return &con->chardev;
 }
 
 bool console_is_ready(console_t *con) {
@@ -180,6 +198,13 @@ void console_put_char(console_t *con, char ch) {
         }
         break;
 
+    case '\b':
+        if (col > 0) {
+            col--;
+            console_put_char_at(con, row, col, ' ');
+        }
+        break;
+
     default:
         console_put_char_at(con, row, col, ch);
 
@@ -204,6 +229,18 @@ void console_put_str(console_t *con, const char *str) {
 
     char ch;
     while ((ch = *str++)) {
+        console_put_char(con, ch);
+    }
+}
+
+void console_put_buf(console_t *con, const void *buf, size_t buf_size) {
+    DEBUG_ASSERT(con != NULL);
+    DEBUG_ASSERT(buf != NULL);
+    assert_owns_mutex(con);
+
+    const char *const ch_buf = buf;
+    for (size_t idx = 0; idx < buf_size; idx++) {
+        const char ch = ch_buf[idx];
         console_put_char(con, ch);
     }
 }
@@ -257,4 +294,17 @@ static void prv_console_clear_cache(console_t *con, size_t start_row,
 
     kmemset(&con->cache[start_row * con->cache_row_pitch], ' ',
             num_rows * con->cache_row_pitch);
+}
+
+static int prv_console_chardev_write(void *v_ctx, const void *buf,
+                                     size_t buf_size) {
+    DEBUG_ASSERT(v_ctx != NULL);
+
+    console_t *const con = v_ctx;
+    console_lock(con);
+    console_put_buf(con, buf, buf_size);
+    console_unlock(con);
+
+    // FIXME: check for overflow
+    return (int)buf_size;
 }
