@@ -100,16 +100,11 @@ static void prv_log_puts(const char *str) {
 
 static const char *prv_log_level_str(int level) {
     switch (level) {
-    case LOG_LEVEL_ERROR:
-        return "E";
-    case LOG_LEVEL_INFO:
-        return "I";
-    case LOG_LEVEL_DEBUG:
-        return "D";
-    case LOG_LEVEL_FLOW:
-        return "F";
-    default:
-        return "?";
+    case LOG_LEVEL_ERROR: return "E";
+    case LOG_LEVEL_INFO:  return "I";
+    case LOG_LEVEL_DEBUG: return "D";
+    case LOG_LEVEL_FLOW:  return "F";
+    default:              return "?";
     }
 }
 

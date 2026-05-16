@@ -100,27 +100,19 @@ devmgr_dev_t *devmgr_iter_next(devmgr_iter_t *iter) {
 
 const char *devmgr_class_name(devmgr_class_t dev_class) {
     switch (dev_class) {
-    case DEVMGR_CLASS_NONE:
-        return "none";
-    case DEVMGR_CLASS_BLOCK:
-        return "blkdev";
-    case DEVMGR_CLASS_BLOCK_PART:
-        return "blkpart";
-    default:
-        return "unknown";
+    case DEVMGR_CLASS_NONE:       return "none";
+    case DEVMGR_CLASS_BLOCK:      return "blkdev";
+    case DEVMGR_CLASS_BLOCK_PART: return "blkpart";
+    default:                      return "unknown";
     }
 }
 
 const char *devmgr_driver_name(devmgr_driver_t driver) {
     switch (driver) {
-    case DEVMGR_DRVIER_NONE:
-        return "none";
-    case DEVMGR_DRIVER_AHCI_PORT:
-        return "ahci port";
-    case DEVMGR_DRIVER_BLKPART:
-        return "blkpart";
-    default:
-        return "unknown";
+    case DEVMGR_DRVIER_NONE:      return "none";
+    case DEVMGR_DRIVER_AHCI_PORT: return "ahci port";
+    case DEVMGR_DRIVER_BLKPART:   return "blkpart";
+    default:                      return "unknown";
     }
 }
 

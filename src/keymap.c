@@ -564,24 +564,12 @@ size_t keymap_process(const kbd_event_t *event, void *buf, size_t buf_size) {
 
     // ── Update modifier state (both press and release) ──────────────
     switch (key) {
-    case KEY_LSHIFT:
-        g_keymap.lshift = !event->b_released;
-        return 0;
-    case KEY_RSHIFT:
-        g_keymap.rshift = !event->b_released;
-        return 0;
-    case KEY_LCTRL:
-        g_keymap.lctrl = !event->b_released;
-        return 0;
-    case KEY_RCTRL:
-        g_keymap.rctrl = !event->b_released;
-        return 0;
-    case KEY_LALT:
-        g_keymap.lalt = !event->b_released;
-        return 0;
-    case KEY_RALT:
-        g_keymap.ralt = !event->b_released;
-        return 0;
+    case KEY_LSHIFT: g_keymap.lshift = !event->b_released; return 0;
+    case KEY_RSHIFT: g_keymap.rshift = !event->b_released; return 0;
+    case KEY_LCTRL:  g_keymap.lctrl = !event->b_released; return 0;
+    case KEY_RCTRL:  g_keymap.rctrl = !event->b_released; return 0;
+    case KEY_LALT:   g_keymap.lalt = !event->b_released; return 0;
+    case KEY_RALT:   g_keymap.ralt = !event->b_released; return 0;
     case KEY_CAPSLOCK:
         if (!event->b_released) { g_keymap.caps_lock = !g_keymap.caps_lock; }
         return 0;

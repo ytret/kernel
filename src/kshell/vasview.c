@@ -81,15 +81,10 @@ static void update_full(void) {
 
 static void update_view(void) {
     switch (g_view) {
-    case VIEW_DIR:
-        show_dir();
-        break;
-    case VIEW_TBL:
-        show_tbl();
-        break;
+    case VIEW_DIR: show_dir(); break;
+    case VIEW_TBL: show_tbl(); break;
 
-    default:
-        PANIC("invalid view state");
+    default:       PANIC("invalid view state");
     }
 }
 
@@ -128,26 +123,16 @@ static void update_info(void) {
         const char *alloc_type_name = "unkwn";
         pmm_page_t *const metadata = pmm_paddr_to_page(start_addr);
         switch (metadata->type) {
-        case PMM_ALLOC_NONE:
-            alloc_type_name = " none";
-            break;
-        case PMM_ALLOC_SLAB:
-            alloc_type_name = " slab";
-            break;
-        case PMM_ALLOC_LARGE:
-            alloc_type_name = "large";
-            break;
+        case PMM_ALLOC_NONE:  alloc_type_name = " none"; break;
+        case PMM_ALLOC_SLAB:  alloc_type_name = " slab"; break;
+        case PMM_ALLOC_LARGE: alloc_type_name = "large"; break;
         }
 
         const char *region_type_name = "unkwn";
         pmm_region_t *const region = pmm_find_region_by_addr(start_addr);
         switch (region->type) {
-        case PMM_REGION_AVAILABLE:
-            region_type_name = "  available RAM";
-            break;
-        case PMM_REGION_RESERVED:
-            region_type_name = "   reserved RAM";
-            break;
+        case PMM_REGION_AVAILABLE: region_type_name = "  available RAM"; break;
+        case PMM_REGION_RESERVED:  region_type_name = "   reserved RAM"; break;
         case PMM_REGION_KERNEL_RESERVED:
             region_type_name = "kernel reserved";
             break;
@@ -229,16 +214,13 @@ static void show_tbl(void) {
 static uint32_t entry_at_cursor(void) {
     uint32_t entry;
     switch (g_view) {
-    case VIEW_DIR:
-        entry = gp_pgdir[g_dir_idx];
-        break;
+    case VIEW_DIR: entry = gp_pgdir[g_dir_idx]; break;
     case VIEW_TBL: {
         uint32_t *p_tbl = ((uint32_t *)(gp_pgdir[g_dir_idx] & ~0xFFF));
         entry = p_tbl[g_tbl_idx];
     } break;
 
-    default:
-        PANIC("invalid view state");
+    default: PANIC("invalid view state");
     }
     return entry;
 }
@@ -246,15 +228,10 @@ static uint32_t entry_at_cursor(void) {
 static uint32_t idx_at_cursor(void) {
     uint32_t idx;
     switch (g_view) {
-    case VIEW_DIR:
-        idx = g_dir_idx;
-        break;
-    case VIEW_TBL:
-        idx = g_tbl_idx;
-        break;
+    case VIEW_DIR: idx = g_dir_idx; break;
+    case VIEW_TBL: idx = g_tbl_idx; break;
 
-    default:
-        PANIC("invalid view state");
+    default:       PANIC("invalid view state");
     }
     return idx;
 }
@@ -262,15 +239,10 @@ static uint32_t idx_at_cursor(void) {
 static void move_cursor(int32_t inc_idx) {
     volatile uint32_t *p_idx;
     switch (g_view) {
-    case VIEW_DIR:
-        p_idx = &g_dir_idx;
-        break;
-    case VIEW_TBL:
-        p_idx = &g_tbl_idx;
-        break;
+    case VIEW_DIR: p_idx = &g_dir_idx; break;
+    case VIEW_TBL: p_idx = &g_tbl_idx; break;
 
-    default:
-        PANIC("invalid view state");
+    default:       PANIC("invalid view state");
     }
 
     int32_t new_idx = (((int32_t)(*p_idx)) + inc_idx);
@@ -291,8 +263,7 @@ static void deeper_view(void) {
         // Do nothing.
         break;
 
-    default:
-        PANIC("invalid view state");
+    default: PANIC("invalid view state");
     }
 
     update_full();
@@ -300,15 +271,10 @@ static void deeper_view(void) {
 
 static void shallower_view(void) {
     switch (g_view) {
-    case VIEW_DIR:
-        gb_exit = true;
-        break;
-    case VIEW_TBL:
-        g_view = VIEW_DIR;
-        break;
+    case VIEW_DIR: gb_exit = true; break;
+    case VIEW_TBL: g_view = VIEW_DIR; break;
 
-    default:
-        PANIC("invalid view state");
+    default:       PANIC("invalid view state");
     }
 
     update_full();

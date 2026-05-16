@@ -205,9 +205,7 @@ vfs_err_t prv_ramfs_vnode_mknode(vnode_t *vnode, vnode_t **out_vnode,
     ramfs_node_t *new_node = NULL;
     bool type_ok = false;
     switch (vnode_type) {
-    case VNODE_NONE:
-        type_ok = false;
-        break;
+    case VNODE_NONE: type_ok = false; break;
     case VNODE_DIR:
         type_ok = true;
         new_node = prv_ramfs_new_dir(ctx, name, node);
@@ -552,10 +550,8 @@ static void prv_ramfs_fill_vnode(ramfs_ctx_t *ctx, ramfs_node_t *node) {
 
 static vnode_type_t prv_ramfs_vnode_type(ramfs_node_type_t node_type) {
     switch (node_type) {
-    case RAMFS_DIR:
-        return VNODE_DIR;
-    case RAMFS_FILE:
-        return VNODE_FILE;
+    case RAMFS_DIR:  return VNODE_DIR;
+    case RAMFS_FILE: return VNODE_FILE;
     }
     PANIC("not implemented for ramfs type %d", node_type);
 }

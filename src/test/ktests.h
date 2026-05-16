@@ -13,8 +13,7 @@
 #define _KTEST_STR_INNER(x) #x
 #define _KTEST_STR(x)       _KTEST_STR_INNER(x)
 
-#define KTEST_SUITE(SuiteName) \
-    static ktest_suite_t g_ktest_suite_dummy
+#define KTEST_SUITE(SuiteName) static ktest_suite_t g_ktest_suite_dummy
 
 #define KTEST(SuiteName, TestName)                                             \
     static int test_##SuiteName##_##TestName(void);                            \

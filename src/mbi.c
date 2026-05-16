@@ -84,12 +84,8 @@ bool mbi_fill_mmap(const mbi_t *mbi, pmm_mmap_t *mmap) {
 
         pmm_region_type_t pmm_type;
         switch (mbi_entry->type) {
-        case MBI_MMAP_AVAILABLE:
-            pmm_type = PMM_REGION_AVAILABLE;
-            break;
-        default:
-            pmm_type = PMM_REGION_RESERVED;
-            break;
+        case MBI_MMAP_AVAILABLE: pmm_type = PMM_REGION_AVAILABLE; break;
+        default:                 pmm_type = PMM_REGION_RESERVED; break;
         }
 
         pmm_region->type = pmm_type;

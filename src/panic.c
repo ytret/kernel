@@ -231,15 +231,9 @@ static int prv_panic_lua_panic(lua_State *L) {
     } else if (nargs == 1) {
         lua_Integer panic_type = luaL_checkinteger(L, 1);
         switch (panic_type) {
-        case PANIC_LUA_SIMPLE:
-            LOG_ERROR("TODO SIMPLE");
-            return 0;
-        case PANIC_LUA_BAD_OPCODE:
-            LOG_ERROR("TODO BAD_OPCODE");
-            return 0;
-        default:
-            luaL_argexpected(L, false, 1, "K.panic.type");
-            return -1;
+        case PANIC_LUA_SIMPLE:     LOG_ERROR("TODO SIMPLE"); return 0;
+        case PANIC_LUA_BAD_OPCODE: LOG_ERROR("TODO BAD_OPCODE"); return 0;
+        default:                   luaL_argexpected(L, false, 1, "K.panic.type"); return -1;
         }
     }
 

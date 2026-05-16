@@ -12,9 +12,9 @@
 
 #include "kbd.h"
 
-#define MOD_SHIFT  0x01
-#define MOD_CTRL   0x02
-#define MOD_ALT    0x04
+#define MOD_SHIFT 0x01
+#define MOD_CTRL  0x02
+#define MOD_ALT   0x04
 
 #define KEY_NUMLOCK_OFF_NONE (-1)
 

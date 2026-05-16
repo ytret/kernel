@@ -188,12 +188,8 @@ static bool prv_acpi_copy_madt(const acpi_madt_t *sys_madt) {
             s_type_str = "Interrupt Source Override";
             g_acpi_num_irq_remaps++;
             break;
-        case ACPI_MADT_ICS_NMI_SRC:
-            s_type_str = "NMI source";
-            break;
-        case ACPI_MADT_ICS_LAPIC_NMI:
-            s_type_str = "Local APIC NMI";
-            break;
+        case ACPI_MADT_ICS_NMI_SRC:   s_type_str = "NMI source"; break;
+        case ACPI_MADT_ICS_LAPIC_NMI: s_type_str = "Local APIC NMI"; break;
         case ACPI_MADT_ICS_LAPIC_ADDR_OVR:
             s_type_str = "Local APIC Address Override";
             break;
@@ -246,8 +242,7 @@ static bool prv_acpi_copy_madt(const acpi_madt_t *sys_madt) {
                 idx_irq_remap++;
             }
             break;
-        default:
-            break;
+        default: break;
         }
 
         addr_ics += s_size;

@@ -339,18 +339,12 @@ static void prv_pmm_dump_mmap(const pmm_mmap_t *mmap) {
 
 static const char *prv_pmm_region_type_name(pmm_region_type_t region_type) {
     switch (region_type) {
-    case PMM_REGION_AVAILABLE:
-        return "available RAM";
-    case PMM_REGION_RESERVED:
-        return "reserved";
-    case PMM_REGION_KERNEL_RESERVED:
-        return "kernel reserved";
-    case PMM_REGION_KERNEL_AND_MODS:
-        return "kernel and mods";
-    case PMM_REGION_STATIC_HEAP:
-        return "static heap";
-    default:
-        return "<unknown>";
+    case PMM_REGION_AVAILABLE:       return "available RAM";
+    case PMM_REGION_RESERVED:        return "reserved";
+    case PMM_REGION_KERNEL_RESERVED: return "kernel reserved";
+    case PMM_REGION_KERNEL_AND_MODS: return "kernel and mods";
+    case PMM_REGION_STATIC_HEAP:     return "static heap";
+    default:                         return "<unknown>";
     }
 }
 

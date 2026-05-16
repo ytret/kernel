@@ -349,26 +349,13 @@ static void dump_sect_hdr(elf_hdr_t const *p_hdr, sect_hdr_t const *p_shdr) {
     char const *p_type = "unknown";
 
     switch (p_shdr->type) {
-    case SHDR_TYPE_IGNORE:
-        return;
-    case SHDR_TYPE_PROGBITS:
-        p_type = "progbits";
-        break;
-    case SHDR_TYPE_SYMTAB:
-        p_type = "symtab";
-        break;
-    case SHDR_TYPE_STRTAB:
-        p_type = "strtab";
-        break;
-    case SHDR_TYPE_RELA:
-        p_type = "rela";
-        break;
-    case SHDR_TYPE_NOBITS:
-        p_type = "nobits";
-        break;
-    case SHDR_TYPE_REL:
-        p_type = "rel";
-        break;
+    case SHDR_TYPE_IGNORE:   return;
+    case SHDR_TYPE_PROGBITS: p_type = "progbits"; break;
+    case SHDR_TYPE_SYMTAB:   p_type = "symtab"; break;
+    case SHDR_TYPE_STRTAB:   p_type = "strtab"; break;
+    case SHDR_TYPE_RELA:     p_type = "rela"; break;
+    case SHDR_TYPE_NOBITS:   p_type = "nobits"; break;
+    case SHDR_TYPE_REL:      p_type = "rel"; break;
     }
 
     char const *p_name = sect_name(p_hdr, p_shdr);

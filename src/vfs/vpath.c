@@ -64,18 +64,12 @@ void vpath_free(vpath_t *path) {
 
 const char *vpath_err_str(vpath_err_t err) {
     switch (err) {
-    case VPATH_ERR_NONE:
-        return "VPATH_ERR_NONE";
-    case VPATH_ERR_EMPTY:
-        return "VPATH_ERR_EMPTY";
-    case VPATH_ERR_TOO_MANY_PARTS:
-        return "VPATH_ERR_TOO_MANY_PARTS";
-    case VPATH_ERR_PART_TOO_LONG:
-        return "VPATH_ERR_PART_TOO_LONG";
-    case VPATH_ERR_MUST_BE_ABSOLUTE:
-        return "VPATH_ERR_MUST_BE_ABSOLUTE";
-    case VPATH_ERR_BAD_NODE:
-        return "VPATH_ERR_BAD_NODE";
+    case VPATH_ERR_NONE:             return "VPATH_ERR_NONE";
+    case VPATH_ERR_EMPTY:            return "VPATH_ERR_EMPTY";
+    case VPATH_ERR_TOO_MANY_PARTS:   return "VPATH_ERR_TOO_MANY_PARTS";
+    case VPATH_ERR_PART_TOO_LONG:    return "VPATH_ERR_PART_TOO_LONG";
+    case VPATH_ERR_MUST_BE_ABSOLUTE: return "VPATH_ERR_MUST_BE_ABSOLUTE";
+    case VPATH_ERR_BAD_NODE:         return "VPATH_ERR_BAD_NODE";
     }
     return "<unknown error>";
 }

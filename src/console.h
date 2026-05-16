@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include "textdisp.h"
 #include "chardev.h"
+#include "textdisp.h"
 
 typedef struct console console_t;
 
