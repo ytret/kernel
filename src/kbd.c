@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "conmgr.h"
 #include "inputmgr.h"
 #include "kbd.h"
 #include "keymap.h"
@@ -454,6 +455,28 @@ static void try_parse_codes(void) {
 }
 
 static void prv_kbd_write(uint8_t key, bool b_released) {
+    // Alt-number keys switch consoles (Alt-1 = boot console, Alt-2 = console 1,
+    // ..., Alt-0 = console 9).
+    if (!b_released && keymap_is_alt_pressed()) {
+        size_t idx;
+        switch (key) {
+        case KEY_1: idx = 0; break;
+        case KEY_2: idx = 1; break;
+        case KEY_3: idx = 2; break;
+        case KEY_4: idx = 3; break;
+        case KEY_5: idx = 4; break;
+        case KEY_6: idx = 5; break;
+        case KEY_7: idx = 6; break;
+        case KEY_8: idx = 7; break;
+        case KEY_9: idx = 8; break;
+        case KEY_0: idx = 9; break;
+        default:    goto normal;
+        }
+        conmgr_switch(idx);
+        return;
+    }
+
+normal:
     char seq_buf[8];
     const size_t seq_buf_size = sizeof(seq_buf);
     const kbd_event_t event = {

@@ -20,3 +20,4 @@
 
 void keymap_init(void);
 size_t keymap_process(const kbd_event_t *event, void *buf, size_t buf_size);
+bool keymap_is_alt_pressed(void);

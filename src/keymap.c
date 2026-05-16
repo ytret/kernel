@@ -15,10 +15,10 @@ typedef struct {
 typedef struct {
     bool lshift : 1;
     bool rshift : 1;
-    bool lctrl  : 1;
-    bool rctrl  : 1;
-    bool lalt   : 1;
-    bool ralt   : 1;
+    bool lctrl : 1;
+    bool rctrl : 1;
+    bool lalt : 1;
+    bool ralt : 1;
     bool caps_lock : 1;
     bool num_lock : 1;
     bool scroll_lock : 1;
@@ -614,8 +614,8 @@ size_t keymap_process(const kbd_event_t *event, void *buf, size_t buf_size) {
 
     // ── Build effective modifier mask ───────────────────────────────
     uint8_t mods = (g_keymap.lshift || g_keymap.rshift ? MOD_SHIFT : 0) |
-                   (g_keymap.lctrl  || g_keymap.rctrl  ? MOD_CTRL  : 0) |
-                   (g_keymap.lalt   || g_keymap.ralt   ? MOD_ALT   : 0);
+                   (g_keymap.lctrl || g_keymap.rctrl ? MOD_CTRL : 0) |
+                   (g_keymap.lalt || g_keymap.ralt ? MOD_ALT : 0);
 
     // Caps lock inverts Shift for letter keys
     if (g_keymap.caps_lock && ks->mods != NULL) {
@@ -647,6 +647,10 @@ size_t keymap_process(const kbd_event_t *event, void *buf, size_t buf_size) {
     if (seq == NULL) { return 0; }
 
     return prv_keymap_write(seq, buf, buf_size);
+}
+
+bool keymap_is_alt_pressed(void) {
+    return g_keymap.lalt || g_keymap.ralt;
 }
 
 static size_t prv_keymap_write(const char *seq, char *buf, size_t buf_size) {
