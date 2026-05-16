@@ -51,6 +51,13 @@ void console_init(console_t *con) {
     con->ready = true;
 }
 
+console_t *console_new(void) {
+    console_t *const con =
+        heap_alloc_aligned(sizeof(console_t), _Alignof(console_t));
+    console_init(con);
+    return con;
+}
+
 void console_lock(console_t *con) {
     if (!mutex_caller_owns(&con->lock)) { mutex_acquire(&con->lock); }
     con->lock_cnt++;

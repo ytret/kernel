@@ -7,6 +7,7 @@ typedef struct console console_t;
 console_t *console_get_boot_con(void);
 
 void console_init(console_t *con);
+console_t *console_new(void);
 void console_lock(console_t *con);
 void console_unlock(console_t *con);
 
