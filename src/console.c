@@ -229,9 +229,16 @@ static void prv_console_realloc_cache(console_t *con) {
 
     con->cache_row_pitch = con->cols * CONSOLE_CACHE_CHAR_SIZE;
     con->cache_size = con->rows * con->cache_row_pitch;
-    con->cache = heap_realloc(con->cache, con->cache_size, CONSOLE_CACHE_ALIGN);
 
-    prv_console_clear_cache(con, 0, con->rows);
+    if (con->cache) {
+        LOG_FLOW("realloc cache");
+        con->cache =
+            heap_realloc(con->cache, con->cache_size, CONSOLE_CACHE_ALIGN);
+    } else {
+        LOG_FLOW("alloc and clear cache");
+        con->cache = heap_alloc_aligned(con->cache_size, CONSOLE_CACHE_ALIGN);
+        prv_console_clear_cache(con, 0, con->rows);
+    }
 }
 
 static void prv_console_clear_cache(console_t *con, size_t start_row,
