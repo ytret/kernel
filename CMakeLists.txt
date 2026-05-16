@@ -108,10 +108,13 @@ list(APPEND KERNEL_SOURCES
     src/fs/ramfs.c
     src/heap.c
     src/init.c
+    src/inputmgr.c
     src/kbd.c
+    src/keymap.c
     src/kprintf.c
     src/kstring.c
     src/ksyscall.c
+    src/ldisc.c
     src/libshim.c
     src/log.c
     src/mbi.c
@@ -128,6 +131,7 @@ list(APPEND KERNEL_SOURCES
     src/stack.c
     src/taskmgr.c
     src/textdisp.c
+    src/tty.c
     src/vfs/file.c
     src/vfs/vfs_err.c
     src/vfs/vnode.c
@@ -173,6 +177,7 @@ list(APPEND KERNEL_SOURCES
     src/kspinlock.c
     src/list.c
     src/queue.c
+    src/ringbuf.c
 
 )
 if(YTKERNEL_ENABLE_TESTS)
