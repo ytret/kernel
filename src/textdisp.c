@@ -1,5 +1,4 @@
 #include "framebuf.h"
-#include "kbd.h"
 #include "log.h"
 #include "mbi.h"
 #include "queue.h"
@@ -100,10 +99,4 @@ void textdisp_scroll(textdisp_t *disp) {
     if (!disp->has_impl) { return; }
 
     disp->ops->p_scroll_new_row();
-}
-
-void textdisp_read_kbd_event(kbd_event_t *p_event) {
-    kbd_event_t event;
-    queue_read(kbd_event_queue(), &event, sizeof(kbd_event_t));
-    *p_event = event;
 }

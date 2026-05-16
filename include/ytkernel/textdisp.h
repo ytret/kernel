@@ -3,8 +3,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "kbd.h"
-
 typedef struct {
     void (*p_init)(void);
     void (*p_map_iomem)(void);
@@ -33,5 +31,3 @@ void textdisp_put_char_at(textdisp_t *disp, size_t row, size_t col, char ch);
 void textdisp_put_cursor_at(textdisp_t *disp, size_t row, size_t col);
 
 void textdisp_scroll(textdisp_t *disp);
-
-void textdisp_read_kbd_event(kbd_event_t *p_event);
