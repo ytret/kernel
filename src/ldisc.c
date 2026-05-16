@@ -62,6 +62,7 @@ void ldisc_raw_init(ldisc_t *ldisc) {
     ringbuf_init(&raw->ringbuf, raw->buf, raw->buf_size);
     semaphore_init(&raw->buf_sem);
 
+    ldisc->type = LDISC_RAW;
     ldisc->ctx = raw;
     ldisc->ops = &g_ldisc_raw_ops;
 }
@@ -79,6 +80,7 @@ void ldisc_cooked_init(ldisc_t *ldisc) {
     ringbuf_init(&cooked->ringbuf, cooked->ring_buf, LDISC_COOKED_RING_SIZE);
     semaphore_init(&cooked->buf_sem);
 
+    ldisc->type = LDISC_COOKED;
     ldisc->ctx = cooked;
     ldisc->ops = &g_ldisc_cooked_ops;
 }
@@ -89,6 +91,20 @@ void ldisc_cooked_set_echo_dev(ldisc_t *ldisc, chardev_t *dev) {
 
     ldisc_cooked_t *const cooked = ldisc->ctx;
     cooked->echo_dev = dev;
+}
+
+void ldisc_destroy(ldisc_t *ldisc) {
+    if (!ldisc || !ldisc->ctx) { return; }
+
+    if (ldisc->type == LDISC_COOKED) {
+        ldisc_cooked_t *const cooked = ldisc->ctx;
+        if (cooked->ring_buf) { heap_free(cooked->ring_buf); }
+    }
+
+    heap_free(ldisc->ctx);
+    ldisc->ctx = NULL;
+    ldisc->ops = NULL;
+    ldisc->type = LDISC_UNINIT;
 }
 
 static size_t prv_ldisc_raw_write(void *v_ctx, const void *buf,
@@ -109,12 +125,16 @@ static size_t prv_ldisc_raw_write(void *v_ctx, const void *buf,
 static size_t prv_ldisc_raw_read(void *v_ctx, void *buf, size_t buf_size) {
     ldisc_raw_t *const ctx = v_ctx;
 
-    // FIXME: allow decreasing by N at a time
-    for (size_t i = 0; i < buf_size; i++) {
+    semaphore_decrease(&ctx->buf_sem);
+
+    const size_t available = ringbuf_bytes_used(&ctx->ringbuf);
+    const size_t to_read = available < buf_size ? available : buf_size;
+
+    for (size_t i = 1; i < to_read; i++) {
         semaphore_decrease(&ctx->buf_sem);
     }
 
-    return ringbuf_read(&ctx->ringbuf, buf, buf_size);
+    return ringbuf_read(&ctx->ringbuf, buf, to_read);
 }
 
 static void prv_ldisc_cooked_do_echo(ldisc_cooked_t *ctx, const void *buf,
