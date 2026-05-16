@@ -1,10 +1,10 @@
 #include <stddef.h>
 
+#include "console.h"
 #include "kbd.h"
 #include "kprintf.h"
 #include "kshell/kshinput.h"
 #include "panic.h"
-#include "console.h"
 
 #define CMD_BUF_SIZE 256
 
@@ -82,8 +82,8 @@ static bool parse_kbd_event(kbd_event_t *p_event) {
         if (g_cmd_buf_pos == 0) { return false; }
 
         console_lock(g_kshinput_con);
-        size_t row = g_kshinput_con->cursor_row;
-        size_t col = g_kshinput_con->cursor_col;
+        size_t row = console_cursor_row(g_kshinput_con);
+        size_t col = console_cursor_col(g_kshinput_con);
 
         if ((row == 0) && (col == 0)) {
             console_unlock(g_kshinput_con);
@@ -94,7 +94,7 @@ static bool parse_kbd_event(kbd_event_t *p_event) {
             col--;
         } else if (row > 0) {
             row--;
-            col = g_kshinput_con->cols - 1;
+            col = console_cols(g_kshinput_con) - 1;
         }
 
         console_put_char_at(g_kshinput_con, row, col, ' ');

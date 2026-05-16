@@ -71,7 +71,7 @@ void vasview(uint32_t pgdir_virt) {
     // Before returning to kshell, put the cursor on the last row, to make the
     // prompt appear there.
     console_lock(g_vasview_con);
-    console_put_cursor_at(g_vasview_con, g_vasview_con->rows - 1, 0);
+    console_put_cursor_at(g_vasview_con, console_rows(g_vasview_con) - 1, 0);
     console_unlock(g_vasview_con);
 }
 

@@ -25,7 +25,7 @@ int kvprintf(char const *restrict fmt, va_list ap) {
     int ret;
     va_list ap_copy;
     console_t *const con = console_get_boot_con();
-    if (!con->ready) { return -1; }
+    if (!console_is_ready(con)) { return -1; }
 
     // NOTE: it is important to copy `ap`, otherwise the internal argument
     // pointer/counter is never advanced.

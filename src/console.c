@@ -1,12 +1,31 @@
 #include "assert.h"
 #include "console.h"
 #include "heap.h"
+#include "kmutex.h"
 #include "log.h"
 #include "memfun.h"
 #include "pmm.h"
 
 #define CONSOLE_CACHE_CHAR_SIZE 1
 #define CONSOLE_CACHE_ALIGN     PMM_PAGE_SIZE
+
+struct console {
+    bool ready;
+    task_mutex_t lock;
+    size_t lock_cnt;
+
+    textdisp_t *disp;
+
+    size_t rows;
+    size_t cols;
+
+    char *cache;
+    size_t cache_size;
+    size_t cache_row_pitch;
+
+    size_t cursor_row;
+    size_t cursor_col;
+};
 
 static console_t g_console_boot_con;
 
@@ -71,6 +90,26 @@ bool console_detach(console_t *con) {
     assert_owns_mutex(con);
 
     PANIC("TODO %s", __func__);
+}
+
+bool console_is_ready(console_t *con) {
+    return con->ready;
+}
+
+size_t console_cursor_row(console_t *con) {
+    return con->cursor_row;
+}
+
+size_t console_cursor_col(console_t *con) {
+    return con->cursor_col;
+}
+
+size_t console_rows(console_t *con) {
+    return con->rows;
+}
+
+size_t console_cols(console_t *con) {
+    return con->cols;
 }
 
 void console_clear(console_t *con) {
