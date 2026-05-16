@@ -1,7 +1,11 @@
+#define LOG_LEVEL LOG_LEVEL_DEBUG
+
 #include <stddef.h>
 #include <stdint.h>
 
+#include "inputmgr.h"
 #include "kbd.h"
+#include "keymap.h"
 #include "log.h"
 #include "panic.h"
 #include "port.h"
@@ -15,32 +19,18 @@
 #define CODE_BUF_LEN 10
 
 /**
- * Event queue capacity.
- *
- * One node is used as a dummy node, so only 31 events are actually enqueuable.
- * Also, the number must be a multiple of 32 because of the queue
- * implementation.
- */
-#define EVENT_QUEUE_LEN 32
-#define EVENT_BUF_LEN   EVENT_QUEUE_LEN
-
-/**
  * Buffer to store scancodes in before they get parsed.
  */
 static volatile uint8_t gp_kbd_code_buf[CODE_BUF_LEN];
 static volatile size_t g_kbd_code_buf_pos;
 
-static queue_t g_kbd_event_queue;
-static queue_t g_kbd_sysevent_queue;
-
 static uint8_t read_code(void);
 static void append_code(uint8_t sc);
 static void try_parse_codes(void);
-static void enqueue_event(uint8_t key, bool b_released);
+static void prv_kbd_write(uint8_t key, bool b_released);
 
 void kbd_init(void) {
-    queue_init(&g_kbd_event_queue, EVENT_QUEUE_LEN, sizeof(kbd_event_t));
-    queue_init(&g_kbd_sysevent_queue, EVENT_QUEUE_LEN, sizeof(kbd_event_t));
+    keymap_init();
 
     // On QEMU this is required to free space in the buffer.
     read_code();
@@ -51,14 +41,6 @@ void kbd_irq_handler(void) {
     append_code(sc);
     try_parse_codes();
     lapic_send_eoi();
-}
-
-queue_t *kbd_event_queue(void) {
-    return &g_kbd_event_queue;
-}
-
-queue_t *kbd_sysevent_queue(void) {
-    return &g_kbd_sysevent_queue;
 }
 
 static uint8_t read_code(void) {
@@ -467,22 +449,20 @@ static void try_parse_codes(void) {
         // Reset the scancode buffer.
         g_kbd_code_buf_pos = 0;
 
-        enqueue_event(key, b_released);
+        prv_kbd_write(key, b_released);
     }
 }
 
-static void enqueue_event(uint8_t key, bool b_released) {
-    kbd_event_t event = {
+static void prv_kbd_write(uint8_t key, bool b_released) {
+    char seq_buf[8];
+    const size_t seq_buf_size = sizeof(seq_buf);
+    const kbd_event_t event = {
         .key = key,
         .b_released = b_released,
     };
+    const size_t seq_len = keymap_process(&event, seq_buf, seq_buf_size);
 
-    if (!b_released &&
-        (key == KEY_1 || key == KEY_2 || key == KEY_3 || key == KEY_4 ||
-         key == KEY_5 || key == KEY_6 || key == KEY_7 || key == KEY_8 ||
-         key == KEY_9 || key == KEY_0)) {
-        queue_write(&g_kbd_sysevent_queue, &event);
-    } else {
-        queue_write(&g_kbd_event_queue, &event);
+    if (inputmgr_write(seq_buf, seq_len) == 0) {
+        LOG_FLOW("ignored key event %u released %d", key, b_released);
     }
 }
