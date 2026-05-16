@@ -45,7 +45,6 @@ static void show_tbl(void);
 static uint32_t entry_at_cursor(void);
 static uint32_t idx_at_cursor(void);
 
-static void parse_kbd_event(kbd_event_t *p_event);
 static void move_cursor(int32_t inc_idx);
 static void deeper_view(void);
 static void shallower_view(void);
@@ -63,9 +62,8 @@ void vasview(uint32_t pgdir_virt) {
     console_unlock(g_vasview_con);
 
     while (!gb_exit) {
-        kbd_event_t kbd_event;
-        textdisp_read_kbd_event(&kbd_event);
-        parse_kbd_event(&kbd_event);
+        // TODO
+        gb_exit = true;
     }
 
     // Before returning to kshell, put the cursor on the last row, to make the
@@ -259,44 +257,6 @@ static uint32_t idx_at_cursor(void) {
         PANIC("invalid view state");
     }
     return idx;
-}
-
-static void parse_kbd_event(kbd_event_t *p_event) {
-    if (p_event->b_released) { return; }
-
-    console_lock(g_vasview_con);
-
-    switch (p_event->key) {
-    case KEY_LEFTARROW:
-    case KEY_H:
-        move_cursor(-1);
-        break;
-    case KEY_RIGHTARROW:
-    case KEY_L:
-        move_cursor(+1);
-        break;
-    case KEY_UPARROW:
-    case KEY_K:
-        move_cursor(-VIEW_COLS);
-        break;
-    case KEY_DOWNARROW:
-    case KEY_J:
-        move_cursor(+VIEW_COLS);
-        break;
-
-    case KEY_SPACE:
-        update_full();
-        break;
-
-    case KEY_ENTER:
-        deeper_view();
-        break;
-    case KEY_ESCAPE:
-        shallower_view();
-        break;
-    }
-
-    console_unlock(g_vasview_con);
 }
 
 static void move_cursor(int32_t inc_idx) {
