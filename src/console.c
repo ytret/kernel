@@ -1,3 +1,5 @@
+#define LOG_LEVEL LOG_LEVEL_DEBUG
+
 #include "assert.h"
 #include "console.h"
 #include "heap.h"
@@ -126,7 +128,7 @@ void console_clear(console_t *con) {
     assert_owns_mutex(con);
 
     prv_console_clear_cache(con, 0, con->rows);
-    textdisp_clear(con->disp);
+    if (con->disp) { textdisp_clear(con->disp); }
     console_put_cursor_at(con, 0, 0);
 }
 
@@ -135,7 +137,7 @@ void console_clear_rows(console_t *con, size_t start_row, size_t num_rows) {
     assert_owns_mutex(con);
 
     prv_console_clear_cache(con, start_row, num_rows);
-    textdisp_clear_rows(con->disp, start_row, num_rows);
+    if (con->disp) { textdisp_clear_rows(con->disp, start_row, num_rows); }
 }
 
 void console_put_cursor_at(console_t *con, size_t row, size_t col) {
@@ -147,7 +149,7 @@ void console_put_cursor_at(console_t *con, size_t row, size_t col) {
     if (con->cursor_row == row && con->cursor_col == col) { return; }
     con->cursor_row = row;
     con->cursor_col = col;
-    textdisp_put_cursor_at(con->disp, row, col);
+    if (con->disp) { textdisp_put_cursor_at(con->disp, row, col); }
 }
 
 void console_put_char_at(console_t *con, size_t row, size_t col, char ch) {
@@ -157,7 +159,7 @@ void console_put_char_at(console_t *con, size_t row, size_t col, char ch) {
     DEBUG_ASSERT(col < con->cols);
 
     con->cache[col + row * con->cache_row_pitch] = ch;
-    textdisp_put_char_at(con->disp, row, col, ch);
+    if (con->disp) { textdisp_put_char_at(con->disp, row, col, ch); }
 }
 
 void console_put_char(console_t *con, char ch) {
@@ -209,10 +211,13 @@ static void prv_console_scroll(console_t *con) {
     kmemmove(con->cache, &con->cache[con->cache_row_pitch],
              con->cache_row_pitch * (con->rows - 1));
 
-    textdisp_scroll(con->disp);
+    if (con->disp) { textdisp_scroll(con->disp); }
 }
 
 static void prv_console_redraw_cache(console_t *con) {
+    LOG_FLOW("con %p", con);
+    ASSERT(con->disp != NULL);
+
     prv_console_realloc_cache(con);
 
     for (size_t row = 0; row < con->rows; row++) {
