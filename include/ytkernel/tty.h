@@ -1,3 +1,11 @@
+/**
+ * @file tty.h
+ * TTY layer API.
+ *
+ * A TTY object is responsible for handling user/task input using a *line
+ * discipline*.
+ */
+
 #pragma once
 
 #include <stddef.h>

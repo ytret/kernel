@@ -1,7 +1,14 @@
+/**
+ * @file
+ * Keymap layer.
+ *
+ * A "keymap" object is responsible for transforming keyboard press events into
+ * byte sequences (e.g., ANSI escape sequences or simple ASCII characters).
+ */
+
 #pragma once
 
 #include <stddef.h>
-#include <stdint.h>
 
 #include "kbd.h"
 

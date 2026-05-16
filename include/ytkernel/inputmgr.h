@@ -1,3 +1,11 @@
+/**
+ * @file inputmgr.h
+ * Input manager layer.
+ *
+ * An input manager is a unique kernel object responsible for redirecting user
+ * input bytes to the active TTY object.
+ */
+
 #pragma once
 
 #include "tty.h"

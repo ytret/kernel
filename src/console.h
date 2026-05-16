@@ -1,3 +1,16 @@
+/**
+ * @file console.h
+ * Console layer.
+ *
+ * A console object is responsible for caching screen state and outputting the
+ * said state to a given text display (@link textdisp.h @endlink).
+ *
+ * It does not process user input - that is done by a TTY object.
+ *
+ * There can be multiple consoles managed by the kernel, see
+ * @link conmgr.h @endlink.
+ */
+
 #pragma once
 
 #include "textdisp.h"
