@@ -210,6 +210,8 @@ void console_put_str(console_t *con, const char *str) {
 static void prv_console_scroll(console_t *con) {
     kmemmove(con->cache, &con->cache[con->cache_row_pitch],
              con->cache_row_pitch * (con->rows - 1));
+    kmemset(&con->cache[con->cache_row_pitch * (con->rows - 1)], ' ',
+            con->cache_row_pitch);
 
     if (con->disp) { textdisp_scroll(con->disp); }
 }
