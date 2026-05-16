@@ -7,6 +7,7 @@ typedef struct chardev chardev_t;
 typedef enum {
     CHARDEV_UNINIT,
     CHARDEV_SERIAL,
+    CHARDEV_CONSOLE,
 } chardev_type_t;
 
 typedef struct {
