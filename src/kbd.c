@@ -477,7 +477,10 @@ static void enqueue_event(uint8_t key, bool b_released) {
         .b_released = b_released,
     };
 
-    if (!b_released && (key == KEY_PAGEUP || key == KEY_PAGEDOWN)) {
+    if (!b_released &&
+        (key == KEY_1 || key == KEY_2 || key == KEY_3 || key == KEY_4 ||
+         key == KEY_5 || key == KEY_6 || key == KEY_7 || key == KEY_8 ||
+         key == KEY_9 || key == KEY_0)) {
         queue_write(&g_kbd_sysevent_queue, &event);
     } else {
         queue_write(&g_kbd_event_queue, &event);

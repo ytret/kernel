@@ -90,6 +90,7 @@ bool console_attach(console_t *con, textdisp_t *disp) {
     ASSERT(con->cols != 0);
 
     prv_console_redraw_cache(con);
+    textdisp_put_cursor_at(con->disp, con->cursor_row, con->cursor_col);
 
     return true;
 }

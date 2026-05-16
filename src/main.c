@@ -6,6 +6,7 @@
 #include "chardev.h"
 #include "cmdline.h"
 #include "config.h"
+#include "conmgr.h"
 #include "console.h"
 #include "devmgr.h"
 #include "heap.h"
@@ -80,6 +81,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     textdisp_init(boot_disp);
     console_init(boot_con);
     console_attach(boot_con, boot_disp);
+    conmgr_init(9);
     LOG_INFO("console attached");
 
     mbi_save_on_heap();

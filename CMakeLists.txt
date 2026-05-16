@@ -99,6 +99,7 @@ list(APPEND KERNEL_SOURCES
     src/blkdev/blkpart.c
     src/blkdev/gpt.c
     src/cmdline.c
+    src/conmgr.c
     src/console.c
     src/cpu.c
     src/devmgr.c
