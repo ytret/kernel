@@ -130,44 +130,50 @@ stuff.
 # Build
 
 The build system is CMake. Building is done inside a nix shell. There should be
-a build directory at `build`. The following steps should be done only inside
-the build directory.
+a build directory at `build`.
 
-Configure command (run from the `build` directory):
+**IMPORTANT for AI agents:** All commands run from the **project root**
+(`/Users/ytret/dev/ytret/kernel`). Before running any build command, ensure CWD
+is the project root. Do NOT chain `cd build` — always reset to root first (if
+you're inside `build/`, use `cd .. && cd build`).
 
-```
-mkdir -p build
-cd build
-nix develop .. --command cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake -GNinja
-```
+## Full kernel build workflow (single block)
 
-Change build type to `Debug` or `Release` (after initial configuration, run from
-the `build` directory):
+This configures, builds, and creates a bootable ISO in one go:
 
 ```
-cd build
-nix develop .. --command cmake .. -DCMAKE_BUILD_TYPE=Debug
+mkdir -p build && cd build && nix develop .. --command cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake -GNinja && cd .. && cd build && nix develop .. --command ninja && cd .. && cd build && nix develop .. --command bash ./create_iso.sh
 ```
 
-Build command (it also generates docs, run from the `build` directory):
+## Individual steps
 
-```
-cd build
-nix develop .. --command ninja
-```
+Each step below is designed to be run **sequentially** — start with Configure
+(from project root), then each subsequent step picks up where the last left off
+(inside `build/`). The `cd .. && cd build` resets to root and re-enters `build/`.
 
-Create a bootable ISO with no tests (run from the `build` directory):
-
+**Configure:**
 ```
-cd build
-nix develop .. --command bash ./create_iso.sh
+mkdir -p build && cd build && nix develop .. --command cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake -GNinja
 ```
 
-Run the ISO in an interactive QEMU session (run from the `build` directory):
-
+**Change build type (after initial config):**
 ```
-cd build
-./run_qemu.sh
+cd .. && cd build && nix develop .. --command cmake .. -DCMAKE_BUILD_TYPE=Debug
+```
+
+**Build (also generates docs):**
+```
+cd .. && cd build && nix develop .. --command ninja
+```
+
+**Create bootable ISO (no tests):**
+```
+cd .. && cd build && nix develop .. --command bash ./create_iso.sh
+```
+
+**Run ISO in interactive QEMU:**
+```
+cd .. && cd build && ./run_qemu.sh
 ```
 
 # Testing
@@ -183,20 +189,16 @@ Build host tests (note: *do NOT* build the host tests at `tests/`, build them
 at `tests/build/`):
 
 ```
-mkdir -p tests/build
-cd tests/build
-cmake .. -DCMAKE_BUILD_TYPE=Debug -GNinja
-ninja
+mkdir -p tests/build && cd tests/build && cmake .. -DCMAKE_BUILD_TYPE=Debug -GNinja && ninja
 ```
 
-Run the host tests:
+Run the host tests (run from the project root):
 
 ```
-cd tests/build
-ctest
+cd tests/build && ctest
 ```
 
-Or you can run individual Google Test tests e.g. `./tests/build/dynarr_test`,
+Or you can run individual Google Test tests e.g. `cd tests/build && ./dynarr_test`,
 they accept Google Test arguments.
 
 ## Kernel tests
@@ -204,18 +206,16 @@ they accept Google Test arguments.
 Kernel tests run inside a non-interactive QEMU session and cover subsystems that
 depend on a real kernel environment.
 
-Create a bootable ISO with live kernel tests (run from the `build` directory):
+Create a bootable ISO with live kernel tests (run from the project root):
 
 ```
-cd build
-nix develop .. --command bash ./create_iso.sh -c "ktest.run-all-suites ktest.exit-vm" -o kernel-test.iso
+cd build && nix develop .. --command bash ./create_iso.sh -c "ktest.run-all-suites ktest.exit-vm" -o kernel-test.iso
 ```
 
-Start a test runner (run from the `build` directory):
+Start a test runner (run from the project root):
 
 ```
-cd build
-./ktest.sh
+cd build && ./ktest.sh
 ```
 
 Example output:
