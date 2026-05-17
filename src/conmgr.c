@@ -5,10 +5,13 @@
 #include "console.h"
 #include "dynarr.h"
 #include "inputmgr.h"
+#include "kspinlock.h"
 #include "log.h"
 #include "tty.h"
 
 typedef struct {
+    spinlock_t lock;
+
     dynarr_t cons;
     console_t *active_con;
 
@@ -21,6 +24,8 @@ typedef struct {
 static conmgr_t g_conmgr;
 
 void conmgr_init(size_t num_add_cons) {
+    spinlock_init(&g_conmgr.lock);
+
     textdisp_t *const boot_disp = textdisp_get_boot_disp();
 
     dynarr_init(&g_conmgr.cons, sizeof(console_t *), _Alignof(console_t *),
@@ -50,8 +55,11 @@ void conmgr_init(size_t num_add_cons) {
 bool conmgr_switch(size_t idx) {
     LOG_FLOW("idx %zu", idx);
 
+    spinlock_acquire(&g_conmgr.lock);
+
     if (idx >= g_conmgr.cons.num_items) {
         LOG_ERROR("console %zu does not exist", idx);
+        spinlock_release(&g_conmgr.lock);
         return false;
     }
 
@@ -80,10 +88,8 @@ bool conmgr_switch(size_t idx) {
     inputmgr_set_tty(sel_tty);
     tty_unlock(sel_tty);
 
-    if (attached) {
-        g_conmgr.active_con = sel_con;
-        return true;
-    } else {
-        return false;
-    }
+    if (attached) { g_conmgr.active_con = sel_con; }
+
+    spinlock_release(&g_conmgr.lock);
+    return attached;
 }
