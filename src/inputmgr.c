@@ -1,25 +1,31 @@
 #include "assert.h"
 #include "inputmgr.h"
+#include "kspinlock.h"
 #include "log.h"
 
 typedef struct {
-    // FIXME: does this need lock?
+    spinlock_t lock;
     tty_t *active_tty;
 } inputmgr_t;
 
 static inputmgr_t g_inputmgr;
 
 void inputmgr_init(void) {
+    spinlock_init(&g_inputmgr.lock);
 }
 
 void inputmgr_set_tty(tty_t *tty) {
+    spinlock_acquire(&g_inputmgr.lock);
     g_inputmgr.active_tty = tty;
+    spinlock_release(&g_inputmgr.lock);
 }
 
 size_t inputmgr_write(const void *buf, size_t buf_size) {
     DEBUG_ASSERT(buf != NULL);
 
+    spinlock_acquire(&g_inputmgr.lock);
     tty_t *const tty = g_inputmgr.active_tty;
+    spinlock_release(&g_inputmgr.lock);
     if (!tty) {
         LOG_ERROR("no active tty");
         return 0;
