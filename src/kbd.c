@@ -25,19 +25,20 @@ typedef struct {
      */
     volatile uint8_t code_buf[KBD_CODE_BUF_SIZE];
     volatile size_t code_buf_pos;
+
+    keymap_t keymap;
 } kbd_t;
 
 static kbd_t g_kbd;
 
 static void prv_kbd_append_code(kbd_t *kbd, uint8_t sc);
 static bool prv_kbd_try_parse_codes(kbd_t *kbd, kbd_event_t *event);
-
-static void prv_kbd_write(uint8_t key, bool b_released);
+static void prv_kbd_write_event(kbd_t *kbd, const kbd_event_t *event);
 
 static uint8_t prv_kbd_read_code(void);
 
 void kbd_init(void) {
-    keymap_init();
+    keymap_init(&g_kbd.keymap);
 
     // On QEMU this is required to free space in the buffer.
     prv_kbd_read_code();
@@ -49,7 +50,7 @@ void kbd_irq_handler(void) {
 
     kbd_event_t event;
     if (prv_kbd_try_parse_codes(&g_kbd, &event)) {
-        prv_kbd_write(event.key, event.b_released);
+        prv_kbd_write_event(&g_kbd, &event);
     }
 
     lapic_send_eoi();
@@ -257,12 +258,12 @@ static bool prv_kbd_try_parse_codes(kbd_t *kbd, kbd_event_t *event) {
     return b_parsed;
 }
 
-static void prv_kbd_write(uint8_t key, bool b_released) {
+static void prv_kbd_write_event(kbd_t *kbd, const kbd_event_t *event) {
     // Alt-number keys switch consoles (Alt-1 = boot console, Alt-2 = console 1,
     // ..., Alt-0 = console 9).
-    if (!b_released && keymap_is_alt_pressed()) {
+    if (!event->b_released && keymap_is_alt_pressed(&kbd->keymap)) {
         size_t idx;
-        switch (key) {
+        switch (event->key) {
         case KEY_1: idx = 0; break;
         case KEY_2: idx = 1; break;
         case KEY_3: idx = 2; break;
@@ -282,11 +283,8 @@ static void prv_kbd_write(uint8_t key, bool b_released) {
 normal:
     char seq_buf[8];
     const size_t seq_buf_size = sizeof(seq_buf);
-    const kbd_event_t event = {
-        .key = key,
-        .b_released = b_released,
-    };
-    const size_t seq_len = keymap_process(&event, seq_buf, seq_buf_size);
+    const size_t seq_len =
+        keymap_process(&kbd->keymap, event, seq_buf, seq_buf_size);
 
     if (inputmgr_write(seq_buf, seq_len) == 0) {
         LOG_FLOW("ignored key event %u released %d", key, b_released);
