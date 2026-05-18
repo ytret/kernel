@@ -4,6 +4,9 @@
 
 #include "chardev.h"
 
+typedef size_t (*ldisc_op_write_t)(void *ctx, const void *buf, size_t buf_size);
+typedef size_t (*ldisc_op_read_t)(void *ctx, void *buf, size_t buf_size);
+
 typedef enum {
     LDISC_UNINIT,
     LDISC_RAW,
@@ -11,8 +14,8 @@ typedef enum {
 } ldisc_type_t;
 
 typedef struct {
-    size_t (*const f_write)(void *ctx, const void *buf, size_t buf_size);
-    size_t (*const f_read)(void *ctx, void *buf, size_t buf_size);
+    const ldisc_op_write_t f_write;
+    const ldisc_op_read_t f_read;
 } ldisc_ops_t;
 
 typedef struct {
