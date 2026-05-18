@@ -129,14 +129,23 @@ size_t tty_read_input(tty_t *tty, void *buf, size_t buf_size) {
     DEBUG_ASSERT(tty != NULL);
     DEBUG_ASSERT(buf != NULL);
 
+    tty_lock(tty);
+
     if (!tty->ldisc.ctx) {
         LOG_ERROR("tty %p has no line discipline", tty);
+        tty_unlock(tty);
         return 0;
     }
 
     ASSERT(tty->ldisc.ops != NULL);
     ASSERT(tty->ldisc.ops->f_read != NULL);
-    return tty->ldisc.ops->f_read(tty->ldisc.ctx, buf, buf_size);
+
+    const ldisc_op_read_t ldisc_op_read = tty->ldisc.ops->f_read;
+    void *const ldisc_ctx = tty->ldisc.ctx;
+
+    tty_unlock(tty);
+
+    return ldisc_op_read(ldisc_ctx, buf, buf_size);
 }
 
 size_t tty_write_output(tty_t *tty, const void *buf, size_t buf_size) {
