@@ -3,42 +3,65 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "assert.h"
 #include "conmgr.h"
 #include "inputmgr.h"
 #include "kbd.h"
 #include "keymap.h"
+#include "ksemaphore.h"
 #include "log.h"
+#include "memfun.h"
 #include "panic.h"
 #include "port.h"
 
 #include "arch/x86/apic/lapic.h"
 
+#define KBD_CODE_BUF_SIZE    10
+#define KBD_EVENT_QUEUE_SIZE 16
+
 #define KBD_PORT_DATA   0x0060
 #define KBD_PORT_CMD    0x0064
 #define KBD_PORT_STATUS 0x0064
 
-#define KBD_CODE_BUF_SIZE 10
+typedef struct {
+    kbd_event_t buf[KBD_EVENT_QUEUE_SIZE];
+    size_t max_items;
+
+    volatile _Atomic size_t head;
+    volatile _Atomic size_t tail;
+    semaphore_t cnt_sem;
+} kbd_queue_t;
 
 typedef struct {
+    keymap_t keymap;
+
     /**
      * Buffer of incomplete scancode sequences.
      */
     volatile uint8_t code_buf[KBD_CODE_BUF_SIZE];
     volatile size_t code_buf_pos;
 
-    keymap_t keymap;
+    kbd_queue_t event_queue;
 } kbd_t;
 
 static kbd_t g_kbd;
 
 static void prv_kbd_append_code(kbd_t *kbd, uint8_t sc);
 static bool prv_kbd_try_parse_codes(kbd_t *kbd, kbd_event_t *event);
-static void prv_kbd_write_event(kbd_t *kbd, const kbd_event_t *event);
+static void prv_kbd_process_event(kbd_t *kbd, const kbd_event_t *event);
+
+static void prv_kbd_queue_init(kbd_queue_t *queue, size_t max_items);
+static size_t prv_kbd_queue_wrap_inc(const kbd_queue_t *queue, size_t idx);
+static bool prv_kbd_queue_is_empty(const kbd_queue_t *queue);
+static bool prv_kbd_queue_is_full(const kbd_queue_t *queue);
+static void prv_kbd_enqueue(kbd_queue_t *queue, const kbd_event_t *event);
+static void prv_kbd_dequeue(kbd_queue_t *queue, kbd_event_t *event);
 
 static uint8_t prv_kbd_read_code(void);
 
 void kbd_init(void) {
     keymap_init(&g_kbd.keymap);
+    prv_kbd_queue_init(&g_kbd.event_queue, KBD_EVENT_QUEUE_SIZE);
 
     // On QEMU this is required to free space in the buffer.
     prv_kbd_read_code();
@@ -50,10 +73,28 @@ void kbd_irq_handler(void) {
 
     kbd_event_t event;
     if (prv_kbd_try_parse_codes(&g_kbd, &event)) {
-        prv_kbd_write_event(&g_kbd, &event);
+        prv_kbd_process_event(&g_kbd, &event);
     }
 
     lapic_send_eoi();
+}
+
+[[gnu::noreturn]] void kbd_task(void) {
+    kbd_event_t event;
+    char seq_buf[8];
+    const size_t seq_buf_size = sizeof(seq_buf);
+
+    for (;;) {
+        prv_kbd_dequeue(&g_kbd.event_queue, &event);
+
+        const size_t seq_len =
+            keymap_process(&g_kbd.keymap, &event, seq_buf, seq_buf_size);
+
+        if (inputmgr_write(seq_buf, seq_len) == 0) {
+            LOG_FLOW("ignored key event %u released %d", event.key,
+                     event.b_released);
+        }
+    }
 }
 
 static void prv_kbd_append_code(kbd_t *kbd, uint8_t sc) {
@@ -258,7 +299,7 @@ static bool prv_kbd_try_parse_codes(kbd_t *kbd, kbd_event_t *event) {
     return b_parsed;
 }
 
-static void prv_kbd_write_event(kbd_t *kbd, const kbd_event_t *event) {
+static void prv_kbd_process_event(kbd_t *kbd, const kbd_event_t *event) {
     // Alt-number keys switch consoles (Alt-1 = boot console, Alt-2 = console 1,
     // ..., Alt-0 = console 9).
     if (!event->b_released && keymap_is_alt_pressed(&kbd->keymap)) {
@@ -281,14 +322,58 @@ static void prv_kbd_write_event(kbd_t *kbd, const kbd_event_t *event) {
     }
 
 normal:
-    char seq_buf[8];
-    const size_t seq_buf_size = sizeof(seq_buf);
-    const size_t seq_len =
-        keymap_process(&kbd->keymap, event, seq_buf, seq_buf_size);
+    prv_kbd_enqueue(&kbd->event_queue, event);
+}
 
-    if (inputmgr_write(seq_buf, seq_len) == 0) {
-        LOG_FLOW("ignored key event %u released %d", key, b_released);
+static void prv_kbd_queue_init(kbd_queue_t *queue, size_t max_items) {
+    kmemset(queue, 0, sizeof(*queue));
+    semaphore_init(&queue->cnt_sem);
+    queue->max_items = max_items;
+}
+
+static size_t prv_kbd_queue_wrap_inc(const kbd_queue_t *queue, size_t idx) {
+    if (idx + 1 >= queue->max_items) {
+        return 0;
+    } else {
+        return idx + 1;
     }
+}
+
+static bool prv_kbd_queue_is_empty(const kbd_queue_t *queue) {
+    return queue->head == queue->tail;
+}
+
+static bool prv_kbd_queue_is_full(const kbd_queue_t *queue) {
+    return queue->head == prv_kbd_queue_wrap_inc(queue, queue->tail);
+}
+
+static void prv_kbd_enqueue(kbd_queue_t *queue, const kbd_event_t *event) {
+    if (prv_kbd_queue_is_full(queue)) {
+        LOG_FLOW("event queue is full, discard key %u released %d", event->key,
+                 event->b_released);
+        return;
+    }
+
+    ASSERT(queue->tail < queue->max_items);
+    kmemcpy(&queue->buf[queue->tail], event, sizeof(kbd_event_t));
+
+    // NOTE: it is ASSUMED that there is only ONE producer, therefore TOCTOU is
+    // not a problem.
+    queue->tail = prv_kbd_queue_wrap_inc(queue, queue->tail);
+
+    semaphore_increase(&queue->cnt_sem);
+}
+
+static void prv_kbd_dequeue(kbd_queue_t *queue, kbd_event_t *event) {
+    semaphore_decrease(&queue->cnt_sem);
+    ASSERT(!prv_kbd_queue_is_empty(queue));
+    ASSERT(queue->head < queue->max_items);
+
+    kmemcpy(event, &queue->buf[queue->head], sizeof(kbd_event_t));
+
+    // NOTE: it is ASSUMED that there is only ONE producer, therefore TOCTOU is
+    // not a problem.
+    queue->head = prv_kbd_queue_wrap_inc(queue, queue->head);
 }
 
 static uint8_t prv_kbd_read_code(void) {

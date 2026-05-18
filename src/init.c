@@ -7,6 +7,7 @@
 #include "config.h"
 #include "devmgr.h"
 #include "init.h"
+#include "kbd.h"
 #include "kshell/kshell.h"
 #include "log.h"
 #include "panic.h"
@@ -33,6 +34,7 @@ void init_bsp_task(void) {
 #endif
 
     taskmgr_local_new_kernel_task("blkdev", (uint32_t)blkdev_task_entry);
+    taskmgr_local_new_kernel_task("kbd", (uint32_t)kbd_task);
 
     LOG_FLOW("waiting for blkdev...");
     while (!blkdev_is_ready()) {}

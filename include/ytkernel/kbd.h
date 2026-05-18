@@ -115,3 +115,5 @@ typedef struct {
 
 void kbd_init(void);
 void kbd_irq_handler(void);
+
+[[gnu::noreturn]] void kbd_task(void);
