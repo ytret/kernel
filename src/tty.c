@@ -6,7 +6,7 @@
 #include "memfun.h"
 #include "tty.h"
 
-static void prv_tty_set_ldisc(tty_t *tty, ldisc_type_t new_type);
+static void prv_tty_set_ldisc_type(tty_t *tty, ldisc_type_t new_type);
 
 #define TTY_INBUF_SIZE  128
 #define TTY_OUTBUF_SIZE 256
@@ -77,7 +77,7 @@ bool tty_set_ldisc_type(tty_t *tty, ldisc_type_t ldisc_type) {
     const bool changed =
         ((ldisc_type == LDISC_RAW && tty->ldisc.type != LDISC_RAW) ||
          (ldisc_type == LDISC_COOKED && tty->ldisc.type != LDISC_COOKED));
-    if (changed) { prv_tty_set_ldisc(tty, ldisc_type); }
+    if (changed) { prv_tty_set_ldisc_type(tty, ldisc_type); }
     tty_unlock(tty);
 
     return changed;
@@ -86,29 +86,6 @@ bool tty_set_ldisc_type(tty_t *tty, ldisc_type_t ldisc_type) {
 ldisc_type_t tty_get_ldisc_type(tty_t *tty) {
     DEBUG_ASSERT(tty != NULL);
     return tty->ldisc.type == LDISC_RAW ? LDISC_RAW : LDISC_COOKED;
-}
-
-static void prv_tty_set_ldisc(tty_t *tty, ldisc_type_t new_type) {
-    ldisc_destroy(&tty->ldisc);
-
-    bool type_ok = false;
-    switch (new_type) {
-    case LDISC_UNINIT:
-        PANIC("called with new_type equal to LDISC_UNINIT");
-        break;
-    case LDISC_RAW:
-        type_ok = true;
-        ldisc_raw_init(&tty->ldisc);
-        break;
-    case LDISC_COOKED:
-        type_ok = true;
-        ldisc_cooked_init(&tty->ldisc);
-        if (tty->out_dev) {
-            ldisc_cooked_set_echo_dev(&tty->ldisc, tty->out_dev);
-        }
-        break;
-    }
-    ASSERT(type_ok);
 }
 
 size_t tty_write_input(tty_t *tty, const void *buf, size_t buf_size) {
@@ -157,4 +134,27 @@ size_t tty_write_output(tty_t *tty, const void *buf, size_t buf_size) {
     ASSERT(tty->out_dev->ctx != NULL);
     ASSERT(tty->out_dev->ops != NULL);
     return tty->out_dev->ops->f_write(tty->out_dev->ctx, buf, buf_size);
+}
+
+static void prv_tty_set_ldisc_type(tty_t *tty, ldisc_type_t new_type) {
+    ldisc_destroy(&tty->ldisc);
+
+    bool type_ok = false;
+    switch (new_type) {
+    case LDISC_UNINIT:
+        PANIC("called with new_type equal to LDISC_UNINIT");
+        break;
+    case LDISC_RAW:
+        type_ok = true;
+        ldisc_raw_init(&tty->ldisc);
+        break;
+    case LDISC_COOKED:
+        type_ok = true;
+        ldisc_cooked_init(&tty->ldisc);
+        if (tty->out_dev) {
+            ldisc_cooked_set_echo_dev(&tty->ldisc, tty->out_dev);
+        }
+        break;
+    }
+    ASSERT(type_ok);
 }
