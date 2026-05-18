@@ -13,67 +13,71 @@
 
 #include "arch/x86/apic/lapic.h"
 
-#define PORT_DATA   0x0060
-#define PORT_CMD    0x0064
-#define PORT_STATUS 0x0064
+#define KBD_PORT_DATA   0x0060
+#define KBD_PORT_CMD    0x0064
+#define KBD_PORT_STATUS 0x0064
 
-#define CODE_BUF_LEN 10
+#define KBD_CODE_BUF_SIZE 10
 
-/**
- * Buffer to store scancodes in before they get parsed.
- */
-static volatile uint8_t gp_kbd_code_buf[CODE_BUF_LEN];
-static volatile size_t g_kbd_code_buf_pos;
+typedef struct {
+    /**
+     * Buffer of incomplete scancode sequences.
+     */
+    volatile uint8_t code_buf[KBD_CODE_BUF_SIZE];
+    volatile size_t code_buf_pos;
+} kbd_t;
 
-static uint8_t read_code(void);
-static void append_code(uint8_t sc);
-static void try_parse_codes(void);
+static kbd_t g_kbd;
+
+static void prv_kbd_append_code(kbd_t *kbd, uint8_t sc);
+static bool prv_kbd_try_parse_codes(kbd_t *kbd, kbd_event_t *event);
+
 static void prv_kbd_write(uint8_t key, bool b_released);
+
+static uint8_t prv_kbd_read_code(void);
 
 void kbd_init(void) {
     keymap_init();
 
     // On QEMU this is required to free space in the buffer.
-    read_code();
+    prv_kbd_read_code();
 }
 
 void kbd_irq_handler(void) {
-    uint8_t sc = read_code();
-    append_code(sc);
-    try_parse_codes();
+    const uint8_t sc = prv_kbd_read_code();
+    prv_kbd_append_code(&g_kbd, sc);
+
+    kbd_event_t event;
+    if (prv_kbd_try_parse_codes(&g_kbd, &event)) {
+        prv_kbd_write(event.key, event.b_released);
+    }
+
     lapic_send_eoi();
 }
 
-static uint8_t read_code(void) {
-    return port_inb(PORT_DATA);
-}
-
-static void append_code(uint8_t sc) {
-    if (g_kbd_code_buf_pos >= CODE_BUF_LEN) {
+static void prv_kbd_append_code(kbd_t *kbd, uint8_t sc) {
+    if (kbd->code_buf_pos >= KBD_CODE_BUF_SIZE) {
         PANIC("scancode buffer is full");
     }
 
-    gp_kbd_code_buf[g_kbd_code_buf_pos] = sc;
-    g_kbd_code_buf_pos++;
+    kbd->code_buf[kbd->code_buf_pos] = sc;
+    kbd->code_buf_pos++;
 }
 
-static void try_parse_codes(void) {
-    size_t num_codes = g_kbd_code_buf_pos;
-    bool b_parsed = false;
+static bool prv_kbd_try_parse_codes(kbd_t *kbd, kbd_event_t *event) {
+    const size_t num_codes = kbd->code_buf_pos;
 
-    // Result of parsing.
+    bool b_parsed = false;
     uint8_t key;
     bool b_released;
 
-    if (0 == num_codes) {
-        return;
-    } else if (1 == num_codes) {
-        b_parsed = true;
-
-        uint8_t key_code = gp_kbd_code_buf[0];
+    if (num_codes == 0) {
+        return false;
+    } else if (num_codes == 1) {
+        uint8_t key_code = kbd->code_buf[0];
         b_released = false;
 
-        if ((0x81 <= key_code) && (key_code <= 0xD8)) {
+        if (0x81 <= key_code && key_code <= 0xD8) {
             // FIXME: figure out whether each 'key pressed' scancode listed
             // below indeed has a 'key released' counterpart greater by 0x80.
             key_code -= 0x80;
@@ -174,12 +178,12 @@ static void try_parse_codes(void) {
         case 0x49: key = KEY_NP9; break;
         case 0x52: key = KEY_NP0; break;
 
-        default:   return;
+        default:   return false;
         }
-    } else if ((2 == num_codes) && (0xE0 == gp_kbd_code_buf[0])) {
-        b_parsed = true;
 
-        uint8_t key_code = gp_kbd_code_buf[1];
+        b_parsed = true;
+    } else if (num_codes == 2 && kbd->code_buf[0] == 0xE0) {
+        uint8_t key_code = kbd->code_buf[1];
         b_released = false;
 
         if ((0x99 <= key_code) && (key_code <= 0xED)) {
@@ -209,45 +213,48 @@ static void try_parse_codes(void) {
         case 0x35: key = KEY_NPSLASH; break;
         case 0x1C: key = KEY_NPENTER; break;
 
-        default:   return;
+        default:   return false;
         }
-    } else if (4 == num_codes) {
-        if ((0xE0 == gp_kbd_code_buf[0]) && (0xE0 == gp_kbd_code_buf[2])) {
-            if ((0x2A == gp_kbd_code_buf[1]) && (0x37 == gp_kbd_code_buf[3])) {
-                b_parsed = true;
+
+        b_parsed = true;
+    } else if (num_codes == 4) {
+        if ((0xE0 == kbd->code_buf[0]) && (0xE0 == kbd->code_buf[2])) {
+            if ((0x2A == kbd->code_buf[1]) && (0x37 == kbd->code_buf[3])) {
                 key = KEY_PRINTSCREEN;
                 b_released = false;
-            } else if ((0xB7 == gp_kbd_code_buf[1]) &&
-                       (0xAA == gp_kbd_code_buf[3])) {
                 b_parsed = true;
+            } else if ((0xB7 == kbd->code_buf[1]) &&
+                       (0xAA == kbd->code_buf[3])) {
                 key = KEY_PRINTSCREEN;
                 b_released = true;
+                b_parsed = true;
             }
         }
     } else if (6 == num_codes) {
-        if ((0xE1 == gp_kbd_code_buf[0]) && (0x1D == gp_kbd_code_buf[1]) &&
-            (0x45 == gp_kbd_code_buf[2]) && (0xE1 == gp_kbd_code_buf[3]) &&
-            (0x9D == gp_kbd_code_buf[4]) && (0xC5 == gp_kbd_code_buf[5])) {
-            b_parsed = true;
+        if ((0xE1 == kbd->code_buf[0]) && (0x1D == kbd->code_buf[1]) &&
+            (0x45 == kbd->code_buf[2]) && (0xE1 == kbd->code_buf[3]) &&
+            (0x9D == kbd->code_buf[4]) && (0xC5 == kbd->code_buf[5])) {
             key = KEY_PAUSEBREAK;
             b_released = false;
+            b_parsed = true;
         }
     } else if (num_codes > 6) {
         LOG_DEBUG("discarding unknown sequence:");
         for (size_t idx = 0; idx < num_codes; idx++) {
-            LOG_DEBUG("%x ", gp_kbd_code_buf[idx]);
+            LOG_DEBUG("%x ", kbd->code_buf[idx]);
         }
 
-        // Reset the scancode buffer.
-        g_kbd_code_buf_pos = 0;
+        kbd->code_buf_pos = 0;
     }
 
     if (b_parsed) {
-        // Reset the scancode buffer.
-        g_kbd_code_buf_pos = 0;
+        kbd->code_buf_pos = 0;
 
-        prv_kbd_write(key, b_released);
+        event->key = key;
+        event->b_released = b_released;
     }
+
+    return b_parsed;
 }
 
 static void prv_kbd_write(uint8_t key, bool b_released) {
@@ -284,4 +291,8 @@ normal:
     if (inputmgr_write(seq_buf, seq_len) == 0) {
         LOG_FLOW("ignored key event %u released %d", key, b_released);
     }
+}
+
+static uint8_t prv_kbd_read_code(void) {
+    return port_inb(KBD_PORT_DATA);
 }
