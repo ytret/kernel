@@ -1,6 +1,7 @@
 // NOTE: this file is partially AI-generated.
 
 #include "keymap.h"
+#include "memfun.h"
 
 typedef struct {
     uint8_t mods;
@@ -11,20 +12,6 @@ typedef struct {
     const kbd_mod_map_t *mods;
     int8_t numlock_off_key;
 } keymap_seq_t;
-
-typedef struct {
-    bool lshift : 1;
-    bool rshift : 1;
-    bool lctrl : 1;
-    bool rctrl : 1;
-    bool lalt : 1;
-    bool ralt : 1;
-    bool caps_lock : 1;
-    bool num_lock : 1;
-    bool scroll_lock : 1;
-} keymap_t;
-
-static keymap_t g_keymap;
 
 #define CHARR(noshift, shift, ctrl)                                            \
     ((const kbd_mod_map_t[]){                                                  \
@@ -553,33 +540,32 @@ static const keymap_seq_t g_keymap_seqs[] = {
     [KEY_PAUSEBREAK] = {k_pause, -1},
 };
 
-static size_t prv_keymap_write(const char *seq, char *buf, size_t buf_size);
+static size_t prv_keymap_write_seq(const char *seq, void *buf, size_t buf_size);
 
-void keymap_init(void) {
-    g_keymap = (keymap_t){0};
+void keymap_init(keymap_t *keymap) {
+    kmemset(keymap, 0, sizeof(*keymap));
 }
 
-size_t keymap_process(const kbd_event_t *event, void *buf, size_t buf_size) {
+size_t keymap_process(keymap_t *keymap, const kbd_event_t *event, void *buf,
+                      size_t buf_size) {
     uint8_t key = event->key;
 
     // ── Update modifier state (both press and release) ──────────────
     switch (key) {
-    case KEY_LSHIFT: g_keymap.lshift = !event->b_released; return 0;
-    case KEY_RSHIFT: g_keymap.rshift = !event->b_released; return 0;
-    case KEY_LCTRL:  g_keymap.lctrl = !event->b_released; return 0;
-    case KEY_RCTRL:  g_keymap.rctrl = !event->b_released; return 0;
-    case KEY_LALT:   g_keymap.lalt = !event->b_released; return 0;
-    case KEY_RALT:   g_keymap.ralt = !event->b_released; return 0;
+    case KEY_LSHIFT: keymap->lshift = !event->b_released; return 0;
+    case KEY_RSHIFT: keymap->rshift = !event->b_released; return 0;
+    case KEY_LCTRL:  keymap->lctrl = !event->b_released; return 0;
+    case KEY_RCTRL:  keymap->rctrl = !event->b_released; return 0;
+    case KEY_LALT:   keymap->lalt = !event->b_released; return 0;
+    case KEY_RALT:   keymap->ralt = !event->b_released; return 0;
     case KEY_CAPSLOCK:
-        if (!event->b_released) { g_keymap.caps_lock = !g_keymap.caps_lock; }
+        if (!event->b_released) { keymap->caps_lock = !keymap->caps_lock; }
         return 0;
     case KEY_NUMLOCK:
-        if (!event->b_released) { g_keymap.num_lock = !g_keymap.num_lock; }
+        if (!event->b_released) { keymap->num_lock = !keymap->num_lock; }
         return 0;
     case KEY_SCROLLLOCK:
-        if (!event->b_released) {
-            g_keymap.scroll_lock = !g_keymap.scroll_lock;
-        }
+        if (!event->b_released) { keymap->scroll_lock = !keymap->scroll_lock; }
         return 0;
     }
 
@@ -592,7 +578,7 @@ size_t keymap_process(const kbd_event_t *event, void *buf, size_t buf_size) {
 
     // ── Numpad numlock-off remapping ────────────────────────────────
     uint8_t lookup_key = key;
-    if (ks->numlock_off_key >= 0 && !g_keymap.num_lock) {
+    if (ks->numlock_off_key >= 0 && !keymap->num_lock) {
         lookup_key = (uint8_t)ks->numlock_off_key;
         if (lookup_key >= sizeof(g_keymap_seqs) / sizeof(g_keymap_seqs[0])) {
             return 0;
@@ -601,12 +587,12 @@ size_t keymap_process(const kbd_event_t *event, void *buf, size_t buf_size) {
     }
 
     // ── Build effective modifier mask ───────────────────────────────
-    uint8_t mods = (g_keymap.lshift || g_keymap.rshift ? MOD_SHIFT : 0) |
-                   (g_keymap.lctrl || g_keymap.rctrl ? MOD_CTRL : 0) |
-                   (g_keymap.lalt || g_keymap.ralt ? MOD_ALT : 0);
+    uint8_t mods = (keymap->lshift || keymap->rshift ? MOD_SHIFT : 0) |
+                   (keymap->lctrl || keymap->rctrl ? MOD_CTRL : 0) |
+                   (keymap->lalt || keymap->ralt ? MOD_ALT : 0);
 
     // Caps lock inverts Shift for letter keys
-    if (g_keymap.caps_lock && ks->mods != NULL) {
+    if (keymap->caps_lock && ks->mods != NULL) {
         for (const kbd_mod_map_t *m = ks->mods; m->seq; m++) {
             if (m->mods == 0) {
                 const char *s = m->seq;
@@ -634,14 +620,18 @@ size_t keymap_process(const kbd_event_t *event, void *buf, size_t buf_size) {
     }
     if (seq == NULL) { return 0; }
 
-    return prv_keymap_write(seq, buf, buf_size);
+    return prv_keymap_write_seq(seq, buf, buf_size);
 }
 
-bool keymap_is_alt_pressed(void) {
-    return g_keymap.lalt || g_keymap.ralt;
+bool keymap_is_alt_pressed(keymap_t *keymap) {
+    return keymap->lalt || keymap->ralt;
 }
 
-static size_t prv_keymap_write(const char *seq, char *buf, size_t buf_size) {
+/**
+ * Writes the string @a seq into @a buf with an overflow check.
+ */
+static size_t prv_keymap_write_seq(const char *seq, void *buf,
+                                   size_t buf_size) {
     char ch;
     size_t pos = 0;
     while ((ch = *seq++)) {

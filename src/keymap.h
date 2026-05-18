@@ -18,6 +18,19 @@
 
 #define KEY_NUMLOCK_OFF_NONE (-1)
 
-void keymap_init(void);
-size_t keymap_process(const kbd_event_t *event, void *buf, size_t buf_size);
-bool keymap_is_alt_pressed(void);
+typedef struct keymap {
+    bool lshift : 1;
+    bool rshift : 1;
+    bool lctrl : 1;
+    bool rctrl : 1;
+    bool lalt : 1;
+    bool ralt : 1;
+    bool caps_lock : 1;
+    bool num_lock : 1;
+    bool scroll_lock : 1;
+} keymap_t;
+
+void keymap_init(keymap_t *keymap);
+size_t keymap_process(keymap_t *keymap, const kbd_event_t *event, void *buf,
+                      size_t buf_size);
+bool keymap_is_alt_pressed(keymap_t *keymap);
