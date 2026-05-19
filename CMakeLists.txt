@@ -25,6 +25,7 @@ set(CMAKE_C_FLAGS_RELEASE "-O3 -g")
 #############
 ## Options ##
 #############
+set(YTKERNEL_ARCH "x86" CACHE STRING "Target architecture (x86)")
 set(YTKERNEL_STACKTRACE_ON_PANIC ON CACHE BOOL
     "Print stacktrace on kernel panic.")
 set(YTKERNEL_ENABLE_TESTS ON CACHE BOOL "Enable the kernel test subsystem.")
@@ -39,25 +40,7 @@ configure_file(
 #################
 ## Kernel libc ##
 #################
-add_library(klibc STATIC
-
-    klibc/ctype.c
-    klibc/errno.c
-    klibc/locale.c
-    klibc/math.c
-    klibc/stdio.c
-    klibc/stdlib.c
-    klibc/string.c
-    klibc/time.c
-
-    klibc/setjmp.s
-
-)
-target_compile_options(klibc PRIVATE
-    -Wall -Wextra -Wmissing-prototypes
-)
-target_include_directories(klibc PUBLIC klibc/include)
-target_include_directories(klibc PRIVATE include klibc)
+add_subdirectory(klibc)
 
 
 ##################
@@ -87,111 +70,11 @@ include(build_lua)
 build_lua()
 
 
-############
-## Kernel ##
-############
-list(APPEND KERNEL_SOURCES
-    src/main.c
-
-    src/acpi/acpi.c
-    src/blkdev/ahci.c
-    src/blkdev/blkdev.c
-    src/blkdev/blkpart.c
-    src/blkdev/gpt.c
-    src/cmdline.c
-    src/conmgr.c
-    src/console.c
-    src/cpu.c
-    src/devmgr.c
-    src/elf.c
-    src/framebuf.c
-    src/fs/ramfs.c
-    src/heap.c
-    src/init.c
-    src/inputmgr.c
-    src/kbd.c
-    src/keymap.c
-    src/kprintf.c
-    src/kstring.c
-    src/ksyscall.c
-    src/ldisc.c
-    src/libshim.c
-    src/log.c
-    src/mbi.c
-    src/memfun.c
-    src/panic.c
-    src/pci.c
-    src/pic.c
-    src/pit.c
-    src/pmm.c
-    src/psf.c
-    src/serial.c
-    src/slab.c
-    src/smp.c
-    src/stack.c
-    src/taskmgr.c
-    src/textdisp.c
-    src/tty.c
-    src/vfs/file.c
-    src/vfs/vfs_err.c
-    src/vfs/vnode.c
-    src/vfs/vpath.c
-    src/vga.c
-
-    src/arch/x86/apic/ioapic.c
-    src/arch/x86/apic/lapic.c
-    src/arch/x86/arch.c
-    src/arch/x86/gdt.c
-    src/arch/x86/idt.c
-    src/arch/x86/vmm.c
-
-    src/arch/x86/boot.s
-    src/arch/x86/entry.s
-    src/arch/x86/gdt.s
-    src/arch/x86/idt.s
-    src/arch/x86/isrs.s
-    src/arch/x86/panic.s
-    src/arch/x86/vmm.s
-
-    src/taskmgr.s
-
-    src/kshell/kbdlog.c
-    src/kshell/ksharg.c
-    src/kshell/kshcmd/ksh_clear.c
-    src/kshell/kshcmd/kshcmd.c
-    src/kshell/kshcmd/ksh_devmgr.c
-    src/kshell/kshcmd/ksh_help.c
-    src/kshell/kshcmd/ksh_lua.c
-    src/kshell/kshcmd/ksh_mbi.c
-    src/kshell/kshcmd/ksh_taskmgr.c
-    src/kshell/kshcmd/ksh_vasview.c
-    src/kshell/kshcmd/ksh_vfs.c
-    src/kshell/kshell.c
-    src/kshell/kshinput.c
-    src/kshell/kshscan.c
-    src/kshell/vasview.c
-
-    src/dynarr.c
-    src/kmutex.c
-    src/ksemaphore.c
-    src/kspinlock.c
-    src/list.c
-    src/queue.c
-    src/ringbuf.c
-
-)
-if(YTKERNEL_ENABLE_TESTS)
-    list(APPEND KERNEL_SOURCES
-
-        src/test/ktest_smp.c
-        src/test/ktest.c
-        src/test/smp/smp_suite_mutex.c
-        src/test/smp/smp_suite_vnode.c
-        src/test/vmctl.c
-
-    )
-endif()
-add_executable(kernel ${KERNEL_SOURCES})
+###################
+## Kernel target ##
+###################
+add_executable(kernel)
+# Look for target_sources(kernel ...) in subdirectories for kernel sources.
 target_compile_options(kernel PRIVATE
     -Wall -Wextra -Wmissing-prototypes
 )
@@ -200,9 +83,6 @@ target_include_directories(kernel PRIVATE
     src
     include/ytkernel
 )
-target_link_options(kernel PRIVATE
-    -T${CMAKE_SOURCE_DIR}/src/arch/x86/linker.ld
-)
 target_link_libraries(kernel ytalloc ytprintf lua klibc gcc)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(kernel PRIVATE -DYTKERNEL_DEBUG)
@@ -210,13 +90,14 @@ endif()
 add_dependencies(kernel lua54)
 set_target_properties(kernel PROPERTIES
     C_EXTENSIONS ON
-    LINK_DEPENDS ${CMAKE_SOURCE_DIR}/src/arch/x86/linker.ld
 )
 
 
-####################
-## Subdirectories ##
-####################
+##########################
+## Other subdirectories ##
+##########################
+# For klibc see above.
+add_subdirectory(src)
 add_subdirectory(user)
 add_subdirectory(docs)
 
