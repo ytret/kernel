@@ -193,8 +193,8 @@ static void prv_gpt_snprint_guid(char *buf, size_t size,
     uint8_t *p_four = (uint8_t *)&guid[8];    // 8
     uint8_t *p_five = (uint8_t *)&guid[9];    // 9
 
-    size_t offset = ksnprintf(buf, size, "%08X-%04X-%04X-%02X%02X-", *p_one,
-                              *p_two, *p_three, *p_four, *p_five);
+    size_t offset = ksnprintf(buf, size, "%08" PRIx32 "-%04x-%04x-%02x%02x-",
+                              *p_one, *p_two, *p_three, *p_four, *p_five);
     if (offset >= size) { return; }
 
     for (size_t idx = 10; idx < 16; idx++) {

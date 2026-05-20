@@ -42,7 +42,7 @@ void kshcmd_parse(const char *p_cmd) {
 
     kshscan_err_t err = kshscan_str(p_cmd, &arg_list);
     if (err.err_type != KSHSCAN_ERR_NONE) {
-        kprintf("kshell: failed to parse '%s': error %u at char %u\n", p_cmd,
+        kprintf("kshell: failed to parse '%s': error %u at char %zu\n", p_cmd,
                 err.err_type, err.char_pos);
         return;
     }

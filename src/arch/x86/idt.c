@@ -226,8 +226,10 @@ static void prv_idt_init_df_entry(entry_t *entry) {
 [[maybe_unused]]
 static void snprint_entry(char *buf, size_t size, entry_t const *p_entry) {
     ksnprintf(buf, size,
-              "offset=%P, P=%d, DPL=%d, type=0x%X, selector=0x%X (%X %X)",
-              ((p_entry->offset_31_16 << 16) | p_entry->offset_15_0),
+              "offset=%" PRIx32
+              ", P=%d, DPL=%d, type=0x%X, selector=0x%X (%" PRIx32 " %" PRIx32
+              ")",
+              (((uint32_t)p_entry->offset_31_16 << 16) | p_entry->offset_15_0),
               ((p_entry->present_dpl_type >> 7) & 1),
               ((p_entry->present_dpl_type >> 5) & 3),
               (p_entry->present_dpl_type & 0xF), p_entry->selector,

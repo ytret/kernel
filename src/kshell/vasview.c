@@ -2,7 +2,7 @@
 #include <stdint.h>
 
 #include "console.h"
-#include "kbd.h"
+#include "kinttypes.h"
 #include "kprintf.h"
 #include "kshell/vasview.h"
 #include "panic.h"
@@ -102,19 +102,20 @@ static void update_info(void) {
     }
 
     if (VIEW_DIR == g_view) {
-        kprintf("  Dir index: %4u\n", idx_at_cursor());
+        kprintf("  Dir index: %4" PRIu32 "\n", idx_at_cursor());
     } else if (VIEW_TBL == g_view) {
-        kprintf("  Dir index: %4u     Table index: %4u\n", g_dir_idx,
-                g_tbl_idx);
+        kprintf("  Dir index: %4" PRIu32 "     Table index: %4" PRIu32 "\n",
+                g_dir_idx, g_tbl_idx);
     }
 
-    kprintf("  Address range: %08x .. %s%08x\n", start_addr,
+    kprintf("  Address range: %08" PRIx32 " .. %s%08" PRIx32 "\n", start_addr,
             ((0 == end_addr) ? "1" : ""), // HACK: prepend 1 to 00000000
             end_addr);
 
     if (VIEW_DIR == g_view) {
         kprintf("   ADDRESS  FLAGS     DPL  R/W  PRESENT\n");
-        kprintf("  %08x    %03x  %s  %s  %s", (entry & ~0xFFF), (entry & 0xFFF),
+        kprintf("  %08" PRIx32 "    %03" PRIx32 "  %s  %s  %s",
+                (entry & ~0xFFF), (entry & 0xFFF),
                 ((entry & FLAG_ANY_DPL) ? "   any" : "kernel"),
                 ((entry & FLAG_WRITABLE) ? "yes" : " no"),
                 ((entry & FLAG_PRESENT) ? "    yes" : "     no"));
@@ -146,8 +147,9 @@ static void update_info(void) {
 
         kprintf("   ADDRESS  FLAGS     DPL  R/W  PRESENT  ALLOC           "
                 "REGION\n");
-        kprintf("  %08x    %03x  %s  %s  %s  %s  %s", (entry & ~0xFFF),
-                (entry & 0xFFF), ((entry & FLAG_ANY_DPL) ? "   any" : "kernel"),
+        kprintf("  %08" PRIx32 "    %03" PRIx32 "  %s  %s  %s  %s  %s",
+                (entry & ~0xFFF), (entry & 0xFFF),
+                ((entry & FLAG_ANY_DPL) ? "   any" : "kernel"),
                 ((entry & FLAG_WRITABLE) ? "yes" : " no"),
                 ((entry & FLAG_PRESENT) ? "    yes" : "     no"),
                 alloc_type_name, region_type_name);
@@ -165,7 +167,7 @@ static void update_cursor(void) {
 
 static void show_dir(void) {
     console_clear(g_vasview_con);
-    kprintf("Dir %P", gp_pgdir);
+    kprintf("Dir %p", gp_pgdir);
 
     for (size_t view_row = 0; view_row < VIEW_ROWS; view_row++) {
         for (size_t view_col = 0; view_col < VIEW_COLS; view_col++) {
@@ -190,7 +192,7 @@ static void show_tbl(void) {
     uint32_t *p_tbl = ((uint32_t *)(gp_pgdir[g_dir_idx] & ~0xFFF));
 
     console_clear(g_vasview_con);
-    kprintf("Dir %P, table %P", gp_pgdir, p_tbl);
+    kprintf("Dir %p, table %p", gp_pgdir, p_tbl);
 
     for (size_t view_row = 0; view_row < VIEW_ROWS; view_row++) {
         for (size_t view_col = 0; view_col < VIEW_COLS; view_col++) {

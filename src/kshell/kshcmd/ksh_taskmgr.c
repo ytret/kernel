@@ -1,4 +1,5 @@
 #include "assert.h"
+#include "kinttypes.h"
 #include "kprintf.h"
 #include "ksh_taskmgr.h"
 #include "kshell/ksharg.h"
@@ -138,8 +139,10 @@ static void prv_ksh_taskmgr_list(void) {
          p_node = p_node->p_next) {
         task_t *p_task =
             LIST_NODE_TO_STRUCT(p_node, task_t, all_tasks_list_node);
-        kprintf("%3u  %3d  0x%08x  0x%08x  0x%08x  %5d  %5s  %4s\n", p_task->id,
-                p_task->taskmgr->proc_num, p_task->tcb.page_dir_phys,
+        kprintf("%3" PRIu32 "  %3u  0x%08" PRIx32 "  0x%08" PRIx32
+                "  0x%08" PRIx32 "  %5" PRId32 "  %5s  %4s\n",
+                p_task->id, p_task->taskmgr->proc_num,
+                p_task->tcb.page_dir_phys,
                 (uint32_t)p_task->tcb.p_kernel_stack->p_top,
                 (uint32_t)p_task->tcb.p_kernel_stack->p_top_max,
                 (int32_t)p_task->tcb.p_kernel_stack->p_top_max -
@@ -172,8 +175,9 @@ static void prv_ksh_taskmgr_kill(const char *id_str) {
     task_t *const task = taskmgr_get_task_by_id(id);
     if (task) {
         taskmgr_terminate_task(task);
-        kprintf("ksh_taskmgr: marked task ID %u for termination\n", id);
+        kprintf("ksh_taskmgr: marked task ID %" PRIu32 " for termination\n",
+                id);
     } else {
-        kprintf("ksh_taskmgr: no task with ID %u\n", id);
+        kprintf("ksh_taskmgr: no task with ID %" PRIu32 "\n", id);
     }
 }

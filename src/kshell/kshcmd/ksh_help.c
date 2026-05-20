@@ -75,7 +75,7 @@ static void prv_ksh_help_builtins(void) {
 
     for (size_t idx = 0; idx < num_cmds; idx++) {
         const kshell_cmd_t *const cmd = &cmds[idx];
-        kprintf("%2u. %10s - %s\n", 1 + idx, cmd->name, cmd->help_str);
+        kprintf("%2zu. %10s - %s\n", 1 + idx, cmd->name, cmd->help_str);
     }
 
     kprintf("These built-ins may accept arguments. Pass '-h' (or '--help') to "

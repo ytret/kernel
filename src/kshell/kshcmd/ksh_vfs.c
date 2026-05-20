@@ -1,4 +1,5 @@
 #include "heap.h"
+#include "kinttypes.h"
 #include "kprintf.h"
 #include "kshell/ksharg.h"
 #include "kshell/kshcmd/ksh_vfs.h"
@@ -155,7 +156,8 @@ static void prv_ksh_vfs_ls(const char *path) {
     }
 
     if (read_dirents == max_dirents) {
-        kprintf("ksh_vfs: reached the maximum number of dirents (%u), buffer "
+        kprintf("ksh_vfs: reached the maximum number of dirents (%" PRIu32
+                "), buffer "
                 "length needs to be increased\n",
                 max_dirents);
     }

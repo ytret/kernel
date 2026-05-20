@@ -1,4 +1,5 @@
 #include "devmgr.h"
+#include "kinttypes.h"
 #include "kprintf.h"
 #include "kshell/ksharg.h"
 #include "kshell/kshcmd/ksh_devmgr.h"
@@ -143,13 +144,13 @@ static void prv_ksh_devmgr_list(void) {
     size_t num_devs = 0;
     devmgr_dev_t *dev;
     while ((dev = devmgr_iter_next(&dev_iter))) {
-        kprintf("id %u, class '%s', driver '%s'\n", dev->id,
+        kprintf("id %" PRIu32 ", class '%s', driver '%s'\n", dev->id,
                 devmgr_class_name(dev->dev_class),
                 devmgr_driver_name(dev->driver_id));
         num_devs++;
     }
 
-    kprintf("%u device(s)\n", num_devs);
+    kprintf("%" PRIu32 " device(s)\n", num_devs);
 }
 
 static void prv_ksh_devmgr_list_pci(void) {
@@ -158,7 +159,7 @@ static void prv_ksh_devmgr_list_pci(void) {
         const pci_dev_t *const pci_dev = pci_get_dev_const(dev_idx);
         pci_dump_dev_short(pci_dev);
     }
-    kprintf("%u PCI device(s)\n", num_pci_devs);
+    kprintf("%zu PCI device(s)\n", num_pci_devs);
 }
 
 static void prv_ksh_devmgr_dump_pci(const char *id_str) {
@@ -172,6 +173,6 @@ static void prv_ksh_devmgr_dump_pci(const char *id_str) {
     if (pci_dev) {
         pci_dump_dev_header(pci_dev);
     } else {
-        kprintf("ksh_devmgr: no PCI device with ID %u\n", id);
+        kprintf("ksh_devmgr: no PCI device with ID %" PRIu32 "\n", id);
     }
 }

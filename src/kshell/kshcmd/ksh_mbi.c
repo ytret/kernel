@@ -1,3 +1,4 @@
+#include "kinttypes.h"
 #include "kprintf.h"
 #include "kshell/ksharg.h"
 #include "kshell/kshcmd/ksh_mbi.h"
@@ -109,10 +110,10 @@ static void prv_ksh_mbi_print_map(void) {
 
         const uint64_t end = base_addr + length;
 
-        kprintf("0x%08X%08X", (uint32_t)(base_addr >> 32), (uint32_t)base_addr);
-        kprintf("..0x%08X%08X", (uint32_t)(end >> 32), (uint32_t)end);
-        kprintf(" (%8u KiB)", length / 1024);
-        kprintf(", type %u\n", type);
+        kprintf("0x%016llx", base_addr);
+        kprintf("..0x%016llx", end);
+        kprintf(" (%8llu KiB)", length / 1024);
+        kprintf(", type %" PRIu32 "\n", type);
 
         offset += 4 + size;
     }
@@ -129,14 +130,15 @@ static void prv_ksh_mbi_print_mods(void) {
     const mbi_mod_t *mod = (const mbi_mod_t *)mbi->mods_addr;
     for (uint32_t idx = 0; idx < mbi->mods_count; idx++) {
         if (mod->string) {
-            kprintf("'%s'", mod->string);
+            kprintf("'%s'", (const char *)mod->string);
         } else {
             kprintf("(null)");
         }
 
-        kprintf(" at 0x%08X", mod->mod_start);
-        kprintf("..0x%08X", mod->mod_end);
-        kprintf(" (%8u KiB)\n", (mod->mod_end - mod->mod_start) / 1024);
+        kprintf(" at 0x%08" PRIx32, mod->mod_start);
+        kprintf("..0x%08" PRIx32, mod->mod_end);
+        kprintf(" (%8" PRIu32 " KiB)\n",
+                (mod->mod_end - mod->mod_start) / 1024);
 
         mod++;
     }
