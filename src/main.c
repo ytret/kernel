@@ -42,6 +42,7 @@ static void prv_main_add_kernel_region(pmm_mmap_t *mmap, paddr_t region_start,
 
 void main(void) {
     libshim_init();
+    arch_boot_init();
 
     g_earlycon_serial.port_base = SERIAL_COM1_BASE;
     g_earlycon_serial.baudrate_div = SERIAL_BAUDRATE_115200_DIV;
@@ -63,7 +64,6 @@ void main(void) {
 
     heap_init();
     arch_early_init_heap();
-    arch_boot_init();
 
     textdisp_init(boot_disp);
 
