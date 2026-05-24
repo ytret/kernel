@@ -80,7 +80,7 @@ void vmm_init(void) {
     vmm_load_dir(gp_kvas_dir);
 }
 
-uint32_t const *vmm_kvas_dir(void) {
+void *vmm_kvas_dir(void) {
     return gp_kvas_dir;
 }
 

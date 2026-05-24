@@ -17,7 +17,7 @@ extern int ld_kernel_lma;
 void vmm_init(void);
 
 /// Returns the kernel page directory.
-uint32_t const *vmm_kvas_dir(void);
+void *vmm_kvas_dir(void);
 
 void vmm_free_vas(uint32_t *p_dir);
 
