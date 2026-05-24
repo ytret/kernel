@@ -1,3 +1,4 @@
+#include "arch_boot.h"
 #include "arch_vmm.h"
 #include "assert.h"
 #include "framebuf.h"
@@ -5,9 +6,8 @@
 #include "kinttypes.h"
 #include "log.h"
 #include "memfun.h"
+#include "pmm.h"
 #include "psf.h"
-
-#include "arch/x86/mbi.h"
 
 static const textdisp_ops_t g_fb_disp_ops = {
     .p_init = framebuf_init,
@@ -54,13 +54,19 @@ const textdisp_ops_t *framebuf_textdisp_ops(void) {
 };
 
 void framebuf_early_init(void) {
-    const mbi_t *p_mbi = mbi_ptr();
+    const arch_boot_fb_t *const boot_fb = arch_boot_framebuf();
 
-    g_framebuf = (uint8_t *)((uint32_t)p_mbi->framebuffer_addr);
-    g_fb_height_px = p_mbi->framebuffer_height;
-    g_fb_width_px = p_mbi->framebuffer_width;
-    g_fb_pitch_px = p_mbi->framebuffer_pitch;
-    g_fb_bpp = p_mbi->framebuffer_bpp;
+    g_framebuf = (uint8_t *)((uint32_t)boot_fb->addr);
+    g_fb_height_px = boot_fb->height;
+    g_fb_width_px = boot_fb->width;
+    g_fb_pitch_px = boot_fb->pitch;
+    g_fb_bpp = boot_fb->bpp;
+
+    ASSERT(g_framebuf != NULL);
+    ASSERT(g_fb_height_px != 0);
+    ASSERT(g_fb_width_px != 0);
+    ASSERT(g_fb_pitch_px != 0);
+    ASSERT(g_fb_bpp != 0);
 
     const size_t fb_size = g_fb_pitch_px * g_fb_height_px;
 
@@ -73,12 +79,12 @@ void framebuf_early_init(void) {
         vmm_kmap_region_in(framebuf_pgtbl, (uint32_t)g_framebuf, fb_size);
     ASSERT(fb_mapped);
 
-    const mbi_mod_t *p_mod = mbi_find_mod("font");
+    const arch_boot_mod_t *const p_mod = arch_boot_find_mod("font");
     if (!p_mod) {
         PANIC("could not find the 'font' module for the framebuffer terminal");
     }
 
-    const bool loaded_psf = psf_load(&g_fb_psf, p_mod->mod_start);
+    const bool loaded_psf = psf_load(&g_fb_psf, p_mod->phys_start);
     ASSERT(loaded_psf);
 
     g_fb_height_ch = g_fb_height_px / g_fb_psf.height_px;
