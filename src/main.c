@@ -52,7 +52,7 @@ void main(void) {
     log_set_chardev(&g_earlycon_chardev);
 
     textdisp_t *const boot_disp = textdisp_get_boot_disp();
-    textdisp_early_init(boot_disp);
+    arch_textdisp_early_init(boot_disp);
 
     LOG_INFO("Hello, World!");
 

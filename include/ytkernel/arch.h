@@ -4,6 +4,7 @@
 
 #include "pmm.h"
 #include "smp.h"
+#include "textdisp.h"
 #include "types.h"
 
 #ifdef YTKERNEL_ARCH_X86
@@ -21,6 +22,8 @@ void arch_create_platform_tasks(void);
 
 const char *arch_get_cmdline(void);
 paddr_t arch_get_kernel_phys_end(void);
+
+void arch_textdisp_early_init(textdisp_t *disp);
 
 void arch_halt_until_int(void);
 void arch_pause_in_loop(void);

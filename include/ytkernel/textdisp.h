@@ -13,11 +13,16 @@ typedef struct {
     void (*p_scroll_new_row)(void);
 } textdisp_ops_t;
 
-typedef struct textdisp textdisp_t;
+typedef struct {
+    const textdisp_ops_t *ops;
+    bool has_impl;
+
+    size_t max_row;
+    size_t max_col;
+} textdisp_t;
 
 textdisp_t *textdisp_get_boot_disp(void);
 
-void textdisp_early_init(textdisp_t *disp);
 void textdisp_init(textdisp_t *disp);
 void textdisp_map_iomem(textdisp_t *disp);
 

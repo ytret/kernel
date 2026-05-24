@@ -1,6 +1,7 @@
 #include "arch.h"
 #include "arch_vmm.h"
 #include "assert.h"
+#include "framebuf.h"
 #include "init.h"
 #include "kbd.h"
 #include "kinttypes.h"
@@ -16,6 +17,7 @@
 #include "arch/x86/idt.h"
 #include "arch/x86/mbi.h"
 #include "arch/x86/pit.h"
+#include "arch/x86/vga.h"
 
 // See arch/x86/linker.ld.
 extern uint32_t ld_vmm_kernel_end;
@@ -93,6 +95,29 @@ paddr_t arch_get_kernel_phys_end(void) {
     }
 
     return (last_used_addr + 0x3FFFFFULL) & ~(0X3FFFFFULL);
+}
+
+void arch_textdisp_early_init(textdisp_t *disp) {
+    mbi_t const *p_mbi = mbi_ptr();
+
+    if ((p_mbi->flags & MBI_FLAG_FRAMEBUF) &&
+        (MBI_FRAMEBUF_EGA != p_mbi->framebuffer_type)) {
+        LOG_DEBUG("terminal type - framebuffer");
+
+        framebuf_early_init();
+        disp->max_row = framebuf_height_chars();
+        disp->max_col = framebuf_width_chars();
+        disp->ops = framebuf_textdisp_ops();
+    } else {
+        LOG_DEBUG("terminal type - VGA text mode");
+
+        vga_early_init();
+        disp->max_row = vga_height_chars();
+        disp->max_col = vga_width_chars();
+        disp->ops = vga_textdisp_ops();
+    }
+
+    disp->has_impl = true;
 }
 
 void arch_halt_until_int(void) {
