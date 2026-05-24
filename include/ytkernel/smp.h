@@ -47,9 +47,11 @@ bool smp_is_bsp_ready(void);
 
 /**
  * Indicates to the APs that the BSP has reached the initial task.
+ *
  * See #smp_is_bsp_ready().
+ *
  * @warning
- * Use this only in the BSP initital task, see #init_bsp_task().
+ * Use this only in the BSP initital task, see #arch_init_bsp_task().
  */
 void smp_set_bsp_ready(void);
 
@@ -62,7 +64,7 @@ void smp_reset_ap_ready(void);
  * Indicates to the BSP that the running AP has reached the initial task.
  *
  * @warning
- * Call this only in the AP initial task, see #init_ap_task().
+ * Call this only in the AP initial task, see #arch_init_ap_task().
  *
  * @warning
  * Call this only **once**.

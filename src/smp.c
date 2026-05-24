@@ -4,7 +4,6 @@
 
 #include "arch.h"
 #include "heap.h"
-#include "init.h"
 #include "kspinlock.h"
 #include "memfun.h"
 #include "panic.h"
@@ -156,7 +155,7 @@ void smp_tlb_shootdown_handler(void) {
 void smp_ap_trampoline_c(void) {
     // NOTE: this function is called from arch_smp_ap_trampoline().
 
-    taskmgr_local_init(init_ap_task);
+    taskmgr_local_init(arch_init_ap_task);
 
     PANIC("end of smp_ap_trampoline_c");
 }

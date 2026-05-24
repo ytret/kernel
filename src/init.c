@@ -14,18 +14,12 @@
 #include "smp.h"
 #include "taskmgr.h"
 
-#include "arch/x86/apic/lapic.h"
-
 #ifdef YTKERNEL_ENABLE_TESTS
 #include "test/ktest.h"
 #endif
 
 [[gnu::noreturn]]
-void init_bsp_task(void) {
-    // taskmgr_switch_tasks() requires that task entries enable interrupts.
-    __asm__ volatile("sti");
-
-    lapic_init_tim(LAPIC_TIM_PERIOD_MS);
+void init_bsp_task_common(void) {
     smp_set_bsp_ready();
 
 #ifdef YTKERNEL_ENABLE_TESTS
@@ -49,11 +43,7 @@ void init_bsp_task(void) {
 }
 
 [[gnu::noreturn]]
-void init_ap_task(void) {
-    // taskmgr_switch_tasks() requires that task entries enable interrupts.
-    __asm__ volatile("sti");
-
-    lapic_init_tim(LAPIC_TIM_PERIOD_MS);
+void init_ap_task_common(void) {
     smp_set_ap_ready();
     while (!smp_is_bsp_ready()) {
         __asm__ volatile("pause" ::: "memory");

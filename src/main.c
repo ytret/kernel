@@ -10,7 +10,6 @@
 #include "console.h"
 #include "devmgr.h"
 #include "heap.h"
-#include "init.h"
 #include "inputmgr.h"
 #include "kinttypes.h"
 #include "libshim.h"
@@ -131,7 +130,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     devmgr_init();
 
-    taskmgr_local_init(init_bsp_task);
+    taskmgr_local_init(arch_init_bsp_task);
 
     LOG_ERROR("end of main");
 }

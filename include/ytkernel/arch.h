@@ -41,3 +41,6 @@ smp_proc_t *arch_smp_get_running_proc(void);
 void arch_taskmgr_local_init(void);
 void arch_taskmgr_switch_tasks(task_t *from, task_t *to);
 void arch_taskmgr_go_usermode(uint32_t entry);
+
+[[gnu::noreturn]] void arch_init_bsp_task(void);
+[[gnu::noreturn]] void arch_init_ap_task(void);

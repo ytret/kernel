@@ -1,5 +1,6 @@
 #include "arch.h"
 #include "assert.h"
+#include "init.h"
 #include "kbd.h"
 #include "kinttypes.h"
 #include "log.h"
@@ -122,4 +123,20 @@ void arch_flush_tlb_addr(vaddr_t addr) {
 
 void arch_flush_tlb(void) {
     PANIC("TODO");
+}
+
+[[gnu::noreturn]] void arch_init_bsp_task(void) {
+    // taskmgr_switch_tasks() requires that task entries enable interrupts.
+    arch_enable_ints();
+
+    lapic_init_tim(LAPIC_TIM_PERIOD_MS);
+    init_bsp_task_common();
+}
+
+[[gnu::noreturn]] void arch_init_ap_task(void) {
+    // taskmgr_switch_tasks() requires that task entries enable interrupts.
+    arch_enable_ints();
+
+    lapic_init_tim(LAPIC_TIM_PERIOD_MS);
+    init_ap_task_common();
 }
