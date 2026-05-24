@@ -1,5 +1,6 @@
 #include "acpi/acpi.h"
 #include "arch.h"
+#include "arch_timer.h"
 #include "arch_vmm.h"
 #include "assert.h"
 #include "heap.h"
@@ -12,7 +13,6 @@
 #include "arch/x86/arch_smp.h"
 #include "arch/x86/gdt.h"
 #include "arch/x86/idt.h"
-#include "arch/x86/pit.h"
 
 typedef struct [[gnu::packed]] {
     // WARNING: the order, alignment and size of these fields is relied upon in
@@ -90,7 +90,7 @@ void arch_smp_init_ap(smp_proc_t *proc) {
     lapic_send_ipi(&ipi_init);
     lapic_wait_ipi_delivered();
 
-    pit_delay_ms(10);
+    arch_timer_busy_wait_ms(10);
 
     // Send START UP IPI twice.
     for (int i = 0; i < 2; i++) {
@@ -110,7 +110,7 @@ void arch_smp_init_ap(smp_proc_t *proc) {
             .dest = acpi_proc->lapic_id,
         };
         lapic_send_ipi(&ipi_startup);
-        pit_delay_ms(1);
+        arch_timer_busy_wait_ms(1);
         lapic_wait_ipi_delivered();
     }
 

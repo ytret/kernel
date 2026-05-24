@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include "arch.h"
+#include "arch_timer.h"
 #include "arch_vmm.h"
 #include "assert.h"
 #include "cpu.h"
@@ -20,8 +21,6 @@
 #include "smp.h"
 #include "stack.h"
 #include "taskmgr.h"
-
-#include "arch/x86/pit.h"
 
 static_assert(KERNEL_STACK_SIZE % PMM_PAGE_SIZE == 0);
 static_assert(USER_STACK_TOP % PMM_PAGE_SIZE == 0);
@@ -228,7 +227,7 @@ void taskmgr_local_sleep_ms(uint32_t duration_ms) {
 
     if (!taskmgr->running_task->is_terminating) {
         taskmgr->running_task->sleep_until_counter_ms =
-            pit_counter_ms() + duration_ms;
+            arch_timer_current_ms() + duration_ms;
 
         taskmgr_local_lock_scheduler();
         taskmgr->running_task->is_sleeping = true;
@@ -302,7 +301,7 @@ static void wake_up_sleeping_tasks(void) {
 
     spinlock_acquire(&taskmgr->sleeping_tasks_lock);
 
-    uint64_t counter_ms = pit_counter_ms();
+    uint64_t counter_ms = arch_timer_current_ms();
     list_t sleep_list_copy = taskmgr->sleeping_tasks;
     list_clear(&taskmgr->sleeping_tasks);
 

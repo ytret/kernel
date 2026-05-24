@@ -5,6 +5,7 @@
 
 #include <cpuid.h>
 
+#include "arch_timer.h"
 #include "arch_vmm.h"
 #include "cpu.h"
 #include "kinttypes.h"
@@ -14,7 +15,6 @@
 #include "taskmgr.h"
 
 #include "arch/x86/apic/lapic.h"
-#include "arch/x86/pit.h"
 
 static lapic_regs_t *g_lapic_regs;
 static uint32_t g_lapic_tim_freq_hz;
@@ -104,7 +104,7 @@ void lapic_calib_tim(void) {
     g_lapic_regs->dcr = LAPIC_DCR_DIV_8;
     g_lapic_regs->icr = 0xFFFFFFFF;
 
-    pit_delay_ms(calib_dur_ms);
+    arch_timer_busy_wait_ms(calib_dur_ms);
 
     const uint32_t cnt_diff = 0xFFFFFFFF - g_lapic_regs->ccr;
     const uint32_t freq_hz = 1000 / calib_dur_ms * cnt_diff;
