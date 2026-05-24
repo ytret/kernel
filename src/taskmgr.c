@@ -6,7 +6,7 @@
 #include <stdatomic.h>
 #include <stdint.h>
 
-#include "arch/x86/gdt.h"
+#include "arch.h"
 #include "assert.h"
 #include "cpu.h"
 #include "heap.h"
@@ -22,30 +22,8 @@
 #include "taskmgr.h"
 #include "vmm.h"
 
-#define KERNEL_STACK_SIZE 32768
-
-/**
- * Userspace stack address (top).
- * @warning
- * The address must be page-aligned.
- */
-#define USER_STACK_TOP   0x7FFFF000
-/// Size of userspace stacks (pages).
-#define USER_STACK_PAGES 1
-
 static_assert(KERNEL_STACK_SIZE % PMM_PAGE_SIZE == 0);
 static_assert(USER_STACK_TOP % PMM_PAGE_SIZE == 0);
-
-typedef struct [[gnu::packed]] {
-    uint32_t edi;
-    uint32_t esi;
-    uint32_t ebp;
-    uint32_t esp;
-    uint32_t ebx;
-    uint32_t edx;
-    uint32_t ecx;
-    uint32_t eax;
-} gen_regs_t;
 
 /**
  * Global ID for the next new task.
@@ -77,14 +55,6 @@ static void map_user_stack(uint32_t *p_dir);
 [[gnu::noreturn]] static void idle_task(void);
 [[gnu::noreturn]] static void deleter_task(void);
 
-// Defined in taskmgr.s.
-extern void taskmgr_switch_tasks(tcb_t *p_from, tcb_t const *p_to,
-                                 tss_t *p_tss);
-extern void taskmgr_go_usermode_impl(uint32_t user_code_seg,
-                                     uint32_t user_data_seg, uint32_t tls_seg,
-                                     uint32_t entry_point,
-                                     gen_regs_t *p_user_regs);
-
 void taskmgr_global_init(void) {
     spinlock_init(&g_taskmgr_all_tasks_lock);
 }
@@ -103,19 +73,8 @@ void taskmgr_unlock_all_tasks_list(void) {
 
 [[gnu::noreturn]]
 void taskmgr_local_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
-    // Load the TSS.
-    const gdt_seg_sel_t tss_sel = {
-        .index = GDT_SMP_TSS_IDX,
-        .ti = 0,
-        .rpl = 0,
-    };
-    __asm__ volatile("ltr %%ax"
-                     :              /* no outputs */
-                     : "a"(tss_sel) /* TSS segment */
-                     : /* no clobber */);
-
     // Critical section. The initial entry must enable interrupts.
-    __asm__ volatile("cli");
+    arch_disable_ints();
 
     smp_proc_t *const proc = smp_get_running_proc();
     proc->taskmgr = heap_alloc(sizeof(taskmgr_t));
@@ -151,7 +110,7 @@ void taskmgr_local_init([[gnu::noreturn]] void (*p_init_entry)(void)) {
     // and before the entry, some bad things would happen to the stack.
     taskmgr->scheduler_lock = 0;
 
-    taskmgr_switch_tasks(NULL, &taskmgr->running_task->tcb, proc->tss);
+    arch_taskmgr_switch_tasks(NULL, taskmgr->running_task);
 
     PANIC("initial task entry has returned");
 }
@@ -188,9 +147,8 @@ bool taskmgr_local_schedule(void) {
         }
     }
 
-    smp_proc_t *const proc = smp_get_running_proc();
     taskmgr->running_task = next_task;
-    taskmgr_switch_tasks(&caller_task->tcb, &next_task->tcb, proc->tss);
+    arch_taskmgr_switch_tasks(caller_task, next_task);
 
     return true;
 }
@@ -258,10 +216,7 @@ task_t *taskmgr_local_new_kernel_task(const char *name, uint32_t entry) {
 }
 
 void taskmgr_local_go_usermode(uint32_t entry) {
-    gen_regs_t gen_regs = {0};
-    gen_regs.esp = USER_STACK_TOP;
-
-    taskmgr_go_usermode_impl(0x18, 0x20, 0x28, entry, &gen_regs);
+    arch_taskmgr_go_usermode(entry);
 }
 
 void taskmgr_local_sleep_ms(uint32_t duration_ms) {

@@ -3,11 +3,11 @@
  * SMP-aware initial tasks implementation.
  */
 
+#include "arch.h"
 #include "blkdev/blkdev.h"
 #include "config.h"
 #include "devmgr.h"
 #include "init.h"
-#include "kbd.h"
 #include "kshell/kshell.h"
 #include "log.h"
 #include "panic.h"
@@ -33,8 +33,9 @@ void init_bsp_task(void) {
     ktest_end();
 #endif
 
+    arch_create_platform_tasks();
+
     taskmgr_local_new_kernel_task("blkdev", (uint32_t)blkdev_task_entry);
-    taskmgr_local_new_kernel_task("kbd", (uint32_t)kbd_task);
 
     LOG_FLOW("waiting for blkdev...");
     while (!blkdev_is_ready()) {}
