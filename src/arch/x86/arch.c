@@ -59,6 +59,10 @@ void arch_get_ints_enabled(void) {
     PANIC("TODO");
 }
 
+void arch_ack_int(void) {
+    lapic_send_eoi();
+}
+
 void arch_halt_until_int(void) {
     __asm__ volatile("hlt");
 }

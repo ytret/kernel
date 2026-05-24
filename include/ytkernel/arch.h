@@ -22,6 +22,7 @@ void arch_create_platform_tasks(void);
 void arch_disable_ints(void);
 void arch_enable_ints(void);
 void arch_get_ints_enabled(void);
+void arch_ack_int(void);
 
 void arch_halt_until_int(void);
 void arch_pause_in_loop(void);
