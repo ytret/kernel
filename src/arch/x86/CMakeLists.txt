@@ -36,3 +36,11 @@ target_link_options(kernel PRIVATE
 set_target_properties(kernel PROPERTIES
     LINK_DEPENDS ${CMAKE_SOURCE_DIR}/src/arch/x86/linker.ld
 )
+
+if(YTKERNEL_ENABLE_TESTS)
+    target_sources(kernel PRIVATE
+
+        test/vmctl_arch.c
+
+    )
+endif()
