@@ -10,9 +10,6 @@
 
 #define VMM_KERNEL_VMA ((uintptr_t)&ld_kernel_vma)
 #define VMM_KERNEL_LMA ((uintptr_t)&ld_kernel_lma)
-#define VIRT_TO_PHYS(x)                                                        \
-    ((paddr_t)((uintptr_t)(x) - VMM_KERNEL_VMA + VMM_KERNEL_LMA))
-#define PHYS_TO_VIRT(x) ((uint64_t)(x) - VMM_KERNEL_LMA + VMM_KERNEL_VMA)
 
 extern int ld_kernel_vma;
 extern int ld_kernel_lma;
