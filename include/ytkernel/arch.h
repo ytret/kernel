@@ -6,7 +6,7 @@
 #include "types.h"
 
 #ifdef YTKERNEL_ARCH_X86
-#include "arch/x86/arch_defs.h" // IWYU pragma: export
+#include "arch/x86/arch_defs.h"  // IWYU pragma: export
 #else
 #error "Please update include/ytkernel/arch.h to include arch_defs.h"
 #endif
