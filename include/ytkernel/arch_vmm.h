@@ -19,11 +19,11 @@ void vmm_init(void);
 /// Returns the kernel page directory.
 void *vmm_kvas_dir(void);
 
-void vmm_free_vas(uint32_t *p_dir);
+void vmm_free_vas(void *p_dir);
 
-void vmm_map_user_page(uint32_t *p_dir, uint32_t virt, uint32_t phys);
-void vmm_map_kernel_page(uint32_t virt, uint32_t phys);
-void vmm_unmap_kernel_page(uint32_t virt);
+void vmm_map_user_page(void *p_dir, vaddr_t virt, paddr_t phys);
+void vmm_map_kernel_page(vaddr_t virt, paddr_t phys);
+void vmm_unmap_kernel_page(vaddr_t virt);
 void vmm_kmap_region_a(void *(*alloc)(size_t size), vaddr_t start,
                        vaddr_t size);
 void vmm_kmap_region(vaddr_t start, vaddr_t size);

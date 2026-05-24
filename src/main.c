@@ -3,6 +3,7 @@
 
 #include "acpi/acpi.h"
 #include "arch.h"
+#include "arch_vmm.h"
 #include "chardev.h"
 #include "cmdline.h"
 #include "config.h"
@@ -23,7 +24,6 @@
 #include "textdisp.h"
 #include "tty.h"
 #include "vfs/vnode.h"
-#include "vmm.h"
 
 #ifdef YTKERNEL_ENABLE_TESTS
 #include "memfun.h"

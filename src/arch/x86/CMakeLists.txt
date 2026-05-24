@@ -4,10 +4,10 @@ target_sources(kernel PRIVATE
     apic/lapic.c
     arch_smp.c
     arch_taskmgr.c
+    arch_vmm.c
     arch.c
     gdt.c
     idt.c
-    vmm.c
 
     boot.s
     entry.s

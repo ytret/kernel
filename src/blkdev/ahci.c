@@ -8,6 +8,7 @@
 #include <stddef.h>
 
 #include "arch.h"
+#include "arch_vmm.h"
 #include "assert.h"
 #include "blkdev/ahci.h"
 #include "blkdev/ahci_regs.h"
@@ -18,7 +19,6 @@
 #include "log.h"
 #include "memfun.h"
 #include "pci.h"
-#include "vmm.h"
 
 /**
  * ABAR register, base address mask.

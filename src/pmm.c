@@ -38,13 +38,13 @@
 
 #define LOG_LEVEL LOG_LEVEL_DEBUG
 
+#include "arch_vmm.h"
 #include "heap.h"
 #include "kinttypes.h"
 #include "log.h"
 #include "memfun.h"
 #include "panic.h"
 #include "pmm.h"
-#include "vmm.h"
 
 #define PMM_RESERVE_LOWER_BYTES (4U * 1024U * 1024U)
 

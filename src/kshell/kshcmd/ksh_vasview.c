@@ -1,9 +1,9 @@
+#include "arch_vmm.h"
 #include "kprintf.h"
 #include "kshell/ksharg.h"
 #include "kshell/kshcmd/ksh_vasview.h"
 #include "kshell/vasview.h"
 #include "kstring.h"
-#include "vmm.h"
 
 static ksharg_posarg_desc_t g_ksh_vasview_posargs[] = {
     {

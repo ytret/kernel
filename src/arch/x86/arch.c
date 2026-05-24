@@ -1,4 +1,5 @@
 #include "arch.h"
+#include "arch_vmm.h"
 #include "assert.h"
 #include "init.h"
 #include "kbd.h"
@@ -7,7 +8,6 @@
 #include "panic.h"
 #include "pit.h"
 #include "smp.h"
-#include "vmm.h"
 
 #include "arch/x86/apic/ioapic.h"
 #include "arch/x86/apic/lapic.h"

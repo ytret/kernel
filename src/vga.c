@@ -7,11 +7,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "arch_vmm.h"
 #include "assert.h"
 #include "memfun.h"
 #include "port.h"
 #include "vga.h"
-#include "vmm.h"
 
 #define VGA_NUM_ROWS 25
 #define VGA_NUM_COLS 80

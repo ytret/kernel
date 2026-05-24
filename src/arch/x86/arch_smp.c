@@ -1,5 +1,6 @@
 #include "acpi/acpi.h"
 #include "arch.h"
+#include "arch_vmm.h"
 #include "assert.h"
 #include "heap.h"
 #include "isrs.h"
@@ -7,7 +8,6 @@
 #include "memfun.h"
 #include "pit.h"
 #include "pmm.h"
-#include "vmm.h"
 
 #include "arch/x86/apic/lapic.h"
 #include "arch/x86/arch_smp.h"

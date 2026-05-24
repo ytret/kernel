@@ -3,6 +3,7 @@
 
 #define LOG_LEVEL LOG_LEVEL_DEBUG
 
+#include "arch_vmm.h"
 #include "assert.h"
 #include "heap.h"
 #include "kinttypes.h"
@@ -13,7 +14,6 @@
 #include "pmm.h"
 #include "smp.h"
 #include "textdisp.h"
-#include "vmm.h"
 
 #define VMM_ADDR_DIR_IDX(addr) (((addr) >> 22) & 0x3FF)
 #define VMM_ADDR_TBL_IDX(addr) (((addr) >> 12) & 0x3FF)
@@ -84,17 +84,17 @@ void *vmm_kvas_dir(void) {
     return gp_kvas_dir;
 }
 
-void vmm_free_vas(uint32_t *p_dir) {
+void vmm_free_vas(void *p_dir) {
     (void)p_dir;
     LOG_ERROR("TODO %s", __func__);
 }
 
-void vmm_map_user_page(uint32_t *p_dir, uint32_t virt, uint32_t phys) {
+void vmm_map_user_page(void *p_dir, vaddr_t virt, paddr_t phys) {
     map_page(p_dir, virt, phys,
              (VMM_PAGE_USER | VMM_PAGE_RW | VMM_PAGE_PRESENT));
 }
 
-void vmm_map_kernel_page(uint32_t virt, uint32_t phys) {
+void vmm_map_kernel_page(vaddr_t virt, paddr_t phys) {
     prv_vmm_lock_kvas();
 
     map_page(gp_kvas_dir, virt, phys, (VMM_PAGE_RW | VMM_PAGE_PRESENT));
@@ -104,7 +104,7 @@ void vmm_map_kernel_page(uint32_t virt, uint32_t phys) {
     prv_vmm_unlock_kvas();
 }
 
-void vmm_unmap_kernel_page(uint32_t virt) {
+void vmm_unmap_kernel_page(vaddr_t virt) {
     prv_vmm_lock_kvas();
 
     unmap_page(gp_kvas_dir, virt);

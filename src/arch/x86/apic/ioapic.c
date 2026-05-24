@@ -5,11 +5,11 @@
  */
 
 #include "acpi/acpi.h"
+#include "arch_vmm.h"
 #include "kinttypes.h"
 #include "log.h"
 #include "memfun.h"
 #include "pic.h"
-#include "vmm.h"
 
 #include "arch/x86/apic/ioapic.h"
 

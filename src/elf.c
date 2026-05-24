@@ -1,13 +1,13 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "arch_vmm.h"
 #include "elf.h"
 #include "heap.h"
 #include "kinttypes.h"
 #include "kprintf.h"
 #include "log.h"
 #include "pmm.h"
-#include "vmm.h"
 
 #define MAGIC_NUM         ((uint32_t)0x464C457F)
 #define BITS_32BIT        ((uint8_t)1)

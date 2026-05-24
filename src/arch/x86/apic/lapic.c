@@ -5,6 +5,7 @@
 
 #include <cpuid.h>
 
+#include "arch_vmm.h"
 #include "cpu.h"
 #include "kinttypes.h"
 #include "log.h"
@@ -12,7 +13,6 @@
 #include "panic.h"
 #include "pit.h"
 #include "taskmgr.h"
-#include "vmm.h"
 
 #include "arch/x86/apic/lapic.h"
 

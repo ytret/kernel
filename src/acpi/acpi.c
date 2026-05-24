@@ -3,11 +3,11 @@
 
 #include "acpi/acpi.h"
 #include "acpi/acpi_defs.h"
+#include "arch_vmm.h"
 #include "heap.h"
 #include "kinttypes.h"
 #include "log.h"
 #include "memfun.h"
-#include "vmm.h"
 
 static acpi_rsdp1_t *g_acpi_rsdp1;
 static acpi_rsdt_t *g_acpi_rsdt;

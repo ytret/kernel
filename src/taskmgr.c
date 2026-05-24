@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include "arch.h"
+#include "arch_vmm.h"
 #include "assert.h"
 #include "cpu.h"
 #include "heap.h"
@@ -20,7 +21,6 @@
 #include "smp.h"
 #include "stack.h"
 #include "taskmgr.h"
-#include "vmm.h"
 
 static_assert(KERNEL_STACK_SIZE % PMM_PAGE_SIZE == 0);
 static_assert(USER_STACK_TOP % PMM_PAGE_SIZE == 0);
