@@ -47,8 +47,6 @@ target_sources(kernel PRIVATE
     vfs/vpath.c
     vga.c
 
-    taskmgr.s
-
     kshell/kbdlog.c
     kshell/ksharg.c
     kshell/kshcmd/ksh_clear.c

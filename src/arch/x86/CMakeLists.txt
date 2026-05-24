@@ -9,12 +9,13 @@ target_sources(kernel PRIVATE
     gdt.c
     idt.c
 
-    stacktrace.s
     boot.s
     entry.s
     gdt.s
     idt.s
     isrs.s
+    stacktrace.s
+    taskmgr.s
     vmm.s
 
 )
