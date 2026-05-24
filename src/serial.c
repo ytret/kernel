@@ -3,8 +3,9 @@
 
 #include "assert.h"
 #include "kinttypes.h"
-#include "port.h"
 #include "serial.h"
+
+#include "arch/x86/port.h"
 
 #define BIT(x) (1 << (x))
 

@@ -4,7 +4,8 @@
 #include "log.h"
 #include "pic.h"
 #include "pit.h"
-#include "port.h"
+
+#include "arch/x86/port.h"
 
 #define PORT_MASTER_CMD  0x0020
 #define PORT_MASTER_DATA 0x0021

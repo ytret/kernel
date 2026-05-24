@@ -11,7 +11,8 @@
 #include "log.h"
 #include "panic.h"
 #include "pci.h"
-#include "port.h"
+
+#include "arch/x86/port.h"
 
 /**
  * Maximum number of _connected_ devices supported by the driver.

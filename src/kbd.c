@@ -13,7 +13,8 @@
 #include "log.h"
 #include "memfun.h"
 #include "panic.h"
-#include "port.h"
+
+#include "arch/x86/port.h"
 
 #define KBD_CODE_BUF_SIZE    10
 #define KBD_EVENT_QUEUE_SIZE 16

@@ -1,7 +1,8 @@
 #include "log.h"
 #include "panic.h"
-#include "port.h"
 #include "test/vmctl.h"
+
+#include "arch/x86/port.h"
 
 #define VMCTL_EXIT_PORT 0xF4
 
