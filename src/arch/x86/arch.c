@@ -1,16 +1,19 @@
 #include "arch.h"
+#include "assert.h"
 #include "kbd.h"
 #include "log.h"
 #include "panic.h"
 #include "pit.h"
+#include "smp.h"
 #include "vmm.h"
 
 #include "arch/x86/apic/ioapic.h"
 #include "arch/x86/apic/lapic.h"
+#include "arch/x86/arch_smp.h"
 #include "arch/x86/gdt.h"
 #include "arch/x86/idt.h"
 
-void arch_init_1(void) {
+void arch_early_init(void) {
     gdtr_t gdtr;
     gdt_init_pre_smp(&gdtr);
     gdt_load(&gdtr);
@@ -18,7 +21,7 @@ void arch_init_1(void) {
     idt_init();
 }
 
-void arch_init_2(void) {
+void arch_late_init(void) {
     lapic_init(true);
     ioapic_init();
 
@@ -38,4 +41,73 @@ void arch_init_2(void) {
     LOG_DEBUG("interrupts enabled");
 
     lapic_calib_tim();
+}
+
+void arch_create_platform_tasks(void) {
+    taskmgr_local_new_kernel_task("kbd", (uint32_t)kbd_task);
+}
+
+void arch_disable_ints(void) {
+    __asm__ volatile("cli");
+}
+
+void arch_enable_ints(void) {
+    __asm__ volatile("sti");
+}
+
+void arch_get_ints_enabled(void) {
+    PANIC("TODO");
+}
+
+void arch_halt_until_int(void) {
+    __asm__ volatile("hlt");
+}
+
+void arch_pause_in_loop(void) {
+    __asm__ volatile("pause" ::: "memory");
+}
+
+void arch_send_ipi(uint8_t proc_num, uint8_t vector) {
+    smp_proc_t *const proc = smp_get_proc(proc_num);
+    ASSERT(proc != NULL);
+
+    arch_smp_proc_t *const arch_proc = proc->arch_ctx;
+    ASSERT(arch_proc != NULL);
+    ASSERT(arch_proc->acpi != NULL);
+
+    const lapic_icr_t icr = {
+        .vector = vector,
+        .delmod = LAPIC_ICR_DELMOD_FIXED,
+        .destmod = APIC_DESTMOD_PHYSICAL, // ignored because destsh is used
+        .level = LAPIC_ICR_ASSERT, // must be ASSERT because it's not INIT
+        .trigmod = 0,              // ignored because it's not INIT
+        .destsh = LAPIC_ICR_DEST_NO_SHORTHAND,
+        .dest = arch_proc->acpi->lapic_id,
+    };
+    lapic_send_ipi(&icr);
+}
+
+void arch_broadcast_ipi(uint8_t vector) {
+    const lapic_icr_t icr = {
+        .vector = vector,
+        .delmod = LAPIC_ICR_DELMOD_FIXED,
+        .destmod = APIC_DESTMOD_PHYSICAL, // ignored because destsh is used
+        .level = LAPIC_ICR_ASSERT, // must be ASSERT because it's not INIT
+        .trigmod = 0,              // ignored because it's not INIT
+        .destsh = LAPIC_ICR_DEST_ALL_BUT_SELF,
+        .dest = 0, // ignored because destsh is used
+    };
+    lapic_send_ipi(&icr);
+}
+
+void arch_ack_ipi(void) {
+    lapic_send_eoi();
+}
+
+void arch_flush_tlb_addr(vaddr_t addr) {
+    vmm_invlpg(addr);
+}
+
+void arch_flush_tlb(void) {
+    PANIC("TODO");
 }

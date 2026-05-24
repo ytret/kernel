@@ -67,7 +67,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     LOG_INFO("Hello, World!");
     check_bootloader(magic_num, mbi_addr);
 
-    arch_init_1();
+    arch_early_init();
 
     if (!mbi_fill_mmap(mbi_ptr(), &g_mmap)) {
         PANIC("failed to fill the memory map");
@@ -117,7 +117,7 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
 
     taskmgr_global_init();
 
-    arch_init_2();
+    arch_late_init();
 
     vnode_root_init();
 

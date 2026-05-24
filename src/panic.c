@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 
+#include "arch.h"
 #include "assert.h"
 #include "config.h"
 #include "kinttypes.h"
@@ -179,17 +180,7 @@ static void prv_panic_check_flag(void) {
 }
 
 static void prv_panic_send_ipi(void) {
-    if (!smp_is_active()) { return; }
-    const lapic_icr_t ipi_halt = {
-        .vector = SMP_VEC_HALT,
-        .delmod = LAPIC_ICR_DELMOD_FIXED,
-        .destmod = APIC_DESTMOD_PHYSICAL, // ignored because destsh is used
-        .level = LAPIC_ICR_ASSERT, // must be ASSERT because it's not INIT
-        .trigmod = 0,              // ignored because it's not INIT
-        .destsh = LAPIC_ICR_DEST_ALL_BUT_SELF,
-        .dest = 0, // ignored because destsh is used
-    };
-    lapic_send_ipi(&ipi_halt);
+    if (smp_is_active()) { arch_broadcast_ipi(ARCH_VEC_HALT); }
 }
 
 static void prv_panic_log_stacktrace(uint32_t init_ebp, uint32_t init_eip) {

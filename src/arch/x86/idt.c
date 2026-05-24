@@ -7,10 +7,11 @@
 #include "log.h"
 #include "memfun.h"
 #include "panic.h"
-#include "smp.h"
+#include "arch.h"
 #include "taskmgr.h"
 
 #include "arch/x86/apic/lapic.h"
+#include "arch/x86/gdt.h"
 #include "arch/x86/idt.h"
 #include "arch/x86/isrs.h"
 
@@ -95,8 +96,8 @@ void idt_init(void) {
     fill_entry(&gp_idt[AHCI_VEC_GLOBAL], isr_irq_ahci);
 
     fill_entry(&gp_idt[LAPIC_VEC_TIM], isr_lapic_tim);
-    fill_entry(&gp_idt[SMP_VEC_HALT], isr_ipi_halt);
-    fill_entry(&gp_idt[SMP_VEC_TLB_SHOOTDOWN], isr_ipi_tlb_shootdown);
+    fill_entry(&gp_idt[ARCH_VEC_HALT], isr_ipi_halt);
+    fill_entry(&gp_idt[ARCH_VEC_TLB_SHOOTDOWN], isr_ipi_tlb_shootdown);
 
     fill_user_entry(&gp_idt[SYSCALL_INT_NUM], isr_syscall);
 

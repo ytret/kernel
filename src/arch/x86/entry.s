@@ -109,4 +109,4 @@ _ap_trampoline_p3:
                 mov     %eax, %cr0
 
                 ## NOTE: do not use relative 'call' opcodes.
-                call    $0x08, $smp_ap_trampoline_c
+                call    $0x08, $arch_smp_ap_trampoline_c
