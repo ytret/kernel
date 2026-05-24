@@ -16,7 +16,7 @@ typedef struct [[gnu::packed]] {
     uint32_t eflags;
 } isr_stack_frame_t;
 
-typedef struct [[gnu::packed]] {
+typedef struct [[gnu::packed]] isr_regs {
     uint32_t edi;
     uint32_t esi;
     uint32_t ebx;

@@ -11,6 +11,8 @@
 #error "Please update include/ytkernel/arch.h to include arch_defs.h"
 #endif
 
+typedef struct isr_regs isr_regs_t;
+
 void arch_early_init(void);
 void arch_late_init(void);
 void arch_create_platform_tasks(void);
@@ -46,3 +48,5 @@ void arch_taskmgr_go_usermode(uint32_t entry);
 [[gnu::noreturn]] void arch_init_ap_task(void);
 
 size_t arch_walk_stack(vaddr_t *arr_addr, size_t max_items, vaddr_t init_sp);
+
+void arch_syscall_dispatch(isr_regs_t *regs);

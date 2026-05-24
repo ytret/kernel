@@ -311,7 +311,7 @@ isr_syscall:    cli
                 mov     %esp, %ebx
                 push    %ebx            # registers -> 1st arg
                 cld
-                call    syscall_dispatch
+                call    arch_syscall_dispatch
                 add     $4, %esp        # skip the argument
 
                 pop     %edi
