@@ -8,20 +8,15 @@
 #include "conmgr.h"
 #include "inputmgr.h"
 #include "kbd.h"
+#include "kbd_arch.h"
 #include "keymap.h"
 #include "ksemaphore.h"
 #include "log.h"
 #include "memfun.h"
 #include "panic.h"
 
-#include "arch/x86/port.h"
-
 #define KBD_CODE_BUF_SIZE    10
 #define KBD_EVENT_QUEUE_SIZE 16
-
-#define KBD_PORT_DATA   0x0060
-#define KBD_PORT_CMD    0x0064
-#define KBD_PORT_STATUS 0x0064
 
 typedef struct {
     kbd_event_t buf[KBD_EVENT_QUEUE_SIZE];
@@ -57,18 +52,16 @@ static bool prv_kbd_queue_is_full(const kbd_queue_t *queue);
 static void prv_kbd_enqueue(kbd_queue_t *queue, const kbd_event_t *event);
 static void prv_kbd_dequeue(kbd_queue_t *queue, kbd_event_t *event);
 
-static uint8_t prv_kbd_read_code(void);
-
 void kbd_init(void) {
     keymap_init(&g_kbd.keymap);
     prv_kbd_queue_init(&g_kbd.event_queue, KBD_EVENT_QUEUE_SIZE);
 
     // On QEMU this is required to free space in the buffer.
-    prv_kbd_read_code();
+    kbd_arch_read_code();
 }
 
 void kbd_irq_handler(void) {
-    const uint8_t sc = prv_kbd_read_code();
+    const uint8_t sc = kbd_arch_read_code();
     prv_kbd_append_code(&g_kbd, sc);
 
     kbd_event_t event;
@@ -374,8 +367,4 @@ static void prv_kbd_dequeue(kbd_queue_t *queue, kbd_event_t *event) {
     // NOTE: it is ASSUMED that there is only ONE producer, therefore TOCTOU is
     // not a problem.
     queue->head = prv_kbd_queue_wrap_inc(queue, queue->head);
-}
-
-static uint8_t prv_kbd_read_code(void) {
-    return port_inb(KBD_PORT_DATA);
 }
