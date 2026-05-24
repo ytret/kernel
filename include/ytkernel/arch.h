@@ -15,13 +15,14 @@ void arch_early_init(void);
 void arch_late_init(void);
 void arch_create_platform_tasks(void);
 
+void arch_halt_until_int(void);
+void arch_pause_in_loop(void);
+
 void arch_disable_ints(void);
 void arch_enable_ints(void);
 void arch_get_ints_enabled(void);
 void arch_ack_int(void);
-
-void arch_halt_until_int(void);
-void arch_pause_in_loop(void);
+void arch_map_irq(uint32_t irq, uint32_t vec);
 
 void arch_send_ipi(uint8_t proc_num, uint8_t vector);
 void arch_broadcast_ipi(uint8_t vector);

@@ -1,6 +1,7 @@
 #include "arch.h"
 #include "assert.h"
 #include "kbd.h"
+#include "kinttypes.h"
 #include "log.h"
 #include "panic.h"
 #include "pit.h"
@@ -47,6 +48,14 @@ void arch_create_platform_tasks(void) {
     taskmgr_local_new_kernel_task("kbd", (uint32_t)kbd_task);
 }
 
+void arch_halt_until_int(void) {
+    __asm__ volatile("hlt");
+}
+
+void arch_pause_in_loop(void) {
+    __asm__ volatile("pause" ::: "memory");
+}
+
 void arch_disable_ints(void) {
     __asm__ volatile("cli");
 }
@@ -63,12 +72,11 @@ void arch_ack_int(void) {
     lapic_send_eoi();
 }
 
-void arch_halt_until_int(void) {
-    __asm__ volatile("hlt");
-}
-
-void arch_pause_in_loop(void) {
-    __asm__ volatile("pause" ::: "memory");
+void arch_map_irq(uint32_t irq, uint32_t vec) {
+    const uint8_t lapic_id = lapic_get_id();
+    LOG_DEBUG("map irq %" PRIu32 " to vector %" PRIu32 " of LAPIC %u", irq, vec,
+              lapic_id);
+    ioapic_map_irq(irq, vec, lapic_id);
 }
 
 void arch_send_ipi(uint8_t proc_num, uint8_t vector) {
