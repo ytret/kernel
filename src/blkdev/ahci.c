@@ -7,6 +7,7 @@
 
 #include <stddef.h>
 
+#include "arch.h"
 #include "assert.h"
 #include "blkdev/ahci.h"
 #include "blkdev/ahci_regs.h"
@@ -18,9 +19,6 @@
 #include "memfun.h"
 #include "pci.h"
 #include "vmm.h"
-
-#include "arch/x86/apic/ioapic.h"
-#include "arch/x86/apic/lapic.h"
 
 /**
  * ABAR register, base address mask.
@@ -246,7 +244,7 @@ void ahci_ctrl_set_int(ahci_ctrl_ctx_t *ctrl_ctx, bool on) {
 }
 
 void ahci_ctrl_map_irq(ahci_ctrl_ctx_t *ctrl_ctx, uint8_t vec) {
-    ioapic_map_irq(ctrl_ctx->irq, vec, lapic_get_id());
+    arch_map_irq(ctrl_ctx->irq, vec);
 }
 
 void ahci_ctrl_irq_handler(void) {
@@ -264,7 +262,7 @@ void ahci_ctrl_irq_handler(void) {
         }
     }
 
-    lapic_send_eoi();
+    arch_ack_int();
 }
 
 bool ahci_port_is_online(const ahci_port_ctx_t *port_ctx) {

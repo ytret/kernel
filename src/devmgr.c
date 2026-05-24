@@ -3,6 +3,7 @@
  * Device manager: enumeration and driver loading.
  */
 
+#include "arch.h"
 #include "assert.h"
 #include "blkdev/ahci.h"
 #include "blkdev/blkpart.h"
@@ -190,7 +191,7 @@ static devmgr_dev_t *prv_devmgr_init_ahci(const pci_dev_t *pci_dev) {
         LOG_DEBUG("loaded driver for AHCI Port %s", ahci_port_name(ahci_port));
     }
 
-    ahci_ctrl_map_irq(ahci_ctrl, AHCI_VEC_GLOBAL);
+    ahci_ctrl_map_irq(ahci_ctrl, ARCH_VEC_AHCI_GLOBAL);
     ahci_ctrl_set_int(ahci_ctrl, true);
 
     return dev;

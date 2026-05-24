@@ -22,12 +22,6 @@
  */
 #define AHCI_PORTS_PER_CTRL 30
 
-/**
- * Interrupt number for the global AHCI interrupts.
- * IRQs of all AHCI controllers are mapped to this vector in the I/O APIC.
- */
-#define AHCI_VEC_GLOBAL 0xA0
-
 typedef struct ahci_ctrl_ctx ahci_ctrl_ctx_t;
 typedef struct ahci_port_ctx ahci_port_ctx_t;
 

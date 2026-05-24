@@ -1,13 +1,12 @@
 #include <stddef.h>
 
-#include "blkdev/ahci.h"
+#include "arch.h"
 #include "kinttypes.h"
 #include "kprintf.h"
 #include "ksyscall.h"
 #include "log.h"
 #include "memfun.h"
 #include "panic.h"
-#include "arch.h"
 #include "taskmgr.h"
 
 #include "arch/x86/apic/lapic.h"
@@ -93,7 +92,7 @@ void idt_init(void) {
     fill_entry(&gp_idt[32 + 7], isr_irq7);
     fill_entry(&gp_idt[32 + 15], isr_irq15);
 
-    fill_entry(&gp_idt[AHCI_VEC_GLOBAL], isr_irq_ahci);
+    fill_entry(&gp_idt[ARCH_VEC_AHCI_GLOBAL], isr_irq_ahci);
 
     fill_entry(&gp_idt[LAPIC_VEC_TIM], isr_lapic_tim);
     fill_entry(&gp_idt[ARCH_VEC_HALT], isr_ipi_halt);
