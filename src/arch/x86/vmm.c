@@ -86,6 +86,7 @@ void *vmm_kvas_dir(void) {
 
 void vmm_free_vas(uint32_t *p_dir) {
     (void)p_dir;
+    LOG_ERROR("TODO %s", __func__);
 }
 
 void vmm_map_user_page(uint32_t *p_dir, uint32_t virt, uint32_t phys) {
