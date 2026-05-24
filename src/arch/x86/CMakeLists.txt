@@ -8,6 +8,7 @@ target_sources(kernel PRIVATE
     arch.c
     gdt.c
     idt.c
+    mbi.c
 
     boot.s
     entry.s

@@ -1,10 +1,11 @@
 #include "heap.h"
 #include "kstring.h"
 #include "log.h"
-#include "mbi.h"
 #include "memfun.h"
 #include "panic.h"
 #include "pmm.h"
+
+#include "arch/x86/mbi.h"
 
 static mbi_t *gp_mbi;
 static pmm_region_t g_mbi_pmm_regions[MBI_PMM_MMAP_MAX_ENTRIES];

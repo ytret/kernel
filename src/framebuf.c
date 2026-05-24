@@ -4,9 +4,10 @@
 #include "heap.h"
 #include "kinttypes.h"
 #include "log.h"
-#include "mbi.h"
 #include "memfun.h"
 #include "psf.h"
+
+#include "arch/x86/mbi.h"
 
 static const textdisp_ops_t g_fb_disp_ops = {
     .p_init = framebuf_init,

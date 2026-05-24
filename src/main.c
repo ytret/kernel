@@ -15,7 +15,6 @@
 #include "kinttypes.h"
 #include "libshim.h"
 #include "log.h"
-#include "mbi.h"
 #include "panic.h"
 #include "pmm.h"
 #include "serial.h"
@@ -24,6 +23,8 @@
 #include "textdisp.h"
 #include "tty.h"
 #include "vfs/vnode.h"
+
+#include "arch/x86/mbi.h"
 
 #ifdef YTKERNEL_ENABLE_TESTS
 #include "memfun.h"

@@ -10,9 +10,10 @@
 #include "kshell/kshinput.h"
 #include "kstring.h"
 #include "log.h"
-#include "mbi.h"
 #include "memfun.h"
 #include "panic.h"
+
+#include "arch/x86/mbi.h"
 
 #define LUA_CMD_BUF_SIZE 256
 #define LUA_KOBJ_NAME    "K"

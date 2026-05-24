@@ -3,7 +3,8 @@
 #include "kshell/ksharg.h"
 #include "kshell/kshcmd/ksh_mbi.h"
 #include "kstring.h"
-#include "mbi.h"
+
+#include "arch/x86/mbi.h"
 
 static ksharg_posarg_desc_t g_ksh_mbi_posargs[] = {
     {

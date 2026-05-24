@@ -26,7 +26,6 @@ target_sources(kernel PRIVATE
     ldisc.c
     libshim.c
     log.c
-    mbi.c
     memfun.c
     panic.c
     pci.c
