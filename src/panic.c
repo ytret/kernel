@@ -14,8 +14,6 @@
 #include "smp.h"
 #include "taskmgr.h"
 
-#include "arch/x86/apic/lapic.h"
-
 #define PANIC_MSG_SIZE             128
 #define PANIC_STACKTRACE_MAX_ITEMS 64
 
