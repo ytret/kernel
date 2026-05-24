@@ -1,9 +1,9 @@
 #include "framebuf.h"
 #include "log.h"
 #include "textdisp.h"
-#include "vga.h"
 
 #include "arch/x86/mbi.h"
+#include "arch/x86/vga.h"
 
 struct textdisp {
     const textdisp_ops_t *ops;
