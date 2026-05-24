@@ -11,7 +11,6 @@
 #include "kshell/kshcmd/ksh_devmgr.h"
 #include "kshell/kshcmd/ksh_help.h"
 #include "kshell/kshcmd/ksh_lua.h"
-#include "kshell/kshcmd/ksh_mbi.h"
 #include "kshell/kshcmd/ksh_taskmgr.h"
 #include "kshell/kshcmd/ksh_vasview.h"
 #include "kshell/kshcmd/ksh_vfs.h"
@@ -20,18 +19,15 @@
 #include "kstring.h"
 
 static const kshell_cmd_t g_kshell_cmds[] = {
-    // clang-format off
     // NOTE: these should be sorted alphabetically, so that the 'help' command
     // lists them in alphabetical order.
     {"clear", ksh_clear, "clear the terminal"},
     {"devmgr", ksh_devmgr, "device manager"},
     {"help", ksh_help, "kshell help"},
     {"lua", ksh_lua, "enter Lua kshell"},
-    {"mbi", ksh_mbi, "view the Multiboot Information structure"},
     {"taskmgr", ksh_taskmgr, "task manager"},
     {"vasview", ksh_vasview, "inspect virtual address spaces"},
     {"vfs", ksh_vfs, "manipulate the virtual file system"},
-    // clang-format on
 };
 
 static const kshell_cmd_t *prv_kshell_cmd_find(const char *name);

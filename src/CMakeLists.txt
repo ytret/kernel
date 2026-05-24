@@ -50,7 +50,6 @@ target_sources(kernel PRIVATE
     kshell/kshcmd/ksh_devmgr.c
     kshell/kshcmd/ksh_help.c
     kshell/kshcmd/ksh_lua.c
-    kshell/kshcmd/ksh_mbi.c
     kshell/kshcmd/ksh_taskmgr.c
     kshell/kshcmd/ksh_vasview.c
     kshell/kshcmd/ksh_vfs.c
