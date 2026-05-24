@@ -2,6 +2,7 @@
 #include <lua.h>
 #include <lualib.h>
 
+#include "arch_boot.h"
 #include "assert.h"
 #include "heap.h"
 #include "kinttypes.h"
@@ -12,8 +13,6 @@
 #include "log.h"
 #include "memfun.h"
 #include "panic.h"
-
-#include "arch/x86/mbi.h"
 
 #define LUA_CMD_BUF_SIZE 256
 #define LUA_KOBJ_NAME    "K"
@@ -28,7 +27,7 @@ typedef struct {
 static lua_State *g_kshlua_L;
 static volatile bool g_kshlua_loop;
 
-static void prv_kshlua_init(const mbi_mod_t *mod);
+static void prv_kshlua_init(const arch_boot_mod_t *mod);
 static void prv_kshlua_deinit(void);
 static int prv_kshlua_exec_mod(lua_State *L, const char *s);
 static void prv_kshlua_init_kobj(lua_State *L);
@@ -56,7 +55,8 @@ static lua_shell_cmd_t g_kshell_lua_cmds[] = {
 void ksh_lua(list_t *arg_list) {
     (void)arg_list;
 
-    const mbi_mod_t *const kshell_mod = mbi_find_mod(LUA_MOD_STRING);
+    const arch_boot_mod_t *const kshell_mod =
+        arch_boot_find_mod(LUA_MOD_STRING);
     if (!kshell_mod) { LOG_ERROR("no module named %s", LUA_MOD_STRING); }
 
     prv_kshlua_init(kshell_mod);
@@ -71,7 +71,7 @@ void ksh_lua(list_t *arg_list) {
     prv_kshlua_deinit();
 }
 
-static void prv_kshlua_init(const mbi_mod_t *mod) {
+static void prv_kshlua_init(const arch_boot_mod_t *mod) {
     g_kshlua_L = luaL_newstate();
     if (!g_kshlua_L) { PANIC("luaL_newstate failed"); }
 
@@ -81,12 +81,12 @@ static void prv_kshlua_init(const mbi_mod_t *mod) {
     prv_kshlua_init_kobj(g_kshlua_L);
 
     if (mod) {
-        ASSERT(mod->mod_end > mod->mod_start);
+        ASSERT(mod->phys_end > mod->phys_start);
 
-        const char *const mod_start = (const char *)mod->mod_start;
-        const uint32_t mod_size = mod->mod_end - mod->mod_start;
-        LOG_DEBUG("copy module at %p len %" PRIu32 " to heap", mod_start,
-                  mod->mod_end - mod->mod_start);
+        const void *const mod_start = (const void *)(uintptr_t)mod->phys_start;
+        const uint32_t mod_size = mod->phys_end - mod->phys_start;
+        LOG_DEBUG("copy module at %p len %016llx to heap", mod_start,
+                  mod->phys_end - mod->phys_start);
 
         char *const mod_str = heap_alloc(mod_size + 1);
         kmemcpy(mod_str, mod_start, mod_size);
