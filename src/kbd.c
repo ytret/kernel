@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "arch.h"
 #include "assert.h"
 #include "conmgr.h"
 #include "inputmgr.h"
@@ -13,8 +14,6 @@
 #include "memfun.h"
 #include "panic.h"
 #include "port.h"
-
-#include "arch/x86/apic/lapic.h"
 
 #define KBD_CODE_BUF_SIZE    10
 #define KBD_EVENT_QUEUE_SIZE 16
@@ -76,7 +75,7 @@ void kbd_irq_handler(void) {
         prv_kbd_process_event(&g_kbd, &event);
     }
 
-    lapic_send_eoi();
+    arch_ack_int();
 }
 
 [[gnu::noreturn]] void kbd_task(void) {

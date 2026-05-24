@@ -1,9 +1,8 @@
+#include "arch.h"
 #include "kinttypes.h"
 #include "panic.h"
 #include "pit.h"
 #include "port.h"
-
-#include "arch/x86/apic/lapic.h"
 
 #define PORT_CMD      0x0043
 #define PORT_CH0_DATA 0x0040
@@ -54,5 +53,5 @@ void pit_irq_handler(void) {
     }
 
     g_counter_ms += PIT_PERIOD_MS;
-    lapic_send_eoi();
+    arch_ack_int();
 }
