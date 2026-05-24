@@ -11,6 +11,7 @@ target_sources(kernel PRIVATE
     idt.c
     kbd_arch.c
     mbi.c
+    pic.c
     pit.c
 
     boot.s

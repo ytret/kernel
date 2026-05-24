@@ -9,9 +9,9 @@
 #include "kinttypes.h"
 #include "log.h"
 #include "memfun.h"
-#include "pic.h"
 
 #include "arch/x86/apic/ioapic.h"
+#include "arch/x86/pic.h"
 
 static ioapic_regs_t *g_ioapic_regs;
 

@@ -29,7 +29,6 @@ target_sources(kernel PRIVATE
     memfun.c
     panic.c
     pci.c
-    pic.c
     pmm.c
     psf.c
     serial.c
