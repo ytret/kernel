@@ -4,8 +4,7 @@
 #include "assert.h"
 #include "kinttypes.h"
 #include "serial.h"
-
-#include "arch/x86/port.h"
+#include "serial_arch.h"
 
 #define BIT(x) (1 << (x))
 
@@ -70,9 +69,6 @@ static const chardev_ops_t g_serial_ops = {
 };
 
 static bool prv_serial_probe(serial_ctx_t *serial);
-static uint8_t prv_serial_read_reg(serial_ctx_t *serial, uint16_t offset);
-static void prv_serial_write_reg(serial_ctx_t *serial, uint16_t offset,
-                                 uint8_t data);
 
 static void prv_serial_set_dlab(serial_ctx_t *serial, bool on);
 static void prv_serial_set_div(serial_ctx_t *serial);
@@ -128,46 +124,37 @@ int serial_write(void *v_serial, const void *buf, size_t buf_size) {
 }
 
 static bool prv_serial_probe(serial_ctx_t *serial) {
-    const uint8_t orig_val = prv_serial_read_reg(serial, SERIAL_REG_SR);
+    const uint8_t orig_val = serial_arch_read_reg(serial, SERIAL_REG_SR);
 
     uint8_t probe_val;
     uint8_t readback;
 
     probe_val = SERIAL_PROBE_VAL_0;
-    prv_serial_write_reg(serial, SERIAL_REG_SR, probe_val);
-    readback = prv_serial_read_reg(serial, SERIAL_REG_SR);
+    serial_arch_write_reg(serial, SERIAL_REG_SR, probe_val);
+    readback = serial_arch_read_reg(serial, SERIAL_REG_SR);
     if (readback != probe_val) { return false; }
 
     probe_val = SERIAL_PROBE_VAL_1;
-    prv_serial_write_reg(serial, SERIAL_REG_SR, probe_val);
-    readback = prv_serial_read_reg(serial, SERIAL_REG_SR);
+    serial_arch_write_reg(serial, SERIAL_REG_SR, probe_val);
+    readback = serial_arch_read_reg(serial, SERIAL_REG_SR);
     if (readback != probe_val) { return false; }
 
-    prv_serial_write_reg(serial, SERIAL_REG_SR, orig_val);
+    serial_arch_write_reg(serial, SERIAL_REG_SR, orig_val);
     return true;
 }
 
-static uint8_t prv_serial_read_reg(serial_ctx_t *serial, uint16_t offset) {
-    return port_inb(serial->port_base + offset);
-}
-
-static void prv_serial_write_reg(serial_ctx_t *serial, uint16_t offset,
-                                 uint8_t data) {
-    port_outb(serial->port_base + offset, data);
-}
-
 static void prv_serial_set_dlab(serial_ctx_t *serial, bool on) {
-    uint8_t reg_val = prv_serial_read_reg(serial, SERIAL_REG_LCR);
+    uint8_t reg_val = serial_arch_read_reg(serial, SERIAL_REG_LCR);
     reg_val = on ? (reg_val | SERIAL_LCR_DLAB) : (reg_val & ~SERIAL_LCR_DLAB);
-    prv_serial_write_reg(serial, SERIAL_REG_LCR, reg_val);
+    serial_arch_write_reg(serial, SERIAL_REG_LCR, reg_val);
 }
 
 static void prv_serial_set_div(serial_ctx_t *serial) {
     const uint16_t div = serial->baudrate_div;
 
     prv_serial_set_dlab(serial, true);
-    prv_serial_write_reg(serial, SERIAL_REG_DLH, (uint8_t)(div >> 8));
-    prv_serial_write_reg(serial, SERIAL_REG_DLL, (uint8_t)div);
+    serial_arch_write_reg(serial, SERIAL_REG_DLH, (uint8_t)(div >> 8));
+    serial_arch_write_reg(serial, SERIAL_REG_DLL, (uint8_t)div);
     prv_serial_set_dlab(serial, false);
 }
 
@@ -190,7 +177,7 @@ static void prv_serial_set_fcr(serial_ctx_t *serial) {
     // Generate the RX interrupt when there are 14 bytes in the RX buffer.
     reg_val |= SERIAL_FCR_RX_TRG_14;
 
-    prv_serial_write_reg(serial, SERIAL_REG_FCR, reg_val);
+    serial_arch_write_reg(serial, SERIAL_REG_FCR, reg_val);
 }
 
 static void prv_serial_set_lcr(serial_ctx_t *serial) {
@@ -206,7 +193,7 @@ static void prv_serial_set_lcr(serial_ctx_t *serial) {
 
     reg_val &= ~SERIAL_LCR_SET_BREAK;
 
-    prv_serial_write_reg(serial, SERIAL_REG_LCR, reg_val);
+    serial_arch_write_reg(serial, SERIAL_REG_LCR, reg_val);
 }
 
 static void prv_serial_set_mcr(serial_ctx_t *serial) {
@@ -216,9 +203,9 @@ static void prv_serial_set_mcr(serial_ctx_t *serial) {
     // nothing.
     reg_val |= SERIAL_MCR_AF;
 
-    prv_serial_write_reg(serial, SERIAL_REG_MCR, reg_val);
+    serial_arch_write_reg(serial, SERIAL_REG_MCR, reg_val);
 }
 
 static void prv_serial_transmit(serial_ctx_t *serial, uint8_t data) {
-    prv_serial_write_reg(serial, SERIAL_REG_THR, data);
+    serial_arch_write_reg(serial, SERIAL_REG_THR, data);
 }

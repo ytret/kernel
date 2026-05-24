@@ -13,6 +13,7 @@ target_sources(kernel PRIVATE
     mbi.c
     pic.c
     pit.c
+    serial_arch.c
 
     boot.s
     entry.s
