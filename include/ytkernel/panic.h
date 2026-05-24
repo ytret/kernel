@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdint.h>
-
 #define PANIC(...) panic_helper(__FILE_NAME__, __func__, __LINE__, __VA_ARGS__)
 #define PANIC_ST(ST, ...)                                                      \
     panic_helper_st(__FILE_NAME__, __func__, __LINE__, (ST), __VA_ARGS__)
@@ -23,6 +21,3 @@ panic_helper_st(const char *file, const char *func, int line,
 [[gnu::noreturn]] void panic_nested(void);
 
 int panic_init_lua(void *v_L);
-
-extern int panic_walk_stack(uint32_t *arr_addr, uint32_t max_items,
-                            uint32_t init_ebp);

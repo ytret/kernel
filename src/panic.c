@@ -15,7 +15,7 @@
 #include "taskmgr.h"
 
 #define PANIC_MSG_SIZE             128
-#define PANIC_STACKTRACE_MAX_ITEMS 64
+#define PANIC_STACKTRACE_MAX_ITEMS ((size_t)64)
 
 /**
  * Panic type argument from Lua environment.
@@ -48,7 +48,7 @@ static void prv_panic_check_flag(void);
 static void prv_panic_send_ipi(void);
 
 [[maybe_unused]]
-static void prv_panic_log_stacktrace(uint32_t init_ebp, uint32_t init_eip);
+static void prv_panic_log_stacktrace(vaddr_t init_sp, vaddr_t init_pc);
 
 static int prv_panic_lua_panic(lua_State *L);
 
@@ -181,22 +181,23 @@ static void prv_panic_send_ipi(void) {
     if (smp_is_active()) { arch_broadcast_ipi(ARCH_VEC_HALT); }
 }
 
-static void prv_panic_log_stacktrace(uint32_t init_ebp, uint32_t init_eip) {
+static void prv_panic_log_stacktrace(vaddr_t init_sp, vaddr_t init_pc) {
     LOG_ERROR("stacktrace:");
 
-    const int num_items = panic_walk_stack(
-        g_panic_stacktrace, PANIC_STACKTRACE_MAX_ITEMS, init_ebp);
+    const size_t num_items = arch_walk_stack(
+        g_panic_stacktrace, PANIC_STACKTRACE_MAX_ITEMS, init_sp);
 
     if (num_items > PANIC_STACKTRACE_MAX_ITEMS) {
-        LOG_ERROR("panic_walk_stack placed too many items (%d > %d)", num_items,
-                  PANIC_STACKTRACE_MAX_ITEMS);
+        LOG_ERROR("panic_walk_stack placed too many items (%zu > %zu)",
+                  num_items, PANIC_STACKTRACE_MAX_ITEMS);
     }
 
     if (num_items == 0) { LOG_ERROR("no entries"); }
-    if (init_eip) { LOG_ERROR(" 1. 0x%08" PRIx32, init_eip); }
-    for (int idx = 0; idx < num_items; idx++) {
+    if (init_pc) { LOG_ERROR(" 1. 0x%08" PRIx32, init_pc); }
+    ASSERT(num_items <= SIZE_MAX - 2);
+    for (size_t idx = 0; idx < num_items; idx++) {
         const uint32_t addr = g_panic_stacktrace[idx];
-        LOG_ERROR("%2d. 0x%08" PRIx32, init_eip ? (idx + 2) : (idx + 1), addr);
+        LOG_ERROR("%2zu. 0x%08" PRIx32, init_pc ? (idx + 2) : (idx + 1), addr);
     }
 
     uint32_t last_addr = g_panic_stacktrace[num_items - 1];

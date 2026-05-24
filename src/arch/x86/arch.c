@@ -15,6 +15,9 @@
 #include "arch/x86/gdt.h"
 #include "arch/x86/idt.h"
 
+extern int stacktrace_walk(uint32_t *arr_addr, uint32_t max_items,
+                           uint32_t init_ebp);
+
 void arch_early_init(void) {
     gdtr_t gdtr;
     gdt_init_pre_smp(&gdtr);
@@ -139,4 +142,12 @@ void arch_flush_tlb(void) {
 
     lapic_init_tim(LAPIC_TIM_PERIOD_MS);
     init_ap_task_common();
+}
+
+size_t arch_walk_stack(vaddr_t *arr_addr, size_t max_items, vaddr_t init_sp) {
+    static_assert(sizeof(vaddr_t) == sizeof(uint32_t));
+    ASSERT(max_items <= UINT32_MAX);
+    const uint32_t num_items = stacktrace_walk(
+        (uint32_t *)arr_addr, (uint32_t)max_items, (uint32_t)init_sp);
+    return (size_t)num_items;
 }

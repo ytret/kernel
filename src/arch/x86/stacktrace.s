@@ -1,8 +1,8 @@
                 ## Panic stacktrace.
 
                 ##
-                ## int panic_walk_stack(uint32_t *arr_addr, uint32_t max_items,
-                ##                      uint32_t init_ebp)
+                ## int stacktrace_walk(uint32_t *arr_addr, uint32_t max_items,
+                ##                     uint32_t init_ebp)
                 ##
                 ## @param arr_addr  Array of addresses.
                 ## @param max_items Maximum number of items in @a arr_addr.
@@ -12,9 +12,9 @@
                 ##
                 ## @returns Number of addresses placed in @a arr_addr.
                 ##
-                .global panic_walk_stack
-                .type   panic_walk_stack, @function
-panic_walk_stack:
+                .global stacktrace_walk
+                .type   stacktrace_walk, @function
+stacktrace_walk:
                 push    %ebp
                 mov     %esp, %ebp
 
