@@ -2,6 +2,8 @@ target_sources(kernel PRIVATE
 
     apic/ioapic.c
     apic/lapic.c
+    arch_smp.c
+    arch_taskmgr.c
     arch.c
     gdt.c
     idt.c

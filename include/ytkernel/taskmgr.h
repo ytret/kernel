@@ -28,12 +28,24 @@
 
 #define TASK_NAME_LEN 32
 
+#define KERNEL_STACK_SIZE 32768
+
+/**
+ * Userspace stack address (top).
+ * @warning
+ * The address must be page-aligned.
+ */
+#define USER_STACK_TOP 0x7FFFF000
+
+/// Size of userspace stacks (pages).
+#define USER_STACK_PAGES 1
+
 typedef struct taskmgr taskmgr_t;
 
 /**
  * Thread control block.
  * @warning
- * This field order is relied upon by taskmgr_switch_tasks() assembly function
+ * This field order is relied upon by #taskmgr_switch_tasks() assembly function
  * (see taskmgr.s).
  */
 typedef struct [[gnu::packed]] {

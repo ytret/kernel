@@ -20,6 +20,7 @@
 
 typedef struct {
     uint8_t proc_num;
+    bool is_bsp;
     const acpi_proc_t *acpi;
 
     gdt_seg_desc_t *gdt;
@@ -31,6 +32,8 @@ typedef struct {
     void *df_stack_top;
 
     taskmgr_t *taskmgr;
+
+    void *arch_ctx;
 
 #ifdef YTKERNEL_ENABLE_TESTS
     spinlock_t ktest_lock;
@@ -67,6 +70,11 @@ bool smp_is_bsp_ready(void);
 void smp_set_bsp_ready(void);
 
 /**
+ * Initializes the running AP ready flag.
+ */
+void smp_reset_ap_ready(void);
+
+/**
  * Indicates to the BSP that the running AP has reached the initial task.
  *
  * @warning
@@ -76,6 +84,8 @@ void smp_set_bsp_ready(void);
  * Call this only **once**.
  */
 void smp_set_ap_ready(void);
+
+bool smp_is_ap_ready(void);
 /// @}
 
 uint8_t smp_get_num_procs(void);

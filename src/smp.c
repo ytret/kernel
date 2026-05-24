@@ -186,6 +186,14 @@ void smp_set_ap_ready(void) {
     g_smp_curr_ap_done = true;
 }
 
+void smp_reset_ap_ready(void) {
+    g_smp_curr_ap_done = false;
+}
+
+bool smp_is_ap_ready(void) {
+    return g_smp_curr_ap_done;
+}
+
 uint8_t smp_get_num_procs(void) {
     return g_smp_num_procs;
 }
