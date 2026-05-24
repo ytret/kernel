@@ -5,6 +5,7 @@ target_sources(kernel PRIVATE
     arch_boot.c
     arch_smp.c
     arch_taskmgr.c
+    arch_timer.c
     arch_vmm.c
     arch.c
     gdt.c

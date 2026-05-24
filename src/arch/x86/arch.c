@@ -1,4 +1,5 @@
 #include "arch.h"
+#include "arch_timer.h"
 #include "arch_vmm.h"
 #include "assert.h"
 #include "framebuf.h"
@@ -16,7 +17,6 @@
 #include "arch/x86/gdt.h"
 #include "arch/x86/idt.h"
 #include "arch/x86/mbi.h"
-#include "arch/x86/pit.h"
 #include "arch/x86/vga.h"
 
 // See arch/x86/linker.ld.
@@ -54,10 +54,7 @@ void arch_late_init(void) {
     lapic_init(true);
     ioapic_init();
 
-    pit_init(PIT_PERIOD_MS);
-    if (!ioapic_map_irq(PIT_IRQ, 32 + PIT_IRQ, lapic_get_id())) {
-        PANIC("failed to map PIT IRQ");
-    }
+    arch_timer_init();
 
     kbd_init();
     if (!ioapic_map_irq(KBD_IRQ, 32 + KBD_IRQ, lapic_get_id())) {
