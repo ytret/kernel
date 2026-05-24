@@ -15,16 +15,37 @@
 #include "arch/x86/arch_smp.h"
 #include "arch/x86/gdt.h"
 #include "arch/x86/idt.h"
+#include "arch/x86/mbi.h"
 
+// See arch/x86/linker.ld.
+extern uint32_t ld_vmm_kernel_end;
+
+void arch_entrypoint(uint32_t magic_num, uint32_t mbi_addr);
 extern int stacktrace_walk(uint32_t *arr_addr, uint32_t max_items,
                            uint32_t init_ebp);
+extern void main(void);
 
-void arch_early_init(void) {
+void arch_entrypoint(uint32_t magic_num, uint32_t mbi_addr) {
+    mbi_init(magic_num, mbi_addr);
+    main();
+}
+
+void arch_early_init(pmm_mmap_t *mmap) {
+    mbi_check_magic();
+
     gdtr_t gdtr;
     gdt_init_pre_smp(&gdtr);
     gdt_load(&gdtr);
 
     idt_init();
+
+    if (!mbi_fill_mmap(mbi_ptr(), mmap)) {
+        PANIC("failed to fill the memory map");
+    }
+}
+
+void arch_early_init_heap(void) {
+    mbi_save_on_heap();
 }
 
 void arch_late_init(void) {
@@ -51,6 +72,27 @@ void arch_late_init(void) {
 
 void arch_create_platform_tasks(void) {
     taskmgr_local_new_kernel_task("kbd", (uint32_t)kbd_task);
+}
+
+const char *arch_get_cmdline(void) {
+    if (mbi_ptr()->flags & MBI_FLAG_CMDLINE) {
+        return (const char *)mbi_ptr()->cmdline;
+    } else {
+        return NULL;
+    }
+}
+
+paddr_t arch_get_kernel_phys_end(void) {
+    const mbi_mod_t *const last_mod = mbi_last_mod();
+    const paddr_t kernel_end = VIRT_TO_PHYS(&ld_vmm_kernel_end);
+
+    paddr_t last_used_addr;
+    if (last_mod) { last_used_addr = last_mod->mod_end; }
+    if (!last_mod || kernel_end > last_used_addr) {
+        last_used_addr = kernel_end;
+    }
+
+    return (last_used_addr + 0x3FFFFFULL) & ~(0X3FFFFFULL);
 }
 
 void arch_halt_until_int(void) {

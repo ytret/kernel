@@ -1,4 +1,5 @@
 #include "heap.h"
+#include "kinttypes.h"
 #include "kstring.h"
 #include "log.h"
 #include "memfun.h"
@@ -7,6 +8,7 @@
 
 #include "arch/x86/mbi.h"
 
+static uint32_t g_mbi_magic_num;
 static mbi_t *gp_mbi;
 static pmm_region_t g_mbi_pmm_regions[MBI_PMM_MMAP_MAX_ENTRIES];
 
@@ -18,12 +20,24 @@ static pmm_region_t g_mbi_pmm_regions[MBI_PMM_MMAP_MAX_ENTRIES];
  * #mbi_save_on_heap() is called.  After that, the original data may be
  * discarded.
  */
-void mbi_init(paddr_t mbi_addr) {
+void mbi_init(uint32_t magic_num, paddr_t mbi_addr) {
     if (mbi_addr > VADDR_MAX) {
         PANIC("MBI structure is located beyond 4 GiB");
     }
 
+    g_mbi_magic_num = magic_num;
     gp_mbi = (mbi_t *)(vaddr_t)mbi_addr;
+}
+
+void mbi_check_magic(void) {
+    if (g_mbi_magic_num == MULTIBOOT_MAGIC_NUM) {
+        LOG_INFO("booted by a multiboot-compliant bootloader");
+        LOG_DEBUG("multiboot information structure is at %p", gp_mbi);
+    } else {
+        LOG_ERROR("main: magic number: 0x%" PRIx32 ", expected: 0x%x",
+                  g_mbi_magic_num, MULTIBOOT_MAGIC_NUM);
+        PANIC("booted by an unknown bootloader");
+    }
 }
 
 /**

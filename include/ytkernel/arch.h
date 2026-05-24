@@ -2,20 +2,25 @@
 
 #include <stdint.h>
 
+#include "pmm.h"
 #include "smp.h"
 #include "types.h"
 
 #ifdef YTKERNEL_ARCH_X86
-#include "arch/x86/arch_defs.h"  // IWYU pragma: export
+#include "arch/x86/arch_defs.h" // IWYU pragma: export
 #else
 #error "Please update include/ytkernel/arch.h to include arch_defs.h"
 #endif
 
 typedef struct isr_regs isr_regs_t;
 
-void arch_early_init(void);
+void arch_early_init(pmm_mmap_t *mmap);
+void arch_early_init_heap(void);
 void arch_late_init(void);
 void arch_create_platform_tasks(void);
+
+const char *arch_get_cmdline(void);
+paddr_t arch_get_kernel_phys_end(void);
 
 void arch_halt_until_int(void);
 void arch_pause_in_loop(void);

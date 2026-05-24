@@ -35,7 +35,7 @@ static volatile bool g_panic_flag;
 static spinlock_t g_panic_flag_lock;
 
 // Defined in entry.s.
-extern uint32_t entry_main_ret_addr;
+extern uint32_t entrypoint_ret_addr;
 
 static void prv_panic_var_helper(const char *file, const char *func, int line,
                                  const panic_traceinit_t *traceinit,
@@ -201,7 +201,7 @@ static void prv_panic_log_stacktrace(vaddr_t init_sp, vaddr_t init_pc) {
     }
 
     uint32_t last_addr = g_panic_stacktrace[num_items - 1];
-    if (last_addr == (uint32_t)&entry_main_ret_addr ||
+    if (last_addr == (uint32_t)&entrypoint_ret_addr ||
         last_addr == 0x00000000) {
         LOG_ERROR("end of kernel stack");
     } else {

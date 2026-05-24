@@ -24,18 +24,10 @@
 #include "tty.h"
 #include "vfs/vnode.h"
 
-#include "arch/x86/mbi.h"
-
 #ifdef YTKERNEL_ENABLE_TESTS
 #include "memfun.h"
 #include "test/ktest.h"
 #endif
-
-#define MULTIBOOT_MAGIC_NUM 0x2BADB002U
-
-// See arch/x86/linker.ld.
-extern uint32_t ld_vmm_kernel_start;
-extern uint32_t ld_vmm_kernel_end;
 
 static pmm_mmap_t g_mmap;
 static pmm_region_t g_kernel_region;
@@ -44,15 +36,11 @@ static pmm_region_t g_cut_region;
 static serial_ctx_t g_earlycon_serial;
 static chardev_t g_earlycon_chardev;
 
-static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr);
-static paddr_t prv_main_find_kernel_phys_end(void);
 static void prv_main_add_kernel_region(pmm_mmap_t *mmap, paddr_t region_start,
                                        paddr_t region_end);
 
-void main(uint32_t magic_num, uint32_t mbi_addr) {
+void main(void) {
     libshim_init();
-
-    mbi_init((paddr_t)mbi_addr);
 
     g_earlycon_serial.port_base = SERIAL_COM1_BASE;
     g_earlycon_serial.baudrate_div = SERIAL_BAUDRATE_115200_DIV;
@@ -65,20 +53,19 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     textdisp_early_init(boot_disp);
 
     LOG_INFO("Hello, World!");
-    check_bootloader(magic_num, mbi_addr);
 
-    arch_early_init();
-
-    if (!mbi_fill_mmap(mbi_ptr(), &g_mmap)) {
-        PANIC("failed to fill the memory map");
-    }
+    arch_early_init(&g_mmap);
 
     prv_main_add_kernel_region(&g_mmap, VMM_KERNEL_LMA,
-                               prv_main_find_kernel_phys_end());
+                               arch_get_kernel_phys_end());
     pmm_init(&g_mmap);
 
     heap_init();
+    arch_early_init_heap();
     textdisp_init(boot_disp);
+
+    const char *const cmdline = arch_get_cmdline();
+    cmdline_init(cmdline);
 
     console_t *const boot_con = console_get_boot_con();
     console_init(boot_con);
@@ -92,11 +79,6 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     inputmgr_set_tty(boot_tty);
     conmgr_init(9);
     LOG_INFO("console attached");
-
-    mbi_save_on_heap();
-    if (mbi_ptr()->flags & MBI_FLAG_CMDLINE) {
-        cmdline_init((const char *)mbi_ptr()->cmdline);
-    }
 
 #ifdef YTKERNEL_ENABLE_TESTS
     serial_ctx_t *const ktest_serial = heap_alloc(sizeof(serial_ctx_t));
@@ -134,31 +116,6 @@ void main(uint32_t magic_num, uint32_t mbi_addr) {
     taskmgr_local_init(arch_init_bsp_task);
 
     LOG_ERROR("end of main");
-}
-
-static void check_bootloader(uint32_t magic_num, uint32_t mbi_addr) {
-    if (MULTIBOOT_MAGIC_NUM == magic_num) {
-        LOG_INFO("booted by a multiboot-compliant bootloader");
-        LOG_DEBUG("multiboot information structure is at 0x%08" PRIx32,
-                  mbi_addr);
-    } else {
-        LOG_ERROR("main: magic number: 0x%" PRIx32 ", expected: 0x%x",
-                  magic_num, MULTIBOOT_MAGIC_NUM);
-        PANIC("booted by an unknown bootloader");
-    }
-}
-
-static paddr_t prv_main_find_kernel_phys_end(void) {
-    const mbi_mod_t *const last_mod = mbi_last_mod();
-    const paddr_t kernel_end = VIRT_TO_PHYS(&ld_vmm_kernel_end);
-
-    paddr_t last_used_addr;
-    if (last_mod) { last_used_addr = last_mod->mod_end; }
-    if (!last_mod || kernel_end > last_used_addr) {
-        last_used_addr = kernel_end;
-    }
-
-    return (last_used_addr + 0x3FFFFFULL) & ~(0X3FFFFFULL);
 }
 
 static void prv_main_add_kernel_region(pmm_mmap_t *mmap, paddr_t region_start,
