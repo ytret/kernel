@@ -11,10 +11,10 @@
 #include "log.h"
 #include "memfun.h"
 #include "panic.h"
-#include "pit.h"
 #include "taskmgr.h"
 
 #include "arch/x86/apic/lapic.h"
+#include "arch/x86/pit.h"
 
 static lapic_regs_t *g_lapic_regs;
 static uint32_t g_lapic_tim_freq_hz;

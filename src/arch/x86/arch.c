@@ -7,7 +7,6 @@
 #include "ksyscall.h"
 #include "log.h"
 #include "panic.h"
-#include "pit.h"
 #include "smp.h"
 
 #include "arch/x86/apic/ioapic.h"
@@ -16,6 +15,7 @@
 #include "arch/x86/gdt.h"
 #include "arch/x86/idt.h"
 #include "arch/x86/mbi.h"
+#include "arch/x86/pit.h"
 
 // See arch/x86/linker.ld.
 extern uint32_t ld_vmm_kernel_end;

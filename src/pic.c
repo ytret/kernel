@@ -3,8 +3,8 @@
 #include "kbd.h"
 #include "log.h"
 #include "pic.h"
-#include "pit.h"
 
+#include "arch/x86/pit.h"
 #include "arch/x86/port.h"
 
 #define PORT_MASTER_CMD  0x0020

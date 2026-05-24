@@ -6,13 +6,13 @@
 #include "isrs.h"
 #include "log.h"
 #include "memfun.h"
-#include "pit.h"
 #include "pmm.h"
 
 #include "arch/x86/apic/lapic.h"
 #include "arch/x86/arch_smp.h"
 #include "arch/x86/gdt.h"
 #include "arch/x86/idt.h"
+#include "arch/x86/pit.h"
 
 typedef struct [[gnu::packed]] {
     // WARNING: the order, alignment and size of these fields is relied upon in

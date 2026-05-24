@@ -16,11 +16,12 @@
 #include "log.h"
 #include "memfun.h"
 #include "panic.h"
-#include "pit.h"
 #include "pmm.h"
 #include "smp.h"
 #include "stack.h"
 #include "taskmgr.h"
+
+#include "arch/x86/pit.h"
 
 static_assert(KERNEL_STACK_SIZE % PMM_PAGE_SIZE == 0);
 static_assert(USER_STACK_TOP % PMM_PAGE_SIZE == 0);

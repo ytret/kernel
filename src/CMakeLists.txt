@@ -30,7 +30,6 @@ target_sources(kernel PRIVATE
     panic.c
     pci.c
     pic.c
-    pit.c
     pmm.c
     psf.c
     serial.c

@@ -1,8 +1,8 @@
 #include "arch.h"
 #include "kinttypes.h"
 #include "panic.h"
-#include "pit.h"
 
+#include "arch/x86/pit.h"
 #include "arch/x86/port.h"
 
 #define PORT_CMD      0x0043
