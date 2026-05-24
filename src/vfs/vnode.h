@@ -24,6 +24,7 @@ typedef enum {
     VNODE_NONE,
     VNODE_DIR,
     VNODE_FILE,
+    VNODE_DEV_CHAR,
 } vnode_type_t;
 
 typedef enum {

@@ -4,8 +4,9 @@
 #include "vfs/file.h"
 #include "vfs/vnode.h"
 
-#define FILE_FLAGS_FILE (FILE_RDONLY | FILE_WRONLY | FILE_RDWR | FILE_EXEC)
-#define FILE_FLAGS_DIR  (FILE_SEARCH)
+#define FILE_FLAGS_FILE      (FILE_RDONLY | FILE_WRONLY | FILE_RDWR | FILE_EXEC)
+#define FILE_FLAGS_DIR       (FILE_SEARCH)
+#define FILE_FLAGS_DEV_CHAR  FILE_FLAGS_FILE
 
 file_err_t file_open_node(vnode_t *node, file_t *file) {
     LOG_FLOW("node %p file %p", node, file);
@@ -36,6 +37,15 @@ file_err_t file_open_node(vnode_t *node, file_t *file) {
         bad_flags = file->flags & ~FILE_FLAGS_DIR;
         if (bad_flags) {
             LOG_ERROR("bad flags for directory: 0x%08x", bad_flags);
+            mutex_release(&node->lock);
+            return FILE_ERR_BAD_FLAGS;
+        }
+        ok_type = true;
+        break;
+    case VNODE_DEV_CHAR:
+        bad_flags = file->flags & ~FILE_FLAGS_DEV_CHAR;
+        if (bad_flags) {
+            LOG_ERROR("bad flags for character device: 0x%08x", bad_flags);
             mutex_release(&node->lock);
             return FILE_ERR_BAD_FLAGS;
         }

@@ -205,7 +205,8 @@ vfs_err_t prv_ramfs_vnode_mknode(vnode_t *vnode, vnode_t **out_vnode,
     ramfs_node_t *new_node = NULL;
     bool type_ok = false;
     switch (vnode_type) {
-    case VNODE_NONE: type_ok = false; break;
+    case VNODE_NONE:
+    case VNODE_DEV_CHAR: type_ok = false; break;
     case VNODE_DIR:
         type_ok = true;
         new_node = prv_ramfs_new_dir(ctx, name, node);
