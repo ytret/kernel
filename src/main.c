@@ -3,6 +3,7 @@
 
 #include "acpi/acpi.h"
 #include "arch.h"
+#include "arch_boot.h"
 #include "arch_vmm.h"
 #include "chardev.h"
 #include "cmdline.h"
@@ -62,6 +63,8 @@ void main(void) {
 
     heap_init();
     arch_early_init_heap();
+    arch_boot_init();
+
     textdisp_init(boot_disp);
 
     const char *const cmdline = arch_get_cmdline();

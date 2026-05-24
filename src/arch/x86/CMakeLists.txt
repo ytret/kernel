@@ -2,6 +2,7 @@ target_sources(kernel PRIVATE
 
     apic/ioapic.c
     apic/lapic.c
+    arch_boot.c
     arch_smp.c
     arch_taskmgr.c
     arch_vmm.c
