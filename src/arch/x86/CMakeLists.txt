@@ -19,6 +19,7 @@ target_sources(kernel PRIVATE
 
 )
 
+target_compile_definitions(kernel PRIVATE -DYTKERNEL_ARCH_X86=1)
 target_link_options(kernel PRIVATE
     -T${CMAKE_SOURCE_DIR}/src/arch/x86/linker.ld
 )
