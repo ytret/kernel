@@ -12,6 +12,7 @@ target_sources(kernel PRIVATE
     idt.c
     kbd_arch.c
     mbi.c
+    pci_arch.c
     pic.c
     pit.c
     serial_arch.c

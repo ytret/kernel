@@ -11,8 +11,7 @@
 #include "log.h"
 #include "panic.h"
 #include "pci.h"
-
-#include "arch/x86/port.h"
+#include "pci_arch.h"
 
 /**
  * Maximum number of _connected_ devices supported by the driver.
@@ -20,9 +19,6 @@
  * cover the most PC configurations.
  */
 #define PCI_MAX_DEVS 32
-
-#define PCI_PORT_CAS_ADDR 0x0CF8
-#define PCI_PORT_CAS_DATA 0x0CFC
 
 /**
  * Configuration Address Space (CAS) Address register.
@@ -45,8 +41,6 @@ static pci_dev_t g_pci_devs[PCI_MAX_DEVS];
 static size_t g_pci_num_devs;
 
 static void prv_pci_enumerate_bus(uint8_t bus_num);
-static void prv_pci_cas_read(uint32_t start_addr, void *v_buf,
-                             size_t num_dwords);
 
 void pci_init(void) {
     for (size_t bus_num = 0; bus_num < PCI_ENUM_BUSES; bus_num++) {
@@ -132,7 +126,7 @@ static void prv_pci_enumerate_bus(uint8_t bus_num) {
             // First, we read the common part of the header, to see if a device
             // is connected.
             static_assert(sizeof(header) % 4 == 0, "invalid header structure");
-            prv_pci_cas_read(addr.val, &header, sizeof(header) / 4);
+            pci_arch_cas_read(addr.val, &header, sizeof(header) / 4);
 
             if (header.vendor_id == 0xFFFF) { continue; }
             if (header.header_type != 0x00) {
@@ -152,7 +146,7 @@ static void prv_pci_enumerate_bus(uint8_t bus_num) {
                 (sizeof(pci_header_00h_t) - sizeof(pci_header_common_t)) % 4 ==
                     0,
                 "invalid header 00h structure");
-            prv_pci_cas_read(
+            pci_arch_cas_read(
                 addr.val,
                 (void *)((uint32_t)&dev->header + sizeof(pci_header_common_t)),
                 (sizeof(pci_header_00h_t) - sizeof(pci_header_common_t)) / 4);
@@ -161,20 +155,5 @@ static void prv_pci_enumerate_bus(uint8_t bus_num) {
         }
 
         if (g_pci_num_devs == PCI_MAX_DEVS) { break; }
-    }
-}
-
-/**
- * Reads dwords from the CAS starting at address @a addr into @a buf.
- * @param start_addr Start address.
- * @param v_buf      Buffer to copy bytes into.
- * @param num_dwords Number of dwords to read.
- */
-static void prv_pci_cas_read(uint32_t start_addr, void *v_buf,
-                             size_t num_dwords) {
-    uint32_t *const buf_u32 = v_buf;
-    for (size_t cnt_dword = 0; cnt_dword < num_dwords; cnt_dword++) {
-        port_outl(PCI_PORT_CAS_ADDR, start_addr + 4 * cnt_dword);
-        buf_u32[cnt_dword] = port_inl(PCI_PORT_CAS_DATA);
     }
 }
