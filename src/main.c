@@ -11,6 +11,8 @@
 #include "conmgr.h"
 #include "console.h"
 #include "devmgr.h"
+#include "fs/devfs.h"
+#include "fs/ramfs.h"
 #include "heap.h"
 #include "inputmgr.h"
 #include "kinttypes.h"
@@ -37,8 +39,12 @@ static pmm_region_t g_cut_region;
 static serial_ctx_t g_earlycon_serial;
 static chardev_t g_earlycon_chardev;
 
+static ramfs_ctx_t g_root_ramfs;
+
 static void prv_main_add_kernel_region(pmm_mmap_t *mmap, paddr_t region_start,
                                        paddr_t region_end);
+static void prv_main_mount_root_ramfs(void);
+static void prv_main_mount_devfs(void);
 
 void main(void) {
     libshim_init();
@@ -105,6 +111,8 @@ void main(void) {
     arch_late_init();
 
     vnode_root_init();
+    prv_main_mount_root_ramfs();
+    prv_main_mount_devfs();
 
 #ifdef YTKERNEL_ENABLE_TESTS
     ktest_run_stage(KTEST_PRE_SMP);
@@ -140,4 +148,55 @@ static void prv_main_add_kernel_region(pmm_mmap_t *mmap, paddr_t region_start,
     g_cut_region.type = PMM_REGION_AVAILABLE;
     // NOTE: it is assumed that the original region covering the kernel is
     // marked as available RAM, therefore #g_cut_region is marked as such too.
+}
+
+static void prv_main_mount_root_ramfs(void) {
+    vnode_t *const root = vnode_root_node();
+    if (!root) {
+        PANIC("%s was called before root vnode is initialized", __func__);
+    }
+    if (root->fs_ctx) {
+        LOG_ERROR("VFS root vnode is already mountpoint for some FS");
+    }
+
+    ramfs_init(&g_root_ramfs, 1024 * 1024);
+
+    const vfs_err_t err = ramfs_get_desc()->f_mount(&g_root_ramfs, root);
+    if (err != VFS_ERR_NONE) {
+        LOG_ERROR("failed to mount root ramfs at /, error %d (%s)", err,
+                  vfs_err_str(err));
+        return;
+    }
+}
+
+static void prv_main_mount_devfs(void) {
+    vnode_t *const root = vnode_root_node();
+    if (!root) {
+        PANIC("%s was called before root vnode is initialized", __func__);
+    }
+    if (!root->ops) {
+        LOG_ERROR("VFS root vnode has no ops");
+        return;
+    }
+    if (!root->ops->f_mknode) {
+        LOG_ERROR("VFS root vnode doesn't provide mknode op");
+        return;
+    }
+
+    vnode_t *dev_dir;
+    vfs_err_t err = root->ops->f_mknode(root, &dev_dir, "dev", VNODE_DIR);
+    if (err != VFS_ERR_NONE) {
+        LOG_ERROR("failed to create /dev directory, error %d (%s)", err,
+                  vfs_err_str(err));
+        return;
+    }
+
+    devfs_ctx_t *const devfs = devfs_global_ctx();
+    devfs_init(devfs);
+
+    err = devfs_get_desc()->f_mount(devfs, dev_dir);
+    if (err != VFS_ERR_NONE) {
+        LOG_ERROR("failed to mount devfs, error %d (%s)", err,
+                  vfs_err_str(err));
+    }
 }
