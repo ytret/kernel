@@ -51,27 +51,16 @@ static ramfs_node_t *prv_ramfs_new_dir(ramfs_ctx_t *ctx, const char *name,
 static ramfs_node_t *prv_ramfs_new_file(ramfs_ctx_t *ctx, const char *name,
                                         ramfs_node_t *parent);
 
-static bool prv_ramfs_find_child(ramfs_node_t *dir_node, const char *name,
-                                 ramfs_node_t **child_node, size_t *child_idx);
-static vfs_err_t prv_ramfs_add_child(ramfs_ctx_t *ctx, ramfs_node_t *dir_node,
-                                     const char *child_name,
-                                     ramfs_node_t *child_node);
-static vfs_err_t prv_ramfs_remove_child(ramfs_ctx_t *ctx,
-                                        ramfs_node_t *dir_node,
-                                        size_t child_idx);
-
 static void prv_ramfs_fill_vnode(ramfs_ctx_t *ctx, ramfs_node_t *node);
 static vnode_type_t prv_ramfs_vnode_type(ramfs_node_type_t node_type);
 
-static bool prv_ramfs_arr_push(ramfs_ctx_t *ctx, dynarr_t *arr,
-                               const void *item);
-static bool prv_ramfs_arr_insert_at(ramfs_ctx_t *ctx, dynarr_t *arr, size_t idx,
-                                    const void *item);
-static void prv_ramfs_arr_take_at(ramfs_ctx_t *ctx, dynarr_t *arr, size_t idx,
-                                  void *item, size_t item_size);
+static void *prv_ramfs_alloc(void *v_ctx, size_t size, size_t align);
+static void prv_ramfs_free(void *v_ctx, void *ptr, size_t size);
 
-static void *prv_ramfs_alloc(ramfs_ctx_t *ctx, size_t size, size_t align);
-static void prv_ramfs_free(ramfs_ctx_t *ctx, void *ptr, size_t size);
+static const dir_tree_alloc_t g_ramfs_alloc = {
+    .f_alloc = prv_ramfs_alloc,
+    .f_free = prv_ramfs_free,
+};
 
 void ramfs_init(ramfs_ctx_t *ctx, size_t allowed_size) {
     DEBUG_ASSERT(ctx != NULL);
@@ -198,7 +187,7 @@ vfs_err_t prv_ramfs_vnode_mknode(vnode_t *vnode, vnode_t **out_vnode,
     if (!ctx) { return VFS_ERR_NODE_NO_FS; }
     if (!node) { return VFS_ERR_NODE_NO_DATA; }
 
-    if (prv_ramfs_find_child(node, name, NULL, NULL)) {
+    if (dir_tree_find_child(&node->dir_node, name, NULL, NULL)) {
         return VFS_ERR_NAME_TAKEN;
     }
 
@@ -226,7 +215,8 @@ vfs_err_t prv_ramfs_vnode_mknode(vnode_t *vnode, vnode_t **out_vnode,
         return VFS_ERR_FS_NO_SPACE;
     }
 
-    const vfs_err_t err = prv_ramfs_add_child(ctx, node, name, new_node);
+    const vfs_err_t err = dir_tree_add_child(
+        ctx, &g_ramfs_alloc, &node->dir_node, name, &new_node->dir_node);
     if (err != VFS_ERR_NONE) {
         const vfs_err_t free_err = ramfs_free_node(ctx, new_node);
         if (free_err != VFS_ERR_NONE) {
@@ -256,7 +246,9 @@ vfs_err_t prv_ramfs_vnode_unlink(vnode_t *vnode, const char *name) {
 
     ramfs_node_t *child;
     size_t child_idx;
-    if (!prv_ramfs_find_child(node, name, &child, &child_idx)) {
+    if (!dir_tree_find_child(&node->dir_node, name, (dir_node_t **)&child,
+                             &child_idx)) {
+        static_assert(offsetof(ramfs_node_t, dir_node) == 0);
         return VFS_ERR_NODE_NOT_FOUND;
     }
 
@@ -267,7 +259,7 @@ vfs_err_t prv_ramfs_vnode_unlink(vnode_t *vnode, const char *name) {
         child->vnode = NULL;
     }
 
-    return prv_ramfs_remove_child(ctx, node, child_idx);
+    return dir_tree_rm_child(ctx, &g_ramfs_alloc, &node->dir_node, child_idx);
 }
 
 vfs_err_t prv_ramfs_vnode_rmdir(vnode_t *vnode, const char *name) {
@@ -284,19 +276,23 @@ vfs_err_t prv_ramfs_vnode_rmdir(vnode_t *vnode, const char *name) {
 
     ramfs_node_t *child;
     size_t child_idx;
-    if (!prv_ramfs_find_child(node, name, &child, &child_idx)) {
+    if (!dir_tree_find_child(&node->dir_node, name, (dir_node_t **)&child,
+                             &child_idx)) {
+        static_assert(offsetof(ramfs_node_t, dir_node) == 0);
         return VFS_ERR_NODE_NOT_FOUND;
     }
 
     if (child->type != RAMFS_DIR) { return VFS_ERR_NODE_NOT_DIR; }
-    if (child->dir.children.num_items != 0) { return VFS_ERR_NODE_NOT_EMPTY; }
+    if (child->dir_node.children.num_items != 0) {
+        return VFS_ERR_NODE_NOT_EMPTY;
+    }
 
     if (child->vnode) {
         child->vnode->fs_data = NULL;
         child->vnode = NULL;
     }
 
-    return prv_ramfs_remove_child(ctx, node, child_idx);
+    return dir_tree_rm_child(ctx, &g_ramfs_alloc, &node->dir_node, child_idx);
 }
 
 vfs_err_t prv_ramfs_vnode_readdir(vnode_t *vnode, void *dirent_buf,
@@ -316,13 +312,13 @@ vfs_err_t prv_ramfs_vnode_readdir(vnode_t *vnode, void *dirent_buf,
     if (!node) { return VFS_ERR_NODE_NO_DATA; }
 
     dirent_t *const dest_dirents = dirent_buf;
-    const size_t copy_items = node->dir.children.num_items <= buf_items
-                                  ? node->dir.children.num_items
+    const size_t copy_items = node->dir_node.children.num_items <= buf_items
+                                  ? node->dir_node.children.num_items
                                   : buf_items;
     for (size_t idx = 0; idx < copy_items; idx++) {
         dirent_t *idx_dirent;
-        const bool get_ok = dynarr_get_at(&node->dir.dirents, idx, &idx_dirent,
-                                          sizeof(dirent_t *));
+        const bool get_ok = dynarr_get_at(&node->dir_node.dirents, idx,
+                                          &idx_dirent, sizeof(dirent_t *));
         ASSERT(get_ok);
         kmemcpy(&dest_dirents[idx], idx_dirent, sizeof(dirent_t));
     }
@@ -350,7 +346,8 @@ vfs_err_t prv_ramfs_vnode_lookup(vnode_t *vnode, vnode_t **out_vnode,
     if (!node) { return VFS_ERR_NODE_NO_DATA; }
 
     ramfs_node_t *found_node;
-    if (!prv_ramfs_find_child(node, name, &found_node, NULL)) {
+    if (!dir_tree_find_child(&node->dir_node, name, (dir_node_t **)&found_node,
+                             NULL)) {
         return VFS_ERR_NODE_NOT_FOUND;
     }
 
@@ -428,13 +425,8 @@ static ramfs_node_t *prv_ramfs_new_dir(ramfs_ctx_t *ctx, const char *name,
     if (!node) { return NULL; }
 
     kmemset(node, 0, sizeof(*node));
-    node->name = string_dup(name);
-    node->parent = parent;
+    dir_tree_init(&node->dir_node, DIR_NODE_DIR, name, &parent->dir_node);
     node->type = RAMFS_DIR;
-    dynarr_init(&node->dir.children, sizeof(ramfs_node_t *),
-                _Alignof(ramfs_node_t *), 0);
-    dynarr_init(&node->dir.dirents, sizeof(dirent_t *), _Alignof(dirent_t *),
-                0);
 
     return node;
 }
@@ -446,91 +438,10 @@ static ramfs_node_t *prv_ramfs_new_file(ramfs_ctx_t *ctx, const char *name,
     if (!node) { return NULL; }
 
     kmemset(node, 0, sizeof(*node));
-    node->name = string_dup(name);
-    node->parent = parent;
+    dir_tree_init(&node->dir_node, DIR_NODE_LEAF, name, &parent->dir_node);
     node->type = RAMFS_FILE;
-    node->file.buf = NULL;
-    node->file.buf_size = 0;
 
     return node;
-}
-
-static bool prv_ramfs_find_child(ramfs_node_t *dir_node, const char *name,
-                                 ramfs_node_t **child_node, size_t *child_idx) {
-    ASSERT(dir_node->type == RAMFS_DIR);
-
-    ramfs_dir_data_t *const dir = &dir_node->dir;
-
-    for (size_t idx = 0; idx < dir_node->dir.children.num_items; idx++) {
-        const dirent_t *dirent;
-        bool get_ok =
-            dynarr_get_at(&dir->dirents, idx, &dirent, sizeof(dirent_t *));
-        ASSERT(get_ok);
-
-        if (string_equals(name, dirent->name)) {
-            if (child_node) {
-                get_ok = dynarr_get_at(&dir_node->dir.children, idx, child_node,
-                                       sizeof(ramfs_node_t *));
-                ASSERT(get_ok);
-            }
-            if (child_idx) { *child_idx = idx; }
-            return true;
-        }
-    }
-
-    return false;
-}
-
-static vfs_err_t prv_ramfs_add_child(ramfs_ctx_t *ctx, ramfs_node_t *dir_node,
-                                     const char *child_name,
-                                     ramfs_node_t *child_node) {
-    ASSERT(dir_node->type == RAMFS_DIR);
-
-    ramfs_dir_data_t *const dir = &dir_node->dir;
-
-    ramfs_node_t *const new_child_node = child_node;
-    dirent_t *const new_dirent =
-        prv_ramfs_alloc(ctx, sizeof(dirent_t), _Alignof(dirent_t));
-    if (!new_dirent) { return VFS_ERR_FS_NO_SPACE; }
-
-    kmemcpy(new_dirent->name, child_name, string_len(child_name) + 1);
-
-    bool push_ok = prv_ramfs_arr_push(ctx, &dir->children, &new_child_node);
-    if (!push_ok) {
-        heap_free(new_dirent);
-        return VFS_ERR_FS_NO_SPACE;
-    }
-
-    push_ok = prv_ramfs_arr_push(ctx, &dir->dirents, &new_dirent);
-    if (!push_ok) {
-        prv_ramfs_arr_take_at(ctx, &dir->children, dir->children.num_items - 1,
-                              NULL, 0);
-        prv_ramfs_free(ctx, new_dirent, sizeof(dirent_t));
-        return VFS_ERR_FS_NO_SPACE;
-    }
-
-    DEBUG_ASSERT(dir->children.num_items == dir->dirents.num_items);
-
-    return VFS_ERR_NONE;
-}
-
-static vfs_err_t prv_ramfs_remove_child(ramfs_ctx_t *ctx,
-                                        ramfs_node_t *dir_node,
-                                        size_t child_idx) {
-    DEBUG_ASSERT(ctx != NULL);
-    DEBUG_ASSERT(dir_node != NULL);
-    ASSERT(dir_node->type == RAMFS_DIR);
-
-    ramfs_dir_data_t *const dir = &dir_node->dir;
-
-    prv_ramfs_arr_take_at(ctx, &dir->children, child_idx, NULL, 0);
-
-    dirent_t *rm_dirent;
-    prv_ramfs_arr_take_at(ctx, &dir->dirents, child_idx, &rm_dirent,
-                          sizeof(dirent_t *));
-    prv_ramfs_free(ctx, rm_dirent, sizeof(dirent_t));
-
-    return VFS_ERR_NONE;
 }
 
 static void prv_ramfs_fill_vnode(ramfs_ctx_t *ctx, ramfs_node_t *node) {
@@ -557,44 +468,9 @@ static vnode_type_t prv_ramfs_vnode_type(ramfs_node_type_t node_type) {
     PANIC("not implemented for ramfs type %d", node_type);
 }
 
-static bool prv_ramfs_arr_push(ramfs_ctx_t *ctx, dynarr_t *arr,
-                               const void *item) {
-    return prv_ramfs_arr_insert_at(ctx, arr, arr->num_items, item);
-}
+static void *prv_ramfs_alloc(void *v_ctx, size_t size, size_t align) {
+    ramfs_ctx_t *const ctx = v_ctx;
 
-static bool prv_ramfs_arr_insert_at(ramfs_ctx_t *ctx, dynarr_t *arr, size_t idx,
-                                    const void *item) {
-    // NOTE: dynarr may preallocate items, but this function only checks the
-    // used array size.
-    const size_t new_size = ctx->used_size + arr->item_size;
-    if (new_size > ctx->allowed_size) {
-        LOG_ERROR("failed to insert item %p at idx %zu of arr %p", item, idx,
-                  arr);
-        return false;
-    }
-
-    const bool ok = dynarr_insert_at(arr, idx, item);
-    if (!ok) {
-        PANIC("dynarr_insert_at failed for arr %p idx %zu item %p", arr, idx,
-              item);
-    }
-
-    return true;
-}
-
-static void prv_ramfs_arr_take_at(ramfs_ctx_t *ctx, dynarr_t *arr, size_t idx,
-                                  void *buf, size_t buf_size) {
-    const bool ok = dynarr_take_at(arr, idx, buf, buf_size);
-    if (!ok) {
-        PANIC("dynarr_take_at failed for arr %p idx %zu buf %p size %zu", arr,
-              idx, buf, buf_size);
-    }
-
-    ASSERT(arr->item_size <= ctx->used_size);
-    ctx->used_size -= arr->item_size;
-}
-
-static void *prv_ramfs_alloc(ramfs_ctx_t *ctx, size_t size, size_t align) {
     // TODO: check for overflow
     const size_t new_size = ctx->used_size + size;
     if (new_size > ctx->allowed_size) {
@@ -609,7 +485,9 @@ static void *prv_ramfs_alloc(ramfs_ctx_t *ctx, size_t size, size_t align) {
     return ptr;
 }
 
-static void prv_ramfs_free(ramfs_ctx_t *ctx, void *ptr, size_t size) {
+static void prv_ramfs_free(void *v_ctx, void *ptr, size_t size) {
+    ramfs_ctx_t *const ctx = v_ctx;
+
     ASSERT(size <= ctx->used_size);
     heap_free(ptr);
     ctx->used_size -= size;

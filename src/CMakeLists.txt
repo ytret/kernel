@@ -38,6 +38,7 @@ target_sources(kernel PRIVATE
     taskmgr.c
     textdisp.c
     tty.c
+    vfs/dir_tree.c
     vfs/file.c
     vfs/vfs_err.c
     vfs/vnode.c

@@ -3,7 +3,7 @@
 #include <stddef.h>
 
 #include "config.h"
-#include "dynarr.h"
+#include "vfs/dir_tree.h"
 #include "vfs/fs_desc.h"
 
 typedef struct ramfs_node ramfs_node_t;
@@ -13,14 +13,8 @@ typedef enum {
     RAMFS_DIR,
 } ramfs_node_type_t;
 
-typedef struct {
-    dynarr_t children; // item type: `ramfs_node_t *`
-    dynarr_t dirents;  // item type: `dirent_t *`
-} ramfs_dir_data_t;
-
 struct ramfs_node {
-    char *name;
-    ramfs_node_t *parent;
+    dir_node_t dir_node;
     vnode_t *vnode;
 
     ramfs_node_type_t type;
@@ -29,7 +23,6 @@ struct ramfs_node {
             void *buf;
             size_t buf_size;
         } file;
-        ramfs_dir_data_t dir;
     };
 
 #ifdef YTKERNEL_ENABLE_TESTS
