@@ -21,6 +21,8 @@ typedef enum {
     VFS_ERR_NODE_USED,
     VFS_ERR_NODE_NOT_EMPTY,
 
+    VFS_ERR_DEV_IO,
+
     VFS_ERR_NAME_TAKEN,
 } vfs_err_t;
 

@@ -19,6 +19,7 @@ const char *vfs_err_str(vfs_err_t err) {
     case VFS_ERR_NODE_BAD_OFFSET:      return "VFS_ERR_NODE_BAD_OFFSET";
     case VFS_ERR_NODE_USED:            return "VFS_ERR_NODE_USED";
     case VFS_ERR_NODE_NOT_EMPTY:       return "VFS_ERR_NODE_NOT_EMPTY";
+    case VFS_ERR_DEV_IO:               return "VFS_ERR_DEV_IO";
     case VFS_ERR_NAME_TAKEN:           return "VFS_ERR_NAME_TAKEN";
     }
     return "<unknown error>";
