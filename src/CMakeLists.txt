@@ -14,6 +14,7 @@ target_sources(kernel PRIVATE
     devmgr.c
     elf.c
     framebuf.c
+    fs/devfs.c
     fs/ramfs.c
     heap.c
     init.c
