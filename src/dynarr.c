@@ -103,7 +103,7 @@ bool dynarr_get_at(dynarr_t *arr, size_t idx, void *buf, size_t buf_size) {
     return true;
 }
 
-const void *dynarr_ptr_at(const dynarr_t *arr, size_t idx) {
+void *dynarr_ptr_at(const dynarr_t *arr, size_t idx) {
     if (idx >= arr->num_items) { return NULL; }
     return DYNARR_ITEM_PTR(arr, idx);
 }
