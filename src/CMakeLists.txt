@@ -13,6 +13,7 @@ target_sources(kernel PRIVATE
     cpu.c
     devmgr.c
     elf.c
+    fildes.c
     framebuf.c
     fs/devfs.c
     fs/ramfs.c
