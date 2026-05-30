@@ -6,6 +6,8 @@
 #include "kstring.h"
 #include "vfs/vnode.h"
 
+#define KSH_VFS_LS_MAX_DIRENTS 64
+
 static ksharg_posarg_desc_t g_ksh_vfs_posargs[] = {
     {
         .name = "action",
@@ -137,7 +139,7 @@ static void prv_ksh_vfs_ls(const char *path) {
         return;
     }
 
-    constexpr size_t max_dirents = 10;
+    constexpr size_t max_dirents = KSH_VFS_LS_MAX_DIRENTS;
     dirent_t *const dirents = heap_alloc(max_dirents * sizeof(dirent_t));
 
     size_t read_dirents;
