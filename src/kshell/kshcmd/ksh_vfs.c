@@ -303,7 +303,7 @@ static void prv_ksh_vfs_rmdir(const char *path_str) {
         return;
     }
 
-    kprintf("ksh_vfs: removed file node at '%s'\n", path_str);
+    kprintf("ksh_vfs: removed dir node at '%s'\n", path_str);
     heap_free(basename);
 }
 
