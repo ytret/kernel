@@ -56,5 +56,3 @@ void arch_taskmgr_go_usermode(uint32_t entry);
 [[gnu::noreturn]] void arch_init_ap_task(void);
 
 size_t arch_walk_stack(vaddr_t *arr_addr, size_t max_items, vaddr_t init_sp);
-
-void arch_syscall_dispatch(isr_regs_t *regs);

@@ -22,6 +22,7 @@ const char *kerr_str(kerr_t err) {
     case KERR_NOT_MOUNTED:   return "KERR_NOT_MOUNTED";
     case KERR_BAD_FLAGS:     return "KERR_BAD_FLAGS";
     case KERR_NOT_OPENED:    return "KERR_NOT_OPENED";
+    case KERR_NO_SYSCALL:    return "KERR_NO_SYSCALL";
     }
     return "<unknown kerr_t value>";
 }

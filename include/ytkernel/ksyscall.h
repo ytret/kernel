@@ -6,5 +6,13 @@
 #define SYSCALL_SLEEP_MS 0
 #define SYSCALL_EXIT     1
 
-void syscall_sleep_ms(uint32_t duration_ms);
-void syscall_exit(uint32_t exit_code);
+typedef struct {
+    uint32_t call_id;
+    uintptr_t arg1;
+    uintptr_t arg2;
+    uintptr_t arg3;
+    uintptr_t arg4;
+    uintptr_t arg5;
+} ksyscall_args_t;
+
+int ksyscall_dispatch(ksyscall_args_t *args);

@@ -216,14 +216,3 @@ size_t arch_walk_stack(vaddr_t *arr_addr, size_t max_items, vaddr_t init_sp) {
         (uint32_t *)arr_addr, (uint32_t)max_items, (uint32_t)init_sp);
     return (size_t)num_items;
 }
-
-void arch_syscall_dispatch(isr_regs_t *regs) {
-    const uint32_t num = regs->eax;
-    const uint32_t arg1 = regs->ecx;
-
-    if (num == SYSCALL_SLEEP_MS) {
-        syscall_sleep_ms(arg1);
-    } else if (num == SYSCALL_EXIT) {
-        syscall_exit(arg1);
-    }
-}

@@ -3,14 +3,15 @@ target_sources(kernel PRIVATE
     apic/ioapic.c
     apic/lapic.c
     arch_boot.c
+    arch.c
     arch_smp.c
     arch_taskmgr.c
     arch_timer.c
     arch_vmm.c
-    arch.c
     gdt.c
     idt.c
     kbd_arch.c
+    ksyscall_arch.c
     mbi.c
     pci_arch.c
     pic.c
