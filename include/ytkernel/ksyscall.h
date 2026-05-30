@@ -2,8 +2,9 @@
 
 #include <stdint.h>
 
-#define SYSCALL_SLEEP_MS 0
-#define SYSCALL_EXIT     1
+#define KSYSCALL_SLEEP_MS  0
+#define KSYSCALL_EXIT      1
+#define KSYSCALL_MAX_CALLS 256
 
 typedef struct {
     uint32_t call_id;
