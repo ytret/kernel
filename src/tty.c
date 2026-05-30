@@ -1,15 +1,17 @@
+#include <limits.h>
+
 #include "assert.h"
 #include "chardev.h"
 #include "heap.h"
 #include "kmutex.h"
+#include "kprintf.h"
 #include "log.h"
 #include "memfun.h"
 #include "tty.h"
 
-static void prv_tty_set_ldisc_type(tty_t *tty, ldisc_type_t new_type);
-
-#define TTY_INBUF_SIZE  128
-#define TTY_OUTBUF_SIZE 256
+#define TTY_INBUF_SIZE     128
+#define TTY_OUTBUF_SIZE    256
+#define TTY_NODE_NAME_SIZE 64
 
 struct tty {
     bool is_inited;
@@ -19,10 +21,21 @@ struct tty {
     size_t unique_id;
     ldisc_t ldisc;
     chardev_t *out_dev;
+    chardev_t chardev;
 };
 
 static tty_t g_tty_boot_tty;
 static _Atomic size_t g_tty_next_id;
+
+static void prv_tty_set_ldisc_type(tty_t *tty, ldisc_type_t new_type);
+
+static int prv_tty_chardev_write(void *ctx, const void *buf, size_t buf_size);
+static int prv_tty_chardev_read(void *ctx, void *buf, size_t buf_size);
+
+static const chardev_ops_t g_tty_chardev_ops = {
+    .f_write = prv_tty_chardev_write,
+    .f_read = prv_tty_chardev_read,
+};
 
 [[gnu::artificial]]
 static inline void prv_tty_assert_lock(tty_t *tty) {
@@ -44,6 +57,10 @@ void tty_init(tty_t *tty) {
 
     ldisc_cooked_init(&tty->ldisc);
 
+    tty->chardev.ctx = tty;
+    tty->chardev.type = CHARDEV_TTY;
+    tty->chardev.ops = &g_tty_chardev_ops;
+
     tty->is_inited = true;
 }
 
@@ -51,6 +68,22 @@ tty_t *tty_new(void) {
     tty_t *const tty = heap_alloc_aligned(sizeof(tty_t), _Alignof(tty_t));
     tty_init(tty);
     return tty;
+}
+
+vfs_err_t tty_mk_devfs_node(tty_t *tty, devfs_ctx_t *devfs) {
+    // FIXME: check if it already has a device node?
+
+    DEBUG_ASSERT(devfs != NULL);
+
+    char name[TTY_NODE_NAME_SIZE];
+    const int len = ksnprintf(name, sizeof(name), "tty%zu", tty->unique_id);
+    if (len >= TTY_NODE_NAME_SIZE) {
+        PANIC(
+            "tty name would be too large (%d chars) to fit in %zu-byte buffer",
+            len, sizeof(name));
+    }
+
+    return devfs_add_chardev(devfs, name, tty);
 }
 
 size_t tty_get_id(tty_t *tty) {
@@ -166,4 +199,32 @@ static void prv_tty_set_ldisc_type(tty_t *tty, ldisc_type_t new_type) {
         break;
     }
     ASSERT(type_ok);
+}
+
+static int prv_tty_chardev_write(void *v_ctx, const void *buf,
+                                 size_t buf_size) {
+    DEBUG_ASSERT(v_ctx != NULL);
+
+    tty_t *const tty = v_ctx;
+    ASSERT(tty->is_inited);
+
+    ASSERT(tty->out_dev != NULL);
+    ASSERT(tty->out_dev->ops != NULL);
+    ASSERT(tty->out_dev->ops->f_write != NULL);
+    return tty->out_dev->ops->f_write(tty->out_dev->ctx, buf, buf_size);
+}
+
+static int prv_tty_chardev_read(void *v_ctx, void *buf, size_t buf_size) {
+    DEBUG_ASSERT(v_ctx != NULL);
+
+    tty_t *const tty = v_ctx;
+    ASSERT(tty->is_inited);
+
+    ldisc_t *const ldisc = &tty->ldisc;
+    ASSERT(ldisc->ops != NULL);
+    ASSERT(ldisc->ops->f_read != NULL);
+    const size_t num_read = ldisc->ops->f_read(ldisc->ctx, buf, buf_size);
+    // FIXME: return ssize_t or size_t
+    ASSERT(num_read <= INT_MAX);
+    return (int)num_read;
 }
