@@ -174,7 +174,6 @@ file_err_t file_read(file_t *file, void *buf, size_t num_bytes,
              out_read);
     DEBUG_ASSERT(file != NULL);
     DEBUG_ASSERT(buf != NULL);
-    DEBUG_ASSERT(out_read != NULL);
 
     mutex_acquire(&file->lock);
 
@@ -221,7 +220,6 @@ file_err_t file_write(file_t *file, const void *buf, size_t num_bytes,
              num_bytes, out_written);
     DEBUG_ASSERT(file != NULL);
     DEBUG_ASSERT(buf != NULL);
-    DEBUG_ASSERT(out_written != NULL);
 
     mutex_acquire(&file->lock);
 

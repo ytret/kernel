@@ -379,7 +379,7 @@ vfs_err_t prv_ramfs_vnode_read(vnode_t *vnode, size_t offset, void *buf,
     if (offset + num_bytes >= file_size) { num_bytes = file_size - offset; }
 
     kmemcpy(buf, (void *)((uintptr_t)node->file.buf + offset), num_bytes);
-    *out_read = num_bytes;
+    if (out_read) { *out_read = num_bytes; }
 
     return VFS_ERR_NONE;
 }
@@ -413,7 +413,7 @@ vfs_err_t prv_ramfs_vnode_write(vnode_t *vnode, size_t offset, const void *buf,
     }
 
     kmemcpy((void *)((uintptr_t)node->file.buf + offset), buf, num_bytes);
-    *out_written = num_bytes;
+    if (out_written) { *out_written = num_bytes; }
 
     return VFS_ERR_NONE;
 }
