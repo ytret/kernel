@@ -26,7 +26,8 @@ static int prv_ksyscall_sleep_ms(const ksyscall_args_t *args) {
 }
 
 static int prv_ksyscall_exit(const ksyscall_args_t *args) {
+    // TODO: store the exit code (arg1)
     (void)args;
-    // taskmgr_terminate_task(taskmgr_running_task());
+    taskmgr_terminate_task(taskmgr_local_running_task());
     return 0;
 }
