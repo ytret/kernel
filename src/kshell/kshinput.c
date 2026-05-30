@@ -1,27 +1,20 @@
 #include <stddef.h>
 
-#include "fildes.h"
 #include "kshell/kshinput.h"
-#include "log.h"
+#include "tty.h"
 
 #define CMD_BUF_SIZE 256
 
-static size_t g_kshinput_fd;
+static tty_t *g_kshinput_tty;
 static char g_kshinput_buf[CMD_BUF_SIZE];
 
-void kshinput_init(size_t fd_in) {
-    g_kshinput_fd = fd_in;
+void kshinput_init(void) {
+    g_kshinput_tty = tty_get_boot_tty();
 }
 
 const char *kshinput_line(void) {
-    size_t num_read;
-    const file_err_t err =
-        fd_read(g_kshinput_fd, g_kshinput_buf, CMD_BUF_SIZE, &num_read);
-    if (err != FILE_ERR_NONE) {
-        LOG_ERROR("failed to read from fd %zu, error %d", g_kshinput_fd, err);
-        return NULL;
-    }
-
+    size_t num_read =
+        tty_read_input(g_kshinput_tty, g_kshinput_buf, CMD_BUF_SIZE);
     if (num_read == 0) {
         g_kshinput_buf[0] = '\0';
     } else {

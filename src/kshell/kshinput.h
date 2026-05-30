@@ -1,8 +1,6 @@
 #pragma once
 
-#include <stddef.h>
-
-void kshinput_init(size_t fd_in);
+void kshinput_init(void);
 
 /**
  * Synchronously reads a line from the boot TTY and returns it.
