@@ -15,9 +15,9 @@ void kshinput_init(size_t fd_in) {
 
 const char *kshinput_line(void) {
     size_t num_read;
-    fd_err_t err =
+    const file_err_t err =
         fd_read(g_kshinput_fd, g_kshinput_buf, CMD_BUF_SIZE, &num_read);
-    if (err != FD_ERR_NONE) {
+    if (err != FILE_ERR_NONE) {
         LOG_ERROR("failed to read from fd %zu, error %d", g_kshinput_fd, err);
         return NULL;
     }

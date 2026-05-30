@@ -2,6 +2,7 @@
 
 #include "kmutex.h"
 #include "types.h"
+#include "vfs/file_err.h"
 #include "vfs/vnode.h"
 #include "vfs/vpath.h"
 
@@ -12,18 +13,6 @@ typedef enum {
     FILE_SEARCH = 1 << 3,
     FILE_EXEC = 1 << 4,
 } file_flags_t;
-
-typedef enum {
-    FILE_ERR_NONE,
-    FILE_ERR_CANNOT_OPEN,
-    FILE_ERR_BAD_FLAGS,
-    FILE_ERR_BAD_ARGS,
-    FILE_ERR_NOT_FOUND,
-    FILE_ERR_NOT_OPENED,
-    FILE_ERR_NOT_SUPP,
-    FILE_ERR_NEG_OFFSET,
-    FILE_ERR_IO,
-} file_err_t;
 
 typedef enum {
     FILE_SEEK_SET,
