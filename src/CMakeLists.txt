@@ -41,6 +41,7 @@ target_sources(kernel PRIVATE
     taskmgr.c
     textdisp.c
     tty.c
+    usermem.c
     vfs/dir_tree.c
     vfs/file.c
     vfs/vnode.c
