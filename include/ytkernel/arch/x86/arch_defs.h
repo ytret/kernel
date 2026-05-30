@@ -1,13 +1,13 @@
 #pragma once
 
-#define ARCH_VEC_HALT          0xF1 //!< Halt on panic.
-#define ARCH_VEC_TLB_SHOOTDOWN 0xF2 //!< TLB shootdown.
-
+#define ARCH_VEC_KSYSCALL      0x64
 /**
  * Interrupt number for the global AHCI interrupts.
  * IRQs of all AHCI controllers are mapped to this vector in the I/O APIC.
  */
-#define ARCH_VEC_AHCI_GLOBAL 0xA0
+#define ARCH_VEC_AHCI_GLOBAL   0xA0
+#define ARCH_VEC_HALT          0xF1 //!< Halt on panic.
+#define ARCH_VEC_TLB_SHOOTDOWN 0xF2 //!< TLB shootdown.
 
 // physical/virtual (identity-mapped)
 #define ARCH_AP_TRAMPOLINE_ADDR 0x8000

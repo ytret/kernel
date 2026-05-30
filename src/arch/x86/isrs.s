@@ -295,9 +295,9 @@ isr_ipi_tlb_shootdown:
                 .size   isr_ipi_tlb_shootdown, . - isr_ipi_tlb_shootdown
 
                 ## Syscall ISR.
-                .global isr_syscall
-                .type   isr_syscall, @function
-isr_syscall:    cli
+                .global isr_ksyscall
+                .type   isr_ksyscall, @function
+isr_ksyscall:   cli
                 push    %ebp
                 mov     %esp, %ebp
 
@@ -323,7 +323,7 @@ isr_syscall:    cli
 
                 pop     %ebp
                 iret
-                .size   isr_syscall, . - isr_syscall
+                .size   isr_ksyscall, . - isr_ksyscall
 
 
                 ## ISR for all the other interrupts.  Same as

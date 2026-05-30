@@ -98,7 +98,7 @@ void idt_init(void) {
     fill_entry(&gp_idt[ARCH_VEC_HALT], isr_ipi_halt);
     fill_entry(&gp_idt[ARCH_VEC_TLB_SHOOTDOWN], isr_ipi_tlb_shootdown);
 
-    fill_user_entry(&gp_idt[SYSCALL_INT_NUM], isr_syscall);
+    fill_user_entry(&gp_idt[ARCH_VEC_KSYSCALL], isr_ksyscall);
 
     fill_desc(p_desc, gp_idt, (sizeof(gp_idt) - 1));
     idt_load(p_desc);

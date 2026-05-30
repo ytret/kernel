@@ -69,6 +69,6 @@ extern void isr_lapic_tim(void);
 extern void isr_ipi_halt(void);
 extern void isr_ipi_tlb_shootdown(void);
 
-extern void isr_syscall(void);
+extern void isr_ksyscall(void);
 
 extern void isr_dummy(void);
