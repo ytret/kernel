@@ -333,7 +333,12 @@ vfs_err_t prv_devfs_vnode_rmdir(vnode_t *vnode, const char *name) {
         child->vnode = NULL;
     }
 
-    return dir_tree_rm_child(ctx, &g_devfs_alloc, &node->dir_node, child_idx);
+    vfs_err_t err =
+        dir_tree_rm_child(ctx, &g_devfs_alloc, &node->dir_node, child_idx);
+    if (err != VFS_ERR_NONE) { return err; }
+
+    err = devfs_free_node(ctx, child);
+    return err;
 }
 
 vfs_err_t prv_devfs_vnode_readdir(vnode_t *vnode, void *dirent_buf,
