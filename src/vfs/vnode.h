@@ -31,10 +31,22 @@ typedef enum {
     VNODE_ROOT = 1 << 0,
 } vnode_flags_t;
 
+/**
+ * VFS node operations structure.
+ *
+ * These operations are implemented by file systems. Each node on the same file
+ * system has the same set of operations. File system may implement only a
+ * subset of vnode operations, in which case some pointers are `NULL`.
+ *
+ * @warning
+ * Unchecked assumption -- the caller of any of these ops must hold the target
+ * vnode lock (#vnode_t.lock).
+ */
 typedef struct {
     vfs_err_t (*f_mknode)(vnode_t *dir_node, vnode_t **out_node,
                           const char *name, vnode_type_t node_type);
     vfs_err_t (*f_unlink)(vnode_t *node, const char *name);
+
     vfs_err_t (*f_rmdir)(vnode_t *node, const char *name);
     vfs_err_t (*f_readdir)(vnode_t *node, void *dirent_buf, size_t buf_len,
                            size_t *out_len);

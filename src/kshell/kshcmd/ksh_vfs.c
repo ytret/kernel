@@ -142,9 +142,11 @@ static void prv_ksh_vfs_ls(const char *path) {
     constexpr size_t max_dirents = KSH_VFS_LS_MAX_DIRENTS;
     dirent_t *const dirents = heap_alloc(max_dirents * sizeof(dirent_t));
 
+    mutex_acquire(&node->lock);
     size_t read_dirents;
     auto f_readdir = node->ops->f_readdir;
     vfs_err_t err = f_readdir(node, dirents, max_dirents, &read_dirents);
+    mutex_release(&node->lock);
 
     if (err != VFS_ERR_NONE) {
         kprintf("ksh_vfs: op 'readdir' returned error code %u: %s\n", err,
@@ -187,9 +189,12 @@ static void prv_ksh_vfs_mkdir(const char *path_str) {
         return;
     }
 
+    mutex_acquire(&parent_node->lock);
     vnode_t *child_node;
     auto f_mknode = parent_node->ops->f_mknode;
     err = f_mknode(parent_node, &child_node, basename, VNODE_DIR);
+    mutex_release(&parent_node->lock);
+
     if (err != VFS_ERR_NONE) {
         kprintf("ksh_vfs: op 'mknode' returned error code %u: %s\n", err,
                 vfs_err_str(err));
@@ -223,9 +228,12 @@ static void prv_ksh_vfs_mkfile(const char *path_str) {
         return;
     }
 
+    mutex_acquire(&parent_node->lock);
     vnode_t *child_node;
     auto f_mknode = parent_node->ops->f_mknode;
     err = f_mknode(parent_node, &child_node, basename, VNODE_FILE);
+    mutex_release(&parent_node->lock);
+
     if (err != VFS_ERR_NONE) {
         kprintf("ksh_vfs: op 'mknode' returned error code %u: %s\n", err,
                 vfs_err_str(err));
@@ -259,8 +267,11 @@ static void prv_ksh_vfs_unlink(const char *path_str) {
         return;
     }
 
+    mutex_acquire(&parent_node->lock);
     auto f_unlink = parent_node->ops->f_unlink;
     err = f_unlink(parent_node, basename);
+    mutex_release(&parent_node->lock);
+
     if (err != VFS_ERR_NONE) {
         kprintf("ksh_vfs: op 'unlink' returned error code %u: %s\n", err,
                 vfs_err_str(err));
@@ -294,8 +305,11 @@ static void prv_ksh_vfs_rmdir(const char *path_str) {
         return;
     }
 
+    mutex_acquire(&parent_node->lock);
     auto f_rmdir = parent_node->ops->f_rmdir;
     err = f_rmdir(parent_node, basename);
+    mutex_release(&parent_node->lock);
+
     if (err != VFS_ERR_NONE) {
         kprintf("ksh_vfs: op 'rmdir' returned error code %u: %s\n", err,
                 vfs_err_str(err));

@@ -96,11 +96,13 @@ vpath_err_t vnode_resolve_path(const vpath_t *path, vnode_t **out_node) {
         if (!vfs_node->ops) { return VPATH_ERR_BAD_NODE; }
         if (!vfs_node->ops->f_lookup) { return VPATH_ERR_BAD_NODE; }
 
+        mutex_acquire(&vfs_node->lock);
         vnode_t *child_node;
         auto f_lookup = vfs_node->ops->f_lookup;
         vfs_err_t err = f_lookup(vfs_node, &child_node, child_name);
-        if (err != VFS_ERR_NONE) { return VPATH_ERR_BAD_NODE; }
+        mutex_release(&vfs_node->lock);
 
+        if (err != VFS_ERR_NONE) { return VPATH_ERR_BAD_NODE; }
         vfs_node = child_node;
     }
 
