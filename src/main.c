@@ -45,6 +45,7 @@ static void prv_main_add_kernel_region(pmm_mmap_t *mmap, paddr_t region_start,
                                        paddr_t region_end);
 static void prv_main_mount_root_ramfs(void);
 static void prv_main_mount_devfs(void);
+static void prv_main_mk_tty_nodes(void);
 
 void main(void) {
     libshim_init();
@@ -113,6 +114,7 @@ void main(void) {
     vnode_root_init();
     prv_main_mount_root_ramfs();
     prv_main_mount_devfs();
+    prv_main_mk_tty_nodes();
 
 #ifdef YTKERNEL_ENABLE_TESTS
     ktest_run_stage(KTEST_PRE_SMP);
@@ -198,5 +200,16 @@ static void prv_main_mount_devfs(void) {
     if (err != VFS_ERR_NONE) {
         LOG_ERROR("failed to mount devfs, error %d (%s)", err,
                   vfs_err_str(err));
+    }
+}
+
+static void prv_main_mk_tty_nodes(void) {
+    devfs_ctx_t *const devfs = devfs_global_ctx();
+
+    const bool ok = conmgr_mk_tty_nodes(devfs);
+    if (ok) {
+        LOG_DEBUG("created devfs nodes for congmr ttys");
+    } else {
+        LOG_DEBUG("failed to create devfs node for some or all conmgr ttys");
     }
 }
