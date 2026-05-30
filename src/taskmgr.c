@@ -367,6 +367,8 @@ static task_t *new_task(const char *name, taskmgr_t *taskmgr,
     kmemcpy(task->name, name, name_len);
     task->name[name_len] = 0;
 
+    fd_init_arr(&task->fd_arr);
+
     // Allocate the kernel stack plus one guard page.
     void *const p_stack_guard = heap_alloc(KERNEL_STACK_SIZE + PMM_PAGE_SIZE);
     void *const p_stack = (void *)((uintptr_t)p_stack_guard + PMM_PAGE_SIZE);

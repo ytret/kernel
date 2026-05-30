@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 
+#include "fildes.h"
 #include "kspinlock.h"
 #include "list.h"
 #include "stack.h"
@@ -116,6 +117,11 @@ typedef struct {
      * Relevant only if #task_t.is_sleeping is `true`.
      */
     uint64_t sleep_until_counter_ms;
+
+    /**
+     * Array of open file descriptors.
+     */
+    fd_arr_t fd_arr;
 
     /**
      * Node in the task lists.
