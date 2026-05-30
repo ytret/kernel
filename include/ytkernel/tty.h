@@ -33,7 +33,9 @@ void tty_set_out(tty_t *tty, chardev_t *chardev);
 bool tty_set_ldisc_type(tty_t *tty, ldisc_type_t ldisc_type);
 ldisc_type_t tty_get_ldisc_type(tty_t *tty);
 
-size_t tty_write_input(tty_t *tty, const void *buf, size_t buf_size);
-size_t tty_read_input(tty_t *tty, void *buf, size_t buf_size);
+kerr_t tty_write_input(tty_t *tty, const void *buf, size_t buf_size,
+                       size_t *out_written);
+kerr_t tty_read_input(tty_t *tty, void *buf, size_t buf_size, size_t *out_read);
 
-size_t tty_write_output(tty_t *tty, const void *buf, size_t buf_size);
+kerr_t tty_write_output(tty_t *tty, const void *buf, size_t buf_size,
+                        size_t *out_written);

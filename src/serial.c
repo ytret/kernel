@@ -100,7 +100,8 @@ void serial_set_chardev(serial_ctx_t *serial, chardev_t *chardev) {
     chardev->ops = &g_serial_ops;
 }
 
-int serial_write(void *v_serial, const void *buf, size_t buf_size) {
+kerr_t serial_write(void *v_serial, const void *buf, size_t buf_size,
+                    size_t *out_written) {
     DEBUG_ASSERT(v_serial != NULL);
 
     if (!buf) { return 0; }
@@ -120,7 +121,8 @@ int serial_write(void *v_serial, const void *buf, size_t buf_size) {
     }
     spinlock_release(&serial->lock);
 
-    return buf_size;
+    if (out_written) { *out_written = buf_size; }
+    return KERR_NONE;
 }
 
 static bool prv_serial_probe(serial_ctx_t *serial) {

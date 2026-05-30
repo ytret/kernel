@@ -46,4 +46,5 @@ bool serial_init(serial_ctx_t *serial);
  */
 void serial_set_chardev(serial_ctx_t *serial, chardev_t *chardev);
 
-int serial_write(void *v_serial, const void *buf, size_t buf_size);
+kerr_t serial_write(void *v_serial, const void *buf, size_t buf_size,
+                    size_t *out_written);

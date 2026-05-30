@@ -20,7 +20,7 @@ void inputmgr_set_tty(tty_t *tty) {
     spinlock_release(&g_inputmgr.lock);
 }
 
-size_t inputmgr_write(const void *buf, size_t buf_size) {
+kerr_t inputmgr_write(const void *buf, size_t buf_size, size_t *out_written) {
     DEBUG_ASSERT(buf != NULL);
 
     spinlock_acquire(&g_inputmgr.lock);
@@ -32,7 +32,7 @@ size_t inputmgr_write(const void *buf, size_t buf_size) {
     }
 
     tty_lock(tty);
-    const size_t num_written = tty_write_input(tty, buf, buf_size);
+    const kerr_t err = tty_write_input(tty, buf, buf_size, out_written);
     tty_unlock(tty);
-    return num_written;
+    return err;
 }

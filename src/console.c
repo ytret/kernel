@@ -39,8 +39,8 @@ static void prv_console_realloc_cache(console_t *con);
 static void prv_console_clear_cache(console_t *con, size_t start_row,
                                     size_t num_rows);
 
-static int prv_console_chardev_write(void *ctx, const void *buf,
-                                     size_t buf_size);
+static kerr_t prv_console_chardev_write(void *ctx, const void *buf,
+                                        size_t buf_size, size_t *out_written);
 
 static const chardev_ops_t g_console_chardev_ops = {
     .f_write = prv_console_chardev_write,
@@ -296,8 +296,8 @@ static void prv_console_clear_cache(console_t *con, size_t start_row,
             num_rows * con->cache_row_pitch);
 }
 
-static int prv_console_chardev_write(void *v_ctx, const void *buf,
-                                     size_t buf_size) {
+static kerr_t prv_console_chardev_write(void *v_ctx, const void *buf,
+                                        size_t buf_size, size_t *out_written) {
     DEBUG_ASSERT(v_ctx != NULL);
 
     console_t *const con = v_ctx;
@@ -305,6 +305,6 @@ static int prv_console_chardev_write(void *v_ctx, const void *buf,
     console_put_buf(con, buf, buf_size);
     console_unlock(con);
 
-    // FIXME: check for overflow
-    return (int)buf_size;
+    if (out_written) { *out_written = buf_size; }
+    return KERR_NONE;
 }

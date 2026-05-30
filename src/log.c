@@ -94,7 +94,7 @@ int log_init_lua(void *v_L) {
 static void prv_log_puts(const char *str) {
     const size_t str_len = string_len(str);
     if (g_log_chardev) {
-        g_log_chardev->ops->f_write(g_log_chardev->ctx, str, str_len);
+        g_log_chardev->ops->f_write(g_log_chardev->ctx, str, str_len, NULL);
     }
 }
 

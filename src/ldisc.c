@@ -33,17 +33,23 @@ typedef struct {
     chardev_t *echo_dev;
 } ldisc_cooked_t;
 
-static size_t prv_ldisc_raw_write(void *ctx, const void *buf, size_t buf_size);
-static size_t prv_ldisc_raw_read(void *ctx, void *buf, size_t buf_size);
+static kerr_t prv_ldisc_raw_write(void *ctx, const void *buf, size_t buf_size,
+                                  size_t *out_written);
+static kerr_t prv_ldisc_raw_read(void *ctx, void *buf, size_t buf_size,
+                                 size_t *out_read);
 
 static const ldisc_ops_t g_ldisc_raw_ops = {
     .f_write = prv_ldisc_raw_write,
     .f_read = prv_ldisc_raw_read,
 };
 
-static size_t prv_ldisc_cooked_write(void *ctx, const void *buf,
-                                     size_t buf_size);
-static size_t prv_ldisc_cooked_read(void *ctx, void *buf, size_t buf_size);
+static void prv_ldisc_cooked_do_echo(ldisc_cooked_t *ctx, const void *buf,
+                                     size_t len);
+
+static kerr_t prv_ldisc_cooked_write(void *ctx, const void *buf,
+                                     size_t buf_size, size_t *num_written);
+static kerr_t prv_ldisc_cooked_read(void *ctx, void *buf, size_t buf_size,
+                                    size_t *num_read);
 
 static const ldisc_ops_t g_ldisc_cooked_ops = {
     .f_write = prv_ldisc_cooked_write,
@@ -107,8 +113,8 @@ void ldisc_destroy(ldisc_t *ldisc) {
     ldisc->type = LDISC_UNINIT;
 }
 
-static size_t prv_ldisc_raw_write(void *v_ctx, const void *buf,
-                                  size_t buf_size) {
+static kerr_t prv_ldisc_raw_write(void *v_ctx, const void *buf, size_t buf_size,
+                                  size_t *out_written) {
     ldisc_raw_t *const ctx = v_ctx;
 
     const size_t num_written = ringbuf_write(&ctx->ringbuf, buf, buf_size);
@@ -119,10 +125,12 @@ static size_t prv_ldisc_raw_write(void *v_ctx, const void *buf,
         semaphore_increase(&ctx->buf_sem);
     }
 
-    return num_written;
+    if (out_written) { *out_written = num_written; }
+    return KERR_NONE;
 }
 
-static size_t prv_ldisc_raw_read(void *v_ctx, void *buf, size_t buf_size) {
+static kerr_t prv_ldisc_raw_read(void *v_ctx, void *buf, size_t buf_size,
+                                 size_t *out_read) {
     ldisc_raw_t *const ctx = v_ctx;
 
     semaphore_decrease(&ctx->buf_sem);
@@ -134,18 +142,20 @@ static size_t prv_ldisc_raw_read(void *v_ctx, void *buf, size_t buf_size) {
         semaphore_decrease(&ctx->buf_sem);
     }
 
-    return ringbuf_read(&ctx->ringbuf, buf, to_read);
+    const size_t num_read = ringbuf_read(&ctx->ringbuf, buf, to_read);
+    if (out_read) { *out_read = num_read; }
+    return KERR_NONE;
 }
 
 static void prv_ldisc_cooked_do_echo(ldisc_cooked_t *ctx, const void *buf,
                                      size_t len) {
     if (ctx->echo_dev && len > 0) {
-        ctx->echo_dev->ops->f_write(ctx->echo_dev->ctx, buf, len);
+        ctx->echo_dev->ops->f_write(ctx->echo_dev->ctx, buf, len, NULL);
     }
 }
 
-static size_t prv_ldisc_cooked_write(void *v_ctx, const void *buf,
-                                     size_t buf_size) {
+static kerr_t prv_ldisc_cooked_write(void *v_ctx, const void *buf,
+                                     size_t buf_size, size_t *out_written) {
     ldisc_cooked_t *const ctx = v_ctx;
     const char *const bytes = buf;
 
@@ -191,10 +201,12 @@ static size_t prv_ldisc_cooked_write(void *v_ctx, const void *buf,
         }
     }
 
-    return buf_size;
+    if (out_written) { *out_written = buf_size; }
+    return KERR_NONE;
 }
 
-static size_t prv_ldisc_cooked_read(void *v_ctx, void *buf, size_t buf_size) {
+static kerr_t prv_ldisc_cooked_read(void *v_ctx, void *buf, size_t buf_size,
+                                    size_t *out_read) {
     ldisc_cooked_t *const ctx = v_ctx;
 
     semaphore_decrease(&ctx->buf_sem);
@@ -205,5 +217,6 @@ static size_t prv_ldisc_cooked_read(void *v_ctx, void *buf, size_t buf_size) {
         semaphore_decrease(&ctx->buf_sem);
     }
 
-    return num_read;
+    if (out_read) { *out_read = num_read; }
+    return KERR_NONE;
 }

@@ -29,8 +29,10 @@ static _Atomic size_t g_tty_next_id;
 
 static void prv_tty_set_ldisc_type(tty_t *tty, ldisc_type_t new_type);
 
-static int prv_tty_chardev_write(void *ctx, const void *buf, size_t buf_size);
-static int prv_tty_chardev_read(void *ctx, void *buf, size_t buf_size);
+static kerr_t prv_tty_chardev_write(void *ctx, const void *buf, size_t buf_size,
+                                    size_t *out_written);
+static kerr_t prv_tty_chardev_read(void *ctx, void *buf, size_t buf_size,
+                                   size_t *out_read);
 
 static const chardev_ops_t g_tty_chardev_ops = {
     .f_write = prv_tty_chardev_write,
@@ -130,21 +132,23 @@ ldisc_type_t tty_get_ldisc_type(tty_t *tty) {
     return tty->ldisc.type == LDISC_RAW ? LDISC_RAW : LDISC_COOKED;
 }
 
-size_t tty_write_input(tty_t *tty, const void *buf, size_t buf_size) {
+kerr_t tty_write_input(tty_t *tty, const void *buf, size_t buf_size,
+                       size_t *out_written) {
     DEBUG_ASSERT(tty != NULL);
     prv_tty_assert_lock(tty);
 
     if (!tty->ldisc.ctx) {
         LOG_ERROR("tty %p has no line discipline", tty);
-        return 0;
+        return KERR_NOT_SUPP;
     }
 
     ASSERT(tty->ldisc.ops != NULL);
     ASSERT(tty->ldisc.ops->f_write != NULL);
-    return tty->ldisc.ops->f_write(tty->ldisc.ctx, buf, buf_size);
+    return tty->ldisc.ops->f_write(tty->ldisc.ctx, buf, buf_size, out_written);
 }
 
-size_t tty_read_input(tty_t *tty, void *buf, size_t buf_size) {
+kerr_t tty_read_input(tty_t *tty, void *buf, size_t buf_size,
+                      size_t *out_read) {
     DEBUG_ASSERT(tty != NULL);
     DEBUG_ASSERT(buf != NULL);
 
@@ -153,7 +157,7 @@ size_t tty_read_input(tty_t *tty, void *buf, size_t buf_size) {
     if (!tty->ldisc.ctx) {
         LOG_ERROR("tty %p has no line discipline", tty);
         tty_unlock(tty);
-        return 0;
+        return KERR_NOT_SUPP;
     }
 
     ASSERT(tty->ldisc.ops != NULL);
@@ -164,18 +168,20 @@ size_t tty_read_input(tty_t *tty, void *buf, size_t buf_size) {
 
     tty_unlock(tty);
 
-    return ldisc_op_read(ldisc_ctx, buf, buf_size);
+    return ldisc_op_read(ldisc_ctx, buf, buf_size, out_read);
 }
 
-size_t tty_write_output(tty_t *tty, const void *buf, size_t buf_size) {
+kerr_t tty_write_output(tty_t *tty, const void *buf, size_t buf_size,
+                        size_t *num_written) {
     DEBUG_ASSERT(tty != NULL);
     DEBUG_ASSERT(buf != NULL);
 
-    if (!tty->out_dev) { return 0; }
+    if (!tty->out_dev) { return KERR_NOT_SUPP; }
 
     ASSERT(tty->out_dev->ctx != NULL);
     ASSERT(tty->out_dev->ops != NULL);
-    return tty->out_dev->ops->f_write(tty->out_dev->ctx, buf, buf_size);
+    return tty->out_dev->ops->f_write(tty->out_dev->ctx, buf, buf_size,
+                                      num_written);
 }
 
 static void prv_tty_set_ldisc_type(tty_t *tty, ldisc_type_t new_type) {
@@ -201,8 +207,8 @@ static void prv_tty_set_ldisc_type(tty_t *tty, ldisc_type_t new_type) {
     ASSERT(type_ok);
 }
 
-static int prv_tty_chardev_write(void *v_ctx, const void *buf,
-                                 size_t buf_size) {
+static kerr_t prv_tty_chardev_write(void *v_ctx, const void *buf,
+                                    size_t buf_size, size_t *out_written) {
     DEBUG_ASSERT(v_ctx != NULL);
 
     tty_t *const tty = v_ctx;
@@ -211,10 +217,12 @@ static int prv_tty_chardev_write(void *v_ctx, const void *buf,
     ASSERT(tty->out_dev != NULL);
     ASSERT(tty->out_dev->ops != NULL);
     ASSERT(tty->out_dev->ops->f_write != NULL);
-    return tty->out_dev->ops->f_write(tty->out_dev->ctx, buf, buf_size);
+    return tty->out_dev->ops->f_write(tty->out_dev->ctx, buf, buf_size,
+                                      out_written);
 }
 
-static int prv_tty_chardev_read(void *v_ctx, void *buf, size_t buf_size) {
+static kerr_t prv_tty_chardev_read(void *v_ctx, void *buf, size_t buf_size,
+                                   size_t *out_read) {
     DEBUG_ASSERT(v_ctx != NULL);
 
     tty_t *const tty = v_ctx;
@@ -223,8 +231,5 @@ static int prv_tty_chardev_read(void *v_ctx, void *buf, size_t buf_size) {
     ldisc_t *const ldisc = &tty->ldisc;
     ASSERT(ldisc->ops != NULL);
     ASSERT(ldisc->ops->f_read != NULL);
-    const size_t num_read = ldisc->ops->f_read(ldisc->ctx, buf, buf_size);
-    // FIXME: return ssize_t or size_t
-    ASSERT(num_read <= INT_MAX);
-    return (int)num_read;
+    return ldisc->ops->f_read(ldisc->ctx, buf, buf_size, out_read);
 }

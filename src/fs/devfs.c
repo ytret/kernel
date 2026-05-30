@@ -420,13 +420,7 @@ kerr_t prv_devfs_vnode_read(vnode_t *vnode, size_t offset, void *buf,
         ASSERT(chardev != NULL);
         ASSERT(chardev->ops != NULL);
         if (chardev->ops->f_write) {
-            const int ret = chardev->ops->f_read(chardev->ctx, buf, num_bytes);
-            if (ret >= 0) {
-                if (out_read) { *out_read = (size_t)ret; }
-                return KERR_NONE;
-            } else {
-                return KERR_IO;
-            }
+            return chardev->ops->f_read(chardev->ctx, buf, num_bytes, out_read);
         } else {
             return KERR_NOT_SUPP;
         }
@@ -458,13 +452,8 @@ kerr_t prv_devfs_vnode_write(vnode_t *vnode, size_t offset, const void *buf,
         ASSERT(chardev != NULL);
         ASSERT(chardev->ops != NULL);
         if (chardev->ops->f_write) {
-            const int ret = chardev->ops->f_write(chardev->ctx, buf, num_bytes);
-            if (ret >= 0) {
-                if (out_written) { *out_written = (size_t)ret; }
-                return KERR_NONE;
-            } else {
-                return KERR_IO;
-            }
+            return chardev->ops->f_write(chardev->ctx, buf, num_bytes,
+                                         out_written);
         } else {
             return KERR_NOT_SUPP;
         }

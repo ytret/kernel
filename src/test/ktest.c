@@ -126,7 +126,7 @@ static void prv_ktest_puts(const char *str) {
     if (chardev->type == CHARDEV_UNINIT) { return; }
 
     const size_t len = string_len(str);
-    chardev->ops->f_write(chardev->ctx, str, len);
+    chardev->ops->f_write(chardev->ctx, str, len, NULL);
 }
 
 static bool prv_ktest_should_run_suite(const ktest_suite_t *suite) {

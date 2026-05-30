@@ -3,9 +3,12 @@
 #include <stddef.h>
 
 #include "chardev.h"
+#include "kerr.h"
 
-typedef size_t (*ldisc_op_write_t)(void *ctx, const void *buf, size_t buf_size);
-typedef size_t (*ldisc_op_read_t)(void *ctx, void *buf, size_t buf_size);
+typedef kerr_t (*ldisc_op_write_t)(void *ctx, const void *buf, size_t buf_size,
+                                   size_t *num_written);
+typedef kerr_t (*ldisc_op_read_t)(void *ctx, void *buf, size_t buf_size,
+                                  size_t *num_read);
 
 typedef enum {
     LDISC_UNINIT,

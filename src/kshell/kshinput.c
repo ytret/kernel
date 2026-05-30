@@ -13,9 +13,10 @@ void kshinput_init(void) {
 }
 
 const char *kshinput_line(void) {
-    size_t num_read =
-        tty_read_input(g_kshinput_tty, g_kshinput_buf, CMD_BUF_SIZE);
-    if (num_read == 0) {
+    size_t num_read;
+    const kerr_t err =
+        tty_read_input(g_kshinput_tty, g_kshinput_buf, CMD_BUF_SIZE, &num_read);
+    if (err != KERR_NONE || num_read == 0) {
         g_kshinput_buf[0] = '\0';
     } else {
         g_kshinput_buf[num_read - 1] = '\0';

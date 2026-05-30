@@ -2,6 +2,8 @@
 
 #include <stddef.h>
 
+#include "kerr.h"
+
 typedef struct chardev chardev_t;
 
 typedef enum {
@@ -12,8 +14,9 @@ typedef enum {
 } chardev_type_t;
 
 typedef struct {
-    int (*f_write)(void *ctx, const void *buf, size_t buf_size);
-    int (*f_read)(void *ctx, void *buf, size_t buf_size);
+    kerr_t (*f_write)(void *ctx, const void *buf, size_t buf_size,
+                      size_t *out_written);
+    kerr_t (*f_read)(void *ctx, void *buf, size_t buf_size, size_t *out_read);
 } chardev_ops_t;
 
 struct chardev {

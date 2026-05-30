@@ -83,7 +83,12 @@ void kbd_irq_handler(void) {
         const size_t seq_len =
             keymap_process(&g_kbd.keymap, &event, seq_buf, seq_buf_size);
 
-        if (inputmgr_write(seq_buf, seq_len) == 0) {
+        size_t num_written;
+        const kerr_t err = inputmgr_write(seq_buf, seq_len, &num_written);
+        if (err != KERR_NONE) {
+            LOG_FLOW("error writing key event %u released %d", event.key,
+                     event.b_released);
+        } else if (num_written == 0) {
             LOG_FLOW("ignored key event %u released %d", event.key,
                      event.b_released);
         }
