@@ -148,7 +148,10 @@ vfs_err_t devfs_free_node(devfs_ctx_t *ctx, devfs_node_t *node) {
 
     bool type_ok = false;
     switch (node->type) {
-    case DEVFS_CHAR: type_ok = false; break;
+    case DEVFS_CHAR:
+        // FIXME: should we inform the driver?
+        type_ok = true;
+        break;
     case DEVFS_DIR:
         type_ok = true;
         if (node->dir_node.children.num_items > 0) {
