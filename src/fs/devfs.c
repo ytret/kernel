@@ -409,7 +409,7 @@ vfs_err_t prv_devfs_vnode_read(vnode_t *vnode, size_t offset, void *buf,
              offset, buf, num_bytes, out_read);
 
     if (!vnode) { return VFS_ERR_NODE_BAD_ARGS; }
-    if (vnode->type != VNODE_FILE) { return VFS_ERR_NODE_BAD_ARGS; }
+    if (vnode->type != VNODE_DEV_CHAR) { return VFS_ERR_NODE_BAD_ARGS; }
     if (!buf) { return VFS_ERR_NODE_BAD_ARGS; }
 
     devfs_ctx_t *const ctx = vnode->fs_ctx;
@@ -419,7 +419,23 @@ vfs_err_t prv_devfs_vnode_read(vnode_t *vnode, size_t offset, void *buf,
 
     switch (node->type) {
     case DEVFS_DIR:
-    case DEVFS_CHAR: return VFS_ERR_NODE_BAD_OP;
+    case DEVFS_CHAR: {
+        chardev_t *chardev = node->driver_ctx;
+        ASSERT(chardev != NULL);
+        ASSERT(chardev->ops != NULL);
+        if (chardev->ops->f_write) {
+            const int ret = chardev->ops->f_read(chardev->ctx, buf, num_bytes);
+            if (ret >= 0) {
+                if (out_read) { *out_read = (size_t)ret; }
+                return VFS_ERR_NONE;
+            } else {
+                return VFS_ERR_DEV_IO;
+            }
+        } else {
+            return VFS_ERR_NODE_BAD_OP;
+        }
+        break;
+    }
     }
 
     return VFS_ERR_NODE_BAD_OP;
@@ -431,7 +447,7 @@ vfs_err_t prv_devfs_vnode_write(vnode_t *vnode, size_t offset, const void *buf,
              offset, buf, num_bytes, out_written);
 
     if (!vnode) { return VFS_ERR_NODE_BAD_ARGS; }
-    if (vnode->type != VNODE_FILE) { return VFS_ERR_NODE_BAD_ARGS; }
+    if (vnode->type != VNODE_DEV_CHAR) { return VFS_ERR_NODE_BAD_ARGS; }
     if (!buf) { return VFS_ERR_NODE_BAD_ARGS; }
 
     devfs_ctx_t *const ctx = vnode->fs_ctx;
