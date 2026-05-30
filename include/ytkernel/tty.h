@@ -21,7 +21,7 @@ tty_t *tty_get_boot_tty(void);
 void tty_init(tty_t *tty);
 tty_t *tty_new(void);
 
-vfs_err_t tty_mk_devfs_node(tty_t *tty, devfs_ctx_t *devfs);
+kerr_t tty_mk_devfs_node(tty_t *tty, devfs_ctx_t *devfs);
 size_t tty_get_id(tty_t *tty);
 
 bool tty_is_inited(tty_t *tty);

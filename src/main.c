@@ -163,10 +163,10 @@ static void prv_main_mount_root_ramfs(void) {
 
     ramfs_init(&g_root_ramfs, 1024 * 1024);
 
-    const vfs_err_t err = ramfs_get_desc()->f_mount(&g_root_ramfs, root);
-    if (err != VFS_ERR_NONE) {
+    const kerr_t err = ramfs_get_desc()->f_mount(&g_root_ramfs, root);
+    if (err != KERR_NONE) {
         LOG_ERROR("failed to mount root ramfs at /, error %d (%s)", err,
-                  vfs_err_str(err));
+                  kerr_str(err));
         return;
     }
 }
@@ -186,10 +186,10 @@ static void prv_main_mount_devfs(void) {
     }
 
     vnode_t *dev_dir;
-    vfs_err_t err = root->ops->f_mknode(root, &dev_dir, "dev", VNODE_DIR);
-    if (err != VFS_ERR_NONE) {
+    kerr_t err = root->ops->f_mknode(root, &dev_dir, "dev", VNODE_DIR);
+    if (err != KERR_NONE) {
         LOG_ERROR("failed to create /dev directory, error %d (%s)", err,
-                  vfs_err_str(err));
+                  kerr_str(err));
         return;
     }
 
@@ -197,9 +197,8 @@ static void prv_main_mount_devfs(void) {
     devfs_init(devfs);
 
     err = devfs_get_desc()->f_mount(devfs, dev_dir);
-    if (err != VFS_ERR_NONE) {
-        LOG_ERROR("failed to mount devfs, error %d (%s)", err,
-                  vfs_err_str(err));
+    if (err != KERR_NONE) {
+        LOG_ERROR("failed to mount devfs, error %d (%s)", err, kerr_str(err));
     }
 }
 

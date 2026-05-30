@@ -74,16 +74,16 @@ bool vnode_put(vnode_t *node) {
     return false;
 }
 
-vpath_err_t vnode_resolve_path_str(const char *path_str, vnode_t **out_node) {
+kerr_t vnode_resolve_path_str(const char *path_str, vnode_t **out_node) {
     vpath_t path;
-    vpath_err_t err = vpath_from_str(path_str, &path);
-    if (err != VPATH_ERR_NONE) { return err; }
+    const kerr_t err = vpath_from_str(path_str, &path);
+    if (err != KERR_NONE) { return err; }
 
     return vnode_resolve_path(&path, out_node);
 }
 
-vpath_err_t vnode_resolve_path(const vpath_t *path, vnode_t **out_node) {
-    if (!path->is_absolute) { return VPATH_ERR_MUST_BE_ABSOLUTE; }
+kerr_t vnode_resolve_path(const vpath_t *path, vnode_t **out_node) {
+    if (!path->is_absolute) { return KERR_NOT_ABSOLUTE; }
 
     vnode_t *vfs_node = g_vfs.root_node;
     for (list_node_t *list_node = path->parts.p_first_node; list_node != NULL;
@@ -93,21 +93,21 @@ vpath_err_t vnode_resolve_path(const vpath_t *path, vnode_t **out_node) {
 
         const char *const child_name = path_part->name;
 
-        if (!vfs_node->ops) { return VPATH_ERR_BAD_NODE; }
-        if (!vfs_node->ops->f_lookup) { return VPATH_ERR_BAD_NODE; }
+        if (!vfs_node->ops) { return KERR_BAD_NODE; }
+        if (!vfs_node->ops->f_lookup) { return KERR_NOT_SUPP; }
 
         mutex_acquire(&vfs_node->lock);
         vnode_t *child_node;
         auto f_lookup = vfs_node->ops->f_lookup;
-        vfs_err_t err = f_lookup(vfs_node, &child_node, child_name);
+        const kerr_t err = f_lookup(vfs_node, &child_node, child_name);
         mutex_release(&vfs_node->lock);
 
-        if (err != VFS_ERR_NONE) { return VPATH_ERR_BAD_NODE; }
+        if (err != KERR_NONE) { return err; }
         vfs_node = child_node;
     }
 
     *out_node = vfs_node;
-    return VPATH_ERR_NONE;
+    return KERR_NONE;
 }
 
 #ifdef YTKERNEL_ENABLE_TESTS

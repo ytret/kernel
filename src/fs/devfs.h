@@ -37,5 +37,4 @@ void devfs_free(devfs_ctx_t *ctx);
 
 const fs_desc_t *devfs_get_desc(void);
 
-vfs_err_t devfs_add_chardev(devfs_ctx_t *ctx, const char *name,
-                            void *driver_ctx);
+kerr_t devfs_add_chardev(devfs_ctx_t *ctx, const char *name, void *driver_ctx);

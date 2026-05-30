@@ -40,38 +40,38 @@ bool dir_tree_find_child(dir_node_t *dir, const char *name,
     return false;
 }
 
-vfs_err_t dir_tree_add_child(void *alloc_ctx, const dir_tree_alloc_t *alloc,
-                             dir_node_t *dir, const char *child_name,
-                             dir_node_t *child_node) {
+kerr_t dir_tree_add_child(void *alloc_ctx, const dir_tree_alloc_t *alloc,
+                          dir_node_t *dir, const char *child_name,
+                          dir_node_t *child_node) {
     ASSERT(dir->type == DIR_NODE_DIR);
 
     dir_node_t *const new_child_node = child_node;
     dirent_t *const new_dirent =
         alloc->f_alloc(alloc_ctx, sizeof(dirent_t), _Alignof(dirent_t));
-    if (!new_dirent) { return VFS_ERR_FS_NO_SPACE; }
+    if (!new_dirent) { return KERR_NO_SPACE; }
 
     kmemcpy(new_dirent->name, child_name, string_len(child_name) + 1);
 
     bool push_ok = dynarr_push(&dir->children, &new_child_node, NULL);
     if (!push_ok) {
         alloc->f_free(alloc_ctx, new_dirent, sizeof(dirent_t));
-        return VFS_ERR_FS_NO_SPACE;
+        return KERR_NO_SPACE;
     }
 
     push_ok = dynarr_push(&dir->dirents, &new_dirent, NULL);
     if (!push_ok) {
         dynarr_take_at(&dir->children, dir->children.num_items - 1, NULL, 0);
         alloc->f_free(alloc_ctx, new_dirent, sizeof(dirent_t));
-        return VFS_ERR_FS_NO_SPACE;
+        return KERR_NO_SPACE;
     }
 
     DEBUG_ASSERT(dir->children.num_items == dir->dirents.num_items);
 
-    return VFS_ERR_NONE;
+    return KERR_NONE;
 }
 
-vfs_err_t dir_tree_rm_child(void *alloc_ctx, const dir_tree_alloc_t *alloc,
-                            dir_node_t *dir, size_t child_idx) {
+kerr_t dir_tree_rm_child(void *alloc_ctx, const dir_tree_alloc_t *alloc,
+                         dir_node_t *dir, size_t child_idx) {
     DEBUG_ASSERT(alloc_ctx != NULL);
     DEBUG_ASSERT(alloc != NULL);
     DEBUG_ASSERT(dir != NULL);
@@ -83,5 +83,5 @@ vfs_err_t dir_tree_rm_child(void *alloc_ctx, const dir_tree_alloc_t *alloc,
     dynarr_take_at(&dir->dirents, child_idx, &rm_dirent, sizeof(dirent_t *));
     alloc->f_free(alloc_ctx, rm_dirent, sizeof(dirent_t));
 
-    return VFS_ERR_NONE;
+    return KERR_NONE;
 }

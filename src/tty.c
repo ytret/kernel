@@ -70,7 +70,7 @@ tty_t *tty_new(void) {
     return tty;
 }
 
-vfs_err_t tty_mk_devfs_node(tty_t *tty, devfs_ctx_t *devfs) {
+kerr_t tty_mk_devfs_node(tty_t *tty, devfs_ctx_t *devfs) {
     // FIXME: check if it already has a device node?
 
     DEBUG_ASSERT(devfs != NULL);

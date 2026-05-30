@@ -21,6 +21,7 @@ target_sources(kernel PRIVATE
     init.c
     inputmgr.c
     kbd.c
+    kerr.c
     keymap.c
     kprintf.c
     kstring.c
@@ -42,7 +43,6 @@ target_sources(kernel PRIVATE
     tty.c
     vfs/dir_tree.c
     vfs/file.c
-    vfs/vfs_err.c
     vfs/vnode.c
     vfs/vpath.c
 

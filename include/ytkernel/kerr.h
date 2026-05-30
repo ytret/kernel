@@ -1,0 +1,26 @@
+#pragma once
+
+typedef enum {
+    KERR_NONE,
+    KERR_NO_SPACE,
+    KERR_NAME_TOO_LONG,
+    KERR_PATH_TOO_DEEP,
+    KERR_EMPTY_PATH,
+    KERR_NOT_ABSOLUTE,
+    KERR_BAD_NODE,
+    KERR_NOT_SUPP,
+    KERR_BAD_ARGS,
+    KERR_NO_FS,
+    KERR_NO_FS_DATA,
+    KERR_EXISTS,
+    KERR_NOT_FOUND,
+    KERR_NOT_EMPTY,
+    KERR_IO,
+    KERR_IN_USE,
+    KERR_BAD_OFFSET,
+    KERR_NOT_MOUNTED,
+    KERR_BAD_FLAGS,
+    KERR_NOT_OPENED,
+} kerr_t;
+
+const char *kerr_str(kerr_t err);

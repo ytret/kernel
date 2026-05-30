@@ -5,7 +5,7 @@
 #include "vfs/vfs_defs.h"
 #include "vfs/vpath.h"
 
-vpath_err_t vpath_from_str(const char *path_str, vpath_t *out_path) {
+kerr_t vpath_from_str(const char *path_str, vpath_t *out_path) {
     kmemset(out_path, 0, sizeof(*out_path));
     list_init(&out_path->parts, NULL);
 
@@ -18,12 +18,10 @@ vpath_err_t vpath_from_str(const char *path_str, vpath_t *out_path) {
         const char ch = path_str[idx];
         if (ch == '/' || ch == 0) {
             if ((substr_len + 1) > VFS_MAX_NAME_SIZE) {
-                return VPATH_ERR_PART_TOO_LONG;
+                return KERR_NAME_TOO_LONG;
             }
-            if (num_parts >= VPATH_MAX_PARTS) {
-                return VPATH_ERR_TOO_MANY_PARTS;
-            }
-            if (idx == 0 && ch == 0) { return VPATH_ERR_EMPTY; }
+            if (num_parts >= VPATH_MAX_PARTS) { return KERR_PATH_TOO_DEEP; }
+            if (idx == 0 && ch == 0) { return KERR_EMPTY_PATH; }
             if (idx == 0) { out_path->is_absolute = true; }
 
             if (substr_len > 0) {
@@ -49,7 +47,7 @@ vpath_err_t vpath_from_str(const char *path_str, vpath_t *out_path) {
         idx++;
     }
 
-    return VPATH_ERR_NONE;
+    return KERR_NONE;
 }
 
 void vpath_free(vpath_t *path) {
@@ -60,16 +58,4 @@ void vpath_free(vpath_t *path) {
         heap_free(part->name);
         heap_free(part);
     }
-}
-
-const char *vpath_err_str(vpath_err_t err) {
-    switch (err) {
-    case VPATH_ERR_NONE:             return "VPATH_ERR_NONE";
-    case VPATH_ERR_EMPTY:            return "VPATH_ERR_EMPTY";
-    case VPATH_ERR_TOO_MANY_PARTS:   return "VPATH_ERR_TOO_MANY_PARTS";
-    case VPATH_ERR_PART_TOO_LONG:    return "VPATH_ERR_PART_TOO_LONG";
-    case VPATH_ERR_MUST_BE_ABSOLUTE: return "VPATH_ERR_MUST_BE_ABSOLUTE";
-    case VPATH_ERR_BAD_NODE:         return "VPATH_ERR_BAD_NODE";
-    }
-    return "<unknown error>";
 }

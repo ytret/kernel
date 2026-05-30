@@ -145,12 +145,12 @@ static void prv_ksh_vfs_ls(const char *path) {
     mutex_acquire(&node->lock);
     size_t read_dirents;
     auto f_readdir = node->ops->f_readdir;
-    vfs_err_t err = f_readdir(node, dirents, max_dirents, &read_dirents);
+    kerr_t err = f_readdir(node, dirents, max_dirents, &read_dirents);
     mutex_release(&node->lock);
 
-    if (err != VFS_ERR_NONE) {
+    if (err != KERR_NONE) {
         kprintf("ksh_vfs: op 'readdir' returned error code %u: %s\n", err,
-                vfs_err_str(err));
+                kerr_str(err));
         return;
     }
 
@@ -168,7 +168,7 @@ static void prv_ksh_vfs_ls(const char *path) {
 }
 
 static void prv_ksh_vfs_mkdir(const char *path_str) {
-    vfs_err_t err;
+    kerr_t err;
     vnode_t *parent_node;
     char *basename;
 
@@ -195,9 +195,9 @@ static void prv_ksh_vfs_mkdir(const char *path_str) {
     err = f_mknode(parent_node, &child_node, basename, VNODE_DIR);
     mutex_release(&parent_node->lock);
 
-    if (err != VFS_ERR_NONE) {
+    if (err != KERR_NONE) {
         kprintf("ksh_vfs: op 'mknode' returned error code %u: %s\n", err,
-                vfs_err_str(err));
+                kerr_str(err));
         heap_free(basename);
         return;
     }
@@ -207,7 +207,7 @@ static void prv_ksh_vfs_mkdir(const char *path_str) {
 }
 
 static void prv_ksh_vfs_mkfile(const char *path_str) {
-    vfs_err_t err;
+    kerr_t err;
     vnode_t *parent_node;
     char *basename;
 
@@ -234,9 +234,9 @@ static void prv_ksh_vfs_mkfile(const char *path_str) {
     err = f_mknode(parent_node, &child_node, basename, VNODE_FILE);
     mutex_release(&parent_node->lock);
 
-    if (err != VFS_ERR_NONE) {
+    if (err != KERR_NONE) {
         kprintf("ksh_vfs: op 'mknode' returned error code %u: %s\n", err,
-                vfs_err_str(err));
+                kerr_str(err));
         heap_free(basename);
         return;
     }
@@ -246,7 +246,7 @@ static void prv_ksh_vfs_mkfile(const char *path_str) {
 }
 
 static void prv_ksh_vfs_unlink(const char *path_str) {
-    vfs_err_t err;
+    kerr_t err;
     vnode_t *parent_node;
     char *basename;
 
@@ -272,9 +272,9 @@ static void prv_ksh_vfs_unlink(const char *path_str) {
     err = f_unlink(parent_node, basename);
     mutex_release(&parent_node->lock);
 
-    if (err != VFS_ERR_NONE) {
+    if (err != KERR_NONE) {
         kprintf("ksh_vfs: op 'unlink' returned error code %u: %s\n", err,
-                vfs_err_str(err));
+                kerr_str(err));
         heap_free(basename);
         return;
     }
@@ -284,7 +284,7 @@ static void prv_ksh_vfs_unlink(const char *path_str) {
 }
 
 static void prv_ksh_vfs_rmdir(const char *path_str) {
-    vfs_err_t err;
+    kerr_t err;
     vnode_t *parent_node;
     char *basename;
 
@@ -310,9 +310,9 @@ static void prv_ksh_vfs_rmdir(const char *path_str) {
     err = f_rmdir(parent_node, basename);
     mutex_release(&parent_node->lock);
 
-    if (err != VFS_ERR_NONE) {
+    if (err != KERR_NONE) {
         kprintf("ksh_vfs: op 'rmdir' returned error code %u: %s\n", err,
-                vfs_err_str(err));
+                kerr_str(err));
         heap_free(basename);
         return;
     }
@@ -322,12 +322,12 @@ static void prv_ksh_vfs_rmdir(const char *path_str) {
 }
 
 static bool prv_ksh_vfs_resolve_path(const char *path, vnode_t **out_node) {
-    vpath_err_t err = vnode_resolve_path_str(path, out_node);
-    if (err == VPATH_ERR_NONE) {
+    kerr_t err = vnode_resolve_path_str(path, out_node);
+    if (err == KERR_NONE) {
         return true;
     } else {
         kprintf("ksh_vfs: failed to resolve path '%s' with error code %u: %s\n",
-                path, err, vpath_err_str(err));
+                path, err, kerr_str(err));
         return false;
     }
 }
@@ -336,11 +336,11 @@ static bool prv_ksh_vfs_get_parent_node(const char *path_str,
                                         vnode_t **out_node,
                                         char **out_basename) {
     vpath_t path;
-    vpath_err_t path_err = vpath_from_str(path_str, &path);
-    if (path_err != VPATH_ERR_NONE) {
+    kerr_t path_err = vpath_from_str(path_str, &path);
+    if (path_err != KERR_NONE) {
         kprintf(
             "ksh_vfs: failed to convert '%s' to a path object, error %u: %s\n",
-            path_str, path_err, vpath_err_str(path_err));
+            path_str, path_err, kerr_str(path_err));
         vpath_free(&path);
         return false;
     }
@@ -355,11 +355,11 @@ static bool prv_ksh_vfs_get_parent_node(const char *path_str,
     const char *const basename = path_last_part->name;
 
     vnode_t *parent_node = NULL;
-    vpath_err_t err = vnode_resolve_path(&path, &parent_node);
-    if (err != VPATH_ERR_NONE) {
+    kerr_t err = vnode_resolve_path(&path, &parent_node);
+    if (err != KERR_NONE) {
         kprintf("ksh_vfs: failed to resolve '%s' without its last part, error "
                 "%u: %s\n",
-                path_str, err, vpath_err_str(err));
+                path_str, err, kerr_str(err));
         if (parent_node) { vnode_put(parent_node); }
         vpath_free(&path);
         return false;

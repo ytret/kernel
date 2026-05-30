@@ -102,13 +102,13 @@ bool conmgr_mk_tty_nodes(devfs_ctx_t *devfs) {
             dynarr_get_at(&g_conmgr.ttys, idx, &tty, sizeof(tty_t *));
         ASSERT(get_ok);
 
-        const vfs_err_t err = tty_mk_devfs_node(tty, devfs);
-        if (err == VFS_ERR_NONE) {
+        const kerr_t err = tty_mk_devfs_node(tty, devfs);
+        if (err == KERR_NONE) {
             LOG_DEBUG("created devfs node for tty %zu", tty_get_id(tty));
         } else {
             all_ok = false;
             LOG_ERROR("failed to create devfs node for tty %zu, error %d (%s)",
-                      tty_get_id(tty), err, vfs_err_str(err));
+                      tty_get_id(tty), err, kerr_str(err));
         }
     }
     return all_ok;

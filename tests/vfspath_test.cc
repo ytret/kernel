@@ -31,33 +31,33 @@ class VfsPathTest : public testing::Test {
     }
 
     vpath_t path;
-    vpath_err_t err;
+    kerr_t err;
 };
 
 TEST_F(VfsPathTest, EmptyString) {
     err = vpath_from_str("", &path);
-    ASSERT_EQ(err, VPATH_ERR_EMPTY);
+    ASSERT_EQ(err, KERR_EMPTY_PATH);
     EXPECT_FALSE(path.is_absolute);
     EXPECT_TRUE(list_is_empty(&path.parts));
 }
 
 TEST_F(VfsPathTest, SingleSlashRoot) {
     err = vpath_from_str("/", &path);
-    ASSERT_EQ(err, VPATH_ERR_NONE);
+    ASSERT_EQ(err, KERR_NONE);
     EXPECT_TRUE(path.is_absolute);
     EXPECT_TRUE(list_is_empty(&path.parts));
 }
 
 TEST_F(VfsPathTest, MultipleSlashesRoot) {
     err = vpath_from_str("///", &path);
-    ASSERT_EQ(err, VPATH_ERR_NONE);
+    ASSERT_EQ(err, KERR_NONE);
     EXPECT_TRUE(path.is_absolute);
     EXPECT_TRUE(list_is_empty(&path.parts));
 }
 
 TEST_F(VfsPathTest, AbsolutePath1Part) {
     err = vpath_from_str("/foo", &path);
-    ASSERT_EQ(err, VPATH_ERR_NONE);
+    ASSERT_EQ(err, KERR_NONE);
     EXPECT_TRUE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 1);
     expect_part_eq(0, "foo");
@@ -65,7 +65,7 @@ TEST_F(VfsPathTest, AbsolutePath1Part) {
 
 TEST_F(VfsPathTest, AbsolutePath2Parts) {
     err = vpath_from_str("/foo/bar", &path);
-    ASSERT_EQ(err, VPATH_ERR_NONE);
+    ASSERT_EQ(err, KERR_NONE);
     EXPECT_TRUE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 2);
     expect_part_eq(0, "foo");
@@ -74,7 +74,7 @@ TEST_F(VfsPathTest, AbsolutePath2Parts) {
 
 TEST_F(VfsPathTest, AbsolutePath3Parts) {
     err = vpath_from_str("/a/bb/cdefgh", &path);
-    ASSERT_EQ(err, VPATH_ERR_NONE);
+    ASSERT_EQ(err, KERR_NONE);
     EXPECT_TRUE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 3);
     expect_part_eq(0, "a");
@@ -84,7 +84,7 @@ TEST_F(VfsPathTest, AbsolutePath3Parts) {
 
 TEST_F(VfsPathTest, AbsolutePath3PartsMultipleSlashes) {
     err = vpath_from_str("/////a/////bb///cdefgh", &path);
-    ASSERT_EQ(err, VPATH_ERR_NONE);
+    ASSERT_EQ(err, KERR_NONE);
     EXPECT_TRUE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 3);
     expect_part_eq(0, "a");
@@ -94,7 +94,7 @@ TEST_F(VfsPathTest, AbsolutePath3PartsMultipleSlashes) {
 
 TEST_F(VfsPathTest, AbsolutePath3PartsTrailingSlash) {
     err = vpath_from_str("/0/1/2/", &path);
-    ASSERT_EQ(err, VPATH_ERR_NONE);
+    ASSERT_EQ(err, KERR_NONE);
     EXPECT_TRUE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 3);
     expect_part_eq(0, "0");
@@ -104,7 +104,7 @@ TEST_F(VfsPathTest, AbsolutePath3PartsTrailingSlash) {
 
 TEST_F(VfsPathTest, AbsolutePath3PartsTrailingSlashes) {
     err = vpath_from_str("/0/1/2////", &path);
-    ASSERT_EQ(err, VPATH_ERR_NONE);
+    ASSERT_EQ(err, KERR_NONE);
     EXPECT_TRUE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 3);
     expect_part_eq(0, "0");
@@ -114,28 +114,28 @@ TEST_F(VfsPathTest, AbsolutePath3PartsTrailingSlashes) {
 
 TEST_F(VfsPathTest, RelativePath1Part) {
     err = vpath_from_str("foo-bar", &path);
-    ASSERT_EQ(err, VPATH_ERR_NONE);
+    ASSERT_EQ(err, KERR_NONE);
     EXPECT_FALSE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 1);
     expect_part_eq(0, "foo-bar");
 }
 TEST_F(VfsPathTest, RelativePath1PartTrailingSlash) {
     err = vpath_from_str("foo-bar/", &path);
-    ASSERT_EQ(err, VPATH_ERR_NONE);
+    ASSERT_EQ(err, KERR_NONE);
     EXPECT_FALSE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 1);
     expect_part_eq(0, "foo-bar");
 }
 TEST_F(VfsPathTest, RelativePath1PartTrailingSlashes) {
     err = vpath_from_str("foo-bar///", &path);
-    ASSERT_EQ(err, VPATH_ERR_NONE);
+    ASSERT_EQ(err, KERR_NONE);
     EXPECT_FALSE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 1);
     expect_part_eq(0, "foo-bar");
 }
 TEST_F(VfsPathTest, RelativePath2Parts) {
     err = vpath_from_str("foo/bar", &path);
-    ASSERT_EQ(err, VPATH_ERR_NONE);
+    ASSERT_EQ(err, KERR_NONE);
     EXPECT_FALSE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 2);
     expect_part_eq(0, "foo");
@@ -143,7 +143,7 @@ TEST_F(VfsPathTest, RelativePath2Parts) {
 }
 TEST_F(VfsPathTest, RelativePath3Parts) {
     err = vpath_from_str("foo/bar/xyz", &path);
-    ASSERT_EQ(err, VPATH_ERR_NONE);
+    ASSERT_EQ(err, KERR_NONE);
     EXPECT_FALSE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 3);
     expect_part_eq(0, "foo");
@@ -160,7 +160,7 @@ TEST_F(VfsPathTest, EqMaxNameLen) {
     const std::string path_str = part1_str + "/" + part2_str;
 
     err = vpath_from_str(path_str.c_str(), &path);
-    ASSERT_EQ(err, VPATH_ERR_NONE);
+    ASSERT_EQ(err, KERR_NONE);
     EXPECT_FALSE(path.is_absolute);
     EXPECT_EQ(list_count(&path.parts), 2);
     expect_part_eq(0, part1_str);
@@ -175,7 +175,7 @@ TEST_F(VfsPathTest, JustAboveMaxNameLen) {
     const std::string path_str = part1_str + "/" + part2_str;
 
     err = vpath_from_str(path_str.c_str(), &path);
-    ASSERT_EQ(err, VPATH_ERR_PART_TOO_LONG);
+    ASSERT_EQ(err, KERR_NAME_TOO_LONG);
 }
 
 TEST_F(VfsPathTest, TooManyParts) {
@@ -189,5 +189,5 @@ TEST_F(VfsPathTest, TooManyParts) {
     }
 
     err = vpath_from_str(path_str.c_str(), &path);
-    ASSERT_EQ(err, VPATH_ERR_TOO_MANY_PARTS);
+    ASSERT_EQ(err, KERR_PATH_TOO_DEEP);
 }

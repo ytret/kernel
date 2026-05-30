@@ -20,8 +20,8 @@ static void SMPSuiteVNode_test_setup(ktest_testctx_t *testctx) {
     ctx->root = vnode_root_node();
     KTEST_ASSERT_NE(ctx->root, NULL);
 
-    const vfs_err_t mountfs_err = ramfs_get_desc()->f_mount(ctx->fs, ctx->root);
-    KTEST_ASSERT_EQ(mountfs_err, VFS_ERR_NONE);
+    const kerr_t mountfs_err = ramfs_get_desc()->f_mount(ctx->fs, ctx->root);
+    KTEST_ASSERT_EQ(mountfs_err, KERR_NONE);
     KTEST_ASSERT_NE(ctx->root->ops, NULL);
     KTEST_ASSERT_NE(ctx->root->ops->f_mknode, NULL);
 
@@ -56,9 +56,9 @@ KTEST(SMPSuiteVNode, RefCount) {
 
     KTEST_PCALL(SMPSuiteVNode_test_setup);
 
-    const vfs_err_t mknode_err =
+    const kerr_t mknode_err =
         ctx->root->ops->f_mknode(ctx->root, &vnode, "vnode", VNODE_FILE);
-    KTEST_ASSERT_EQ(mknode_err, VFS_ERR_NONE);
+    KTEST_ASSERT_EQ(mknode_err, KERR_NONE);
     KTEST_ASSERT_EQ(vnode->refcount, 1);
 
     node = vnode->fs_data;
@@ -91,9 +91,9 @@ KTEST_SMPJOB(ResolveJob) {
     const char *const path_str = st_arg->path;
 
     for (size_t idx = 0; idx < 10; idx++) {
-        const vpath_err_t resolve_err =
+        const kerr_t resolve_err =
             vnode_resolve_path_str(path_str, &resolved_vnode);
-        KTEST_ASSERT_EQ(resolve_err, VPATH_ERR_NONE);
+        KTEST_ASSERT_EQ(resolve_err, KERR_NONE);
         KTEST_ASSERT_EQ(resolved_vnode, st_arg->exp_vnode);
         KTEST_ASSERT_EQ(resolved_vnode->refcount, 1);
     }
@@ -111,13 +111,13 @@ KTEST(SMPSuiteVNode, ConcurrentResolve) {
     KTEST_PCALL(SMPSuiteVNode_test_setup);
 
     // Create vnode at `/dir/file`.
-    const vfs_err_t mkdir_err =
+    const kerr_t mkdir_err =
         ctx->root->ops->f_mknode(ctx->root, &dir_vnode, "dir", VNODE_DIR);
-    KTEST_ASSERT_EQ(mkdir_err, VFS_ERR_NONE);
+    KTEST_ASSERT_EQ(mkdir_err, KERR_NONE);
     KTEST_ASSERT_NE(dir_vnode, NULL);
-    const vfs_err_t mkfile_err =
+    const kerr_t mkfile_err =
         ctx->root->ops->f_mknode(dir_vnode, &file_vnode, "file", VNODE_FILE);
-    KTEST_ASSERT_EQ(mkfile_err, VFS_ERR_NONE);
+    KTEST_ASSERT_EQ(mkfile_err, KERR_NONE);
     KTEST_ASSERT_NE(file_vnode, NULL);
 
     arg = heap_alloc(sizeof(*arg));

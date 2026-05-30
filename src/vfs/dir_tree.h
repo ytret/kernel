@@ -1,7 +1,7 @@
 #pragma once
 
 #include "dynarr.h"
-#include "vfs/vfs_err.h"
+#include "kerr.h"
 
 typedef enum {
     DIR_NODE_DIR,
@@ -30,8 +30,8 @@ void dir_tree_init(dir_node_t *node, dir_node_type_t type, const char *name,
 
 bool dir_tree_find_child(dir_node_t *dir_node, const char *name,
                          dir_node_t **child_node, size_t *child_idx);
-vfs_err_t dir_tree_add_child(void *alloc_ctx, const dir_tree_alloc_t *alloc,
-                             dir_node_t *dir_node, const char *child_name,
-                             dir_node_t *child_node);
-vfs_err_t dir_tree_rm_child(void *alloc_ctx, const dir_tree_alloc_t *alloc,
-                            dir_node_t *dir_node, size_t child_idx);
+kerr_t dir_tree_add_child(void *alloc_ctx, const dir_tree_alloc_t *alloc,
+                          dir_node_t *dir_node, const char *child_name,
+                          dir_node_t *child_node);
+kerr_t dir_tree_rm_child(void *alloc_ctx, const dir_tree_alloc_t *alloc,
+                         dir_node_t *dir_node, size_t child_idx);

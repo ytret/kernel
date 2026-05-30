@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vfs/vfs_err.h"
+#include "kerr.h"
 
 typedef struct vnode vnode_t;
 
@@ -24,9 +24,9 @@ typedef struct {
      * @param ctx  Filesystem context pointer.
      * @param node VFS node to mount the filesystem at.
      *
-     * @returns An error code, see #vfs_err_t.
+     * @returns An error code, see #kerr_t.
      */
-    vfs_err_t (*f_mount)(void *ctx, vnode_t *node);
+    kerr_t (*f_mount)(void *ctx, vnode_t *node);
 
     /**
      * Unmount the filesystem @a ctx from the VFS node @a node.
@@ -34,9 +34,9 @@ typedef struct {
      * @param ctx  Filesystem context pointer.
      * @param node VFS node, which the filesystem is currently mounted at.
      *
-     * @returns An error code, see #vfs_err_t.
+     * @returns An error code, see #kerr_t.
      */
-    vfs_err_t (*f_unmount)(void *ctx, vnode_t *node);
+    kerr_t (*f_unmount)(void *ctx, vnode_t *node);
 
     /**
      * Function called right before a vnode is freed.

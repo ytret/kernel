@@ -2,7 +2,6 @@
 
 #include "kmutex.h"
 #include "types.h"
-#include "vfs/file_err.h"
 #include "vfs/vnode.h"
 #include "vfs/vpath.h"
 
@@ -28,13 +27,12 @@ typedef struct {
     off_t offset;
 } file_t;
 
-file_err_t file_open_node(vnode_t *node, file_t *file);
-file_err_t file_open_path(const vpath_t *path, file_t *file);
-file_err_t file_open_path_str(const char *path_str, file_t *file);
-file_err_t file_close(file_t *file);
+kerr_t file_open_node(vnode_t *node, file_t *file);
+kerr_t file_open_path(const vpath_t *path, file_t *file);
+kerr_t file_open_path_str(const char *path_str, file_t *file);
+kerr_t file_close(file_t *file);
 
-file_err_t file_seek(file_t *file, off_t offset, file_seek_t whence);
-file_err_t file_read(file_t *file, void *buf, size_t num_bytes,
-                     size_t *out_read);
-file_err_t file_write(file_t *file, const void *buf, size_t num_bytes,
-                      size_t *out_written);
+kerr_t file_seek(file_t *file, off_t offset, file_seek_t whence);
+kerr_t file_read(file_t *file, void *buf, size_t num_bytes, size_t *out_read);
+kerr_t file_write(file_t *file, const void *buf, size_t num_bytes,
+                  size_t *out_written);

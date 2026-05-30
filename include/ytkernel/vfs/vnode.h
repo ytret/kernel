@@ -3,10 +3,10 @@
 #include <stddef.h>
 
 #include "config.h"
+#include "kerr.h"
 #include "kmutex.h"
 #include "vfs/fs_desc.h"
 #include "vfs/vfs_defs.h"
-#include "vfs/vfs_err.h"
 #include "vfs/vpath.h"
 
 #ifdef YTKERNEL_ENABLE_TESTS
@@ -43,20 +43,19 @@ typedef enum {
  * vnode lock (#vnode_t.lock).
  */
 typedef struct {
-    vfs_err_t (*f_mknode)(vnode_t *dir_node, vnode_t **out_node,
-                          const char *name, vnode_type_t node_type);
-    vfs_err_t (*f_unlink)(vnode_t *node, const char *name);
+    kerr_t (*f_mknode)(vnode_t *dir_node, vnode_t **out_node, const char *name,
+                       vnode_type_t node_type);
+    kerr_t (*f_unlink)(vnode_t *node, const char *name);
 
-    vfs_err_t (*f_rmdir)(vnode_t *node, const char *name);
-    vfs_err_t (*f_readdir)(vnode_t *node, void *dirent_buf, size_t buf_len,
-                           size_t *out_len);
-    vfs_err_t (*f_lookup)(vnode_t *dir_node, vnode_t **out_node,
-                          const char *name);
-    vfs_err_t (*f_read)(vnode_t *node, size_t offset, void *buf,
-                        size_t num_bytes, size_t *out_read);
-    vfs_err_t (*f_write)(vnode_t *node, size_t offset, const void *buf,
-                         size_t num_bytes, size_t *out_written);
-    vfs_err_t (*f_ioctl)(vnode_t *node, uint32_t req, void *arg);
+    kerr_t (*f_rmdir)(vnode_t *node, const char *name);
+    kerr_t (*f_readdir)(vnode_t *node, void *dirent_buf, size_t buf_len,
+                        size_t *out_len);
+    kerr_t (*f_lookup)(vnode_t *dir_node, vnode_t **out_node, const char *name);
+    kerr_t (*f_read)(vnode_t *node, size_t offset, void *buf, size_t num_bytes,
+                     size_t *out_read);
+    kerr_t (*f_write)(vnode_t *node, size_t offset, const void *buf,
+                      size_t num_bytes, size_t *out_written);
+    kerr_t (*f_ioctl)(vnode_t *node, uint32_t req, void *arg);
 } vnode_ops_t;
 
 struct vnode {
@@ -85,8 +84,8 @@ vnode_t *vnode_get(void);
 void vnode_ref(vnode_t *node);
 bool vnode_put(vnode_t *node);
 
-vpath_err_t vnode_resolve_path_str(const char *path_str, vnode_t **out_node);
-vpath_err_t vnode_resolve_path(const vpath_t *path, vnode_t **out_node);
+kerr_t vnode_resolve_path_str(const char *path_str, vnode_t **out_node);
+kerr_t vnode_resolve_path(const vpath_t *path, vnode_t **out_node);
 
 #ifdef YTKERNEL_ENABLE_TESTS
 size_t vnode_get_destroy_cnt(void);
