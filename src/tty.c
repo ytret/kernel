@@ -16,11 +16,13 @@ struct tty {
     task_mutex_t lock;
     size_t lock_cnt;
 
+    size_t unique_id;
     ldisc_t ldisc;
     chardev_t *out_dev;
 };
 
 static tty_t g_tty_boot_tty;
+static _Atomic size_t g_tty_next_id;
 
 [[gnu::artificial]]
 static inline void prv_tty_assert_lock(tty_t *tty) {
@@ -37,6 +39,9 @@ void tty_init(tty_t *tty) {
     kmemset(tty, 0, sizeof(*tty));
     mutex_init(&tty->lock);
 
+    const size_t id = g_tty_next_id++;
+    tty->unique_id = id;
+
     ldisc_cooked_init(&tty->ldisc);
 
     tty->is_inited = true;
@@ -46,6 +51,10 @@ tty_t *tty_new(void) {
     tty_t *const tty = heap_alloc_aligned(sizeof(tty_t), _Alignof(tty_t));
     tty_init(tty);
     return tty;
+}
+
+size_t tty_get_id(tty_t *tty) {
+    return tty->unique_id;
 }
 
 bool tty_is_inited(tty_t *tty) {

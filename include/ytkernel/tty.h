@@ -20,6 +20,8 @@ tty_t *tty_get_boot_tty(void);
 void tty_init(tty_t *tty);
 tty_t *tty_new(void);
 
+size_t tty_get_id(tty_t *tty);
+
 bool tty_is_inited(tty_t *tty);
 void tty_lock(tty_t *tty);
 void tty_unlock(tty_t *tty);
