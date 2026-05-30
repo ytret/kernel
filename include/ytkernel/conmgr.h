@@ -10,5 +10,9 @@
 
 #include <stddef.h>
 
+#include "fs/devfs.h"
+
 void conmgr_init(size_t num_add_cons);
 bool conmgr_switch(size_t idx);
+
+bool conmgr_mk_tty_nodes(devfs_ctx_t *devfs);

@@ -93,3 +93,23 @@ bool conmgr_switch(size_t idx) {
     spinlock_release(&g_conmgr.lock);
     return attached;
 }
+
+bool conmgr_mk_tty_nodes(devfs_ctx_t *devfs) {
+    bool all_ok = true;
+    for (size_t idx = 0; idx < g_conmgr.ttys.num_items; idx++) {
+        tty_t *tty;
+        const bool get_ok =
+            dynarr_get_at(&g_conmgr.ttys, idx, &tty, sizeof(tty_t *));
+        ASSERT(get_ok);
+
+        const vfs_err_t err = tty_mk_devfs_node(tty, devfs);
+        if (err == VFS_ERR_NONE) {
+            LOG_DEBUG("created devfs node for tty %zu", tty_get_id(tty));
+        } else {
+            all_ok = false;
+            LOG_ERROR("failed to create devfs node for tty %zu, error %d (%s)",
+                      tty_get_id(tty), err, vfs_err_str(err));
+        }
+    }
+    return all_ok;
+}
