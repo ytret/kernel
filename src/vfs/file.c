@@ -4,9 +4,9 @@
 #include "vfs/file.h"
 #include "vfs/vnode.h"
 
-#define FILE_FLAGS_FILE      (FILE_RDONLY | FILE_WRONLY | FILE_RDWR | FILE_EXEC)
-#define FILE_FLAGS_DIR       (FILE_SEARCH)
-#define FILE_FLAGS_DEV_CHAR  FILE_FLAGS_FILE
+#define FILE_FLAGS_FILE     (FILE_RDONLY | FILE_WRONLY | FILE_RDWR | FILE_EXEC)
+#define FILE_FLAGS_DIR      (FILE_SEARCH)
+#define FILE_FLAGS_DEV_CHAR FILE_FLAGS_FILE
 
 file_err_t file_open_node(vnode_t *node, file_t *file) {
     LOG_FLOW("node %p file %p", node, file);
@@ -186,7 +186,7 @@ file_err_t file_read(file_t *file, void *buf, size_t num_bytes,
 
     vnode_t *const node = file->node;
     mutex_acquire(&node->lock);
-    if (node->type != VNODE_FILE) {
+    if (node->type != VNODE_FILE && node->type != VNODE_DEV_CHAR) {
         LOG_ERROR("node %p type %d does not support read", node, node->type);
         mutex_release(&node->lock);
         mutex_release(&file->lock);
@@ -233,7 +233,7 @@ file_err_t file_write(file_t *file, const void *buf, size_t num_bytes,
 
     vnode_t *const node = file->node;
     mutex_acquire(&node->lock);
-    if (node->type != VNODE_FILE) {
+    if (node->type != VNODE_FILE && node->type != VNODE_DEV_CHAR) {
         LOG_ERROR("node %p type %d does not support write", node, node->type);
         mutex_release(&node->lock);
         mutex_release(&file->lock);
