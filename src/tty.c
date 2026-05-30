@@ -83,7 +83,7 @@ vfs_err_t tty_mk_devfs_node(tty_t *tty, devfs_ctx_t *devfs) {
             len, sizeof(name));
     }
 
-    return devfs_add_chardev(devfs, name, tty);
+    return devfs_add_chardev(devfs, name, &tty->chardev);
 }
 
 size_t tty_get_id(tty_t *tty) {
