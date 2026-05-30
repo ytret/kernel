@@ -419,7 +419,7 @@ kerr_t prv_devfs_vnode_read(vnode_t *vnode, size_t offset, void *buf,
         chardev_t *chardev = node->driver_ctx;
         ASSERT(chardev != NULL);
         ASSERT(chardev->ops != NULL);
-        if (chardev->ops->f_write) {
+        if (chardev->ops->f_read) {
             return chardev->ops->f_read(chardev->ctx, buf, num_bytes, out_read);
         } else {
             return KERR_NOT_SUPP;
