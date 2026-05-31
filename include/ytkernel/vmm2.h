@@ -1,6 +1,5 @@
 #pragma once
 
-#include "kerr.h"
 #include "types.h"
 
 #define VMM_USER_START 0x40000000
@@ -28,9 +27,9 @@ typedef enum {
 } vmm_prot_t;
 
 typedef struct {
+    bool present;
     paddr_t phys;
     vmm_prot_t prot;
-    bool present;
 } vmm_pginfo_t;
 
 typedef struct vmm_vas vmm_vas_t;
@@ -45,17 +44,22 @@ void vmm2_free_vas(vmm_vas_t *vas);
 vmm_vas_t *vmm_get_kvas(void);
 void vmm_enter_vas(const vmm_vas_t *vas);
 
-void vmm_map_region(vmm_vas_t *vas, vaddr_t virt, paddr_t phys,
-                    size_t num_pages, vmm_prot_t prot);
-void vmm_unmap_region(vmm_vas_t *vas, vaddr_t virt, size_t num_pages);
-
-kerr_t vmm_set_prot(vmm_vas_t *vas, vaddr_t virt, vmm_prot_t new_prot);
-bool vmm_query_page(const vmm_vas_t *vas, vaddr_t virt, vmm_pginfo_t *pginfo);
-
-vaddr_t vmm_alloc_range(vmm_vas_t *vas, size_t num_pages, vmm_rgn_type_t type,
-                        vmm_prot_t prot);
+/**
+ * Map the virtual memory range to the physical memory range.
+ */
+bool vmm_map_range(vmm_vas_t *vas, vaddr_t virt, vaddr_t phys, size_t num_pages,
+                   vmm_rgn_type_t type, vmm_prot_t prot);
+/**
+ * Find a virtual memory range of given size and map it anywhere.
+ */
+bool vmm_alloc(vmm_vas_t *vas, size_t num_pages, vmm_rgn_type_t type,
+               vmm_prot_t prot);
+/**
+ * Find a virtual memory range and map it to the given physical memory.
+ */
+bool vmm_alloc_and_map(vmm_vas_t *vas, vaddr_t phys, size_t num_pages,
+                       vmm_rgn_type_t type, vmm_prot_t prot);
 vaddr_t vmm_free_range(vmm_vas_t *vas, vaddr_t start, size_t num_pages);
-vaddr_t vmm_alloc_and_map(vmm_vas_t *vas, size_t num_pages, vmm_rgn_type_t type,
-                          vmm_prot_t prot);
 
+bool vmm_query_page(const vmm_vas_t *vas, vaddr_t virt, vmm_pginfo_t *pginfo);
 void vmm_invlpg(vaddr_t vaddr);
