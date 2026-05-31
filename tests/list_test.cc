@@ -29,6 +29,8 @@ class ListTest : public testing::Test {
                 << "node " << idx << " during forward traversal";
             idx++;
         }
+        EXPECT_EQ(idx, nodes.size())
+            << "too few nodes in the list during forward traversal";
 
         idx = nodes.size();
         for (list_node_t *node = list.p_last_node; node != NULL;
@@ -38,6 +40,8 @@ class ListTest : public testing::Test {
             EXPECT_EQ(node, nodes.at(idx))
                 << "node " << idx << " during backward traversal";
         }
+        EXPECT_EQ(idx, 0)
+            << "too few nodes in the list during backward traversal";
     }
 
     list_t list;
