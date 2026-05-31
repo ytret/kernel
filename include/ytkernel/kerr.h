@@ -23,6 +23,9 @@ typedef enum {
     KERR_NOT_OPENED,
     KERR_NO_SYSCALL,
     KERR_BAD_ADDR,
+    KERR_INCOMP_MAP,
+    KERR_MAPPED,
+    KERR_NOT_MAPPED,
 } kerr_t;
 
 const char *kerr_str(kerr_t err);

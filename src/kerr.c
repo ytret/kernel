@@ -24,6 +24,9 @@ const char *kerr_str(kerr_t err) {
     case KERR_NOT_OPENED:    return "KERR_NOT_OPENED";
     case KERR_NO_SYSCALL:    return "KERR_NO_SYSCALL";
     case KERR_BAD_ADDR:      return "KERR_BAD_ADDR";
+    case KERR_INCOMP_MAP:    return "KERR_INCOMP_MAP";
+    case KERR_MAPPED:        return "KERR_MAPPED";
+    case KERR_NOT_MAPPED:    return "KERR_NOT_MAPPED";
     }
     return "<unknown kerr_t value>";
 }
