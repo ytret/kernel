@@ -29,3 +29,11 @@
 #else
 #error "TODO"
 #endif
+
+#if PADDR_MAX == UINT32_MAX
+#define PRIxPA  PRIx32
+#define PRIx0PA "08" PRIx32
+#else
+#define PRIxPA  "llx"
+#define PRIx0PA "016llx"
+#endif
