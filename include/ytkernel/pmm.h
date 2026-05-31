@@ -99,6 +99,14 @@ paddr_t pmm_alloc_pages(size_t num_pages);
 paddr_t pmm_alloc_aligned_pages(size_t num_pages, size_t align_pages);
 
 /**
+ * Allocates a page for storing a paging structure.
+ *
+ * @returns An identity-mapped virtual address to zeroed-out memory, never
+ * `NULL`.
+ */
+void *pmm_alloc_pgtable(void);
+
+/**
  * Free previously allocated physical memory.
  *
  * @param addr      Address returned by #pmm_alloc_pages() or `NULL`.

@@ -262,6 +262,20 @@ paddr_t pmm_alloc_aligned_pages(size_t num_pages, size_t align_pages) {
     PANIC("physical memory allocation failed");
 }
 
+void *pmm_alloc_pgtable(void) {
+    if (g_pmm.pgtbl_prov_pool) {
+        return prv_pmm_alloc_in_pgtbl_prov(PMM_PAGE_SIZE);
+    } else {
+        // Earliest stage branch. The early pgalloc is supposed to be
+        // initialized (otherwise the function panics), but the pgtbl provider
+        // pool is not ready yet.
+        return (void *)(uintptr_t)PHYS_TO_VIRT(
+            (uintptr_t)prv_pmm_early_alloc(PMM_PAGE_SIZE));
+        // FIXME: rewrite prv_pmm_early_alloc so that PHYS_TO_VIRT() is not
+        // needed.
+    }
+}
+
 void pmm_free_pages(paddr_t addr, size_t num_pages) {
     if (addr == 0) { return; }
 
