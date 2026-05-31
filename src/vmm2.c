@@ -20,6 +20,10 @@
 #define VMM_ADDR_PAGE(x)    ((x) & VMM_ADDR_PAGE_MASK)
 #define VMM_ADDR_PGOFF(x)   ((x) & VMM_ADDR_PGOFF_MASK)
 
+// FIXME
+#define VMM_PAGE_ALIGN_UP(x)   PMM_PAGE_ALIGN_UP(x)
+#define VMM_PAGE_ALIGN_DOWN(x) PMM_PAGE_ALIGN_DOWN(x)
+
 typedef struct {
     list_node_t node;
     vmm_rgn_type_t type;
@@ -112,8 +116,8 @@ static void prv_vmm_add_boot_regions(vmm_rgnlist_t *rgns) {
     vaddr_t end_incl;
     vmm_arch_get_boot_rgn(&start, &end_incl);
 
-    start = PMM_PAGE_ALIGN_DOWN(start);
-    end_incl = PMM_PAGE_ALIGN_UP(end_incl + 1) - 1;
+    start = VMM_PAGE_ALIGN_DOWN(start);
+    end_incl = VMM_PAGE_ALIGN_UP(end_incl + 1) - 1;
 
     vmm_rgn_t *const boot_rgn =
         alloc_static(&g_vmm_preheap_rgns, sizeof(vmm_rgn_t));
@@ -126,8 +130,8 @@ static void prv_vmm_add_boot_regions(vmm_rgnlist_t *rgns) {
 }
 
 static void prv_vmm_add_kernel_regions(vmm_rgnlist_t *rgns) {
-    const vaddr_t start = PMM_PAGE_ALIGN_DOWN(VMM_KERNEL_VMA);
-    const vaddr_t end_incl = PMM_PAGE_ALIGN_UP(arch_get_kernel_virt_end()) - 1;
+    const vaddr_t start = VMM_PAGE_ALIGN_DOWN(VMM_KERNEL_VMA);
+    const vaddr_t end_incl = VMM_PAGE_ALIGN_UP(arch_get_kernel_virt_end()) - 1;
 
     vmm_rgn_t *const kernel_rgn =
         alloc_static(&g_vmm_preheap_rgns, sizeof(vmm_rgn_t));
