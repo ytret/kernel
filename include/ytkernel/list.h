@@ -135,6 +135,19 @@ void list_insert(list_t *p_list, list_node_t *p_after_node,
                  list_node_t *p_new_node);
 
 /**
+ * Inserts @a p_new_node before the node @a p_before_node in the list @a
+ * p_list.
+ * @param p_list        List pointer.
+ * @param p_before_node Node to insert before (`NULL` means the list end).
+ * @param p_new_node    Node to insert.
+ * @warning
+ * It is not checked whether @a p_list contains @a p_before_node or @a
+ * p_new_node.
+ */
+void list_insert_before(list_t *p_list, list_node_t *p_before_node,
+                         list_node_t *p_new_node);
+
+/**
  * Removes @a p_node from @a p_list.
  * @param p_list List pointer.
  * @param p_node Node to remove.

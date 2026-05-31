@@ -48,6 +48,7 @@ class ListTest : public testing::Test {
     list_node_t node1;
     list_node_t node2;
     list_node_t node3;
+    list_node_t node4;
 };
 
 TEST_F(ListTest, TestEmpty) {
@@ -87,6 +88,35 @@ TEST_F(ListTest, TestInsertAtEnd) {
     list_insert(&list, &node2, &node3);
     EXPECT_EQ(list_count(&list), 3);
     exp_nodes({&node1, &node2, &node3});
+}
+
+TEST_F(ListTest, TestInsertBeforeNullEmpty) {
+    list_insert_before(&list, NULL, &node1);
+    exp_nodes({&node1});
+}
+TEST_F(ListTest, TestInsertBeforeNullNonEmpty) {
+    add_nodes({&node1, &node2});
+    list_insert_before(&list, NULL, &node3);
+    EXPECT_EQ(list_count(&list), 3);
+    exp_nodes({&node1, &node2, &node3});
+}
+TEST_F(ListTest, TestInsertBeforeAtStart) {
+    add_nodes({&node1, &node2});
+    list_insert_before(&list, &node1, &node3);
+    EXPECT_EQ(list_count(&list), 3);
+    exp_nodes({&node3, &node1, &node2});
+}
+TEST_F(ListTest, TestInsertBeforeAtMiddle) {
+    add_nodes({&node1, &node2, &node3});
+    list_insert_before(&list, &node2, &node4);
+    EXPECT_EQ(list_count(&list), 4);
+    exp_nodes({&node1, &node4, &node2, &node3});
+}
+TEST_F(ListTest, TestInsertBeforeAtLast) {
+    add_nodes({&node1, &node2, &node3});
+    list_insert_before(&list, &node3, &node4);
+    EXPECT_EQ(list_count(&list), 4);
+    exp_nodes({&node1, &node2, &node4, &node3});
 }
 
 TEST_F(ListTest, TestClear) {

@@ -54,6 +54,30 @@ void list_insert(list_t *p_list, list_node_t *p_after_node,
     }
 }
 
+void list_insert_before(list_t *p_list, list_node_t *p_before_node,
+                         list_node_t *p_new_node) {
+    if (p_before_node == NULL) {
+        if (p_list->p_last_node == NULL) {
+            p_list->p_first_node = p_new_node;
+        } else {
+            p_list->p_last_node->p_next = p_new_node;
+        }
+        p_new_node->p_prev = p_list->p_last_node;
+        p_new_node->p_next = NULL;
+        p_list->p_last_node = p_new_node;
+    } else {
+        if (p_before_node->p_prev) {
+            p_before_node->p_prev->p_next = p_new_node;
+        }
+        p_new_node->p_prev = p_before_node->p_prev;
+        p_new_node->p_next = p_before_node;
+        p_before_node->p_prev = p_new_node;
+        if (p_list->p_first_node == p_before_node) {
+            p_list->p_first_node = p_new_node;
+        }
+    }
+}
+
 bool list_remove(list_t *p_list, list_node_t *p_node) {
     list_node_t *p_iter = p_list->p_first_node;
     list_node_t *p_prev = NULL;
