@@ -41,6 +41,7 @@ void list_insert(list_t *p_list, list_node_t *p_after_node,
         p_new_node->p_prev = NULL;
         p_new_node->p_next = p_list->p_first_node;
         p_list->p_first_node = p_new_node;
+        if (p_new_node->p_next) { p_new_node->p_next->p_prev = p_new_node; }
         if (p_list->p_last_node == NULL) { p_list->p_last_node = p_new_node; }
     } else {
         if (p_after_node->p_next) { p_after_node->p_next->p_prev = p_new_node; }
