@@ -15,11 +15,6 @@
 #define VMM_FIRST_ADDR ((vaddr_t)0)
 #define VMM_LAST_ADDR  ((vaddr_t)VADDR_MAX)
 
-#define VMM_ADDR_PAGE_MASK  0xFFFFF000U
-#define VMM_ADDR_PGOFF_MASK 0x00000FFFU
-#define VMM_ADDR_PAGE(x)    ((x) & VMM_ADDR_PAGE_MASK)
-#define VMM_ADDR_PGOFF(x)   ((x) & VMM_ADDR_PGOFF_MASK)
-
 // FIXME
 #define VMM_PAGE_ALIGN_UP(x)   PMM_PAGE_ALIGN_UP(x)
 #define VMM_PAGE_ALIGN_DOWN(x) PMM_PAGE_ALIGN_DOWN(x)
@@ -50,6 +45,7 @@ static void prv_vmm_add_boot_regions(vmm_rgnlist_t *rgns);
 static void prv_vmm_add_kernel_regions(vmm_rgnlist_t *rgns);
 
 static vmm_rgn_t *prv_vmm_new_rgn(void);
+static void prv_vmm_free_rgn(vmm_rgn_t *rgn);
 static const char *prv_vmm_rgn_type_name(vmm_rgn_type_t type);
 
 static void prv_vmm_rgnlist_init(vmm_rgnlist_t *rgns);
@@ -70,32 +66,45 @@ void vmm_free_vas(vmm_vas_t *vas);
 vmm_vas_t *vmm_get_kvas(void);
 void vmm_enter_vas(const vmm_vas_t *vas);
 
-void vmm_map_region(vmm_vas_t *vas, vaddr_t virt, paddr_t phys,
-                    size_t num_pages, vmm_prot_t prot) {
+bool vmm_map_range(vmm_vas_t *vas, vaddr_t virt, vaddr_t phys, size_t num_pages,
+                   vmm_rgn_type_t type, vmm_prot_t prot) {
     DEBUG_ASSERT(vas != NULL);
     ASSERT(VMM_ADDR_PAGE(virt) == 0);
     ASSERT(VMM_ADDR_PAGE(virt) == 0);
-
     ASSERT(num_pages < SIZE_MAX / VMM_PAGE_SIZE);
     const size_t size = num_pages * VMM_PAGE_SIZE;
-
     ASSERT(virt >= VADDR_MAX - size);
     const vaddr_t end_excl = virt + size;
+    const vaddr_t end_incl = end_excl - 1;
 
-    for (vaddr_t v_page = virt, p_page = phys; v_page < end_excl;
-         v_page += VMM_PAGE_SIZE, p_page += VMM_PAGE_SIZE) {}
+    vmm_rgn_t *const new_rgn = prv_vmm_new_rgn();
+    new_rgn->start = virt;
+    new_rgn->end_incl = end_incl;
+    new_rgn->type = type;
+    new_rgn->prot = prot;
+    if (!prv_vmm_rgnlist_insert(&vas->regions, new_rgn)) {
+        prv_vmm_free_rgn(new_rgn);
+        return false;
+    }
+
+    // FIXME: do I need to check if any page in the region is already mapped?
+    vaddr_t v_page;
+    paddr_t p_page;
+    for (v_page = new_rgn->start, p_page = phys; v_page <= new_rgn->end_incl;
+         v_page += VMM_PAGE_SIZE, p_page += VMM_PAGE_SIZE) {
+        vmm_arch_map(vas->arch, v_page, p_page, prot);
+    }
+
+    return phys;
 }
 
-void vmm_unmap_region(vmm_vas_t *vas, vaddr_t virt, size_t num_pages);
-
-kerr_t vmm_set_prot(vmm_vas_t *vas, vaddr_t virt, vmm_prot_t new_prot);
-bool vmm_query_page(const vmm_vas_t *vas, vaddr_t virt, vmm_pginfo_t *pginfo);
-
-vaddr_t vmm_alloc_range(vmm_vas_t *vas, size_t num_pages, vmm_rgn_type_t type,
-                        vmm_prot_t prot);
+bool vmm_alloc(vmm_vas_t *vas, size_t num_pages, vmm_rgn_type_t type,
+               vmm_prot_t prot);
+bool vmm_alloc_and_map(vmm_vas_t *vas, vaddr_t phys, size_t num_pages,
+                       vmm_rgn_type_t type, vmm_prot_t prot);
 vaddr_t vmm_free_range(vmm_vas_t *vas, vaddr_t start, size_t num_pages);
-vaddr_t vmm_alloc_and_map(vmm_vas_t *vas, size_t num_pages, vmm_rgn_type_t type,
-                          vmm_prot_t prot);
+
+bool vmm_query_page(const vmm_vas_t *vas, vaddr_t virt, vmm_pginfo_t *pginfo);
 
 static void prv_vmm_init_kvas(void) {
     kmemset(&g_vmm_kvas, 0, sizeof(vmm_vas_t));
@@ -148,6 +157,11 @@ static vmm_rgn_t *prv_vmm_new_rgn(void) {
     vmm_rgn_t *const rgn = alloc_static(&g_vmm_preheap_rgns, sizeof(vmm_rgn_t));
     kmemset(rgn, 0, sizeof(vmm_rgn_t));
     return rgn;
+}
+
+static void prv_vmm_free_rgn(vmm_rgn_t *rgn) {
+    // FIXME: if 'rng' is not in the static buffer, but on the heap, free it
+    (void)rgn;
 }
 
 static const char *prv_vmm_rgn_type_name(vmm_rgn_type_t type) {
