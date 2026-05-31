@@ -63,6 +63,10 @@ void arch_late_init(void) {
     }
 
     vmm_init();
+    vmm2_init();
+
+    LOG_INFO("halt");
+    __asm__ volatile("hlt");
 
     __asm__ volatile("sti");
     LOG_DEBUG("interrupts enabled");
