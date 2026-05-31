@@ -21,6 +21,7 @@ void arch_late_init(void);
 void arch_create_platform_tasks(void);
 
 const char *arch_get_cmdline(void);
+vaddr_t arch_get_kernel_virt_end(void);
 paddr_t arch_get_kernel_phys_end(void);
 
 void arch_textdisp_early_init(textdisp_t *disp);

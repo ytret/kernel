@@ -46,6 +46,7 @@ target_sources(kernel PRIVATE
     vfs/file.c
     vfs/vnode.c
     vfs/vpath.c
+    vmm2.c
 
     kshell/kbdlog.c
     kshell/ksharg.c

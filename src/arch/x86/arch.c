@@ -10,6 +10,7 @@
 #include "log.h"
 #include "panic.h"
 #include "smp.h"
+#include "vmm2.h"
 
 #include "arch/x86/apic/ioapic.h"
 #include "arch/x86/apic/lapic.h"
@@ -79,6 +80,10 @@ const char *arch_get_cmdline(void) {
     } else {
         return NULL;
     }
+}
+
+vaddr_t arch_get_kernel_virt_end(void) {
+    return PHYS_TO_VIRT(arch_get_kernel_phys_end());
 }
 
 paddr_t arch_get_kernel_phys_end(void) {

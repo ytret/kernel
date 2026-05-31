@@ -18,6 +18,7 @@ target_sources(kernel PRIVATE
     pit.c
     serial_arch.c
     vga.c
+    vmm2_arch.c
 
     boot.s
     entry.s
