@@ -136,3 +136,8 @@ file(CREATE_LINK
     ${CMAKE_BINARY_DIR}/tapview.sh
     SYMBOLIC
 )
+file(CREATE_LINK
+    ${CMAKE_SOURCE_DIR}/tools/resolvestack.py
+    ${CMAKE_BINARY_DIR}/resolvestack.py
+    SYMBOLIC
+)
