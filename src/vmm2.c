@@ -63,7 +63,11 @@ void vmm2_init(void) {
 
 vmm_vas_t *vmm_new_vas(void);
 void vmm_free_vas(vmm_vas_t *vas);
-vmm_vas_t *vmm_get_kvas(void);
+
+vmm_vas_t *vmm_get_kvas(void) {
+    return &g_vmm_kvas;
+}
+
 void vmm_enter_vas(const vmm_vas_t *vas);
 
 bool vmm_map_range(vmm_vas_t *vas, vaddr_t virt, vaddr_t phys, size_t num_pages,
