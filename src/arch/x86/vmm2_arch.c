@@ -1,4 +1,5 @@
 #include "assert.h"
+#include "heap.h"
 #include "kerr.h"
 #include "kinttypes.h"
 #include "memfun.h"
@@ -43,6 +44,29 @@ static bool prv_vmm_check_pte_flags(uint32_t flags, vmm_prot_t page_prot);
 static uint32_t prv_vmm_get_pde_flags(vmm_prot_t prot);
 static uint32_t prv_vmm_get_pte_flags(vmm_prot_t prot);
 static vmm_prot_t prv_vmm_get_prot(uint32_t pte);
+
+void vmm_arch_init_vas(vmm_vas_arch_t *vas) {
+    ASSERT(vas != NULL);
+    kmemset(vas, 0, sizeof(vmm_vas_arch_t));
+
+    void *const pgdir = pmm_alloc_pgtable();
+    vas->pgdir = pgdir;
+    vas->pgdir_phys = (uint32_t)pgdir; // FIXME: paddr_t when it becomes 32-bit
+}
+
+vmm_vas_arch_t *vmm_arch_new_vas(void) {
+    vmm_vas_arch_t *vas =
+        heap_alloc_aligned(sizeof(vmm_vas_arch_t), _Alignof(vmm_vas_arch_t));
+    vmm_arch_init_vas(vas);
+    return vas;
+}
+
+void vmm_arch_free_vas(vmm_vas_arch_t *vas) {
+    DEBUG_ASSERT(vas != NULL);
+    DEBUG_ASSERT(vas->pgdir != NULL);
+    heap_free(vas->pgdir);
+    heap_free(vas);
+}
 
 void vmm_arch_get_boot_rgn(vaddr_t *out_start, vaddr_t *out_end_incl) {
     if (out_start) { *out_start = 0; }
