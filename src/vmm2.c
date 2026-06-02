@@ -113,6 +113,8 @@ bool vmm_query_page(const vmm_vas_t *vas, vaddr_t virt, vmm_pginfo_t *pginfo);
 static void prv_vmm_init_kvas(void) {
     kmemset(&g_vmm_kvas, 0, sizeof(vmm_vas_t));
 
+    g_vmm_kvas.arch = vmm_arch_new_vas();
+
     prv_vmm_rgnlist_init(&g_vmm_kvas.regions);
     prv_vmm_add_boot_regions(&g_vmm_kvas.regions);
     prv_vmm_add_kernel_regions(&g_vmm_kvas.regions);
