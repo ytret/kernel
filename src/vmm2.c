@@ -73,11 +73,11 @@ void vmm_enter_vas(const vmm_vas_t *vas);
 bool vmm_map_range(vmm_vas_t *vas, vaddr_t virt, vaddr_t phys, size_t num_pages,
                    vmm_rgn_type_t type, vmm_prot_t prot) {
     DEBUG_ASSERT(vas != NULL);
-    ASSERT(VMM_ADDR_PAGE(virt) == 0);
-    ASSERT(VMM_ADDR_PAGE(virt) == 0);
+    ASSERT(VMM_ADDR_PGOFF(virt) == 0);
+    ASSERT(VMM_ADDR_PGOFF(virt) == 0);
     ASSERT(num_pages < SIZE_MAX / VMM_PAGE_SIZE);
     const size_t size = num_pages * VMM_PAGE_SIZE;
-    ASSERT(virt >= VADDR_MAX - size);
+    ASSERT(virt <= VADDR_MAX - size);
     const vaddr_t end_excl = virt + size;
     const vaddr_t end_incl = end_excl - 1;
 
