@@ -13,6 +13,7 @@ typedef struct vmm_vas_arch vmm_vas_arch_t;
 void vmm_arch_init_vas(vmm_vas_arch_t *vas);
 vmm_vas_arch_t *vmm_arch_new_vas(void);
 void vmm_arch_free_vas(vmm_vas_arch_t *vas);
+void vmm_arch_enter_vas(vmm_vas_arch_t *vas);
 
 void vmm_arch_get_boot_rgn(vaddr_t *out_start, vaddr_t *out_end_incl);
 

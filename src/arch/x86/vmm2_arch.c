@@ -45,6 +45,8 @@ static uint32_t prv_vmm_get_pde_flags(vmm_prot_t prot);
 static uint32_t prv_vmm_get_pte_flags(vmm_prot_t prot);
 static vmm_prot_t prv_vmm_get_prot(uint32_t pte);
 
+extern void vmm_load_dir(void const *p_dir);
+
 void vmm_arch_init_vas(vmm_vas_arch_t *vas) {
     ASSERT(vas != NULL);
     kmemset(vas, 0, sizeof(vmm_vas_arch_t));
@@ -66,6 +68,13 @@ void vmm_arch_free_vas(vmm_vas_arch_t *vas) {
     DEBUG_ASSERT(vas->pgdir != NULL);
     heap_free(vas->pgdir);
     heap_free(vas);
+}
+
+void vmm_arch_enter_vas(vmm_vas_arch_t *vas) {
+    DEBUG_ASSERT(vas != NULL);
+    DEBUG_ASSERT(vas->pgdir != NULL);
+
+    vmm_load_dir((void *)vas->pgdir_phys);
 }
 
 void vmm_arch_get_boot_rgn(vaddr_t *out_start, vaddr_t *out_end_incl) {
