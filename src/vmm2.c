@@ -68,7 +68,9 @@ vmm_vas_t *vmm_get_kvas(void) {
     return &g_vmm_kvas;
 }
 
-void vmm_enter_vas(const vmm_vas_t *vas);
+void vmm_enter_vas(const vmm_vas_t *vas) {
+    vmm_arch_enter_vas(vas->arch);
+}
 
 bool vmm_map_range(vmm_vas_t *vas, vaddr_t virt, paddr_t phys, size_t num_pages,
                    vmm_rgn_type_t type, vmm_prot_t prot) {
