@@ -70,7 +70,7 @@ vmm_vas_t *vmm_get_kvas(void) {
 
 void vmm_enter_vas(const vmm_vas_t *vas);
 
-bool vmm_map_range(vmm_vas_t *vas, vaddr_t virt, vaddr_t phys, size_t num_pages,
+bool vmm_map_range(vmm_vas_t *vas, vaddr_t virt, paddr_t phys, size_t num_pages,
                    vmm_rgn_type_t type, vmm_prot_t prot) {
     DEBUG_ASSERT(vas != NULL);
     ASSERT(VMM_ADDR_PGOFF(virt) == 0);

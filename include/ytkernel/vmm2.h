@@ -47,7 +47,7 @@ void vmm_enter_vas(const vmm_vas_t *vas);
 /**
  * Map the virtual memory range to the physical memory range.
  */
-bool vmm_map_range(vmm_vas_t *vas, vaddr_t virt, vaddr_t phys, size_t num_pages,
+bool vmm_map_range(vmm_vas_t *vas, vaddr_t virt, paddr_t phys, size_t num_pages,
                    vmm_rgn_type_t type, vmm_prot_t prot);
 /**
  * Find a virtual memory range of given size and map it anywhere.
