@@ -99,7 +99,7 @@ bool vmm_map_range(vmm_vas_t *vas, vaddr_t virt, paddr_t phys, size_t num_pages,
         vmm_arch_map(vas->arch, v_page, p_page, prot);
     }
 
-    return phys;
+    return true;
 }
 
 bool vmm_alloc(vmm_vas_t *vas, size_t num_pages, vmm_rgn_type_t type,
