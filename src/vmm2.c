@@ -25,6 +25,8 @@ typedef struct {
     vaddr_t start;
     vaddr_t end_incl;
     vmm_prot_t prot;
+
+    paddr_t phys_start;
 } vmm_rgn_t;
 
 typedef struct {
@@ -33,7 +35,7 @@ typedef struct {
 
 struct vmm_vas {
     vmm_vas_arch_t *arch;
-    vmm_rgnlist_t regions;
+    vmm_rgnlist_t regions; // node type: vmm_rgn_t
 };
 
 static vmm_vas_t g_vmm_kvas;
@@ -88,6 +90,7 @@ bool vmm_map_range(vmm_vas_t *vas, vaddr_t virt, paddr_t phys, size_t num_pages,
     new_rgn->end_incl = end_incl;
     new_rgn->type = type;
     new_rgn->prot = prot;
+    new_rgn->phys_start = phys;
     if (!prv_vmm_rgnlist_insert(&vas->regions, new_rgn)) {
         prv_vmm_free_rgn(new_rgn);
         return false;
@@ -142,6 +145,7 @@ static void prv_vmm_add_boot_regions(vmm_rgnlist_t *rgns) {
     boot_rgn->end_incl = end_incl;
     boot_rgn->type = VMM_REGION_BOOT;
     boot_rgn->prot = VMM_PROT_READ | VMM_PROT_WRITE;
+    boot_rgn->phys_start = (paddr_t)start;
 
     ASSERT(prv_vmm_rgnlist_insert(rgns, boot_rgn));
 }
@@ -156,6 +160,7 @@ static void prv_vmm_add_kernel_regions(vmm_rgnlist_t *rgns) {
     kernel_rgn->end_incl = end_incl;
     kernel_rgn->type = VMM_REGION_KERNEL;
     kernel_rgn->prot = VMM_PROT_READ | VMM_PROT_WRITE;
+    kernel_rgn->phys_start = (paddr_t)VMM_KERNEL_LMA;
 
     ASSERT(prv_vmm_rgnlist_insert(rgns, kernel_rgn));
 }
@@ -294,9 +299,9 @@ static void prv_vmm_rgnlist_dump(const vmm_rgnlist_t *rgns) {
         const vmm_rgn_t *const region =
             LIST_NODE_TO_STRUCT(node, const vmm_rgn_t, node);
 
-        LOG_DEBUG("%2zu: [0x%" PRIx0VA "; 0x%" PRIx0VA ") type '%s'", idx,
-                  region->start, region->end_incl,
-                  prv_vmm_rgn_type_name(region->type));
+        LOG_DEBUG("%2zu: [0x%" PRIx0VA "; 0x%" PRIx0VA ") type '%s' prot 0x%x",
+                  idx, region->start, region->end_incl,
+                  prv_vmm_rgn_type_name(region->type), region->prot);
     }
 }
 
